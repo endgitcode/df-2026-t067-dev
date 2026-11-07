@@ -1,13 +1,17 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ApiClient, ManagedQuest, OrgMembership } from '../../shared/api'
+import { PhotoRightsInput } from './PhotoRightsInput'
+import { normalizeHintAssets } from './hintAssets'
 import { useLocalDraftSave } from './useLocalDraftSave'
 
-export function HintAssetEditor({ api, initial, member, onBack }: { api: ApiClient; initial: ManagedQuest; member: OrgMembership; onBack: () => void }) {
+export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1, rightsAssist = false, backLabel = '問題一覧へ戻る' }: { api: ApiClient; initial: ManagedQuest; member: OrgMembership; onBack: () => void; initialSlot?: number; rightsAssist?: boolean; backLabel?: string }) {
   const { record, state, save } = useLocalDraftSave({ api, initial, member, onBack })
-  const [slot, setSlot] = useState(1)
+  const [slot, setSlot] = useState(initialSlot)
   const [file, setFile] = useState<File | null>(null)
   const [rights, setRights] = useState('')
+  const [reuseNeeded, setReuseNeeded] = useState(false)
+  const previousPhoto = useRef<File | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const current = record ?? initial
   const assets = current.draft.hintAssetIds ?? [null, null, null]
@@ -19,32 +23,27 @@ export function HintAssetEditor({ api, initial, member, onBack }: { api: ApiClie
   function clearSelection() {
     setFile(null)
     setRights('')
+    setReuseNeeded(false); previousPhoto.current = null
     if (input.current) input.current.value = ''
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!valid || !rights.trim() || blocked) return
+    if (!valid || !rights.trim() || reuseNeeded || blocked) return
     void save(current.draft, { file, purpose: 'public_hint', photoRights: rights, hintIndex: slot }, clearSelection)
   }
 
   function remove(index: number) {
-    const next = [...assets]
-    next[index - 1] = null
-    const legacyHintAssetId = current.draft.hintAssetId
-    if (index === 1 && current.draft.hintAssetIds === undefined) {
-      void save({ ...current.draft, hintAssetId: null, hintAssetIds: next }, undefined, clearSelection)
-    } else {
-      if (index !== 1 && legacyHintAssetId && current.draft.hintAssetIds === undefined) next[0] = legacyHintAssetId
-      void save({ ...current.draft, hintAssetId: null, hintAssetIds: next }, undefined, clearSelection)
-    }
+    const { hintAssetIds, hintAssetId } = normalizeHintAssets(current.draft)
+    hintAssetIds[index - 1] = null
+    void save({ ...current.draft, hintAssetId, hintAssetIds }, undefined, clearSelection)
   }
 
   return <section className="form-section" aria-labelledby="hint-asset-title">
     <h2 id="hint-asset-title">ヒントごとの画像</h2>
     <p>{current.draft.content.title || '無題の下書き'}・下書き版 {current.draftRevision}</p>
     <p>各ヒントに公開用画像を1枚設定できます。権利を確認した画像を選んでください。</p>
-    <button type="button" disabled={state.status === 'saving'} onClick={onBack}>問題一覧へ戻る</button>
+    <button type="button" disabled={state.status === 'saving'} onClick={onBack}>{backLabel}</button>
     {current.draft.content.hints.map((hint, index) => {
       const number = index + 1
       const assetId = assets[index] ?? (number === 1 ? current.draft.hintAssetId : null)
@@ -61,12 +60,17 @@ export function HintAssetEditor({ api, initial, member, onBack }: { api: ApiClie
           {activeSlots.map((number) => <option value={number} key={number}>ヒント {number}</option>)}
         </select></label>
         <label>公開ヒント画像<input ref={input} type="file" accept="image/jpeg,image/png,image/webp"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
-        <label>画像の出典と利用権<textarea rows={2} maxLength={2000} value={rights}
-          onChange={(event) => setRights(event.target.value)} /></label>
+          onChange={(event) => {
+            const next = event.target.files?.[0] ?? null
+            if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
+            if (next) previousPhoto.current = next
+            setFile(next)
+          }} /></label>
+        {rightsAssist ? <PhotoRightsInput key={file ? `${slot}:${file.name}:${file.lastModified}` : `empty:${slot}`} purpose="public_hint" label="画像の出典と利用権" value={rights} onChange={value => { setRights(value); setReuseNeeded(false) }} /> : <label>画像の出典と利用権<textarea value={rights} onChange={event => setRights(event.target.value)} /></label>}
+        {reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替えた写真を公開ヒントに使う権利を確認し、入力済みの権利文を適用する</label>}
         {file && !valid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
         {activeSlots.length === 0 && <p role="note">画像を設定できるヒント文がありません。</p>}
-        <button type="submit" disabled={!valid || !rights.trim() || activeSlots.length === 0}>ヒント画像を保存</button>
+        <button type="submit" disabled={!valid || !rights.trim() || reuseNeeded || activeSlots.length === 0}>ヒント画像を保存</button>
       </fieldset>
     </form>
     {state.status === 'saving' && <p role="status">保存しています…</p>}
