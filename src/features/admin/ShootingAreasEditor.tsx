@@ -25,10 +25,39 @@ function areaInput(rows: ZoneInput[], revision: number) {
   } catch { return null }
 }
 
+function ZoneFields({ row, enableMap, onEdit, onRemove }: {
+  row: ZoneInput; enableMap: boolean
+  onEdit: (field: keyof CaptureZone, value: string) => void; onRemove: () => void
+}) {
+  const filled = row.latitude.trim() !== '' && row.longitude.trim() !== ''
+  const [numericOpen, setNumericOpen] = useState(() => !filled)
+  const radius = Number(row.radiusMeters)
+  const sliderValue = Number.isFinite(radius) && radius > 0 ? Math.min(500, Math.max(10, radius)) : 50
+  const coordinates = <>
+    <label>緯度<input type="number" step="any" value={row.latitude} onChange={(event) => onEdit('latitude', event.target.value)} /></label>
+    <label>経度<input type="number" step="any" value={row.longitude} onChange={(event) => onEdit('longitude', event.target.value)} /></label>
+  </>
+  return <>
+    {enableMap
+      ? <details open={numericOpen} onToggle={(event) => setNumericOpen(event.currentTarget.open)}>
+        <summary>数値で調整</summary>
+        {coordinates}
+      </details>
+      : coordinates}
+    <div className="radius-control">
+      <label>半径（m）<input type="number" step="any" value={row.radiusMeters} onChange={(event) => onEdit('radiusMeters', event.target.value)} /></label>
+      <label>半径のスライダー<input type="range" min={10} max={500} step={5} value={sliderValue}
+        onChange={(event) => onEdit('radiusMeters', event.target.value)} /></label>
+    </div>
+    <button type="button" onClick={onRemove}>この範囲を外す</button>
+  </>
+}
+
 function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClient; initial: ManagedShootingAreas; onReload: () => void; enableMap: boolean }) {
   const [revision, setRevision] = useState(initial.draftRevision)
   const [rows, setRows] = useState(() => toInputs(initial.zones))
   const [selectedIndex, setSelectedIndex] = useState<number | null>(initial.zones.length ? 0 : null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(initial.zones.length ? 0 : null)
   const [state, setState] = useState<State>('idle')
   const begin = useRequestAction()
   const input = areaInput(rows, revision)
@@ -63,7 +92,11 @@ function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClie
   return <form onSubmit={save}>
     <p>下書き版 {revision}。範囲をすべて外して保存すると設定を解除します。</p>
     {enableMap && <><p>対象の所在地ではなく、撮影する人の立ち位置を選びます。地点選択だけでは写真の権利、安全、通行許可の確認は完了しません。</p>
-    <label>地図で編集する範囲<select disabled={saving} value={selectedIndex ?? 'new'} onChange={(event) => setSelectedIndex(event.target.value === 'new' ? null : Number(event.target.value))}>
+    <label>地図で編集する範囲<select disabled={saving} value={selectedIndex ?? 'new'} onChange={(event) => {
+      const next = event.target.value === 'new' ? null : Number(event.target.value)
+      setSelectedIndex(next)
+      setExpandedIndex(next)
+    }}>
       {rows.map((_, index) => <option key={index} value={index}>撮影範囲 {index + 1}</option>)}
       <option value="new" disabled={rows.length >= 10}>新しい範囲</option>
     </select></label>
@@ -72,27 +105,32 @@ function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClie
       if (selectedIndex === null) {
         if (rows.length >= 10) return
         setSelectedIndex(rows.length)
+        setExpandedIndex(rows.length)
         edit([...rows, { latitude: String(latitude), longitude: String(longitude), radiusMeters: '50' }])
-      } else edit(rows.map((row, index) => index === selectedIndex ? { ...row, latitude: String(latitude), longitude: String(longitude) } : row))
+      } else {
+        setExpandedIndex(selectedIndex)
+        edit(rows.map((row, index) => index === selectedIndex ? { ...row, latitude: String(latitude), longitude: String(longitude) } : row))
+      }
     }} />
     </>}
     {rows.length === 0 && <p>設定する範囲はありません。</p>}
-    {rows.map((row, index) => <fieldset key={index} disabled={saving}>
-      <legend>撮影範囲 {index + 1}</legend>
-      {fields.map(([field, label]) => <label key={field}>{label}
-        <input type="number" step="any" value={row[field]} onChange={(event) => {
-          const value = event.target.value
-          edit(rows.map((current, item) => item === index ? { ...current, [field]: value } : current))
-        }} />
-      </label>)}
-      <button type="button" onClick={() => { edit(rows.filter((_, item) => item !== index)); setSelectedIndex(null) }}>この範囲を外す</button>
-    </fieldset>)}
+    {rows.map((row, index) => {
+      const complete = fields.every(([field]) => row[field].trim() !== '')
+      return <details key={index} open={expandedIndex === index} onToggle={(event) => { if (event.currentTarget.open) setExpandedIndex(index) }}>
+        <summary>撮影範囲 {index + 1}{complete ? `・半径 ${row.radiusMeters}m・設定済み` : '・未設定'}</summary>
+        <fieldset disabled={saving}>
+          <ZoneFields row={row} enableMap={enableMap}
+            onEdit={(field, value) => edit(rows.map((current, item) => item === index ? { ...current, [field]: value } : current))}
+            onRemove={() => { edit(rows.filter((_, item) => item !== index)); setSelectedIndex(null); setExpandedIndex(null) }} />
+        </fieldset>
+      </details>
+    })}
     {!input && <p>緯度は±90、経度は±180、半径は0より大きい数値を入力してください。</p>}
-    {state === 'saved' && <p role="status">非公開の撮影範囲を保存しました。</p>}
+    {state === 'saved' && <p role="status">撮影できる範囲（非公開）を保存しました。</p>}
     {state === 'error' && <p role="alert">保存結果を確認できませんでした。通信状況を確認して再試行してください。</p>}
     {state === 'conflict' && <p role="alert">下書きの版が変わりました。入力を控えてから最新版を確認してください。</p>}
     <div className="admin-list-actions">
-      <button type="button" disabled={saving || rows.length >= 10} onClick={() => { setSelectedIndex(rows.length); edit([...rows, { latitude: '', longitude: '', radiusMeters: enableMap ? '50' : '' }]) }}>範囲を追加</button>
+      <button type="button" disabled={saving || rows.length >= 10} onClick={() => { setSelectedIndex(rows.length); setExpandedIndex(rows.length); edit([...rows, { latitude: '', longitude: '', radiusMeters: enableMap ? '50' : '' }]) }}>範囲を追加</button>
       <button type="submit" disabled={saving || !input || state === 'conflict'}>{saving ? '保存しています…' : '撮影範囲を保存'}</button>
       {state === 'conflict' && <button type="button" onClick={onReload}>入力を破棄して最新版を確認</button>}
     </div>
@@ -103,7 +141,7 @@ export function ShootingAreasEditor({ api, orgId, questId, onBack, backLabel = '
   const read = useCallback((signal: AbortSignal) => api.getShootingAreas(orgId, questId, { signal }), [api, orgId, questId])
   const { result, retry } = useRemote(true, read)
   return <section className="form-section" aria-labelledby="shooting-editor-title">
-    <h2 id="shooting-editor-title">非公開の撮影範囲</h2>
+    <h2 id="shooting-editor-title">撮影できる範囲（非公開）</h2>
     <p>撮影の立ち位置と半径を最大10件設定できます。旅行者向けの地図や通常のヒントには表示しません。</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {result.status === 'loading' && <p role="status">撮影範囲を読み込んでいます…</p>}

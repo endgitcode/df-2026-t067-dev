@@ -42,17 +42,14 @@ function ChallengePreview({ content, areaLabel }: { content: ChallengePreviewCon
           <p id={`preview-hint-${index}`} hidden={!openHints[index]}>{shown(hint)}</p>
         </div>
       ))}
-      <p className="helper">公開ヒント画像は未設定</p>
     </section>
   </article>
 }
 
 export default function TravelerPreview({ challengeContent, afterClearContent, mode, onModeChange, headingRef, onEdit, areaLabel }: Props) {
-  const missing = [!challengeContent.title.trim() && '問題タイトル', !challengeContent.question.trim() && '問題文', ...challengeContent.hints.map((hint, index) => !hint.trim() && `ヒント ${index + 1}`)].filter(Boolean)
   return <section className="form-section traveler-preview" aria-labelledby="preview-heading">
     <h2 id="preview-heading" ref={headingRef} tabIndex={-1}>旅行者向け表示の確認（未公開）</h2>
     <p className="demo-notice" role="note">管理用プレビュー・表示確認のみ。実際の旅行者画面、写真判定、公開には未接続です。</p>
-    {missing.length > 0 && <p role="status" className="field-error">未完成のプレビュー：{missing.join('・')}が未入力です。「問題の文章を編集」から入力できます。</p>}
     <div className="preview-mode" role="group" aria-label="表示する内容">
       <button type="button" aria-pressed={mode === 'challenge'} onClick={() => onModeChange('challenge')}>挑戦前の問題</button>
       <button type="button" aria-pressed={mode === 'after-clear'} onClick={() => onModeChange('after-clear')}>クリア後の解説</button>

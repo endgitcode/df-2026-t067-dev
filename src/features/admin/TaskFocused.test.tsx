@@ -11,7 +11,7 @@ it('allows connected writing without reason or name and omits routine memo compo
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('問題タイトル')).toBeVisible()
   expect(screen.queryByLabelText('下書きの根拠・人のメモ')).not.toBeInTheDocument()
-  expect(screen.getByLabelText('確認済み特徴')).toBeVisible()
+  expect(screen.getByLabelText('現地で確かめた見た目の特徴')).toBeVisible()
 })
 
 it('keeps legacy evidence and memo while saving before a hint shortcut, and never navigates on failure', async () => {
@@ -53,7 +53,7 @@ it('returns from range editing to fresh content in the same task without listing
   fireEvent.change(screen.getByLabelText('問題タイトル'), { target: { value: '保持する題' } })
   fireEvent.click(screen.getByRole('button', { name: '保存して撮影範囲へ' }))
   fireEvent.click(await screen.findByRole('button', { name: '撮影範囲を保存' }))
-  await screen.findByText('非公開の撮影範囲を保存しました。')
+  await screen.findByText('撮影できる範囲（非公開）を保存しました。')
   fireEvent.click(screen.getByRole('button', { name: '本文編集へ戻る' }))
   await screen.findByText('下書き版 2')
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
