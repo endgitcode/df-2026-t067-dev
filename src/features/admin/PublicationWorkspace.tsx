@@ -6,17 +6,17 @@ import { PhotoRightsInput } from './PhotoRightsInput'
 import { useRequestAction } from '../../shared/useRequestAction'
 
 const reviewLabels: Record<ReviewField, string> = {
-  'materials.name': '対象名', 'materials.evidence': '対象とする根拠', 'materials.photoRights': '写真の利用権',
-  referenceAssetId: '参考写真', hintAssetId: '公開ヒント画像の用途', shootingAreas: '非公開の撮影範囲',
+  'materials.name': '対象名', 'materials.evidence': '対象にした理由（確認したこと）', 'materials.photoRights': '写真の利用権',
+  referenceAssetId: '参考写真', hintAssetId: 'ヒント画像の用途', shootingAreas: '撮影できる範囲（非公開）',
   'content.title': '問題タイトル', 'content.question': '問題文', 'content.hints': '3本のヒント',
-  'content.verifiedFeatures': '確認済み特徴',
+  'content.verifiedFeatures': '現地で確かめた見た目の特徴',
 }
 type Confirmation = keyof PublishManagedQuest['confirmations']
 const confirmationLabels: ReadonlyArray<readonly [Confirmation, string]> = [
   ['fictionalData', '架空の素材と情報だけを使った'],
   ['visitConditions', '訪問条件と撮影時の注意を確認した'],
   ['photoRights', '写真の権利と公開する画像を確認した'],
-  ['shootingArea', '非公開の撮影範囲を確認した'],
+  ['shootingArea', '撮影できる範囲（非公開）を確認した'],
   ['testCases', '一致と別対象の試験を確認した'],
 ]
 type Failure = { message: string; stale?: true }
@@ -26,7 +26,7 @@ function publicationFailure(cause: unknown): Failure {
   const code = cause instanceof ApiError ? cause.code : undefined
   switch (code) {
     case 'DRAFT_CONFLICT': return { message: '下書きの版が変わりました。一覧から最新版を確認してください。', stale: true }
-    case 'FORBIDDEN': return { message: '自組織の操作権限を確認できません。', stale: true }
+    case 'FORBIDDEN': return { message: '担当組織の操作権限を確認できません。', stale: true }
     case 'PHOTO_TEST_REQUIRED': return { message: 'この版で異なる写真を使って一致・別対象の試験を確認してください。' }
     case 'REVIEW_REQUIRED': return { message: 'この版の確認依頼と確認項目を見直してください。' }
     case 'INVALID_INPUT': return { message: '試験写真・利用権と保存済みの参考素材を確認してください。' }
@@ -112,15 +112,15 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
   }
 
   return <section className="form-section" aria-labelledby="publication-workspace-title">
-    <h2 id="publication-workspace-title">開発用の写真試験と公開確認</h2>
+    <h2 id="publication-workspace-title">写真試験と公開確認</h2>
     <p>{quest.draft.content.title || '無題の下書き'}・下書き版 {draftRevision}</p>
-    <p>合成写真を使います。同じ画面で試験と確認を終えてください。</p>
+    <p>開発用の検証環境です。合成写真を使います。同じ画面で試験と確認を終えてください。</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">操作結果を確認しています…</p>}
     <form onSubmit={trial}>
       <fieldset disabled={disabled}>
-        <legend>A05 写真試験</legend>
+        <legend>写真試験</legend>
         <label>試験写真<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
           const next = event.target.files?.[0] ?? null
           if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
@@ -139,7 +139,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
     {proofs.WRONG_TARGET && <p role="status">別対象の試験を確認しました。</p>}
     {outcome === 'IMAGE_UNCERTAIN' && <p role="status">試験写真を確認できませんでした。別の合成写真でお試しください。</p>}
     <fieldset disabled={disabled}>
-      <legend>A06 確認依頼</legend>
+      <legend>確認依頼</legend>
       <button type="button" onClick={review}>この版の確認を依頼</button>
       {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
       {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{reviewLabels[item]}</li>)}</ul></>}
@@ -151,7 +151,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))
         }} />{label}
       </label>)}
-      <button type="button" disabled={!ready} onClick={publish}>この版を開発用に公開</button>
+      <button type="button" disabled={!ready} onClick={publish}>この版を公開</button>
     </fieldset>}
   </section>
 }

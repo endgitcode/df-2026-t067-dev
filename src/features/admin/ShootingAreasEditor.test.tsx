@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { ApiError, createApiClient } from '../../shared/api'
@@ -21,7 +21,7 @@ it('saves only valid coordinates using the loaded revision and keeps an edit on 
   expect(screen.getByRole('button', { name: '撮影範囲を保存' })).toBeDisabled()
   await user.type(latitude, '1')
   await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
-  expect(await screen.findByText('非公開の撮影範囲を保存しました。')).toBeVisible()
+  expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
   expect(updateShootingAreas.mock.calls[0][2]).toEqual({
     expectedDraftRevision: 4, zones: [{ latitude: 1, longitude: 0, radiusMeters: 80 }],
   })
@@ -31,6 +31,22 @@ it('saves only valid coordinates using the loaded revision and keeps an edit on 
   expect(updateShootingAreas.mock.calls[1][2]).toEqual({ expectedDraftRevision: 5, zones: [] })
   expect(screen.getByText('設定する範囲はありません。')).toBeVisible()
   expect(screen.getByRole('button', { name: '撮影範囲を保存' })).toBeDisabled()
+})
+
+it('adjusts the radius with the slider and saves the same value as the number field', async () => {
+  const user = userEvent.setup()
+  const initial = { questId: 'demo-quest', orgId: 'demo-org', draftRevision: 4, source: 'mock',
+    zones: [{ latitude: 0, longitude: 0, radiusMeters: 80 }] }
+  const updateShootingAreas = vi.fn().mockResolvedValue({ ...initial, draftRevision: 5 })
+  render(<ShootingAreasEditor enableMap api={{ ...createApiClient(),
+    getShootingAreas: vi.fn().mockResolvedValue(initial), updateShootingAreas }} orgId="demo-org" questId="demo-quest" onBack={vi.fn()} />)
+  await screen.findByLabelText('半径（m）')
+  fireEvent.change(screen.getByLabelText('半径のスライダー'), { target: { value: '120' } })
+  expect(screen.getByLabelText('半径（m）')).toHaveValue(120)
+  await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
+  expect(updateShootingAreas.mock.calls[0][2]).toEqual({
+    expectedDraftRevision: 4, zones: [{ latitude: 0, longitude: 0, radiusMeters: 120 }],
+  })
 })
 
 it('adds and moves private shooting positions on the map, preserving radius when saving', async () => {

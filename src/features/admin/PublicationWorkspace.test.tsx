@@ -26,7 +26,7 @@ it('publishes only after both saved-version photo tests, review, and explicit co
   const api = { ...createApiClient(), testManagedQuest, submitManagedQuestReview, publishManagedQuest }
   const published = vi.fn()
   render(<PublicationWorkspace api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={published} />)
-  const publish = screen.getByRole('button', { name: 'この版を開発用に公開' })
+  const publish = screen.getByRole('button', { name: 'この版を公開' })
   expect(publish).toBeDisabled()
   const match = new File(['match'], 'match.png', { type: 'image/png' })
   const other = new File(['other'], 'other-target.png', { type: 'image/png' })
@@ -59,7 +59,7 @@ it('keeps publishing unavailable for an editor and stops work on an old draft', 
   const submitManagedQuestReview = vi.fn().mockRejectedValue(new ApiError('DRAFT_CONFLICT'))
   const api = { ...createApiClient(), submitManagedQuestReview }
   render(<PublicationWorkspace api={api} initial={initial} member={{ ...org, role: 'editor' }} onBack={vi.fn()} onPublished={vi.fn()} />)
-  expect(screen.queryByRole('button', { name: 'この版を開発用に公開' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'この版を公開' })).not.toBeInTheDocument()
   const review = screen.getByRole('button', { name: 'この版の確認を依頼' })
   await user.click(review)
   expect(await screen.findByRole('alert')).toHaveTextContent('下書きの版が変わりました')

@@ -118,3 +118,23 @@
 .admin-editor [aria-invalid="true"] {
   border-color: var(--ui-error);
 }
+
+/* Kindness pass: stock-phrase chips, radius slider, and grouped actions. */
+.phrase-chips { margin: 10px 0 4px; }
+.phrase-chips [role="group"] { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.phrase-chip { min-height: 36px; padding: 6px 12px; border-radius: 999px !important; font-size: .9rem; cursor: pointer; }
+.phrase-chip[aria-pressed="true"] { background: var(--ui-accent); color: var(--ui-accent-ink); }
+.radius-control { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: end; }
+.radius-control label { flex: 1 1 180px; }
+.admin-demo input[type="range"] { padding: 0; }
+.access-builder { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: end; margin-top: 4px; }
+.access-builder label { flex: 1 1 150px; margin: 6px 0; }
+.access-builder button { min-height: 44px; margin-bottom: 6px; cursor: pointer; }
+.feature-line-builder { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: end; }
+.feature-line-builder label { flex: 1 1 220px; }
+.feature-line-builder button { min-height: 44px; margin-bottom: 14px; cursor: pointer; }
+.save-continue { margin: 4px 0; }
+.save-continue > summary { cursor: pointer; font-weight: var(--ui-weight-strong); padding: 8px 4px; }
+.save-continue .admin-list-actions { margin-top: 8px; }
+.publish-prep { margin: 12px 0; }
+.admin-read-list details > summary { cursor: pointer; color: var(--ui-muted); font-size: .9rem; }

@@ -40,7 +40,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
   }
 
   return <section className="form-section" aria-labelledby="hint-asset-title">
-    <h2 id="hint-asset-title">ヒントごとの画像</h2>
+    <h2 id="hint-asset-title">ヒント画像</h2>
     <p>{current.draft.content.title || '無題の下書き'}・下書き版 {current.draftRevision}</p>
     <p>各ヒントに公開用画像を1枚設定できます。権利を確認した画像を選んでください。</p>
     <button type="button" disabled={state.status === 'saving'} onClick={onBack}>{backLabel}</button>
@@ -59,7 +59,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
         <label>設定するヒント<select value={slot} onChange={(event) => setSlot(Number(event.target.value))}>
           {activeSlots.map((number) => <option value={number} key={number}>ヒント {number}</option>)}
         </select></label>
-        <label>公開ヒント画像<input ref={input} type="file" accept="image/jpeg,image/png,image/webp"
+        <label>ヒント画像<input ref={input} type="file" accept="image/jpeg,image/png,image/webp"
           onChange={(event) => {
             const next = event.target.files?.[0] ?? null
             if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)

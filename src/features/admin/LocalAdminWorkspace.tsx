@@ -18,6 +18,14 @@ const statusLabels: Record<ManagedQuest['status'], string> = {
   draft: '下書き', review_pending: '確認待ち', published: '公開中', paused: '休止中',
 }
 const roleLabels: Record<OrgMembership['role'], string> = { editor: '編集担当', publisher: '公開担当' }
+
+function formatDateTime(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(date)
+}
 type Editor = { kind: 'draft'; initial: ManagedQuest | null } | { kind: 'areas'; questId: string }
   | { kind: 'publication' | 'hint'; initial: ManagedQuest }
 
@@ -37,7 +45,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable }: { api: Api
     ? api.listManagedQuests(member.orgId, { cursor, limit: 20 }, { signal })
     : api.listManagedReports(member.orgId, { cursor, limit: 20 }, { signal }), [api, member.orgId, cursor, section])
   const { result, retry } = useRemote<Page<ManagedQuest | ManagedReport>>(editor === null, read)
-  const heading = section === 'quests' ? '自組織の問題' : '自組織の報告'
+  const heading = section === 'quests' ? '担当組織の問題' : '担当組織の報告'
   function select(next: typeof section) { setNotice(''); setCursor(undefined); setSection(next) }
 
   function closeEditor() { setEditor(null); retry() }
@@ -46,7 +54,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable }: { api: Api
   if (editor?.kind === 'areas') return <ShootingAreasEditor enableMap={durable} api={api} orgId={member.orgId} questId={editor.questId} onBack={closeEditor} />
   if (editor?.kind === 'hint') return <HintAssetEditor rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor} />
   if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor}
-    onPublished={() => { setNotice('開発用に公開しました。'); closeEditor() }} />
+    onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
 
   return <section className="form-section" aria-labelledby="org-workspace-title">
     <h2 id="org-workspace-title">{heading}</h2>
@@ -65,18 +73,30 @@ function OrganizationWorkspace({ api, member, teamPreview, durable }: { api: Api
     {result.status === 'ready' && (result.value.items.length === 0 ? <p>{section === 'quests' ? '問題はまだありません。' : '報告はまだありません。'}</p>
       : <ul className="admin-read-list">{result.value.items.map((item) => 'draft' in item
         ? <li key={item.questId}><strong>{item.draft.content.title || '無題の下書き'}</strong>
-          <p>問題 {item.questId}・{statusLabels[item.status]}・下書き版 {item.draftRevision}{item.publishedVersion !== null && '・公開版 ' + item.publishedVersion}</p>
+          <p>{statusLabels[item.status]}</p>
+          <details><summary>詳細</summary>
+            <p>問題 {item.questId}・下書き版 {item.draftRevision}{item.publishedVersion !== null && '・公開版 ' + item.publishedVersion}</p>
+          </details>
           <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>下書きを編集</button>
-          <button type="button" onClick={() => setEditor({ kind: 'areas', questId: item.questId })}>撮影範囲を設定</button>
-          <button type="button" onClick={() => setEditor({ kind: 'hint', initial: item })}>公開ヒント画像を設定</button>
-          {item.status !== 'published' &&
-            <button type="button" onClick={() => setEditor({ kind: 'publication', initial: item })}>試験と公開確認</button>}
+          <fieldset className="publish-prep"><legend>公開準備</legend>
+            <p>撮影できる範囲（非公開）：{item.shootingAreaStatus === 'configured' ? '設定済み' : '未設定'}</p>
+            <div className="admin-list-actions">
+              <button type="button" onClick={() => setEditor({ kind: 'areas', questId: item.questId })}>撮影範囲を設定</button>
+              <button type="button" onClick={() => setEditor({ kind: 'hint', initial: item })}>ヒント画像を設定</button>
+              {item.status !== 'published' &&
+                <button type="button" onClick={() => setEditor({ kind: 'publication', initial: item })}>試験と公開確認</button>}
+            </div>
+          </fieldset>
           {member.role === 'publisher' && item.publishedVersion !== null &&
             <PausePublication key={item.publishedVersion} api={api} orgId={member.orgId} questId={item.questId} version={item.publishedVersion}
-              onReload={retry} onPaused={() => { setNotice('開発用の公開を休止しました。'); retry() }} />}
+              onReload={retry} onPaused={() => { setNotice('公開を休止しました。'); retry() }} />}
         </li>
         : <li key={item.reportId}><strong>{reportCategoryLabels[item.category]}</strong>
-          <p>{item.text}</p><p>問題 {item.questId}・版 {item.questVersion}・<time dateTime={item.receivedAt}>{item.receivedAt}</time></p></li>)}</ul>)}
+          <p>{item.text}</p>
+          <p><time dateTime={item.receivedAt}>{formatDateTime(item.receivedAt)}</time></p>
+          <details><summary>詳細</summary>
+            <p>問題 {item.questId}・版 {item.questVersion}</p>
+          </details></li>)}</ul>)}
     <Pager cursor={cursor} next={result.status === 'ready' ? result.value.nextCursor : undefined} onMove={setCursor} />
   </section>
 }
@@ -144,6 +164,6 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
         ? 'このアカウントは共有検証に招待されていません。' : 'ログインを確認できませんでした。'}</p>
         <button type="button" onClick={identity.retry}>ログインを確認し直す</button></div>
         : <p role="status">サーバーでログインを確認しています…</p>)}
-    {!teamPreview && <p><a href="/admin-demo">開発用：未認証・未接続の架空フォームへ戻る</a></p>}
+    {dataMode === 'demo' && <p><a href="/admin-demo">開発用：未認証・未接続の架空フォームへ戻る</a></p>}
   </main>
 }

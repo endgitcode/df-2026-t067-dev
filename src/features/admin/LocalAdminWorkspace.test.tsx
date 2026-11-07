@@ -60,7 +60,7 @@ it('confirms durable identity and membership before saving a real-source shootin
     await user.type(screen.getByLabelText('経度'), '0')
     await user.type(screen.getByLabelText('半径（m）'), '100')
     await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
-    expect(await screen.findByText('非公開の撮影範囲を保存しました。')).toBeVisible()
+    expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
     const writes = fetcher.mock.calls.filter(([, init]) => init?.method === 'PUT')
     expect(writes).toHaveLength(1)
     expect(JSON.parse(String(writes[0][1]?.body))).toMatchObject({ expectedDraftRevision: 2,
@@ -157,8 +157,9 @@ it('requires verified membership, cancels an old organization read, and shows re
   await user.click(await screen.findByRole('button', { name: '公開を休止' }))
   await user.type(screen.getByLabelText('休止理由'), '架空の撮影確認')
   await user.click(screen.getByRole('button', { name: 'この公開版を休止する' }))
-  expect(await screen.findByText('開発用の公開を休止しました。')).toBeVisible()
-  expect(await screen.findByText(/問題 local-quest・休止中・下書き版 3/)).toBeVisible()
+  expect(await screen.findByText('公開を休止しました。')).toBeVisible()
+  expect(await screen.findByText('休止中')).toBeVisible()
+  expect(screen.getByText(/問題 local-quest・下書き版 3/)).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: '公開を休止' })).not.toBeInTheDocument()
   expect(pauseCalls().map(([, init]) => JSON.parse(String(init?.body)))).toEqual([
     { expectedPublishedVersion: 1, reason: '架空の撮影確認' },
@@ -166,6 +167,8 @@ it('requires verified membership, cancels an old organization read, and shows re
   ])
   await user.click(screen.getByRole('button', { name: '問題報告' }))
   expect(await screen.findByText('架空の報告本文')).toBeVisible()
+  expect(screen.getByText(/2026年11月6日/)).toBeInTheDocument()
+  expect(document.querySelector('time')).toHaveAttribute('dateTime', '2026-11-06T00:00:00Z')
   const reportCall = fetcher.mock.calls.find(([path]) => String(path).startsWith('/api/v1/orgs/demo-publish/reports'))
   expect(new Headers(reportCall?.[1]?.headers).get('Authorization')).toBe('Bearer demo-token')
   await user.click(screen.getByRole('button', { name: 'ログアウト' }))
@@ -187,7 +190,11 @@ it.each(['demo', 'durable-local'] as const)('uses the selected %s API mode and d
     render(<LocalAdminWorkspace authClient={authClient} dataMode={dataMode} />)
     expect(await screen.findByText('利用できる所属がありません。')).toBeVisible()
     expect(screen.getByText(dataMode === 'demo' ? /サーバーの一時領域に保存/ : /ローカル永続ストアに保存/)).toBeVisible()
-    expect(screen.getByRole('link', { name: /未認証・未接続の架空フォーム/ })).toHaveAttribute('href', '/admin-demo')
+    if (dataMode === 'demo') {
+      expect(screen.getByRole('link', { name: /未認証・未接続の架空フォーム/ })).toHaveAttribute('href', '/admin-demo')
+    } else {
+      expect(screen.queryByRole('link', { name: /未認証・未接続の架空フォーム/ })).not.toBeInTheDocument()
+    }
   } finally { vi.unstubAllGlobals() }
 })
 
@@ -229,7 +236,7 @@ it('publishes and pauses through durable session, membership and common HTTP con
     render(<LocalAdminWorkspace authClient={authClient} dataMode="durable-local" />)
     await user.click(await screen.findByRole('button', { name: /永続の公開自治体/ }))
     await user.click(await screen.findByRole('button', { name: '試験と公開確認' }))
-    const publish = screen.getByRole('button', { name: 'この版を開発用に公開' })
+    const publish = screen.getByRole('button', { name: 'この版を公開' })
     expect(publish).toBeDisabled()
     await user.type(screen.getByLabelText('試験写真の利用権'), '自作の合成画像')
     for (const [name, message] of [['match', '一致試験を確認しました。'], ['other', '別対象の試験を確認しました。']]) {
@@ -247,12 +254,13 @@ it('publishes and pauses through durable session, membership and common HTTP con
     expect(publish).toBeDisabled()
     for (const checkbox of screen.getAllByRole('checkbox')) await user.click(checkbox)
     await user.click(publish)
-    expect(await screen.findByText('開発用に公開しました。')).toBeVisible()
+    expect(await screen.findByText('公開しました。')).toBeVisible()
     await user.click(await screen.findByRole('button', { name: '公開を休止' }))
     await user.type(screen.getByLabelText('休止理由'), '合成試験終了')
     await user.click(screen.getByRole('button', { name: 'この公開版を休止する' }))
-    expect(await screen.findByText('開発用の公開を休止しました。')).toBeVisible()
-    expect(await screen.findByText(/休止中・下書き版 3/)).toBeVisible()
+    expect(await screen.findByText('公開を休止しました。')).toBeVisible()
+    expect(await screen.findByText('休止中')).toBeVisible()
+    expect(screen.getByText(/下書き版 3/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '公開を休止' })).not.toBeInTheDocument()
     const writes = fetcher.mock.calls.filter(([, init]) => init?.method === 'POST')
     expect(writes.map(([path]) => String(path).split('/').at(-1))).toEqual(['test', 'test', 'submit-review', 'publish', 'pause'])

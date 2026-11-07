@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 type Mode = 'unset' | 'all-day' | 'specified' | 'supplement'
+const exceptionPhrases = ['月曜休業', '日曜休業', '祝日は休業', '臨時休業あり'] as const
 const range = /^((?:[01]\d|2[0-3]):[0-5]\d)〜(翌日 )?((?:[01]\d|2[0-3]):[0-5]\d|24:00)(?:\n([\s\S]*))?$/
 function read(value: string) {
   const match = range.exec(value)
@@ -23,6 +24,13 @@ export function HoursInput({ value, onChange }: { value: string; onChange: (valu
     const base = m === 'all-day' ? '終日' : m === 'specified' && (s || e)
       ? `${s || '（開始未設定）'}〜${n ? '翌日 ' : ''}${e || '（終了未設定）'}${reversed ? '（前後関係を要確認）' : ''}` : ''
     onChange(m === 'supplement' ? free : [base, x].filter(Boolean).join('\n'))
+  }
+  function toggleExceptionPhrase(phrase: string) {
+    const lines = exceptions.split('\n').filter((line) => line.trim())
+    const nextLines = lines.includes(phrase) ? lines.filter((line) => line !== phrase) : [...lines, phrase]
+    const joined = nextLines.join('\n')
+    setExceptions(joined)
+    update(mode, start, end, next, joined)
   }
   const incomplete = mode === 'specified' && (!start || !end || (end <= start && !next))
   return <fieldset><legend>利用できる時間</legend>
@@ -47,7 +55,17 @@ export function HoursInput({ value, onChange }: { value: string; onChange: (valu
       <label><input type="checkbox" checked={next} onChange={event => { setNext(event.target.checked); update(mode, start, end, event.target.checked) }} />終了は翌日</label>
       {incomplete && <p role="status">時間は入力途中です。未設定・要確認の部分も案内文に明記して保存します。公開前に確認してください。</p>}
     </div>}
-    {mode !== 'supplement' && <label>曜日・休業・例外<textarea value={exceptions} onChange={event => { setExceptions(event.target.value); update(mode, start, end, next, event.target.value) }} placeholder="例：月曜休業、祝日は10時から、臨時休業あり" /></label>}
+    {mode !== 'supplement' && <>
+      <div className="phrase-chips">
+        <span className="helper">よくある休業・例外（押すと追加、もう一度押すと削除）</span>
+        <div role="group" aria-label="よくある休業・例外">
+          {exceptionPhrases.map((phrase) => <button key={phrase} type="button" className="phrase-chip"
+            aria-pressed={exceptions.split('\n').includes(phrase)}
+            onClick={() => toggleExceptionPhrase(phrase)}>{phrase}</button>)}
+        </div>
+      </div>
+      <label>曜日・休業・例外<textarea value={exceptions} onChange={event => { setExceptions(event.target.value); update(mode, start, end, next, event.target.value) }} placeholder="例：月曜休業、祝日は10時から、臨時休業あり" /></label>
+    </>}
     {mode === 'supplement' && <label>時間の補足<textarea value={free} onChange={event => { setFree(event.target.value); onChange(event.target.value) }} /></label>}
     <p className="helper">空欄は終日を意味しません。翌日0時は終了時刻00:00と「終了は翌日」で指定できます。</p>
     <details><summary>保存する時間案内</summary><p style={{ whiteSpace: 'pre-wrap' }}>{value || '未設定'}</p></details>
