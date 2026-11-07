@@ -69,6 +69,7 @@ jobs:
             --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID \
             --build-arg VITE_FIREBASE_APP_ID \
             --build-arg VITE_GOOGLE_MAPS_API_KEY \
+            --build-arg VITE_QUEST_TEAM_ANSWER_TRIAL=true \
             .
 
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
