@@ -248,6 +248,15 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     setSelectedAreaId(areaId)
     setSelectedId('')
   }
+  const openQuestFromMap = (questId: string) => {
+    const target = choices.find((item) => item.questId === questId)
+    if (!target) return
+    clearRefreshNotice()
+    if (syncUrl) writeSelectionToUrl(target.areaId, questId, 'push')
+    if (target.areaId !== selectedAreaId) setSelectedAreaId(target.areaId)
+    setSelectedId(questId)
+    setOpenQuestRequest((previous) => ({ questId, sequence: (previous?.sequence ?? 0) + 1 }))
+  }
   const FallbackHeading = dataMode === 'team-preview' ? 'h2' : 'h1'
   const fallback = !quest ? <section className="api-load-state" aria-live="polite">
       {dataMode !== 'team-preview' && <p className="eyebrow">{dataMode === 'durable-local' ? '永続API・ローカル' : '公開APIデモ'}</p>}
@@ -261,7 +270,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       {refreshControl}
       {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && picker}
     </section> : undefined
-  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest} mapAreas={availableAreas} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
+  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest} mapAreas={availableAreas} mapQuests={choices} onOpenQuest={openQuestFromMap} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
     areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
     questPicker={<>{picker}{refreshControl}</>} catalogFallback={fallback} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}

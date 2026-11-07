@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
-import type { PublicArea } from '../../shared/api/types'
-import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance } from './googleMapsLoader'
+import type { PublicArea, PublicQuest } from '../../shared/api/types'
+import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
 const MIN_ZOOM = 3
@@ -10,9 +10,58 @@ const MAX_ZOOM = 20
 const LOCATION_ZOOM = 14
 const LOCATION_DEADLINE_MS = 10_000
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
+const PIN_COLOR = '#4eb8d0'
+const PIN_SELECTED_COLOR = '#f6d84a'
+const PIN_STROKE = '#17212b'
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true }: {
+// 地図の基調をアプリのテーマに薄く寄せる。水・土地はティール系、主要道路だけアクセント色を淡く使う。
+const MAP_STYLES: Array<Record<string, unknown>> = [
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#bcdfe8' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#2f6d7e' }] },
+  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#edf3ee' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#e2eee1' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#e6efe8' }] },
+  { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#f2dd8f' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#17212b' }] },
+  { featureType: 'administrative', elementType: 'labels.text.fill', stylers: [{ color: '#17212b' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#8fb6bd' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }, { weight: 2 }] },
+]
+
+// ピンは問題の対象座標ではなく、公開探索エリアの代表点（外周リングの重心）に置く。
+// MultiPolygon は最初に有効なポリゴンの外周を使う。
+function areaPinPosition(area: PublicArea): { lat: number; lng: number } | null {
+  const geometry = area.publicGeometry
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
+  for (const polygon of polygons) {
+    const ring = polygon?.[0]
+    if (!ring || ring.length < 4) continue
+    if (!ring.every(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lng) <= 180 && Math.abs(lat) <= 90)) continue
+    const [firstLng, firstLat] = ring[0]
+    const [lastLng, lastLat] = ring[ring.length - 1]
+    const points = firstLng === lastLng && firstLat === lastLat ? ring.slice(0, -1) : ring
+    if (!points.length) continue
+    let lat = 0
+    let lng = 0
+    for (const [pointLng, pointLat] of points) { lng += pointLng; lat += pointLat }
+    return { lat: lat / points.length, lng: lng / points.length }
+  }
+  return null
+}
+
+function pinIcon(color: string, count: number): { url: string } {
+  const center = count >= 2
+    ? `<circle cx="18" cy="17" r="9.5" fill="#ffffff"/><text x="18" y="21.5" text-anchor="middle" font-family="sans-serif" font-size="${count >= 10 ? 10 : 12}" font-weight="700" fill="${PIN_STROKE}">${count}</text>`
+    : '<circle cx="18" cy="17" r="7" fill="#ffffff"/>'
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${color}" stroke="${PIN_STROKE}" stroke-width="2"/>${center}</svg>`
+  return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
+}
+
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
+  quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void
 }) {
   const target = useRef<HTMLDivElement>(null)
   const map = useRef<MapInstance | null>(null)
@@ -26,6 +75,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [attempt, setAttempt] = useState(0)
   const [areaAttempt, setAreaAttempt] = useState(0)
   const [areaFailed, setAreaFailed] = useState(false)
+  const [pinAreaId, setPinAreaId] = useState<string | null>(null)
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   const lastAreaSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   const areaFailureTimer = useRef<number | undefined>(undefined)
@@ -57,6 +107,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           center: JAPAN, zoom: INITIAL_ZOOM, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
           disableDefaultUI: true, mapTypeControl: false, streetViewControl: false,
           fullscreenControl: false, clickableIcons: false, gestureHandling: 'greedy',
+          styles: MAP_STYLES,
         }) as MapInstance
         if (authFailed) return
         map.current = instance
@@ -126,7 +177,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       }))
       listener = layer.addListener('click', (event) => {
         const areaId = event.feature.getProperty('areaId')
-        if (active && typeof areaId === 'string' && areas.some((area) => area.areaId === areaId)) onSelectArea?.(areaId)
+        if (active && typeof areaId === 'string' && areas.some((area) => area.areaId === areaId)) { setPinAreaId(null); onSelectArea?.(areaId) }
       })
     } catch {
       active = false
@@ -135,6 +186,40 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     }
     return () => { active = false; window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; try { listener?.remove(); layer.setMap(null) } catch { /* SDK teardown is best effort. */ } }
   }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt])
+
+  useEffect(() => {
+    const instance = map.current
+    const google = window.google?.maps
+    if (!API_KEY || !instance || !google?.Marker || !showPublicAreas || status !== 'ready') return
+    let active = true
+    const created: MarkerInstance[] = []
+    const listeners: Array<{ remove(): void }> = []
+    try {
+      for (const area of areas) {
+        if (area.publishedCount < 1) continue
+        const position = areaPinPosition(area)
+        if (!position) continue
+        const selected = area.areaId === selectedAreaId
+        const marker = new google.Marker({
+          position, map: instance,
+          title: `${area.label}の探索エリア（${area.publishedCount}問）`,
+          icon: pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount),
+          zIndex: selected ? 2 : 1,
+        })
+        listeners.push(marker.addListener('click', () => {
+          if (!active) return
+          setPinAreaId(area.areaId)
+          onSelectArea?.(area.areaId)
+        }))
+        created.push(marker)
+      }
+    } catch { /* ピンは補助表示のため、失敗しても地図本体は使える状態を保つ。 */ }
+    return () => {
+      active = false
+      for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
+      for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
+    }
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt])
 
   useEffect(() => {
     const instance = map.current
@@ -204,6 +289,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     } catch { settle('現在地を取得できません。位置情報を確認して、もう一度お試しください。') }
   }
 
+  const pinArea = pinAreaId ? areas.find((area) => area.areaId === pinAreaId) : undefined
+  const pinQuests = pinArea ? quests.filter((quest) => quest.areaId === pinArea.areaId) : []
+
   return (
     <div className="map-preview-shell">
     <section className="map-preview" aria-label="全国の謎">
@@ -223,6 +311,15 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         <button type="button" aria-label="地図の表示を戻す" onClick={reset}><Icon name="reset" /></button>
       </div>}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
+      {status === 'ready' && pinArea && pinQuests.length > 0 && <div className="map-pin-card" aria-label={`${pinArea.label}の問題プレビュー`}>
+        <div className="map-pin-card-head"><strong>{pinArea.label}</strong><span>{pinQuests.length}問</span>
+          <button type="button" onClick={() => setPinAreaId(null)}>閉じる</button></div>
+        <p className="map-pin-card-note">ピンは地域の代表点です。問題の場所そのものではありません。</p>
+        <ul>{pinQuests.map((item) => <li key={item.questId}>
+          <div className="map-pin-card-quest"><strong>{item.title}</strong><p>{item.clue}</p></div>
+          {onOpenQuest && <button type="button" onClick={() => { setPinAreaId(null); onOpenQuest(item.questId) }}>詳細を見る</button>}
+        </li>)}</ul>
+      </div>}
     </section>
       {status === 'ready' && locationStatus && <div className="map-location-status" role="status">{locationStatus}</div>}
     </div>
