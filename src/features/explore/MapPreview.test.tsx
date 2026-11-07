@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MapPreview } from './MapPreview'
-import type { PublicArea } from '../../shared/api/types'
+import type { PublicArea, PublicQuest } from '../../shared/api/types'
 
 const areas: PublicArea[] = [{ areaId: 'area-a', label: 'A', publishedCount: 1, marker: { latitude: 35, longitude: 139 },
   publicGeometry: { type: 'Polygon', coordinates: [[[139, 35], [140, 35], [140, 36], [139, 36], [139, 35]], [[139.2, 35.2], [139.3, 35.2], [139.3, 35.3], [139.2, 35.3], [139.2, 35.2]]] } }]
@@ -260,6 +260,89 @@ describe('Google map panel', () => {
     expect(setCenter).not.toHaveBeenCalled()
     delete window.google
     vi.useRealTimers()
+  })
+
+  it('places one pin per area at the public geometry centroid and opens a quest preview card on tap', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const instances: Marker[] = []
+    class Marker {
+      options: Record<string, unknown>
+      setMap = vi.fn()
+      removeListener = vi.fn()
+      click?: () => void
+      constructor(options: Record<string, unknown>) { this.options = options; instances.push(this) }
+      addListener(_name: string, callback: () => void) { this.click = callback; return { remove: this.removeListener } }
+    }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+      { questId: 'q2', version: 1, title: '石畳の坂', clue: '坂の途中にある石碑', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const onSelectArea = vi.fn()
+    const onOpenQuest = vi.fn()
+    const pinAreas: PublicArea[] = [{ ...areas[0], publishedCount: 2 }]
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={pinAreas} quests={quests} onSelectArea={onSelectArea} onOpenQuest={onOpenQuest} />)
+    await waitFor(() => expect(instances).toHaveLength(1))
+    // 外周リング (139,35)-(140,36) の重心。問題の対象座標は使わない。
+    expect(instances[0].options.position).toEqual({ lat: 35.5, lng: 139.5 })
+    expect(instances[0].options.title).toBe('Aの探索エリア（2問）')
+    const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
+    expect(iconUrl).toContain('#4eb8d0')
+    expect(iconUrl).toContain('>2<')
+    act(() => instances[0].click?.())
+    expect(onSelectArea).toHaveBeenCalledWith('area-a')
+    expect(await screen.findByText('港の時計台')).toBeVisible()
+    expect(screen.getByText('石畳の坂')).toBeVisible()
+    expect(screen.getByText('ピンは地域の代表点です。問題の場所そのものではありません。')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '閉じる' }))
+    expect(screen.queryByText('港の時計台')).not.toBeInTheDocument()
+    act(() => instances[0].click?.())
+    expect(await screen.findByText('港の時計台')).toBeVisible()
+    await user.click(screen.getAllByRole('button', { name: '詳細を見る' })[0])
+    expect(onOpenQuest).toHaveBeenCalledWith('q1')
+    expect(screen.queryByText('港の時計台')).not.toBeInTheDocument()
+    rerender(<ConfiguredMapPreview areas={[{ ...areas[0], publishedCount: 0 }]} quests={quests} onSelectArea={onSelectArea} onOpenQuest={onOpenQuest} />)
+    await waitFor(() => expect(instances[0].setMap).toHaveBeenCalledWith(null))
+    expect(instances[0].removeListener).toHaveBeenCalled()
+    unmount()
+    delete window.google
+  })
+
+  it('uses the accent color for the selected area pin and passes themed styles to the map', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const instances: Marker[] = []
+    class Marker {
+      options: Record<string, unknown>
+      setMap = vi.fn()
+      click?: () => void
+      constructor(options: Record<string, unknown>) { this.options = options; instances.push(this) }
+      addListener(_name: string, callback: () => void) { this.click = callback; return { remove() {} } }
+    }
+    let mapOptions: Record<string, unknown> | undefined
+    const map = { ...mapInstance, fitBounds: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor(_element: HTMLElement, options: Record<string, unknown>) { mapOptions = options; return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" />)
+    await waitFor(() => expect(instances).toHaveLength(1))
+    const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
+    expect(iconUrl).toContain('#f6d84a')
+    expect(iconUrl).not.toContain('>1<')
+    expect(mapOptions?.styles).toEqual(expect.arrayContaining([
+      expect.objectContaining({ featureType: 'water', elementType: 'geometry' }),
+      expect.objectContaining({ featureType: 'road.highway' }),
+    ]))
+    unmount()
+    delete window.google
   })
 })
 
