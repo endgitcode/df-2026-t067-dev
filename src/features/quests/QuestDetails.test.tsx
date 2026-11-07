@@ -415,3 +415,28 @@ it('times out even when the transport ignores AbortSignal', async () => {
   expect(screen.getByRole('button', { name: 'ヒント1を再試行' })).toBeInTheDocument()
   vi.useRealTimers()
 })
+
+
+it.each(['quest', 'version'] as const)('releases all three authenticated hint images on %s change', async (change) => {
+  const user = userEvent.setup()
+  const getHint = vi.fn(async ({ index }: { index: number }) => ({ questId: demoQuest.questId, version: demoQuest.version, index, text: `本文${index}` }))
+  const getPhoto = vi.fn(async () => new Blob(['synthetic']))
+  const createObjectURL = vi.fn().mockReturnValueOnce('blob:one').mockReturnValueOnce('blob:two').mockReturnValueOnce('blob:three')
+  const revokeObjectURL = vi.fn()
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = createObjectURL; static revokeObjectURL = revokeObjectURL })
+  try {
+    const quest = { ...demoQuest, hintCount: 3, hintImages: ['/one', '/two', '/three'] }
+    const props = { areaLabel: '地域', open: true, disabled: false, buttonLabel: '挑戦する', note: '', onToggle: vi.fn(), onStart: vi.fn(), getHint, getHintPhoto: getPhoto }
+    const { rerender } = render(<QuestDetails {...props} quest={quest} />)
+    for (const index of [1, 2, 3]) {
+      await user.click(screen.getByRole('button', { name: `ヒント${index}を見る` }))
+      await screen.findByText(`本文${index}`)
+      expect(getPhoto).toHaveBeenNthCalledWith(index, quest.questId, quest.version, index, { signal: expect.any(AbortSignal) })
+    }
+    expect(document.querySelectorAll('img.optional-hint-image')).toHaveLength(3)
+    rerender(<QuestDetails {...props} quest={{ ...quest, ...(change === 'quest' ? { questId: 'another-quest' } : { version: quest.version + 1 }) }} />)
+    expect(document.querySelectorAll('img.optional-hint-image')).toHaveLength(0)
+    expect(revokeObjectURL.mock.calls.map(([url]) => url)).toEqual(['blob:one', 'blob:two', 'blob:three'])
+    expect(screen.queryByText('本文1')).not.toBeInTheDocument()
+  } finally { vi.unstubAllGlobals() }
+})

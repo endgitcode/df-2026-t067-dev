@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react'
 import { ApiError } from '../../shared/api'
 import type { ApiClient, AssetPurpose, ManagedQuest, ManagedQuestDraft, OrgMembership } from '../../shared/api'
+import { normalizeHintAssets } from './hintAssets'
 import { useRequestAction } from '../../shared/useRequestAction'
 
 export interface LocalDraftConnection {
+  taskFocused?: boolean
   api: Pick<ApiClient, 'uploadOrgAsset' | 'createManagedQuest' | 'updateManagedQuest' | 'generateManagedQuestDraft'>
   initial: ManagedQuest | null
   member: OrgMembership
+  onContinue?: (record: ManagedQuest, destination: 'areas' | 'publication' | 1 | 2 | 3) => void
   onBack: () => void
 }
 
@@ -55,9 +58,9 @@ export function useLocalDraftSave(connection?: LocalDraftConnection) {
         if (!operation.isCurrent()) return
         if (purpose === 'reference') payload = { ...draft, referenceAssetId: savedAsset.assetId }
         else if (hintIndex !== undefined) {
-          const hintAssetIds = [...(draft.hintAssetIds ?? [draft.hintAssetId, null, null])]
+          const { hintAssetIds, hintAssetId } = normalizeHintAssets(draft)
           hintAssetIds[hintIndex - 1] = savedAsset.assetId
-          payload = { ...draft, hintAssetIds, hintAssetId: null }
+          payload = { ...draft, hintAssetIds, hintAssetId }
         } else payload = { ...draft, hintAssetId: savedAsset.assetId }
       }
       attemptedCreate = record === null
