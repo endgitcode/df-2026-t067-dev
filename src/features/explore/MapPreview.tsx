@@ -8,6 +8,7 @@ import { mobileHeaderClearance, scrollBelowHeader } from './scrollBelowHeader'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
+import { arrangePins } from './pinClustering'
 import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
 import { areaPinPosition } from './viewportQuests'
 
@@ -35,6 +36,13 @@ function pinIcon(color: string, count: number, emphasized = false): { url: strin
   // ピンの色は青と赤だけ。ホバー／フォーカス中は赤くし、選択中も呼び出し側が同じ赤を渡す。
   const fill = emphasized ? PIN_ACTIVE_COLOR : color
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="0 0 36 44"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
+  return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
+}
+
+// クラスタマーカー（D-52）：重なったピンの合計問題数を出す丸いバッジ。ピンの色（青）に揃え、
+// 形でピンと区別する（尾のない円＋二重リング）。
+function clusterIcon(totalQuests: number): { url: string } {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="${PIN_COLOR}" stroke="${PIN_STROKE}" stroke-width="2"/><circle cx="20" cy="20" r="12" fill="#ffffff"/><text x="20" y="25" text-anchor="middle" font-family="sans-serif" font-size="${totalQuests >= 10 ? 11 : 13}" font-weight="700" fill="${PIN_STROKE}">${totalQuests}</text></svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
@@ -332,10 +340,45 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     const created: MarkerInstance[] = []
     const listeners: Array<{ remove(): void }> = []
     try {
+      // 現在のズームで画面上重なるピンはクラスタにまとめる（D-52）。選択中の地域のピンは
+      // クラスタに隠さず常に対象外とする。まとめ直しはズームが変わるたびにこの効果が担う。
+      const pinPoints = []
+      const areaById = new Map<string, PublicArea>()
       for (const area of areas) {
         if (area.publishedCount < 1) continue
         const position = areaPinPosition(area)
         if (!position) continue
+        pinPoints.push({ areaId: area.areaId, lat: position.lat, lng: position.lng, questCount: area.publishedCount })
+        areaById.set(area.areaId, area)
+      }
+      for (const arrangement of arrangePins(pinPoints, zoom, selectedAreaId)) {
+        if (arrangement.kind === 'cluster') {
+          const marker = new google.Marker({
+            position: { lat: arrangement.lat, lng: arrangement.lng }, map: instance,
+            title: `重なっている${arrangement.points.length}地域のピン（合計${arrangement.totalQuests}問）`,
+            icon: clusterIcon(arrangement.totalQuests),
+            cursor: 'pointer',
+            zIndex: 0,
+          })
+          listeners.push(marker.addListener('click', () => {
+            if (!active || !google.LatLngBounds) return
+            // クラスタを押したら、中の地域がバラけて見える位置・ズームへ寄せる（対象地域群へのフィット）。
+            const bounds = new google.LatLngBounds()
+            let fitted = false
+            for (const point of arrangement.points) {
+              const member = areaById.get(point.areaId)
+              const fitPoints = member ? areaFitPoints(member) : null
+              if (fitPoints) for (const fitPoint of fitPoints) { bounds.extend(fitPoint); fitted = true }
+              else { bounds.extend({ lat: point.lat, lng: point.lng }); fitted = true }
+            }
+            if (fitted) instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+          }))
+          created.push(marker)
+          continue
+        }
+        const area = areaById.get(arrangement.point.areaId)
+        if (!area) continue
+        const position = { lat: arrangement.point.lat, lng: arrangement.point.lng }
         const selected = area.areaId === selectedAreaId
         // 選択中のピンもホバーと同じ赤にする（ピン本体に黄色は使わない。黄色は地域の塗りだけ）。
         const pinColor = selected ? PIN_ACTIVE_COLOR : PIN_COLOR
@@ -388,7 +431,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom])
 
   useEffect(() => {
     const instance = map.current
