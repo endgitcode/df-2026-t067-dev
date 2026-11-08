@@ -9,15 +9,15 @@ import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance, type PolygonInstance } from './googleMapsLoader'
 import { buildJapanVeilPaths } from './japanOutline'
-import { CAMERA_DEBUG_ENABLED, cameraLog, flushCameraDebug, instrumentMapInstance, pointsRange, withCameraLabel } from './cameraDebug'
 import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
 import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
-// 日本国内専用（D-27／D-41）：地図の移動範囲を日本の周辺に制限する。strictBounds は使わず、端では柔らかく止める。
-// 境界は日本の領土（北端の宗谷岬45.5度・南端の波照間島24.1度・西端の与那国島123.0度・東端の納沙布岬145.8度）が
-// すべて収まり、10のデモ地域と郡山の代表点からも緯度3度・経度5度以上の余裕がある範囲に絞った（D-41）。
-const JAPAN_BOUNDS = { north: 46.5, south: 23, east: 147, west: 122 }
+// 日本国内専用の見た目（D-27／D-41）は、国外を薄く落とすベールと最小ズームで維持する。
+// 地図の restriction は使わない：表示範囲が restriction の幅より広いズームでは、ライブラリが
+// setCenter を restriction のメルカトル中心（北緯35.605…・東経134.5）へ固定してしまい、
+// fitBounds がセットした中心が差し替わって「ピンと違う場所へ飛ぶ」不具合になったため撤去した
+// （2026-11-08 の実測で確定。詳細は decisions.md の D-41 追記）。
 // これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
 // 初期表示の日本全体フィットは小さい画面でも 4.5 を下回らないため、その下限に合わせる。
 const MIN_ZOOM = 4.5
@@ -61,17 +61,6 @@ function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | 
   const points: Array<{ lat: number; lng: number }> = []
   validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => points.push({ lat, lng }))))
   return points
-}
-
-// 【診断用】publicGeometry の生座標すべての範囲（areaFitPoints の検証で落とされる点も含む）。
-function rawGeometryRange(area: PublicArea): { ne: { lat: number; lng: number }; sw: { lat: number; lng: number } } | null {
-  const geometry = area.publicGeometry
-  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
-  const points: Array<{ lat: number; lng: number }> = []
-  polygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => {
-    if (Number.isFinite(lng) && Number.isFinite(lat)) points.push({ lat, lng })
-  })))
-  return pointsRange(points)
 }
 
 export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange }: {
@@ -119,8 +108,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const locationTimer = useRef<number | undefined>(undefined)
   const [attempt, setAttempt] = useState(0)
   const [fitRequest, setFitRequest] = useState(0)
-  // 【診断用】選択フィットが「レイアウト確定の再フィット」経由かどうかを区別するための前回値。
-  const previousFitRequest = useRef(fitRequest)
 
   useEffect(() => {
     const instance = map.current
@@ -181,20 +168,17 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 地域の範囲へ地図をフィットさせる共通処理。選択時フィットと、再タップ時の再フィットで使う。
   // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
   // 実際に見えている領域の中央に来るようにする。
-  const fitToArea = useCallback((instance: MapInstance, area: PublicArea, label = '選択フィット'): boolean => {
+  const fitToArea = useCallback((instance: MapInstance, area: PublicArea): boolean => {
     const google = window.google?.maps
     if (!google?.LatLngBounds) return false
     const points = areaFitPoints(area)
     if (!points) return false
-    if (CAMERA_DEBUG_ENABLED) cameraLog('areaFitPoints', { areaId: area.areaId, count: points.length, range: pointsRange(points) })
     const bounds = new google.LatLngBounds()
     points.forEach((point) => bounds.extend(point))
     fittedCamera.current = null
-    withCameraLabel(label, () => {
-      if (showPublicAreas) {
-        instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
-      } else instance.fitBounds(bounds)
-    })
+    if (showPublicAreas) {
+      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+    } else instance.fitBounds(bounds)
     try {
       const listener = instance.addListener('idle', () => {
         try { listener.remove() } catch { /* SDK teardown is best effort. */ }
@@ -223,7 +207,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const refitIfCameraMoved = useCallback((instance: MapInstance, area: PublicArea): boolean => {
     if (area.areaId !== selectedAreaId) return false
     if (cameraAtFit(instance, area.areaId)) return false
-    return fitToArea(instance, area, '再フィット（再タップ）')
+    return fitToArea(instance, area)
   }, [selectedAreaId, cameraAtFit, fitToArea])
 
   useEffect(() => {
@@ -244,14 +228,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       try {
         instance = new google.Map(target.current, {
           center: JAPAN, zoom: INITIAL_ZOOM, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
-          restriction: { latLngBounds: JAPAN_BOUNDS, strictBounds: false },
           disableDefaultUI: true, mapTypeControl: false, streetViewControl: false,
           fullscreenControl: false, clickableIcons: false, gestureHandling: 'greedy',
           styles: MAP_STYLES,
         }) as MapInstance
         if (authFailed) return
         map.current = instance
-        instrumentMapInstance(instance)
         // 日本の外側を薄く落とすベールは、地域レイヤーより先に地図へ載せて下に置く（D-41）。
         // 装飾のため、作れなくても地図本体は使える状態を保つ。
         try {
@@ -427,7 +409,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           fitted = true
         }
         if (fitted) {
-          withCameraLabel('初期フィット', () => instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current)))
+          instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
           initialFitDone.current = instance
         }
       }
@@ -439,27 +421,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     }
   }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved])
 
-  // 【診断用】読み込んだ全地域のジオメトリ範囲を記録する（?debug=1 のときだけ実質動作する）。
-  const areasLoggedSignature = useRef('')
   useEffect(() => {
-    if (!CAMERA_DEBUG_ENABLED || !areas.length) return
-    const entries = areas.map((area) => ({
-      areaId: area.areaId,
-      geometry: rawGeometryRange(area),
-      fitPoints: pointsRange(areaFitPoints(area) ?? []),
-    }))
-    const signature = JSON.stringify(entries)
-    if (areasLoggedSignature.current === signature) return
-    areasLoggedSignature.current = signature
-    cameraLog('areasLoaded', { areas: entries })
-  }, [areas])
-
-  // 【診断用】<pre id="camera-debug"> の描画後に、既存の記録を書き出す。
-  useEffect(() => { flushCameraDebug() }, [])
-
-  useEffect(() => {
-    const layoutRefit = fitRequest !== previousFitRequest.current
-    previousFitRequest.current = fitRequest
     const instance = map.current
     const google = window.google?.maps
     if (!API_KEY || !instance || !google || !showPublicAreas || status !== 'ready') return
@@ -471,10 +433,11 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       // 解除時は選択前の状態へ戻す（「選ぶ前の地図に戻る」を単純な仕様として採る）。
       const saved = preSelectionCamera.current
       if (saved && saved.map === instance) {
-        withCameraLabel('復元', () => { instance.setCenter(saved.center); instance.setZoom(saved.zoom) })
+        instance.setCenter(saved.center)
+        instance.setZoom(saved.zoom)
         preSelectionCamera.current = null
       } else {
-        withCameraLabel('復元（初期表示）', () => { instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM) })
+        instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM)
       }
       fittedCamera.current = null
       lastViewportSelection.current = { map: instance, areaId: '' }
@@ -492,19 +455,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     try {
       const area = areas.find((candidate) => candidate.areaId === selectedAreaId)
       if (!area) return
-      if (!fitToArea(instance, area, layoutRefit ? 'レイアウト確定の再フィット' : '選択フィット')) return
+      if (!fitToArea(instance, area)) return
       initialFitDone.current = instance
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
     } catch { failArea() }
   }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest, fitToArea])
 
-  const changeZoom = (delta: number) => {
-    withCameraLabel('ズーム操作', () => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta))))
-  }
-  const reset = () => {
-    cancelLocationRequest(); setLocationStatus('')
-    withCameraLabel('リセット', () => { map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) })
-  }
+  const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
+  const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
   const locate = () => {
     if (locating) return
     const geolocation = navigator.geolocation
@@ -531,10 +489,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           return
         }
         if (!requestedMap || map.current !== requestedMap) { settle('現在地を取得できませんでした。もう一度お試しください。'); return }
-        withCameraLabel('現在地', () => {
-          requestedMap.setCenter({ lat: latitude, lng: longitude })
-          requestedMap.setZoom(LOCATION_ZOOM)
-        })
+        requestedMap.setCenter({ lat: latitude, lng: longitude })
+        requestedMap.setZoom(LOCATION_ZOOM)
         setCurrentLocation({ lat: latitude, lng: longitude })
         settle(LOCATION_SUCCESS_MESSAGE)
       }, (error) => {
@@ -693,8 +649,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           : !belowMap && <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
             onBrowseBelowMap={() => setBrowseBelowMap(true)}>{questList}{boundaryCredit}</ExploreBottomSheet>
         : <>{questList}{boundaryCredit}{panelExtra}</>}
-      {/* 【診断用】?debug=1 のときだけ、カメラ操作の記録を地図の隅に小さく出す（検証側が DOM から読む）。 */}
-      {CAMERA_DEBUG_ENABLED && <pre id="camera-debug" aria-hidden="true" style={{ position: 'absolute', right: 8, bottom: 8, zIndex: 70, maxWidth: '52%', maxHeight: '40%', overflow: 'auto', margin: 0, padding: 8, background: 'rgba(12, 18, 12, 0.82)', color: '#a7f3a7', fontSize: 10, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-all', pointerEvents: 'none' }} />}
     </div>
     {sheetMode && !panelMode && (belowMap || pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
       className="explore-sheet-reopen map-browse-shortcut"
