@@ -29,8 +29,15 @@ describe('map controls placement with the bottom sheet', () => {
     expect(css).toContain('.map-controls { position: absolute; right: 17px; bottom: 52px; z-index: 6;')
     const closedRule = '.explore-sheet[data-snap="closed"]:not(.is-dragging) { z-index: 5; }'
     expect(css.indexOf(closedRule)).toBeGreaterThan(mobileAt)
-    expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }')
+    expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; transition: visibility 0s linear 300ms; }')
     expect(css).not.toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) { visibility: hidden; pointer-events: none; }')
+  })
+})
+
+describe('bottom sheet close visibility timing', () => {
+  it('delays hiding through the 300ms close and removes that delay for reduced motion', () => {
+    expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; transition: visibility 0s linear 300ms; }')
+    expect(css).toContain('@media (prefers-reduced-motion: reduce) { .explore-sheet { transition: none; } .explore-sheet-body { transition: none !important; } }')
   })
 })
 
