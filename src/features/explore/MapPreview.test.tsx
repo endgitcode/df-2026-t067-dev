@@ -191,13 +191,32 @@ describe('Google map panel', () => {
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
-    const { SHEET_PEEK_HEIGHT } = await import('./ExploreBottomSheet')
+    const { visibleAreaFitPadding } = await import('./fitPadding')
     const quests: PublicQuest[] = [
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
     const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" onOpenQuest={vi.fn()} />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
-    expect(fitBounds).toHaveBeenCalledWith(expect.anything(), { bottom: SHEET_PEEK_HEIGHT })
+    expect(fitBounds).toHaveBeenCalledWith(expect.anything(), visibleAreaFitPadding(false))
+    unmount()
+    delete window.google
+  })
+
+  it('fits all pin areas once on load with padding for the visible area', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { visibleAreaFitPadding } = await import('./fitPadding')
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={areas} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    expect(fitBounds).toHaveBeenCalledWith(expect.anything(), visibleAreaFitPadding(false))
+    rerender(<ConfiguredMapPreview areas={[...areas]} />)
+    expect(fitBounds).toHaveBeenCalledTimes(1)
     unmount()
     delete window.google
   })
@@ -635,10 +654,11 @@ describe('Google map panel', () => {
       expect(element).not.toBeNull()
       return element as HTMLElement
     })
-    // 覗き見（peek）の高さは、ハンドルと件数に加えて先頭カード1枚が丸ごと収まる前提で決める。
+    // 覗き見（peek）の高さは、ハンドルと件数に加えて先頭カード1枚（peek では要約表示）が
+    // 丸ごと収まる前提で決める。要約表示になった分、従来の200pxより低く抑える。
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect(sheet.style.height).toBe(`${SHEET_PEEK_HEIGHT}px`)
-    expect(SHEET_PEEK_HEIGHT).toBeGreaterThanOrEqual(200)
+    expect(SHEET_PEEK_HEIGHT).toBe(140)
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
     unmount()

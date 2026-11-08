@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
+import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
 import { MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
@@ -101,6 +102,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   // 地域を選ぶ直前のカメラ（中心・ズーム）。選択を解除したら、初期表示ではなくこの状態へ戻す。
   const preSelectionCamera = useRef<{ map: MapInstance; center: { lat: number; lng: number }; zoom: number } | null>(null)
+  const initialFitDone = useRef<MapInstance | null>(null)
   const lastAreaSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   const areaFailureTimer = useRef<number | undefined>(undefined)
   const cancelLocationRequest = (updateState = true) => {
@@ -276,13 +278,29 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         }
         created.push(marker)
       }
+      // 初期表示は、ピンが立つ地域全体が「実際に見えている領域」に収まるよう一度だけフィットする。
+      if (initialFitDone.current !== instance && !selectedAreaId && google.LatLngBounds) {
+        const bounds = new google.LatLngBounds()
+        let fitted = false
+        for (const area of areas) {
+          if (area.publishedCount < 1) continue
+          const position = areaPinPosition(area)
+          if (!position) continue
+          bounds.extend(position)
+          fitted = true
+        }
+        if (fitted) {
+          instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport))
+          initialFitDone.current = instance
+        }
+      }
     } catch { /* ピンは補助表示のため、失敗しても地図本体は使える状態を保つ。 */ }
     return () => {
       active = false
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, hoverCapable, wideViewport])
 
   useEffect(() => {
     const instance = map.current
@@ -329,10 +347,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       if (!validPolygons.length) return
       const bounds = new google.LatLngBounds()
       validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => bounds.extend({ lat, lng }))))
-      // ボトムシートが地図に重なる構成では、覗き見分の下パディングを取り、選んだ地域の下端がシート裏に隠れないようにする。
-      // PC幅ではシートではなく左パネル（地図の外）なので、下パディングは要らない。
-      if (showPublicAreas && !wideViewport) instance.fitBounds(bounds, { bottom: SHEET_PEEK_HEIGHT })
-      else instance.fitBounds(bounds)
+      // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
+      // 実際に見えている領域の中央に来るようにする。
+      if (showPublicAreas) {
+        instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport))
+        initialFitDone.current = instance
+      } else instance.fitBounds(bounds)
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
     } catch { failArea() }
   }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport])

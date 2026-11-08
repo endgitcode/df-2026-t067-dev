@@ -114,6 +114,10 @@ button.explore-quest-card { cursor: pointer; }
 .explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; }
 .explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }
 .explore-sheet .explore-list { margin: 0; border: 0; box-shadow: none; padding-top: 2px; }
+/* peek の間は注意書き・手がかり抜粋・サムネイルを省き、先頭カードを要約表示（タイトル・地域名・問題番号のみ）にして高さを抑える。half/full では従来どおり全部出す。 */
+.explore-sheet[data-snap="peek"] .explore-list-note { display: none; }
+.explore-sheet[data-snap="peek"] .explore-quest-clue { display: none; }
+.explore-sheet[data-snap="peek"] .explore-quest-card > img { display: none; }
 .explore-sheet .explore-quest-list { max-height: none; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .explore-sheet { transition: none; } }
 .demo-map-label { padding: 4px 7px; font-size: 12px; color: var(--ui-muted); background: var(--ui-muted); border-radius: var(--ui-radius); }
@@ -402,7 +406,12 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 }
 
 @media (max-width: 980px) {
-  body.explore-fullbleed .site-header { padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
+  body.explore-fullbleed .site-header { padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }
+  /* 上部は帯ではなく小さな浮きチップに留め、地図が周囲と上下に抜けて見えるようにする。 */
+  body.explore-fullbleed .brand { padding: 4px 10px 4px 4px; gap: 8px; }
+  body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }
+  body.explore-fullbleed .brand-mark .icon { width: 19px; height: 19px; }
+  body.explore-fullbleed .brand-copy { font-size: 13px; }
   /* スマホ幅では縁なし表示でもナビは下部タブバーのまま（D-32）。浮動ピルにはしない。
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
   /* フィルターは最大2段になるため、選択中の地域チップはその下へ置く。 */
