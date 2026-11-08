@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QuestDetails } from './QuestDetails'
 import { ApiError } from '../../shared/api/client'
 import { demoQuest } from './demoQuest'
@@ -439,4 +439,52 @@ it.each(['quest', 'version'] as const)('releases all three authenticated hint im
     expect(revokeObjectURL.mock.calls.map(([url]) => url)).toEqual(['blob:one', 'blob:two', 'blob:three'])
     expect(screen.queryByText('本文1')).not.toBeInTheDocument()
   } finally { vi.unstubAllGlobals() }
+})
+
+describe('広い画面でのスマホ受け渡し', () => {
+  const handoffUrl = 'https://example.test/?area=demo-area&quest=demo-harbor-clock'
+  function stubViewport(wide: boolean) {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: wide && query === '(min-width: 981px)',
+      media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(() => false),
+    }))
+  }
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('主導線が「スマホで挑戦する」になりQRが出て、元の挑戦は副次的に残る', async () => {
+    stubViewport(true)
+    const user = userEvent.setup()
+    const onStart = vi.fn()
+    render(<QuestDetails quest={demoQuest} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" note="注記" onToggle={vi.fn()} onStart={onStart} handoffUrl={handoffUrl} />)
+    const handoffButton = screen.getByRole('button', { name: 'スマホで挑戦する' })
+    expect(handoffButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('img', { name: /QRコード/ })).toBeVisible()
+    const direct = screen.getByRole('button', { name: '挑戦する' })
+    expect(direct).toHaveClass('quest-handoff-direct')
+    await user.click(direct)
+    expect(onStart).toHaveBeenCalledWith({ questId: demoQuest.questId, expectedVersion: demoQuest.version })
+    await user.click(handoffButton)
+    expect(handoffButton).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('img', { name: /QRコード/ })).not.toBeInTheDocument()
+  })
+
+  it('狭い画面では従来どおり挑戦が主導線で、受け渡しは出ない', async () => {
+    stubViewport(false)
+    const user = userEvent.setup()
+    const onStart = vi.fn()
+    render(<QuestDetails quest={demoQuest} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" note="注記" onToggle={vi.fn()} onStart={onStart} handoffUrl={handoffUrl} />)
+    expect(screen.queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /QRコード/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '挑戦する' }))
+    expect(onStart).toHaveBeenCalledWith({ questId: demoQuest.questId, expectedVersion: demoQuest.version })
+  })
+
+  it('挑戦導線を隠す設定では、広い画面でも受け渡しを出さない', () => {
+    stubViewport(true)
+    render(<QuestDetails quest={demoQuest} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" note="注記" onToggle={vi.fn()} onStart={vi.fn()} hideStartAction handoffUrl={handoffUrl} />)
+    expect(screen.queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
+  })
 })

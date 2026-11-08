@@ -50,7 +50,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
 }) {
   const api = useMemo(() => providedApi ?? createApiClient({ expectedDataMode: dataMode }), [providedApi, dataMode])
   const [initialSelection] = useState(() => syncUrl ? readSelectionFromUrl() : { areaId: '', questId: '' })
-  const [openQuestRequest, setOpenQuestRequest] = useState<{ questId: string; sequence: number }>()
+  // URLで問題が指定されて開かれた場合（QRのディープリンク等）は、読み込み後にその問題の詳細を開く。
+  const [openQuestRequest, setOpenQuestRequest] = useState<{ questId: string; sequence: number } | undefined>(
+    () => initialSelection.questId ? { questId: initialSelection.questId, sequence: 1 } : undefined)
   const [selectedId, setSelectedId] = useState(initialSelection.questId)
   const [selectedAreaId, setSelectedAreaId] = useState(initialSelection.areaId)
   const [activeRegion, setActiveRegion] = useState('')
