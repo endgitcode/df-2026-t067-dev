@@ -290,6 +290,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // ピン以外（地域セレクト等）で別の地域が選ばれたら、ピンのハイライトは外れたものとして扱う。
   const effectivePinAreaId = pinAreaId && (!selectedAreaId || selectedAreaId === pinAreaId) ? pinAreaId : null
   const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
+  // 地図上に小さく浮かせる地域名チップの対象。ピンのフォーカスを優先し、無ければ選択中の地域。
+  const focusArea = highlightArea ?? areas.find((area) => area.areaId === selectedAreaId)
   const visibleQuests = status === 'ready' ? questsInViewport(areas, quests, viewport) : quests
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
   const sheetMode = status === 'ready' && showPublicAreas && quests.length > 0
@@ -297,11 +299,19 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)} /> : null
 
+  // シート表示の間は、スマホ幅で探索画面を画面全体（縁なし）にするための目印を付ける。
+  // シェル側（ヘッダー・下部ナビ等）の浮動配置は App.css がこのクラスとメディアクエリで切り替える。
+  useEffect(() => {
+    if (!sheetMode) return
+    document.body.classList.add('explore-fullbleed')
+    return () => { document.body.classList.remove('explore-fullbleed') }
+  }, [sheetMode])
+
   return (
     <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
       style={sheetMode ? { '--sheet-h': `${sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
-      <div className="map-topline"><span className="map-scope"><Icon name="map" />全国の謎</span>{status === 'ready' && <div className="map-location-action"><span>位置情報はGoogle Mapsに送信されます</span></div>}</div>
+      <div className="map-topline"><div className="map-topline-main"><span className="map-scope"><Icon name="map" />全国の謎</span>{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div>{status === 'ready' && <div className="map-location-action"><span>位置情報はGoogle Mapsに送信されます</span></div>}</div>
       {status === 'ready' && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'}>
