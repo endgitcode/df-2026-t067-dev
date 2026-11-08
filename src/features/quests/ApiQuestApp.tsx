@@ -79,6 +79,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     const onPopState = () => {
       clearRefreshNotice()
       const selection = readSelectionFromUrl()
+      // History stores the selected area and quest, so clear transient filters.
+      setActiveRegion('')
+      setActivePrefecture('')
       setSelectedAreaId(selection.areaId)
       setSelectedId(selection.questId)
     }
