@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
+import { useWideViewport } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
@@ -47,6 +48,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // ホバー可能なポインタ（マウス等）がある環境か。タッチ主体の環境ではピンのホバー切替を付けない。
   const [hoverCapable] = useState(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     && window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+  // PC幅（981px以上）ではボトムシートを使わず、左サイドバーのパネルに一覧を出す（D-34）。
+  const wideViewport = useWideViewport()
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
   const [locationStatus, setLocationStatus] = useState('')
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -330,11 +333,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       const bounds = new google.LatLngBounds()
       validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => bounds.extend({ lat, lng }))))
       // ボトムシートが地図に重なる構成では、覗き見分の下パディングを取り、選んだ地域の下端がシート裏に隠れないようにする。
-      if (showPublicAreas) instance.fitBounds(bounds, { bottom: SHEET_PEEK_HEIGHT })
+      // PC幅ではシートではなく左パネル（地図の外）なので、下パディングは要らない。
+      if (showPublicAreas && !wideViewport) instance.fitBounds(bounds, { bottom: SHEET_PEEK_HEIGHT })
       else instance.fitBounds(bounds)
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
     } catch { failArea() }
-  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt])
+  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
@@ -386,6 +390,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
   // シート表示は問題の件数に依存させない。絞り込みで0件になってもシートと全画面を維持し、空表示を出す。
   const sheetMode = status === 'ready' && showPublicAreas
+  // PC幅ではシートの代わりに左サイドバーのパネルへ同じ一覧を出す（D-34）。全画面化の扱いはシートと同じ。
+  const panelMode = sheetMode && wideViewport
   const questList = showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={visibleQuests} variant={sheetMode ? 'viewport' : 'fallback'}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)}
@@ -405,10 +411,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
 
   return (
     <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
-      style={sheetMode ? { '--sheet-h': `${sheetHeight}px` } as CSSProperties : undefined}>
+      style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
       <div className="map-topline"><div className="map-topline-main">{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div></div>
-      {status === 'ready' && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
+      {status === 'ready' && topOverlay && !panelMode && <div className="map-filter-overlay">{topOverlay}</div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'}>
         {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。問題の閲覧は続けられます。</span></> :
@@ -434,7 +440,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
       {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status">{locationStatus}</div>}
       {sheetMode
-        ? <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}{boundaryCredit}</ExploreBottomSheet>
+        ? panelMode
+          ? <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{questList}{boundaryCredit}</div>
+          : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}{boundaryCredit}</ExploreBottomSheet>
         : <>{questList}{boundaryCredit}</>}
     </div>
   )
