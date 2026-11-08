@@ -92,11 +92,18 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .explore-list-head { display: flex; align-items: baseline; gap: 10px; }
 .explore-list-head span { font-size: 12px; color: var(--ui-muted); }
 .explore-list-empty { margin: 10px 0 0; font-size: 13px; color: var(--ui-muted); line-height: 1.7; }
-.explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; }
+.explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }
+/* 読み込み中の一覧の仮の行。行の高さを確保し、読み込み前後の大きさの変化と
+   「0件」のチラつきを防ぐ（D-54）。 */
+.explore-quest-skeleton { height: 44px; background: var(--ui-tint); animation: skeleton-pulse 1200ms ease-in-out infinite alternate; }
+@keyframes skeleton-pulse { from { opacity: .45; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .explore-quest-skeleton { animation: none; } }
 .explore-quest-list > li { min-width: 0; }
 /* 一覧の行はタイトルだけの簡素な形にする（D-46）。本文の抜粋・地域名・サムネイルは
    行には出さず、詳細は選択中の行の直下にアコーディオンで開く。 */
-.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font: inherit; text-align: left; }
+/* 一覧の行にオフセットシャドウは付けない（D-54）。影は浮き上がりの区別が要る
+   箇所（フローティングパネル本体など）だけに残す。 */
+.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; }
 button.explore-quest-card { cursor: pointer; }
 .explore-quest-list li.is-highlighted .explore-quest-card { background: var(--ui-soft); }
 .explore-quest-card.is-selected { background: var(--ui-accent); }
@@ -117,7 +124,7 @@ button.explore-quest-card { cursor: pointer; }
 .explore-sheet-handle { flex: none; display: grid; place-items: center; height: 34px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; }
 .explore-sheet-handle:active { cursor: grabbing; }
 .explore-sheet-grip { width: 46px; height: 6px; border-radius: 999px; background: var(--ui-line); opacity: .45; }
-.explore-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.explore-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; }
 .explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }
 .explore-sheet .explore-list { margin: 0; border: 0; box-shadow: none; padding-top: 2px; }
@@ -182,7 +189,9 @@ button.explore-quest-card { cursor: pointer; }
 .quest-toggle .icon { width: 17px; height: 17px; }
 .quest-toggle.is-open { background: var(--ui-surface); color: var(--ui-muted); border-color: var(--ui-line); }
 .quest-toggle.is-open .icon { transform: rotate(-90deg); }
-.quest-details { border-top: var(--ui-border-width) solid var(--ui-line); margin-top: 23px; padding-top: 22px; }
+/* 詳細の区切り線は置かない（D-54）。カードの余白の内側で中途半端に終わる線が
+   ノイズになるため、間隔だけで区切る。 */
+.quest-details { margin-top: 23px; padding-top: 2px; }
 /* 入場の動き（D-42）。あらかじめ決まった入場は CSS キーフレームで付け、メイン
    スレッドが忙しい時も滑らかに保つ。詳細は小さく沈み込むように出し、画面切替と
    撮影パネルは控えめなフェード＋上昇にする。動かすのは transform / opacity のみ。 */
@@ -406,9 +415,9 @@ body.explore-fullbleed .map-preview-shell.has-sheet .map-preview { border: 0; bo
 body.explore-fullbleed .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 20; min-height: 0; padding: calc(10px + env(safe-area-inset-top)) 20px 10px; background: transparent; border-bottom: 0; pointer-events: none; }
 body.explore-fullbleed .brand, body.explore-fullbleed .desktop-nav, body.explore-fullbleed .account-area { pointer-events: auto; }
 body.explore-fullbleed .brand { justify-self: start; width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
-body.explore-fullbleed .desktop-nav { align-self: center; gap: 18px; padding: 4px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
+body.explore-fullbleed .desktop-nav { align-self: center; gap: 18px; padding: 4px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }
 body.explore-fullbleed .account-area { flex-wrap: nowrap; max-width: none; }
-body.explore-fullbleed .account-icon-button { box-shadow: var(--ui-control-shadow); }
+/* アカウントアイコンにオフセットシャドウは付けない（D-54）。 */
 body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 88px); }
 body.explore-fullbleed .quest-rail { max-width: 760px; margin-inline: auto; padding: 24px 20px 0; }
 body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bottom); }
@@ -423,15 +432,23 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
    --pc-sidebar-offset の位置から始め、開閉では動かさない。 */
 @media (min-width: 981px) {
   body.explore-fullbleed { --pc-sidebar-w: 380px; --pc-sidebar-nav-h: 68px; --pc-sidebar-gap: 16px; --pc-sidebar-offset: calc(var(--pc-sidebar-w) + var(--pc-sidebar-gap) * 2); }
-  body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 25; grid-template-columns: 1fr auto; }
-  body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h); padding: 12px 16px; background: var(--ui-surface); border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: 6px 0 0 var(--ui-line); transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
+  /* タイトルチップの左端は、地図上の浮動要素（map-topline）のライン
+     （サイドバーのオフセット + 8px）に揃える（D-54）。 */
+  body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 25; grid-template-columns: 1fr auto; padding-left: 8px; }
+  /* タブ（主要ナビ）にオフセットシャドウは付けない（D-54）。影はパネル本体が持つ。 */
+  body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h); padding: 12px 16px; background: var(--ui-surface); border-radius: var(--radius-l) var(--radius-l) 0 0; transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
   body.explore-fullbleed .desktop-nav a, body.explore-fullbleed .desktop-nav button { flex: 1 1 0; justify-content: center; }
-  body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; width: var(--pc-sidebar-w); overflow-y: auto; display: flex; flex-direction: column; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-top: 0; border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow); padding: 0 16px 20px; transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
+  body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; width: var(--pc-sidebar-w); overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-top: 0; border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow); padding: 0 16px 20px; transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
   body.explore-fullbleed .map-topline { left: calc(var(--pc-sidebar-offset) + 8px); }
   body.explore-fullbleed .map-location-status.is-floating { left: calc(var(--pc-sidebar-offset) + 8px); max-width: calc(100% - var(--pc-sidebar-offset) - 118px); }
   body.explore-fullbleed .explore-side-panel .side-panel-filters { position: sticky; top: 0; z-index: 2; margin: 0 -16px; padding: 12px 16px 10px; background: var(--ui-surface); }
   body.explore-fullbleed .explore-side-panel .map-filter-chips { flex-wrap: wrap; overflow: visible; }
-  body.explore-fullbleed .explore-side-panel .explore-list { margin: 10px 0 0; border: 0; border-radius: 0; box-shadow: none; padding-right: 0; padding-left: 0; background: transparent; }
+  /* 一覧領域はパネルの下まで伸ばす（D-54）。出典クレジットは margin-top: auto で
+     最下部に残し、一覧のスクロール領域が間の空白を埋める。一覧の下端は
+     グラデーションで面の色へ溶かし、行が半分だけ覗く切れ方を整える。 */
+  body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin: 10px 0 0; border: 0; border-radius: 0; box-shadow: none; padding-right: 0; padding-left: 0; background: transparent; }
+  body.explore-fullbleed .explore-side-panel .explore-list::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: linear-gradient(to bottom, rgb(255 255 255 / 0), var(--ui-surface)); pointer-events: none; }
+  body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: 1 1 auto; min-height: 0; max-height: none; padding-bottom: 18px; }
   /* 出典表記はパネルの一番下に置く（D-46）。中身が短い時は下端へ寄せる。 */
   body.explore-fullbleed .explore-side-panel .map-boundary-credit { margin: auto 0 0; padding-top: 12px; }
   /* 地図の下に通常フローで残っていたレール（問題の選択・詳細）はサイドバー内に寄せ、
@@ -446,7 +463,12 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* 閉じた状態でもタブ（画面遷移）は常に到達可能にする：畳むのはパネルだけで、
      ナビは単独のカードとして残す。開くトグルはナビカードの直下に置き、カードの
      左端のラインに揃える（画面端に張り付いて半分切れて見える置き方はしない）。 */
-  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); box-shadow: var(--ui-shadow); }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }
+  /* パネルを閉じている間は、地図上の浮動要素の左ラインを左端の余白ライン
+     （ナビカードと同じ列）に寄せ、右に寄ったままにしない（D-54）。 */
+  body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-gap); }
+  body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-gap) + 8px); }
+  body.explore-fullbleed.explore-sidebar-collapsed .map-location-status.is-floating { left: calc(var(--pc-sidebar-gap) + 8px); max-width: calc(100% - var(--pc-sidebar-gap) - 118px); }
   body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h) + 8px); left: var(--pc-sidebar-gap); width: 42px; height: 42px; transform: none; }
   /* 閉じる時はカードを少し左へ滑らせながら消し、非表示への切り替えは遷移の
      終わりに遅らせる（D-42）。開く時は逆向きに即座に出る。地図とヘッダーは動かさない。 */

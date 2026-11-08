@@ -43,6 +43,8 @@ type AppProps = {
   quest?: PublicQuest
   mapAreas?: PublicArea[]
   mapQuests?: PublicQuest[]
+  /** 問題一覧の読み込み中。一覧に「0件／空です」を一瞬出さないために MapPreview へ渡す。 */
+  mapQuestsLoading?: boolean
   onOpenQuest?: (questId: string) => void
   selectedAreaId?: string
   onSelectArea?(areaId: string): void
@@ -101,7 +103,7 @@ function waitForSignedIn(authClient: AuthClient, signal: AbortSignal): Promise<b
   })
 }
 
-export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, mapAreas = [], mapQuests = [], onOpenQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, onMapSheetModeChange, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
+export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, mapAreas = [], mapQuests = [], mapQuestsLoading = false, onOpenQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, onMapSheetModeChange, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
   const [openState, setOpenState] = useState<{ quest?: PublicQuest; open: boolean }>({ open: false })
   const isQuestOpen = openState.quest === externalQuest && openState.open
   const [openedRequest, setOpenedRequest] = useState<typeof openQuestRequest>()
@@ -449,7 +451,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} questsLoading={mapQuestsLoading} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
 
 {!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>

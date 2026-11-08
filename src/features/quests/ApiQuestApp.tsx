@@ -339,7 +339,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       {!mapSheetMode && refreshControl}
       {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode !== 'team-preview' && filterControls}{!mapSheetMode && picker}</>}
     </section> : undefined
-  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={regionAreas} mapQuests={visibleChoices} onOpenQuest={openQuestFromMap} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
+  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={regionAreas} mapQuests={visibleChoices} mapQuestsLoading={state === 'loading'} onOpenQuest={openQuestFromMap} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
     areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
     questPicker={mapSheetMode ? undefined : <>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} onMapSheetModeChange={setMapSheetMode} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}

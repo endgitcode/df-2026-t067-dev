@@ -114,4 +114,18 @@ describe('ExploreQuestList', () => {
     expect(screen.getByText('2件')).toBeVisible()
     expect(screen.getByText('博多の灯台')).toBeVisible()
   })
+
+  it('読み込み中は「0件」も空メッセージも出さず、行の場所を確保する（D-54）', () => {
+    const { container } = render(<ExploreQuestList areas={areas} quests={[]} loading />)
+    expect(screen.getByText('読み込み中')).toBeVisible()
+    expect(screen.queryByText('0件')).not.toBeInTheDocument()
+    expect(screen.queryByText(/選択中の条件に合う謎はありません/)).not.toBeInTheDocument()
+    expect(container.querySelectorAll('.explore-quest-skeleton')).toHaveLength(5)
+  })
+
+  it('読み込み完了後に0件なら空メッセージを出す（D-54）', () => {
+    render(<ExploreQuestList areas={areas} quests={[]} />)
+    expect(screen.getByText('0件')).toBeVisible()
+    expect(screen.getByText(/選択中の条件に合う謎はありません/)).toBeVisible()
+  })
 })

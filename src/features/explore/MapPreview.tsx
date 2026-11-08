@@ -74,9 +74,9 @@ function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | 
   return points
 }
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
-  quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
+  quests?: PublicQuest[]; questsLoading?: boolean; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
   /** 探索画面が前面にあるか。記録画面の表示中は探索側を隠したまま常駐させるため、
       その間は全画面化のシェル（body クラス）を外し、シート表示の通知も止める。
       地図インスタンスやフィット記録は保持し、戻った時にそのまま続きから使える。 */
@@ -593,7 +593,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 詳細（questDetail）は一覧の選択中の行の直下にだけ差し込む。同時に2か所へは出さない
   // （状態を持つ詳細が二重にマウントされるのを避けるため）。地図下の一覧を開いている間は
   // そちらへ寄せ、「問題を見る」の着地（#70）が地図下の詳細になるようにする。
-  const renderQuestList = (scrollToHighlight = true, withDetail = false) => showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={quests}
+  // 読み込み中の一覧（仮の行）は、最終的な置き場所であるシート／パネルの中でのみ出す。
+  // 地図の読み込み中に通常フロー側へ先に出すと、地図の準備完了で置き場所が移り、
+  // 一覧が作り直されて見た目が跳ねるため。
+  const renderQuestList = (scrollToHighlight = true, withDetail = false, inSheetOrPanel = false) => showPublicAreas && (sheetMode || quests.length > 0 || (inSheetOrPanel && questsLoading)) ? <ExploreQuestList areas={areas} quests={quests} loading={questsLoading}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     scrollToHighlight={scrollToHighlight}
     detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget}
@@ -702,7 +705,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {sheetMode
         ? panelMode
           ? <>
-            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{renderQuestList(true, true)}{panelExtra}{boundaryCredit}</div>
+            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{renderQuestList(true, true, true)}{panelExtra}{boundaryCredit}</div>
             <button type="button" className="sidebar-toggle" aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
               onClick={() => setSidebarCollapsed((value) => !value)}>
@@ -710,7 +713,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
             </button>
           </>
           : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
-            onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap)}{boundaryCredit}</ExploreBottomSheet>
+            onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap, true)}{boundaryCredit}</ExploreBottomSheet>
         : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>
     {sheetMode && !panelMode && (pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
