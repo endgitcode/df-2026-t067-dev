@@ -94,6 +94,26 @@ describe('ExploreBottomSheet', () => {
     expect(sheet).toHaveAttribute('data-snap', 'half')
   })
 
+  it('preserves the browse-below-map action while the closed-sheet button reopens the list', async () => {
+    const user = userEvent.setup()
+    const onBrowseBelowMap = vi.fn()
+    const { container } = render(<ExploreBottomSheet onBrowseBelowMap={onBrowseBelowMap}><p>リスト本文</p></ExploreBottomSheet>)
+    const sheet = container.querySelector('.explore-sheet')
+
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    expect(onBrowseBelowMap).toHaveBeenCalledOnce()
+    expect(sheet).toHaveAttribute('data-snap', 'peek')
+
+    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    expect(sheet).toHaveAttribute('data-snap', 'half')
+    await user.click(screen.getByRole('button', { name: '謎リストを縮める' }))
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    expect(onBrowseBelowMap).toHaveBeenCalledOnce()
+    expect(sheet).toHaveAttribute('data-snap', 'half')
+  })
+
   it('opens to half when a new area is signalled, and stays where the user left it for the same signal', async () => {
     const user = userEvent.setup()
     const { container, rerender } = render(<ExploreBottomSheet openSignal={null}><p>リスト本文</p></ExploreBottomSheet>)
