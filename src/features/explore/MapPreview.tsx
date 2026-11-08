@@ -22,6 +22,8 @@ function pinIcon(color: string, count: number): { url: string } {
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
+const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
+
 export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
@@ -32,6 +34,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
   const [locationStatus, setLocationStatus] = useState('')
+
+  useEffect(() => {
+    if (locationStatus !== LOCATION_SUCCESS_MESSAGE) return
+    const timeout = window.setTimeout(() => setLocationStatus(''), 5000)
+    return () => window.clearTimeout(timeout)
+  }, [locationStatus])
   const [locating, setLocating] = useState(false)
   const locationRequest = useRef(0)
   const locationTimer = useRef<number | undefined>(undefined)
@@ -264,7 +272,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         if (!requestedMap || map.current !== requestedMap) { settle('現在地を取得できませんでした。もう一度お試しください。'); return }
         requestedMap.setCenter({ lat: latitude, lng: longitude })
         requestedMap.setZoom(LOCATION_ZOOM)
-        settle('現在地を地図の中心に表示しました。')
+        settle(LOCATION_SUCCESS_MESSAGE)
       }, (error) => {
         const message = error.code === 1 ? '位置情報が許可されませんでした。ブラウザが再確認を表示しない場合は、アドレスバーのサイト情報から位置情報を「確認」または「許可」に変更して、もう一度お試しください。'
           : error.code === 3 ? '現在地を取得できませんでした。もう一度お試しください。'
@@ -302,10 +310,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       </div>}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
     </section>
+      {status === 'ready' && locationStatus && <div className="map-location-status" role="status">{locationStatus}</div>}
       {showPublicAreas && quests.length > 0 && <ExploreQuestList areas={areas} quests={visibleQuests} variant={status === 'ready' ? 'viewport' : 'fallback'}
         highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
         onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)} />}
-      {status === 'ready' && locationStatus && <div className="map-location-status" role="status">{locationStatus}</div>}
     </div>
   )
 }
