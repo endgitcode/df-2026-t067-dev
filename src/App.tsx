@@ -112,6 +112,11 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const [recordDestination, setRecordDestination] = useState<{ auth: AuthSnapshot; id: string } | null>(null)
   const [recordsOpen, setRecordsOpen] = useState(false)
   const questCard = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (isQuestOpen && openedRequest && document.querySelector('.below-map-quests')) {
+      questCard.current?.scrollIntoView?.({ block: 'start' })
+    }
+  }, [isQuestOpen, openedRequest])
   const authClient = useMemo(() => providedClient ?? createFirebaseAuthClient(), [providedClient])
   const auth = useSyncExternalStore(authClient.subscribe, authClient.getSnapshot, authClient.getSnapshot)
   const source = readDataSource(import.meta.env.VITE_QUEST_DATA_SOURCE, import.meta.env.DEV)
