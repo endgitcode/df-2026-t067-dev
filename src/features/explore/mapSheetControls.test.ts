@@ -124,8 +124,7 @@ describe('PC sidebar layout integrity', () => {
 })
 
 describe('mobile fullbleed finish', () => {
-  it('keeps the peek sheet compact: note, clue excerpt and thumbnail are hidden at peek only', () => {
-    expect(css).toContain('.explore-sheet[data-snap="peek"] .explore-list-note { display: none; }')
+  it('keeps the peek sheet compact: clue excerpt and thumbnail are hidden at peek only', () => {
     expect(css).toContain('.explore-sheet[data-snap="peek"] .explore-quest-clue { display: none; }')
     expect(css).toContain('.explore-sheet[data-snap="peek"] .explore-quest-card > img { display: none; }')
   })

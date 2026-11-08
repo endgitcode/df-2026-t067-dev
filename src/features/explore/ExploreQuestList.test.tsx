@@ -30,7 +30,7 @@ describe('ExploreQuestList', () => {
     expect(screen.getByText('港の時計台')).toBeVisible()
     expect(screen.getByText('横浜')).toBeVisible()
     expect(screen.getByText('大きな時計が見える場所')).toBeVisible()
-    expect(screen.getByText('ピンは地域の代表点です。問題の場所そのものではありません。')).toBeVisible()
+    expect(screen.queryByText('ピンは地域の代表点です。問題の場所そのものではありません。')).not.toBeInTheDocument()
     const card = screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('.explore-quest-card')
     expect(card?.querySelector('img')).toHaveAttribute('src', 'https://example.test/hint.jpg')
     expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' }).querySelector('img')).not.toBeInTheDocument()
