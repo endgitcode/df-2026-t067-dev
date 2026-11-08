@@ -466,4 +466,5 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* フッター廃止（D-39）に伴い、レールの末尾の下部余白はレール側で確保する。 */
   body.explore-fullbleed .map-preview-shell:has(> .explore-sheet-reopen, + .map-browse-shortcut) .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 62px); }
   body.explore-fullbleed .quest-rail { padding: 22px 16px calc(25px + env(safe-area-inset-bottom)); }
+  body.explore-fullbleed .is-browsing-below-map ~ .quest-rail { min-height: 100svh; }
 }

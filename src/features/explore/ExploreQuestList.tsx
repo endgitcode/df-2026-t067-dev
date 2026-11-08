@@ -4,13 +4,16 @@ import { questThumbnail } from './viewportQuests'
 
 // 選択状態に連動する謎カードのリスト。並ぶのは呼び出し側が選択（地域・地方の絞り込み）で
 // 絞った問題だけであり、地図の表示範囲では変わらない（D-45）。地図が使えない場合も同じ。
-export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest }: {
+export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, scrollToHighlight = true }: {
   areas: PublicArea[]
   quests: PublicQuest[]
   highlightArea?: PublicArea
   selectedQuestId?: string
   clearedQuestIds?: ReadonlySet<string>
   onOpenQuest?: (questId: string) => void
+  /** ハイライトされた地域の先頭カードへリスト内スクロールするか。地図下の一覧（#70）では
+      ページ側のスクロールと競合するため切る。 */
+  scrollToHighlight?: boolean
 }) {
   const listRef = useRef<HTMLUListElement>(null)
   const areaLabel = (areaId: string) => areas.find((area) => area.areaId === areaId)?.label ?? ''
@@ -20,13 +23,13 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
     : quests
 
   useEffect(() => {
-    if (!highlightArea || !listRef.current) return
+    if (!scrollToHighlight || !highlightArea || !listRef.current) return
     for (const item of listRef.current.querySelectorAll('[data-area-id]')) {
       if (item.getAttribute('data-area-id') !== highlightArea.areaId) continue
       try { (item as HTMLElement).scrollIntoView({ block: 'nearest' }) } catch { /* スクロール位置の補助であり、失敗しても一覧は使える。 */ }
       break
     }
-  }, [highlightArea])
+  }, [highlightArea, scrollToHighlight])
 
   return (
     <section className="explore-list" aria-label="選べる謎の一覧">

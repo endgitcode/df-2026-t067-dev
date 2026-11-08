@@ -114,8 +114,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const [recordsOpen, setRecordsOpen] = useState(false)
   const questCard = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    if (isQuestOpen && openedRequest && document.querySelector('.below-map-quests')) {
-      scrollBelowHeader(questCard.current)
+    if (isQuestOpen && openedRequest && document.querySelector('.is-browsing-below-map')) {
+      scrollBelowHeader(questCard.current?.querySelector<HTMLElement>('.quest-card-heading h3') ?? questCard.current)
     }
   }, [isQuestOpen, openedRequest])
   const authClient = useMemo(() => providedClient ?? createFirebaseAuthClient(), [providedClient])
@@ -420,7 +420,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} />
 
 {!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>

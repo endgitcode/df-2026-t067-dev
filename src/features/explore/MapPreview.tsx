@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport } from '../quests/useWideViewport'
@@ -45,6 +45,14 @@ function pinIcon(color: string, count: number, emphasized = false): { url: strin
 
 const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
 
+function focusQuestDestination(card: HTMLDivElement | null | undefined, list: HTMLElement | null) {
+  const destination = card?.querySelector<HTMLElement>('.quest-card-heading h3') ?? list
+  if (!destination) return
+  destination.tabIndex = -1
+  destination.focus({ preventScroll: true })
+  scrollBelowHeader(destination)
+}
+
 // 地域の公開ジオメトリから、フィットに使える全頂点を {lat, lng} で返す。閉じていない・
 // 範囲外の座標を含むリングは丸ごと除く（従来のフィットと同じ検証）。使える輪郭が無ければ null。
 function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | null {
@@ -63,7 +71,7 @@ function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | 
   return points
 }
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
   /** シート表示（地図が使えてカード一覧が出ている状態）かどうかを呼び出し側へ知らせる。
@@ -73,6 +81,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   /** PC幅で地図の下に出ていた内容（問題の選択・詳細・注意書き）をサイドバーのパネル内へ寄せるための追加コンテンツ。
       パネル表示ではサイドバー内、地図が使えない時は通常フローのリスト末尾に出す。シート表示（スマホ幅）では出さない。 */
   panelExtra?: ReactNode
+  questScrollTarget?: RefObject<HTMLDivElement | null>
   /** 境界データの出典（国土数値情報 N03）をシート内に小さく出す。共有検証サイトの探索地図でのみ有効にする。 */
   showBoundaryCredit?: boolean
   /** 地域の塗りを「選択中の地域だけ」にする（D-29）。共有検証サイトの探索地図でのみ有効にする。 */
@@ -497,11 +506,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const belowMapList = useRef<HTMLElement>(null)
   const mapShell = useRef<HTMLDivElement>(null)
   const [pastMap, setPastMap] = useState(false)
+  const updateMapScrollPosition = useCallback(() => {
+    const bottom = mapShell.current?.getBoundingClientRect().bottom
+    setPastMap(bottom !== undefined && bottom <= mobileHeaderClearance() + 1)
+  }, [])
   useEffect(() => {
-    const update = () => {
-      const bottom = mapShell.current?.getBoundingClientRect().bottom
-      setPastMap(bottom !== undefined && bottom <= mobileHeaderClearance() + 1)
-    }
+    const update = updateMapScrollPosition
     update()
     window.addEventListener('scroll', update, { passive: true })
     window.addEventListener('resize', update)
@@ -509,24 +519,30 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       window.removeEventListener('scroll', update)
       window.removeEventListener('resize', update)
     }
-  }, [sheetMode, panelMode, belowMap])
-  const scrollToQuestList = () => {
-    belowMapList.current?.focus({ preventScroll: true })
-    scrollBelowHeader(belowMapList.current)
-  }
+  }, [sheetMode, panelMode, belowMap, updateMapScrollPosition])
   useEffect(() => {
     if (!belowMap) return
-    scrollToQuestList()
-  }, [belowMap])
+    focusQuestDestination(questScrollTarget?.current, belowMapList.current)
+    updateMapScrollPosition()
+  }, [belowMap, questScrollTarget, updateMapScrollPosition])
 
   const returnToMap = () => {
     setBrowseBelowMap(false)
     mapShell.current?.focus({ preventScroll: true })
     mapShell.current?.scrollIntoView?.({ block: 'start' })
   }
+  const browseQuests = () => {
+    if (!belowMap) {
+      setBrowseBelowMap(true)
+      return
+    }
+    focusQuestDestination(questScrollTarget?.current, belowMapList.current)
+    updateMapScrollPosition()
+  }
 
-  const questList = showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={quests}
+  const renderQuestList = (scrollToHighlight = true) => showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={quests}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
+    scrollToHighlight={scrollToHighlight}
     onOpenQuest={onOpenQuest} /> : null
   // 境界データの出典表記（N03 の利用条件）。シート内・フォールバックのリスト末尾に小さく出す。
   const boundaryCredit = showBoundaryCredit && showPublicAreas
@@ -592,8 +608,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   }, [panelMode, sidebarCollapsed])
 
   return (<>
-    <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
-      style={sheetMode ? { '--sheet-h': `${panelMode || belowMap ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
+    <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '') + (belowMap ? ' is-browsing-below-map' : '')}
+      style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
       <div className="map-topline"><div className="map-topline-main">{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div></div>
       {status === 'ready' && topOverlay && !panelMode && <div className="map-filter-overlay">{topOverlay}</div>}
@@ -617,22 +633,22 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {sheetMode
         ? panelMode
           ? <>
-            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{questList}{boundaryCredit}{panelExtra}</div>
+            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{renderQuestList()}{boundaryCredit}{panelExtra}</div>
             <button type="button" className="sidebar-toggle" aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
               onClick={() => setSidebarCollapsed((value) => !value)}>
               <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
             </button>
           </>
-          : !belowMap && <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
-            onBrowseBelowMap={() => setBrowseBelowMap(true)}>{questList}{boundaryCredit}</ExploreBottomSheet>
-        : <>{questList}{boundaryCredit}{panelExtra}</>}
+          : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
+            onBrowseBelowMap={browseQuests}>{renderQuestList()}{boundaryCredit}</ExploreBottomSheet>
+        : <>{renderQuestList()}{boundaryCredit}{panelExtra}</>}
     </div>
-    {sheetMode && !panelMode && (belowMap || pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
+    {sheetMode && !panelMode && (pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
       className="explore-sheet-reopen map-browse-shortcut"
-      onClick={pastMap ? returnToMap : belowMap ? scrollToQuestList : () => setBrowseBelowMap(true)}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
-    {belowMap && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
-      {questList}
+      onClick={pastMap ? returnToMap : browseQuests}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
+    {belowMap && !(questScrollTarget && selectedQuestId) && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
+      {renderQuestList(false)}
       {boundaryCredit}
     </section>}
   </>)
