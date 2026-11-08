@@ -66,7 +66,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-scope .icon { width: 16px; height: 16px; color: var(--ui-muted); }
 .map-location-action { display: flex; align-items: flex-start; pointer-events: none; }
 .map-location-action span { max-width: 32ch; padding: 5px 8px; border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 11px; line-height: 1.4; box-shadow: var(--ui-control-shadow); }
-.map-location-status { position: absolute; left: 20px; bottom: 20px; z-index: 3; max-width: 70%; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; box-shadow: var(--ui-control-shadow); }
+.map-location-status { width: fit-content; max-width: 100%; margin-top: 8px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; box-shadow: var(--ui-control-shadow); }
 .map-preview-shell:has(> .explore-list) { position: relative; top: 0; }
 .explore-list { margin-top: 14px; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
 .explore-list-head { display: flex; align-items: baseline; gap: 10px; }
@@ -208,7 +208,7 @@ button.explore-quest-card { cursor: pointer; }
   .map-scope .icon { width: 14px; height: 14px; }
   .map-location-action { display: contents; }
   .map-location-action span { grid-column: 1 / -1; justify-self: end; text-align: right; overflow-wrap: anywhere; font-size: 10px; }
-  .map-location-status { position: relative; inset: auto; z-index: auto; max-width: none; margin: 8px 12px 0; padding: 7px 9px; font-size: 11px; }
+  .map-location-status { margin: 8px 12px 0; max-width: calc(100% - 24px); padding: 7px 9px; font-size: 11px; }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
   .map-zoom { right: 11px; bottom: 72px; }
   .map-zoom button { width: 44px; height: 44px; }
