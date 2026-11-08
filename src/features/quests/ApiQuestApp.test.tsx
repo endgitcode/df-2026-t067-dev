@@ -8,8 +8,8 @@ import type { AuthClient, AuthSnapshot } from '../auth/authTypes'
 import { ApiQuestApp } from './ApiQuestApp'
 import { ApiError } from '../../shared/api/client'
 
-vi.mock('../explore/MapPreview', () => ({ MapPreview: (props: { areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (id: string) => void; topOverlay?: ReactNode }) =>
-  <div data-testid="map-state" data-area={props.selectedAreaId}>地図 {props.areas?.length ?? 0} {props.selectedAreaId}{props.areas?.map((area) => <button key={area.areaId} type="button" aria-label={area.areaId === 'area-b' ? '地図の公開地域を選択' : '地図の川辺エリアを選択'} onClick={() => props.onSelectArea?.(area.areaId)}>{area.label}のピン</button>)}{props.topOverlay}</div> }))
+vi.mock('../explore/MapPreview', () => ({ MapPreview: (props: { areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (id: string) => void; topOverlay?: ReactNode; questDetail?: ReactNode }) =>
+  <div data-testid="map-state" data-area={props.selectedAreaId}>地図 {props.areas?.length ?? 0} {props.selectedAreaId}{props.areas?.map((area) => <button key={area.areaId} type="button" aria-label={area.areaId === 'area-b' ? '地図の公開地域を選択' : '地図の川辺エリアを選択'} onClick={() => props.onSelectArea?.(area.areaId)}>{area.label}のピン</button>)}{props.topOverlay}{props.questDetail}</div> }))
 
 const first: PublicQuest = { questId: 'quest-a', version: 2, title: '川辺の謎', clue: '詳細版の手がかり', areaId: 'area-a', visitConditions: '訪問条件', hintCount: 0 }
 const second: PublicQuest = { questId: 'quest-b', version: 1, title: '森の謎', clue: '森の手がかり', areaId: 'area-b', visitConditions: '訪問条件', hintCount: 0 }
@@ -274,6 +274,36 @@ describe('APIから問題を表示', () => {
     expect(window.location.search).toBe('?campaign=spring&area=area-b&quest=quest-b')
     expect(window.location.hash).toBe('#map')
     expect(window.history.length).toBe(before)
+  })
+
+  it('問題だけのディープリンクでは所属地域へ選択を追随させ、履歴を増やさない', async () => {
+    window.history.replaceState(null, '', '/?quest=quest-b#map')
+    const api = apiFixture()
+    api.listQuests.mockImplementation(async (query?: { areaId?: string }) => query?.areaId === 'area-b' ? page([second]) : page([first, second]))
+    const before = window.history.length
+    render(<ApiQuestApp api={api} syncUrl />)
+    expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
+    // 地域が未指定でも、問題の所属地域が選択状態になり、地図側もその地域を受け取る。
+    await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-b'))
+    expect(api.listQuests).toHaveBeenCalledWith({ areaId: 'area-b', limit: 100, cursor: undefined }, expect.anything())
+    expect(window.location.search).toBe('?quest=quest-b&area=area-b')
+    expect(window.location.hash).toBe('#map')
+    expect(window.history.length).toBe(before)
+  })
+
+  it('フォールバックのピッカーで問題を選ぶと所属地域へ追随し、自動選択では追随しない', async () => {
+    const user = userEvent.setup()
+    const api = apiFixture()
+    api.listQuests.mockImplementation(async (query?: { areaId?: string }) => query?.areaId === 'area-b' ? page([second])
+      : query?.areaId === 'area-a' ? page([first]) : page([first, second]))
+    render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="durable-local" />)
+    expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
+    // 先頭問題が自動で選択されただけでは所属地域は選択状態にならない（初期表示の全体像を保つ）。
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
+    await user.click(screen.getByRole('button', { name: '森の謎を開く' }))
+    expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
+    await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-b'))
+    expect(api.listQuests).toHaveBeenCalledWith({ areaId: 'area-b', limit: 100, cursor: undefined }, expect.anything())
   })
 
   it('409で古いヒントと挑戦を止め、既存再読込を案内する', async () => {
@@ -913,10 +943,14 @@ describe('APIから問題を表示', () => {
     await screen.findByRole('alert')
     expect(screen.getByRole('button', { name: '森の謎を開く' })).toHaveAttribute('aria-pressed', 'true')
 
-    api.listQuests.mockResolvedValue(page([first]))
+    // ピッカー選択で所属地域（area-b）が選択状態になるため（D-44）、再試行の一覧は
+    // その地域の一覧として返し、選択中の問題が消えて同地域の別の問題が先頭になる形にする。
+    const replacement = { ...second, questId: 'quest-c', title: '森の新しい謎' }
+    api.listQuests.mockResolvedValue(page([replacement]))
+    api.getQuest.mockImplementation(async (id: string) => id === replacement.questId ? replacement : first)
     await user.click(screen.getByRole('button', { name: '再試行' }))
-    expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
-    await waitFor(() => expect(screen.getByRole('button', { name: '川辺の謎を開く' })).toHaveAttribute('aria-pressed', 'true'))
+    expect(await screen.findByRole('heading', { name: replacement.title })).toBeVisible()
+    await waitFor(() => expect(screen.getByRole('button', { name: '森の新しい謎を開く' })).toHaveAttribute('aria-pressed', 'true'))
   })
 
   it('詳細や地域取得に失敗した場合も再試行できる', async () => {

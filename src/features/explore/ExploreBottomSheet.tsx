@@ -3,12 +3,12 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 
 export type SheetSnap = 'closed' | 'peek' | 'half' | 'full'
 
-// 覗き見では、ハンドル＋件数＋先頭カード1枚が丸ごと収まる高さにする
-// （ドラッグしなくても最初の謎に届くことが狙い）。peek の間、先頭カードは要約表示
-// （タイトル・地域名・問題番号のみ。注意書き・手がかり抜粋・サムネイルは出さない）
-// になる前提で、内訳の目安：ハンドル34＋件数行・余白 約30＋要約カード 約68＋余裕。
+// 覗き見では、ハンドル＋件数＋先頭の行1つが丸ごと収まる高さにする
+// （ドラッグしなくても最初の謎に届くことが狙い）。一覧の行はタイトルだけの
+// 簡素な形（D-46）になったため、内訳の目安：ハンドル34＋件数行・余白 約28＋
+// タイトル行 約46＋余裕 約20。
 // 全開では上部の地図操作（範囲チップ等）を残す。
-export const SHEET_PEEK_HEIGHT = 140
+export const SHEET_PEEK_HEIGHT = 128
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
@@ -22,16 +22,17 @@ function snapHeights(stageHeight: number): Record<SheetSnap, number> {
 // 地図の上に重なる引き上げ式シート。スナップは closed / peek / half / full の4段で、
 // ハンドルのドラッグとタップ（ボタン）の両方で開閉できる。シート本体が地図とは
 // 別の要素なので、シート上のスクロールやドラッグが地図へ伝わることはない。
-export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
+export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBrowseBelowMap }: {
   children: ReactNode
   /** 地域IDが新しく渡されたら、ハイライトされたカードが見える位置まで開く。 */
   openSignal?: string | null
   onHeightChange?: (height: number) => void
+  onBrowseBelowMap?: () => void
 }) {
   const sheetRef = useRef<HTMLDivElement>(null)
-  const handleRef = useRef<HTMLButtonElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const reopenRef = useRef<HTMLButtonElement>(null)
-  const focusAfterSnap = useRef<'handle' | 'reopen' | null>(null)
+  const focusAfterSnap = useRef<'body' | 'reopen' | null>(null)
   const [stageHeight, setStageHeight] = useState(FALLBACK_STAGE_HEIGHT)
   const [snap, setSnap] = useState<SheetSnap>('peek')
   const [dragHeight, setDragHeight] = useState<number | null>(null)
@@ -67,7 +68,8 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
     const target = focusAfterSnap.current
     if (!target) return
     focusAfterSnap.current = null
-    const element = target === 'handle' ? handleRef.current : reopenRef.current
+    const element = target === 'body' ? bodyRef.current : reopenRef.current
+    if (target === 'body' && element) element.scrollTop = 0
     element?.focus({ preventScroll: true })
   }, [snap])
 
@@ -106,19 +108,21 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
   }
   const reopen = () => {
     suppressClick.current = false
-    focusAfterSnap.current = 'handle'
-    setSnap('peek')
+    focusAfterSnap.current = 'body'
+    setSnap('half')
   }
 
   return <>
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
-      {snap !== 'closed' && <button ref={handleRef} type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
+      {snap !== 'closed' && <button type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
         aria-label={snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={onClick}>
         <span className="explore-sheet-grip" aria-hidden="true" />
       </button>}
-      <div className="explore-sheet-body" id={bodyId}>{children}</div>
+      <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
     </div>
-    {snap === 'closed' && <button ref={reopenRef} type="button" className="explore-sheet-reopen" aria-expanded="false" aria-controls={bodyId} onClick={reopen}>謎リストを開く</button>}
+    {(snap === 'closed' || snap === 'peek') && <button ref={reopenRef} type="button" className="explore-sheet-reopen"
+      aria-expanded={onBrowseBelowMap ? undefined : false} aria-controls={onBrowseBelowMap ? undefined : bodyId}
+      onClick={onBrowseBelowMap ?? reopen}>問題を見る</button>}
   </>
 }

@@ -1,19 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
+import { mobileHeaderClearance, scrollBelowHeader } from './scrollBelowHeader'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
-import { MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
-import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
+import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
+import { areaPinPosition } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
-// 日本国内専用（D-27）：地図の移動範囲を日本周辺に緩く制限する。strictBounds は使わず、端では柔らかく止める。
-const JAPAN_BOUNDS = { north: 50, south: 20, east: 158, west: 118 }
-const MIN_ZOOM = 3
+// 日本国内専用の見た目（D-27／D-41）は、初期表示の日本全体フィットと最小ズームで維持する。
+// 地図の restriction は使わない：表示範囲が restriction の幅より広いズームでは、ライブラリが
+// setCenter を restriction のメルカトル中心（北緯35.605…・東経134.5）へ固定してしまい、
+// fitBounds がセットした中心が差し替わって「ピンと違う場所へ飛ぶ」不具合になったため撤去した
+// （2026-11-08 の実測で確定。詳細は decisions.md の D-41 追記）。
+// 国外を薄く落とすベールも、相方だった restriction の撤去で飾りだけが残り、見た目も
+// しっくり来なかったため撤去した（D-41 追記）。移動範囲は制限しない。
+// これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
+// 初期表示の日本全体フィットは小さい画面でも 4.5 を下回らないため、その下限に合わせる。
+const MIN_ZOOM = 4.5
 const INITIAL_ZOOM = 5
 const MAX_ZOOM = 20
 const LOCATION_ZOOM = 14
@@ -24,20 +32,54 @@ function pinIcon(color: string, count: number, emphasized = false): { url: strin
   const center = count >= 2
     ? `<circle cx="18" cy="17" r="9.5" fill="#ffffff"/><text x="18" y="21.5" text-anchor="middle" font-family="sans-serif" font-size="${count >= 10 ? 10 : 12}" font-weight="700" fill="${PIN_STROKE}">${count}</text>`
     : '<circle cx="18" cy="17" r="7" fill="#ffffff"/>'
-  // ホバー／フォーカス中は赤くして、PC・タッチ端末とも選択状態を分かりやすくする。
-  const fill = emphasized ? '#e7473f' : color
+  // ピンの色は青と赤だけ。ホバー／フォーカス中は赤くし、選択中も呼び出し側が同じ赤を渡す。
+  const fill = emphasized ? PIN_ACTIVE_COLOR : color
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="0 0 36 44"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
 const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra }: {
+function focusQuestDestination(card: HTMLDivElement | null | undefined, list: HTMLElement | null) {
+  const destination = card?.querySelector<HTMLElement>('.quest-card-heading h3') ?? list
+  if (!destination) return
+  destination.tabIndex = -1
+  destination.focus({ preventScroll: true })
+  scrollBelowHeader(destination)
+}
+
+// 地域の公開ジオメトリから、フィットに使える全頂点を {lat, lng} で返す。閉じていない・
+// 範囲外の座標を含むリングは丸ごと除く（従来のフィットと同じ検証）。使える輪郭が無ければ null。
+function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | null {
+  const geometry = area.publicGeometry
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
+  const validPolygons = polygons.filter((polygon) => polygon.length > 0 && polygon.every((ring) => {
+    if (ring.length < 4) return false
+    const validPoints = ring.every(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lng) <= 180 && Math.abs(lat) <= 90)
+    const [firstLng, firstLat] = ring[0]
+    const [lastLng, lastLat] = ring[ring.length - 1]
+    return validPoints && firstLng === lastLng && firstLat === lastLat
+  }))
+  if (!validPolygons.length) return null
+  const points: Array<{ lat: number; lng: number }> = []
+  validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => points.push({ lat, lng }))))
+  return points
+}
+
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
+  /** 選択中の問題の詳細。一覧の選択中の行の直下にアコーディオンとして差し込む（D-46）。
+      別枠で下に置くとタイトルが二重に出て煩雑になるため、置き場所は一覧の中に寄せる。 */
+  questDetail?: ReactNode
+  /** シート表示（地図が使えてカード一覧が出ている状態）かどうかを呼び出し側へ知らせる。
+      問題の選択手段の出し分け（地図が使える間はカード一覧に一本化し、全件ピッカーは
+      地図が使えないフォールバック専用にする、D-43）に使う。 */
+  onSheetModeChange?: (sheetMode: boolean) => void
   /** PC幅で地図の下に出ていた内容（問題の選択・詳細・注意書き）をサイドバーのパネル内へ寄せるための追加コンテンツ。
       パネル表示ではサイドバー内、地図が使えない時は通常フローのリスト末尾に出す。シート表示（スマホ幅）では出さない。 */
   panelExtra?: ReactNode
+  questScrollTarget?: RefObject<HTMLDivElement | null>
   /** 境界データの出典（国土数値情報 N03）をシート内に小さく出す。共有検証サイトの探索地図でのみ有効にする。 */
   showBoundaryCredit?: boolean
   /** 地域の塗りを「選択中の地域だけ」にする（D-29）。共有検証サイトの探索地図でのみ有効にする。 */
@@ -103,8 +145,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [sheetHeight, setSheetHeight] = useState(SHEET_PEEK_HEIGHT)
   // PC幅サイドバーの開閉（D-36）。その場の操作感を優先し、状態はメモリのみで保持する。
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [viewport, setViewport] = useState<ViewportBounds | null>(null)
-  const viewportRef = useRef<ViewportBounds | null>(null)
+  // フィット時のパディングは「フィットする時点」の開閉状態で決める。開閉のたびに
+  // 再フィットすると地図の中心が動いてしまうため（D-38）、フィット側の effect の
+  // 依存には開閉状態を入れず、ref 経由で現在の値だけを読む。
+  const sidebarCollapsedRef = useRef(false)
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   // 地域を選ぶ直前のカメラ（中心・ズーム）。選択を解除したら、初期表示ではなくこの状態へ戻す。
   const preSelectionCamera = useRef<{ map: MapInstance; center: { lat: number; lng: number }; zoom: number } | null>(null)
@@ -121,15 +165,60 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     window.clearTimeout(areaFailureTimer.current)
     areaFailureTimer.current = window.setTimeout(() => { areaFailureTimer.current = undefined; setAreaFailed(true) }, 0)
   }
+  // 選択中地域へのフィットが完了した時点のカメラ（中心・ズーム）。フィット完了（idle）ごとに
+  // 記録し直す。選択中の地域をもう一度押した時、カメラがこの位置から動いていれば「解除」
+  // ではなく「もう一度寄せる」を優先するための判定材料（利用者は移行を期待して押している）。
+  const fittedCamera = useRef<{ map: MapInstance; areaId: string; center: { lat: number; lng: number }; zoom: number } | null>(null)
+  // 地域の範囲へ地図をフィットさせる共通処理。選択時フィットと、再タップ時の再フィットで使う。
+  // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
+  // 実際に見えている領域の中央に来るようにする。
+  const fitToArea = useCallback((instance: MapInstance, area: PublicArea): boolean => {
+    const google = window.google?.maps
+    if (!google?.LatLngBounds) return false
+    const points = areaFitPoints(area)
+    if (!points) return false
+    const bounds = new google.LatLngBounds()
+    points.forEach((point) => bounds.extend(point))
+    fittedCamera.current = null
+    if (showPublicAreas) {
+      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+    } else instance.fitBounds(bounds)
+    try {
+      const listener = instance.addListener('idle', () => {
+        try { listener.remove() } catch { /* SDK teardown is best effort. */ }
+        try {
+          const center = instance.getCenter?.()
+          if (center) fittedCamera.current = { map: instance, areaId: area.areaId, center: { lat: center.lat(), lng: center.lng() }, zoom: instance.getZoom() ?? INITIAL_ZOOM }
+        } catch { /* カメラが読めなければ記録なし（再タップ時は再フィット優先のまま）。 */ }
+      })
+    } catch { /* リスナーを付けられない環境では記録を諦める。 */ }
+    return true
+  }, [showPublicAreas, wideViewport])
+  // カメラが、その地域へのフィット完了位置に（実質）留まっているか。
+  const cameraAtFit = useCallback((instance: MapInstance, areaId: string): boolean => {
+    const snapshot = fittedCamera.current
+    if (!snapshot || snapshot.map !== instance || snapshot.areaId !== areaId) return false
+    try {
+      const center = instance.getCenter?.()
+      if (!center) return false
+      return Math.abs(center.lat() - snapshot.center.lat) < 1e-6 && Math.abs(center.lng() - snapshot.center.lng) < 1e-6
+        && Math.abs((instance.getZoom() ?? INITIAL_ZOOM) - snapshot.zoom) < 1e-6
+    } catch { return false }
+  }, [])
+  // 選択中の地域がもう一度押された（ピン／地域レイヤー）時の共通の扱い。カメラがフィット
+  // 位置から動いていれば、選択は解除せずその地域へ寄せ直して true を返す。フィット位置に
+  // いる時（と、選択中でない時）は false を返し、呼び出し側の従来動作（選択／解除）に委ねる。
+  const refitIfCameraMoved = useCallback((instance: MapInstance, area: PublicArea): boolean => {
+    if (area.areaId !== selectedAreaId) return false
+    if (cameraAtFit(instance, area.areaId)) return false
+    return fitToArea(instance, area)
+  }, [selectedAreaId, cameraAtFit, fitToArea])
 
   useEffect(() => {
     if (!API_KEY || !target.current) return
     let active = true
     let authFailed = false
     let zoomListener: { remove(): void } | undefined
-    let idleListener: { remove(): void } | undefined
-    viewportRef.current = null
-    setViewport(null)
     const unsubscribeAuth = subscribeMapsAuthFailure(() => {
       authFailed = true
       if (active) { cancelLocationRequest(); map.current = null; setStatus('auth-error') }
@@ -140,7 +229,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       try {
         instance = new google.Map(target.current, {
           center: JAPAN, zoom: INITIAL_ZOOM, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
-          restriction: { latLngBounds: JAPAN_BOUNDS, strictBounds: false },
           disableDefaultUI: true, mapTypeControl: false, streetViewControl: false,
           fullscreenControl: false, clickableIcons: false, gestureHandling: 'greedy',
           styles: MAP_STYLES,
@@ -152,22 +240,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           layer.setMap(instance)
           dataLayer.current = layer
         } catch { failArea() }
-        idleListener = instance.addListener('idle', () => {
-          if (!active) return
-          try {
-            const bounds = instance.getBounds?.()
-            if (!bounds) return
-            const northEast = bounds.getNorthEast()
-            const southWest = bounds.getSouthWest()
-            const next = { north: northEast.lat(), south: southWest.lat(), east: northEast.lng(), west: southWest.lng() }
-            if (![next.north, next.south, next.east, next.west].every(Number.isFinite)) return
-            const previous = viewportRef.current
-            if (previous && Math.abs(previous.north - next.north) < 1e-9 && Math.abs(previous.south - next.south) < 1e-9
-              && Math.abs(previous.east - next.east) < 1e-9 && Math.abs(previous.west - next.west) < 1e-9) return
-            viewportRef.current = next
-            setViewport(next)
-          } catch { /* 表示範囲が読めない間は全件表示を維持する。 */ }
-        })
         zoomListener = instance.addListener('zoom_changed', () => {
           if (active) setZoom(instance.getZoom() ?? 5)
         })
@@ -183,7 +255,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       window.clearTimeout(areaFailureTimer.current)
       unsubscribeAuth()
       try { zoomListener?.remove() } catch { /* SDK teardown is best effort. */ }
-      try { idleListener?.remove() } catch { /* SDK teardown is best effort. */ }
       try { dataLayer.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
       dataLayer.current = null
       map.current = null
@@ -237,7 +308,13 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       })
       listener = layer.addListener('click', (event) => {
         const areaId = event.feature.getProperty('areaId')
-        if (active && typeof areaId === 'string' && areas.some((area) => area.areaId === areaId)) { setPinAreaId(null); onSelectArea?.(areaId) }
+        if (!active || typeof areaId !== 'string') return
+        const area = areas.find((candidate) => candidate.areaId === areaId)
+        if (!area) return
+        // 選択中の地域を、地図を動かした後にもう一度押したら、解除せずその地域へ寄せ直す。
+        const instance = map.current
+        if (instance && refitIfCameraMoved(instance, area)) return
+        setPinAreaId(null); onSelectArea?.(areaId)
       })
     } catch {
       active = false
@@ -245,7 +322,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       failArea()
     }
     return () => { active = false; window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; try { listener?.remove(); layer.setMap(null) } catch { /* SDK teardown is best effort. */ } }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly, refitIfCameraMoved])
 
   useEffect(() => {
     const instance = map.current
@@ -260,26 +337,31 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         const position = areaPinPosition(area)
         if (!position) continue
         const selected = area.areaId === selectedAreaId
+        // 選択中のピンもホバーと同じ赤にする（ピン本体に黄色は使わない。黄色は地域の塗りだけ）。
+        const pinColor = selected ? PIN_ACTIVE_COLOR : PIN_COLOR
         const marker = new google.Marker({
           position, map: instance,
           title: `${area.label}の探索エリア（${area.publishedCount}問）`,
-          icon: pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount),
+          icon: pinIcon(pinColor, area.publishedCount),
           cursor: 'pointer',
           zIndex: selected ? 2 : 1,
         })
         listeners.push(marker.addListener('click', () => {
           if (!active) return
-          // 選択中のピンをもう一度押したらハイライトを外す。選択自体の解除は呼び出し側が同じ地域の再選択として扱う。
+          // 選択中のピンをもう一度押した時、カメラがフィット位置から動いていれば解除せず
+          // その地域へ寄せ直す（押したのに移行しない、への対応）。フィット位置にいる時だけ
+          // 従来どおり選択解除として扱う（ハイライトを外し、解除は呼び出し側が担う）。
+          if (selected && refitIfCameraMoved(instance, area)) return
           setPinAreaId((current) => (current === area.areaId ? null : area.areaId))
           onSelectArea?.(area.areaId)
         }))
         // Google Maps のポインタイベントに任せ、PC・タッチ端末で共通の強調表示を行う。
         if (marker.setIcon) {
           listeners.push(marker.addListener('mouseover', () => {
-            if (active) marker.setIcon?.(pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount, true))
+            if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, true))
           }))
           listeners.push(marker.addListener('mouseout', () => {
-            if (active) marker.setIcon?.(pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount))
+            if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount))
           }))
         }
         created.push(marker)
@@ -296,7 +378,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           fitted = true
         }
         if (fitted) {
-          instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport))
+          instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
           initialFitDone.current = instance
         }
       }
@@ -306,7 +388,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved])
 
   useEffect(() => {
     const instance = map.current
@@ -326,6 +408,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       } else {
         instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM)
       }
+      fittedCamera.current = null
       lastViewportSelection.current = { map: instance, areaId: '' }
       return
     }
@@ -341,27 +424,11 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     try {
       const area = areas.find((candidate) => candidate.areaId === selectedAreaId)
       if (!area) return
-      const geometry = area.publicGeometry
-      const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
-      const validPolygons = polygons.filter((polygon) => polygon.length > 0 && polygon.every((ring) => {
-        if (ring.length < 4) return false
-        const validPoints = ring.every(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lng) <= 180 && Math.abs(lat) <= 90)
-        const [firstLng, firstLat] = ring[0]
-        const [lastLng, lastLat] = ring[ring.length - 1]
-        return validPoints && firstLng === lastLng && firstLat === lastLat
-      }))
-      if (!validPolygons.length) return
-      const bounds = new google.LatLngBounds()
-      validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => bounds.extend({ lat, lng }))))
-      // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
-      // 実際に見えている領域の中央に来るようにする。
-      if (showPublicAreas) {
-        instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport))
-        initialFitDone.current = instance
-      } else instance.fitBounds(bounds)
+      if (!fitToArea(instance, area)) return
+      initialFitDone.current = instance
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
     } catch { failArea() }
-  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest])
+  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest, fitToArea])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
@@ -409,19 +476,63 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
   // 地図上に小さく浮かせる地域名チップの対象。ピンのフォーカスを優先し、無ければ選択中の地域。
   const focusArea = highlightArea ?? areas.find((area) => area.areaId === selectedAreaId)
-  const visibleQuests = status === 'ready' ? questsInViewport(areas, quests, viewport) : quests
+  // 一覧は選択（地域・地方の絞り込み）だけに連動し、地図の表示範囲では変わらない（D-45）。
+  // 絞り込みは呼び出し側が済ませた quests をそのまま並べる。
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
   // シート表示は問題の件数に依存させない。絞り込みで0件になってもシートと全画面を維持し、空表示を出す。
   const sheetMode = status === 'ready' && showPublicAreas
   // PC幅ではシートの代わりに左サイドバーのパネルへ同じ一覧を出す（D-34）。全画面化の扱いはシートと同じ。
   const panelMode = sheetMode && wideViewport
-  const questList = showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={visibleQuests} variant={sheetMode ? 'viewport' : 'fallback'}
+  const [browseBelowMap, setBrowseBelowMap] = useState(false)
+  const belowMap = sheetMode && !panelMode && browseBelowMap
+  const belowMapList = useRef<HTMLElement>(null)
+  const mapShell = useRef<HTMLDivElement>(null)
+  const [pastMap, setPastMap] = useState(false)
+  const updateMapScrollPosition = useCallback(() => {
+    const bottom = mapShell.current?.getBoundingClientRect().bottom
+    setPastMap(bottom !== undefined && bottom <= mobileHeaderClearance() + 1)
+  }, [])
+  useEffect(() => {
+    const update = updateMapScrollPosition
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [sheetMode, panelMode, belowMap, updateMapScrollPosition])
+  useEffect(() => {
+    if (!belowMap) return
+    focusQuestDestination(questScrollTarget?.current, belowMapList.current)
+    updateMapScrollPosition()
+  }, [belowMap, questScrollTarget, updateMapScrollPosition])
+
+  const returnToMap = () => {
+    setBrowseBelowMap(false)
+    mapShell.current?.focus({ preventScroll: true })
+    mapShell.current?.scrollIntoView?.({ block: 'start' })
+  }
+  const browseQuests = () => {
+    if (!belowMap) {
+      setBrowseBelowMap(true)
+      return
+    }
+    focusQuestDestination(questScrollTarget?.current, belowMapList.current)
+    updateMapScrollPosition()
+  }
+
+  // 詳細（questDetail）は一覧の選択中の行の直下にだけ差し込む。同時に2か所へは出さない
+  // （状態を持つ詳細が二重にマウントされるのを避けるため）。地図下の一覧を開いている間は
+  // そちらへ寄せ、「問題を見る」の着地（#70）が地図下の詳細になるようにする。
+  const renderQuestList = (scrollToHighlight = true, withDetail = false) => showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={quests}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
-    onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)}
-    emptyText={sheetMode && quests.length === 0 ? '選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。' : undefined} /> : null
-  // 境界データの出典表記（N03 の利用条件）。シート内・フォールバックのリスト末尾に小さく出す。
+    scrollToHighlight={scrollToHighlight}
+    detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget}
+    onOpenQuest={onOpenQuest} /> : null
+  // 境界データの出典表記（N03 の利用条件）。短い文言で、パネル／シートの一番下に小さく出す（D-46）。
   const boundaryCredit = showBoundaryCredit && showPublicAreas
-    ? <p className="map-boundary-credit">境界データ：国土数値情報（行政区域データ）N03（国土交通省）をもとに作成</p>
+    ? <p className="map-boundary-credit">境界データ：国土数値情報N03（国土交通省）</p>
     : null
   const mapControls = status === 'ready' ? <div className="map-controls">
     <div className="map-zoom" aria-label="地図の表示操作">
@@ -442,16 +553,26 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     return () => { document.body.classList.remove('explore-fullbleed') }
   }, [sheetMode])
 
+  // シート表示かどうかを呼び出し側へ知らせる（D-43）。コールバックの同一性に依存しないよう
+  // ref 経由で最新のものを呼び、アンマウント時は「地図は使えない」側へ戻す。地図が無い画面
+  // （記録画面や、フォールバックが本文になる永続側）でピッカーが消えたままにならないため。
+  const sheetModeChangeRef = useRef(onSheetModeChange)
+  useEffect(() => { sheetModeChangeRef.current = onSheetModeChange }, [onSheetModeChange])
+  useEffect(() => { sheetModeChangeRef.current?.(sheetMode) }, [sheetMode])
+  useEffect(() => () => { sheetModeChangeRef.current?.(false) }, [])
+
   // レイアウトが確定する遷移（全画面化・サイドバー方式への切替）では地図コンテナの
   // 大きさが変わる。コンテナ確定前に走ったフィットは実サイズに合わず、選択中なのに
   // 初期表示のまま残ることがある（2026-11-08 の実機報告）。確定後にサイズの再認識を
   // 促し、未フィットの選択があればフィットをやり直す。
+  // サイドバーの開閉はフローティング化（D-38）でコンテナの大きさが変わらなくなったため、
+  // ここでの対象に含めない（開閉では resize も再フィットもしない）。
   const settledLayout = useRef('')
   useEffect(() => {
     if (!sheetMode) return
     const instance = map.current
     if (!instance) return
-    const signature = `${sheetMode}:${panelMode}:${sidebarCollapsed}`
+    const signature = `${sheetMode}:${panelMode}`
     if (settledLayout.current !== signature) {
       settledLayout.current = signature
       try { window.google?.maps?.event.trigger?.(instance, 'resize') } catch { /* サイズ再認識は補助であり、失敗しても地図は使える。 */ }
@@ -461,18 +582,19 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       lastViewportSelection.current = null
       setFitRequest((value) => value + 1)
     }
-  }, [sheetMode, panelMode, selectedAreaId, sidebarCollapsed])
+  }, [sheetMode, panelMode, selectedAreaId])
 
-  // サイドバーの開閉はシェル側（ナビ・ヘッダー・ワークスペースの余白）にも効かせるため、
-  // body のクラスで CSS と協調する。
+  // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
+  // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。
   useEffect(() => {
     if (!panelMode) return
+    sidebarCollapsedRef.current = sidebarCollapsed
     document.body.classList.toggle('explore-sidebar-collapsed', sidebarCollapsed)
     return () => { document.body.classList.remove('explore-sidebar-collapsed') }
   }, [panelMode, sidebarCollapsed])
 
-  return (
-    <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
+  return (<>
+    <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '') + (belowMap ? ' is-browsing-below-map' : '')}
       style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
       {status === 'ready' && !panelMode && (topOverlay || focusArea) && <div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}</div>}
@@ -497,15 +619,23 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {sheetMode
         ? panelMode
           ? <>
-            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{questList}{boundaryCredit}{panelExtra}</div>
+            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{renderQuestList(true, true)}{panelExtra}{boundaryCredit}</div>
             <button type="button" className="sidebar-toggle" aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
               onClick={() => setSidebarCollapsed((value) => !value)}>
               <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
             </button>
           </>
-          : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}{boundaryCredit}</ExploreBottomSheet>
-        : <>{questList}{boundaryCredit}{panelExtra}</>}
+          : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
+            onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap)}{boundaryCredit}</ExploreBottomSheet>
+        : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>
-  )
+    {sheetMode && !panelMode && (pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
+      className="explore-sheet-reopen map-browse-shortcut"
+      onClick={pastMap ? returnToMap : browseQuests}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
+    {belowMap && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
+      {renderQuestList(false, true)}
+      {boundaryCredit}
+    </section>}
+  </>)
 }

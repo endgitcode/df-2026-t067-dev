@@ -6,6 +6,7 @@ import { QuestDetails } from './features/quests/QuestDetails'
 import { QuestReport } from './features/quests/QuestReport'
 import type { ChallengeSelection } from './features/quests/QuestDetails'
 import { MapPreview } from './features/explore/MapPreview'
+import { scrollBelowHeader } from './features/explore/scrollBelowHeader'
 import { Icon } from './components/Icon'
 import type { AuthClient, AuthSnapshot } from './features/auth/authTypes'
 import type { PublicArea, PublicQuest } from './shared/api/types'
@@ -49,6 +50,9 @@ type AppProps = {
   openQuestRequest?: { questId: string; sequence: number }
   questPicker?: ReactNode
   catalogFallback?: ReactNode
+  /** 地図がシート表示（使える状態）かどうかを MapPreview から受け取る。問題の選択手段の
+      出し分け（地図が使える間はピッカーを出さない、D-43）を呼び出し側が判断するために使う。 */
+  onMapSheetModeChange?: (sheetMode: boolean) => void
   mapOverlay?: ReactNode
   apiMode?: boolean
   apiDataMode?: LocalApiDataMode
@@ -97,7 +101,7 @@ function waitForSignedIn(authClient: AuthClient, signal: AbortSignal): Promise<b
   })
 }
 
-export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, mapAreas = [], mapQuests = [], onOpenQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
+export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, mapAreas = [], mapQuests = [], onOpenQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, onMapSheetModeChange, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
   const [openState, setOpenState] = useState<{ quest?: PublicQuest; open: boolean }>({ open: false })
   const isQuestOpen = openState.quest === externalQuest && openState.open
   const [openedRequest, setOpenedRequest] = useState<typeof openQuestRequest>()
@@ -109,6 +113,11 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const [recordDestination, setRecordDestination] = useState<{ auth: AuthSnapshot; id: string } | null>(null)
   const [recordsOpen, setRecordsOpen] = useState(false)
   const questCard = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (isQuestOpen && openedRequest && document.querySelector('.is-browsing-below-map')) {
+      scrollBelowHeader(questCard.current?.querySelector<HTMLElement>('.quest-card-heading h3') ?? questCard.current)
+    }
+  }, [isQuestOpen, openedRequest])
   const authClient = useMemo(() => providedClient ?? createFirebaseAuthClient(), [providedClient])
   const auth = useSyncExternalStore(authClient.subscribe, authClient.getSnapshot, authClient.getSnapshot)
   const source = readDataSource(import.meta.env.VITE_QUEST_DATA_SOURCE, import.meta.env.DEV)
@@ -292,10 +301,12 @@ export default function App({ authClient: providedClient, apiClient: providedApi
 
   const exploreFeedback = !isQuestOpen && feedback
     ? <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p> : null
-  const railContent = (
-    <>
-              {railFallback ?? questPicker}
-              {!railFallback && <div ref={questCard}>
+  // 詳細は、地図が使える表示（共有検証・永続）では一覧の選択中の行の直下へアコーディオンとして
+  // 差し込む（D-46）。対象の問題が一覧に無い使い方（固定問題の埋め込み等）と、それ以外
+  // （スタンドアロンのデモ表示等）では従来どおりレールに置く。
+  const detailInList = (teamPreview || durableLocal) && Boolean(quest) && mapQuests.some((item) => item.questId === quest?.questId)
+  const questDetailBlock = (
+              !railFallback && <div ref={questCard}>
                 {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
@@ -324,17 +335,22 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       signInPending={visiblePending !== null} onSignIn={() => void login()} />}
                   </QuestDetails>
                   : apiMode ? null : connection.result.status === 'loading' ? <p role="status" aria-label="問題の読み込み">問題を読み込んでいます…</p> : <div role="alert">{source === 'invalid' ? '表示設定を確認してください。' : '問題を読み込めませんでした。'}<button type="button" className="retry-button" onClick={connection.retry}>問題を再読み込み</button></div>}
-              </div>}
-              <p className="browse-note">問題の閲覧にログインは必要ありません。</p>
-              <div className="demo-note"><span className="demo-note-dot" /><p>{teamAnswerTrial ? '自治体画面で公開した架空の問題を確認できます。招待された4人は撮影と回答も試せます。' : teamPreview ? '自治体画面で公開した架空の問題を確認できます。' : durableLocal ? '永続APIの確認用です。回答の送信には合成画像と架空の座標を使ってください。' : apiMode ? '公開APIが返す架空のデモデータです。実際に訪問できる場所ではありません。' : '今はデザイン確認用の架空の1問を表示しています。実際に訪問できる場所ではありません。'}</p></div>
+              </div>
+  )
+  const railContent = (
+    <>
+              {railFallback ?? questPicker}
+              {!detailInList && questDetailBlock}
+              {/* 共有検証（team-preview）ではデモの断り書きを出さない（D-39）。永続・公開APIデモでは、
+                  合成画像・架空座標の使用や「実際に訪問できる場所ではない」という制限の明示として残す。 */}
+              {!teamPreview && <div className="demo-note"><span className="demo-note-dot" /><p>{durableLocal ? '永続APIの確認用です。回答の送信には合成画像と架空の座標を使ってください。' : apiMode ? '公開APIが返す架空のデモデータです。実際に訪問できる場所ではありません。' : '今はデザイン確認用の架空の1問を表示しています。実際に訪問できる場所ではありません。'}</p></div>}
     </>
   )
-  // サイドバー内では、ページ下部のフッターの文言もパネルの末尾に寄せる（フッター自体は CSS で隠す）。
+  // サイドバー内では、レールの中身と認証フィードバックをパネルに寄せる。
   const panelContent = (
     <div className="side-panel-rail">
       {railContent}
       {exploreFeedback}
-      <p className="side-panel-footer-note">場所・問題は架空の開発用デモです。</p>
     </div>
   )
 
@@ -387,7 +403,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       </header>
 
       <main id="main" className="page" tabIndex={-1}>
-        {showRecords ? <section className="owner-records" aria-labelledby="records-title">
+        {showRecords ? <section className="owner-records view-enter" aria-labelledby="records-title">
           <h1 id="records-title">自分の記録</h1>
           <p className="sample-note">開発用の本人記録です。</p>
           <button type="button" className="secondary-button" onClick={() => navigateToRecords(false)}>地図へ戻る</button>
@@ -402,7 +418,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
               : <p role="status">ログインを確認しています…</p>)}
           {feedback && <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
         </section> : (!teamPreview ? catalogFallback : undefined) ?? <>
-        <section className="explore" aria-labelledby="explore-title">
+        <section className="explore view-enter" aria-labelledby="explore-title">
           <div className="explore-heading">
             <div>
               <h1 id="explore-title">全国から謎を探す</h1>
@@ -411,7 +427,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} />
 
 {!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>
@@ -419,7 +435,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         {!panelArrangement && exploreFeedback}
         </>}
       </main>
-      <footer className="site-footer"><span>場所・問題は架空の開発用デモです。</span></footer>
       <nav className="mobile-nav" aria-label="スマホ用ナビゲーション">
         <a href="#explore-title" aria-current={showRecords ? undefined : 'page'} onClick={() => navigateToRecords(false)}><Icon name="map" /><span>謎を探す</span></a>
         {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} disabled={!localApiMode || visiblePending !== null}

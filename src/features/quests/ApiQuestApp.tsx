@@ -65,9 +65,19 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const refreshInFlight = useRef(false)
   const refreshOperation = useRef(0)
   const loadGeneration = useRef(0)
+  // 問題そのものを明示的に選んだ経路の印。?quest= のみのディープリンクは地域選択を
+  // 伴わないため、そのままだと地図が所属地域へ寄らない。読み込みの途中で所属地域へ選択を
+  // 追随させ、地域を選んだ時と同じフィットを発生させる。ピッカー選択は選んだ瞬間に地域も
+  // 一緒に選択するため、この印はディープリンク（初期表示）専用に使う。
+  // 一覧の先頭問題が自動で選択されただけの場合は立てない（初期表示の日本全体を保つため）。
+  const explicitQuestId = useRef(initialSelection.questId)
   const refreshButton = useRef<HTMLButtonElement>(null)
   const restoreRefreshFocus = useRef(false)
   const [staleQuest, setStaleQuest] = useState<{ questId: string; version: number } | null>(null)
+  // 地図が使える表示（シート／パネル表示）かどうかは MapPreview から受け取る。使える間は
+  // 問題の選択を地図連動のカード一覧とピンに一本化し、全件ピッカーと「公開情報を更新」は
+  // 地図が使えないフォールバック表示でのみ出す（D-43）。再取得の仕組み自体は変えない。
+  const [mapSheetMode, setMapSheetMode] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const catalog = useRef<{ api: Api; choices: Map<string, PublicQuest[]>; areas?: PublicArea[] } | null>(null)
   const clearRefreshNotice = () => {
@@ -136,6 +146,17 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
           cache.choices.set(selectedAreaId, choices)
         }
         if (signal.aborted) return
+        // ?quest= のみのディープリンクでは、地域が未選択のまま問題だけが指定される。詳細を
+        // 読み込む前に、一覧で分かった所属地域へ選択を追随させ、地域で絞った読み込みとして
+        // やり直す（D-44）。地域・問題の組で来た場合や、先頭問題の自動選択では追随しない。
+        if (explicitQuestId.current && explicitQuestId.current === selectedId) {
+          const chosen = choices.find((item) => item.questId === selectedId)
+          if (chosen && chosen.areaId !== selectedAreaId) {
+            if (syncUrl) writeSelectionToUrl(chosen.areaId, selectedId, 'replace')
+            setSelectedAreaId(chosen.areaId)
+            return
+          }
+        }
         if (!choices.length) {
           if (selectedId) {
             if (syncUrl) writeSelectionToUrl(selectedAreaId, '', 'replace')
@@ -188,6 +209,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const regionAreas = useMemo(() => getRegionAreas(availableAreas, activeRegion, activePrefecture), [availableAreas, activeRegion, activePrefecture])
   const prefOptions = REGIONS.find((item) => item.name === activeRegion)?.prefectures ?? []
   const resetAreaSelection = () => {
+    explicitQuestId.current = ''
     if (!selectedAreaId) return
     clearRefreshNotice()
     if (syncUrl) writeSelectionToUrl('', '', 'push')
@@ -222,7 +244,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       return
     }
     clearRefreshNotice()
-    if (syncUrl) writeSelectionToUrl(selectedAreaId, item.questId, 'push')
+    // 地図側（共有検証）の問題選択と同じく、所属地域も一緒に選択し、地図を寄せる（D-44）。
+    if (syncUrl) writeSelectionToUrl(item.areaId, item.questId, 'push')
+    if (item.areaId !== selectedAreaId) setSelectedAreaId(item.areaId)
     setSelectedId(item.questId)
     if (dataMode === 'durable-local') {
       setOpenQuestRequest((previous) => ({ questId: item.questId, sequence: (previous?.sequence ?? 0) + 1 }))
@@ -233,7 +257,6 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     <ul aria-label="公開問題">{visibleChoices.map((item) => <li key={item.questId}>
       <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => chooseQuest(item)}>{item.title}</button>
     </li>)}</ul>
-    <p>問題と地域名は公開APIから取得しています。架空の問題の位置は地図に表示しません。</p>
   </div>
 
   const quest = state === 'ready' ? current?.quest : undefined
@@ -263,6 +286,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     {refreshNotice?.api === api && <span role="status">{refreshNotice.text}</span>}
   </>
   const selectArea = (areaId: string) => {
+    explicitQuestId.current = ''
     // 選択中の地域がもう一度選ばれたら（ピンの再タップ等）選択を解除し、未選択＝全件表示に戻る。
     if (areaId === selectedAreaId) { resetAreaSelection(); return }
     if (!regionAreas.some((item) => item.areaId === areaId)) return
@@ -290,12 +314,12 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
         ? 'この問題は公開されていないか、見つかりません。別の問題を選べます。'
         : 'サーバーとの通信を確認して、もう一度お試しください。'}</p>}
       {state !== 'loading' && <button type="button" onClick={(event) => reload(event)} disabled={refreshing}>再試行</button>}
-      {refreshControl}
-      {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode !== 'team-preview' && filterControls}{picker}</>}
+      {!mapSheetMode && refreshControl}
+      {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode !== 'team-preview' && filterControls}{!mapSheetMode && picker}</>}
     </section> : undefined
   return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={regionAreas} mapQuests={visibleChoices} onOpenQuest={openQuestFromMap} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
     areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
-    questPicker={<>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
+    questPicker={mapSheetMode ? undefined : <>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} onMapSheetModeChange={setMapSheetMode} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}
     onHintVersionStale={() => { if (quest) setStaleQuest({ questId: quest.questId, version: quest.version }) }}
     onReloadQuest={(event) => reload(event)} />

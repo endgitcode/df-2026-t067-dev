@@ -128,7 +128,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('starts at zoom 5 and allows zooming through 12 up to the max of 20, then stops and respects min 3', async () => {
+  it('starts at zoom 5 and allows zooming through 12 up to the max of 20, then stops and respects min 4.5', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     let currentZoom = 5
@@ -144,10 +144,11 @@ describe('Google map panel', () => {
     const user = userEvent.setup()
     render(<ConfiguredMapPreview />)
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeEnabled()
-    expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 3, maxZoom: 20 })
+    expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 4.5, maxZoom: 20 })
     expect(mapOptions?.styles).toEqual(MAP_STYLES)
-    // 日本国内専用（D-27）：移動範囲は日本周辺に緩く制限する。
-    expect(mapOptions?.restriction).toEqual({ latLngBounds: { north: 50, south: 20, east: 158, west: 118 }, strictBounds: false })
+    // restriction は付けない（D-41 追記）：表示範囲が restriction の幅より広いズームではライブラリが
+    // setCenter を restriction 中心へ固定し、fitBounds の中心が差し替わる不具合があったため撤去した。
+    expect(mapOptions?.restriction).toBeUndefined()
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeEnabled()
     for (let zoom = 6; zoom <= 12; zoom++) await user.click(screen.getByRole('button', { name: '地図を拡大' }))
     expect(currentZoom).toBe(12)
@@ -157,10 +158,30 @@ describe('Google map panel', () => {
     expect(screen.getByRole('button', { name: '地図を拡大' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: '地図を縮小' }))
     expect(currentZoom).toBe(19)
-    for (let zoom = 18; zoom >= 3; zoom--) await user.click(screen.getByRole('button', { name: '地図を縮小' }))
-    expect(currentZoom).toBe(3)
+    for (let zoom = 18; zoom >= 5; zoom--) await user.click(screen.getByRole('button', { name: '地図を縮小' }))
+    expect(currentZoom).toBe(5)
+    // 最小ズーム 4.5（D-41）で止まり、それ以上は引けない。
+    await user.click(screen.getByRole('button', { name: '地図を縮小' }))
+    expect(currentZoom).toBe(4.5)
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeDisabled()
-    expect(setZoom).toHaveBeenLastCalledWith(3)
+    expect(setZoom).toHaveBeenLastCalledWith(4.5)
+    delete window.google
+  })
+
+  it('does not draw any veil polygon over the map', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const polygonConstructor = vi.fn()
+    class Polygon { constructor(options: Record<string, unknown>) { polygonConstructor(options) } setMap() {} }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const map = { ...mapInstance }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Polygon, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} />)
+    expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeVisible()
+    // 国外を薄く落とすベールは撤去した（D-41 追記）。地図には一切ポリゴンを重ねない。
+    expect(polygonConstructor).not.toHaveBeenCalled()
+    unmount()
     delete window.google
   })
 
@@ -237,14 +258,17 @@ describe('Google map panel', () => {
     class Marker { setMap() {} addListener() { return { remove() {} } } }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }), trigger } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { visibleAreaFitPadding } = await import('./fitPadding')
     const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    // PC幅でサイドバーが開いている間は、フィットにパネル幅ぶんの左パディングを見込む（D-38）。
+    expect(fitBounds).toHaveBeenCalledWith(expect.anything(), visibleAreaFitPadding(true))
     expect(trigger).toHaveBeenCalledWith(map, 'resize')
     unmount()
     delete window.google
   })
 
-  it('collapses and reopens the PC sidebar, resizing the map on each toggle', async () => {
+  it('collapses and reopens the PC sidebar without resizing or refitting the map', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query.includes('min-width'),
@@ -254,7 +278,9 @@ describe('Google map panel', () => {
     }))
     vi.resetModules()
     const trigger = vi.fn()
-    const map = { ...mapInstance, fitBounds: vi.fn(), setCenter: vi.fn() }
+    const fitBounds = vi.fn()
+    const setCenter = vi.fn()
+    const map = { ...mapInstance, fitBounds, setCenter }
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
     class Marker { setMap() {} addListener() { return { remove() {} } } }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }), trigger } } as never }
@@ -270,14 +296,22 @@ describe('Google map panel', () => {
     expect(container.querySelector('.explore-side-panel')).not.toBeNull()
     expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
     trigger.mockClear()
+    fitBounds.mockClear()
+    setCenter.mockClear()
     await user.click(closeToggle)
     const openToggle = screen.getByRole('button', { name: 'サイドバーを開く' })
     expect(openToggle).toHaveAttribute('aria-expanded', 'false')
     expect(document.body).toHaveClass('explore-sidebar-collapsed')
-    expect(trigger).toHaveBeenCalledWith(map, 'resize')
+    // フローティング方式（D-38）では開閉で地図コンテナが変わらないため、
+    // resize も再フィットも中心の移動も起きない。
+    expect(trigger).not.toHaveBeenCalled()
+    expect(fitBounds).not.toHaveBeenCalled()
+    expect(setCenter).not.toHaveBeenCalled()
     await user.click(openToggle)
     expect(screen.getByRole('button', { name: 'サイドバーを閉じる' })).toHaveAttribute('aria-expanded', 'true')
     expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
+    expect(trigger).not.toHaveBeenCalled()
+    expect(fitBounds).not.toHaveBeenCalled()
     unmount()
     delete window.google
   })
@@ -312,6 +346,74 @@ describe('Google map panel', () => {
     // 解除時は初期表示ではなく、最初に選ぶ直前のカメラ（大阪・ズーム9）へ戻る。
     expect(setCenter).toHaveBeenLastCalledWith({ lat: 34.6937, lng: 135.5023 })
     expect(setZoom).toHaveBeenLastCalledWith(9)
+    unmount()
+    delete window.google
+  })
+
+  it('refits instead of deselecting when the selected area pin is tapped after the camera moved, and deselects at the fitted position', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let center = { lat: 36.2048, lng: 138.2529 }
+    let zoom = 5
+    const idleCallbacks: Array<() => void> = []
+    const fitBounds = vi.fn(() => { center = { lat: 35.5, lng: 139.5 }; zoom = 11 })
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn(), setZoom: vi.fn(),
+      getCenter: () => ({ lat: () => center.lat, lng: () => center.lng }), getZoom: () => zoom,
+      addListener: (name: string, callback: () => void) => { if (name === 'idle') idleCallbacks.push(callback); return { remove() {} } } }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const instances: Marker[] = []
+    class Marker {
+      setMap() {}
+      click?: () => void
+      constructor() { instances.push(this) }
+      addListener(name: string, callback: () => void) { if (name === 'click') this.click = callback; return { remove() {} } }
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSelectArea = vi.fn()
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" onSelectArea={onSelectArea} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(instances).toHaveLength(1))
+    // フィット完了（idle）時点のカメラを記録させる。
+    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
+    // 利用者が地図を動かした状態で、選択中のピンをもう一度押す。
+    center = { lat: 34.0, lng: 135.0 }; zoom = 9
+    fitBounds.mockClear()
+    act(() => instances[0].click?.())
+    // 解除はされず、その地域へ寄せ直すだけ（「押したのに移行しない」への対応）。
+    expect(onSelectArea).not.toHaveBeenCalled()
+    expect(fitBounds).toHaveBeenCalledTimes(1)
+    // 再フィットの完了を記録し、カメラがフィット位置にある状態でもう一度押す。
+    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
+    fitBounds.mockClear()
+    act(() => instances[0].click?.())
+    // フィット位置にいるので、従来どおり選択解除として呼び出し側へ渡る。
+    expect(onSelectArea).toHaveBeenCalledWith('area-a')
+    expect(fitBounds).not.toHaveBeenCalled()
+    unmount()
+    delete window.google
+  })
+
+  it('selects the area from its pin even when a quest is already selected without an area', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const instances: Marker[] = []
+    class Marker {
+      setMap() {}
+      click?: () => void
+      constructor() { instances.push(this) }
+      addListener(name: string, callback: () => void) { if (name === 'click') this.click = callback; return { remove() {} } }
+    }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const map = { ...mapInstance, fitBounds: vi.fn() }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSelectArea = vi.fn()
+    // クエストだけがリンク等で選択済みで、地域は未選択の状態（D-44 の追随前の見え方）。
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="" selectedQuestId="q1" onSelectArea={onSelectArea} />)
+    await waitFor(() => expect(instances).toHaveLength(1))
+    act(() => instances[0].click?.())
+    expect(onSelectArea).toHaveBeenCalledWith('area-a')
     unmount()
     delete window.google
   })
@@ -380,15 +482,15 @@ describe('Google map panel', () => {
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker: class { setMap() {} addListener() { return { remove() {} } } }, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
     const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={[]} showBoundaryCredit />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     // 位置情報の送信案内は地図の右上に常駐しない（D-28）。使う時にだけ結果メッセージへ出す。
     expect(screen.queryByText(/位置情報はGoogle Mapsに送信されます/)).not.toBeInTheDocument()
     expect(document.querySelector('.map-location-action')).not.toBeInTheDocument()
-    // 境界データの出典はシート内に小さく常駐する。
-    expect(screen.getByText('境界データ：国土数値情報（行政区域データ）N03（国土交通省）をもとに作成')).toBeInTheDocument()
+    // 境界データの出典は短い文言でシート内に小さく常駐する（D-46）。
+    expect(screen.getByText('境界データ：国土数値情報N03（国土交通省）')).toBeInTheDocument()
     unmount()
     const { unmount: unmountPlain } = render(<ConfiguredMapPreview areas={areas} quests={[]} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(screen.queryByText(/国土数値情報/)).not.toBeInTheDocument()
     unmountPlain()
     delete window.google
@@ -497,16 +599,16 @@ describe('Google map panel', () => {
     vi.useRealTimers()
   })
 
-  it('filters the linked quest list to the visible map bounds when the map goes idle', async () => {
+  it('keeps the quest list unchanged when the map moves, and follows only the selection-scoped quests', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const listeners = new Map<string, () => void>()
-    let bounds = { north: 32, south: 30, east: 132, west: 129 }
+    // 地図の表示範囲がどの地域も含まない場所へ動いても、一覧は表示範囲では変わらない（D-45）。
     const map = { ...mapInstance,
       addListener: (name: string, callback: () => void) => { listeners.set(name, callback); return { remove: () => { listeners.delete(name) } } },
       getBounds: () => ({
-        getNorthEast: () => ({ lat: () => bounds.north, lng: () => bounds.east }),
-        getSouthWest: () => ({ lat: () => bounds.south, lng: () => bounds.west }),
+        getNorthEast: () => ({ lat: () => 32, lng: () => 132 }),
+        getSouthWest: () => ({ lat: () => 30, lng: () => 129 }),
       }),
     }
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
@@ -514,16 +616,22 @@ describe('Google map panel', () => {
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
     const quests: PublicQuest[] = [
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+      { questId: 'q2', version: 1, title: '博多の灯台', clue: '海に突き出た灯台', areaId: 'area-b', visitConditions: '', hintCount: 2 },
     ]
-    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
     // 地図が使えるようになるとリストはボトムシートへ移るため、移行後の要素で確認する。
     await waitFor(() => expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible())
     act(() => listeners.get('idle')?.())
-    expect(await screen.findByText('この範囲に謎はありません。地図を移動すると、別の地域の謎が表示されます。')).toBeVisible()
-    expect(screen.queryByRole('button', { name: '港の時計台の詳細を見る' })).not.toBeInTheDocument()
-    bounds = { north: 37, south: 34, east: 141, west: 138 }
-    act(() => listeners.get('idle')?.())
-    expect(await screen.findByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    // 表示範囲の外にある地域の問題も、一覧からは消えない。空表示にもならない。
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' })).toBeVisible()
+    expect(screen.getByText('2件')).toBeVisible()
+    expect(screen.queryByText(/この範囲に謎はありません/)).not.toBeInTheDocument()
+    // 選択で絞られた問題が渡されれば、一覧はその分だけに切り替わる（選択連動）。
+    rerender(<ConfiguredMapPreview areas={areas} quests={[quests[0]]} onOpenQuest={vi.fn()} />)
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: '博多の灯台の詳細を見る' })).not.toBeInTheDocument()
+    expect(screen.getByText('1件')).toBeVisible()
     unmount()
     delete window.google
   })
@@ -560,11 +668,11 @@ describe('Google map panel', () => {
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
     expect(iconUrl).toContain('#4eb8d0')
     expect(iconUrl).toContain('>2<')
-    // 連動リストには地図下に問題カードが並び、代表点の注記もここで伝える。
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    // 連動リストには地図下に問題カードが並ぶ（代表点の注記は置かない、D-39）。
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
     expect(screen.getByRole('button', { name: '石畳の坂の詳細を見る' })).toBeVisible()
-    expect(screen.getByText('ピンは地域の代表点です。問題の場所そのものではありません。')).toBeVisible()
+    expect(screen.queryByText('ピンは地域の代表点です。問題の場所そのものではありません。')).not.toBeInTheDocument()
     // 地図が使える時は連動リストはボトムシートに入り、初期状態は覗き見（peek）。
     const sheet = container.querySelector('.explore-sheet')
     expect(sheet).not.toBeNull()
@@ -576,7 +684,11 @@ describe('Google map panel', () => {
     expect(sheet).toHaveAttribute('data-snap', 'half')
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('li')).toHaveClass('is-highlighted')
     expect(screen.getByRole('button', { name: '石畳の坂の詳細を見る' }).closest('li')).toHaveClass('is-highlighted')
-    await user.click(screen.getByRole('button', { name: '閉じる' }))
+    // 選択中地域のサマリバー（黄色いバー）は出さない（D-45）。閉じる導線はピンの再タップに寄せる。
+    expect(container.querySelector('.explore-list-focus')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '閉じる' })).not.toBeInTheDocument()
+    // ピンをもう一度押すとハイライトが外れる。
+    act(() => instances[0].click?.())
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('li')).not.toHaveClass('is-highlighted')
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
@@ -588,7 +700,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('uses the accent color for the selected area pin and passes themed styles to the map', async () => {
+  it('uses the active red for the selected area pin and passes themed styles to the map', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const instances: Marker[] = []
@@ -610,7 +722,9 @@ describe('Google map panel', () => {
     const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" />)
     await waitFor(() => expect(instances).toHaveLength(1))
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
-    expect(iconUrl).toContain('#f6d84a')
+    // 選択中のピンもホバーと同じ赤。ピン本体に黄色（#f6d84a）は使わない（黄色は地域の塗りだけ）。
+    expect(iconUrl).toContain('fill="#e7473f"')
+    expect(iconUrl).not.toContain('#f6d84a')
     expect(iconUrl).not.toContain('>1<')
     expect(mapOptions?.styles).toEqual(expect.arrayContaining([
       expect.objectContaining({ featureType: 'water', elementType: 'geometry' }),
@@ -630,11 +744,45 @@ describe('Google map panel', () => {
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
     const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
-    expect(document.body).toHaveClass('explore-fullbleed')
+    // 一覧は地図の読み込み完了でシート内へ移るため、ready を待ってからシート内の一覧を見る。
+    await screen.findByRole('button', { name: '地図を拡大' })
+    expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
+    // シート表示の目印（body のクラス）は effect で付くため、付くまで待つ。
+    await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
     unmount()
     expect(document.body).not.toHaveClass('explore-fullbleed')
     delete window.google
+  })
+
+  it('notifies the sheet mode for selection display switching and resets it on unmount', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSheetModeChange = vi.fn()
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} onSheetModeChange={onSheetModeChange} />)
+    await screen.findByRole('button', { name: '地図を拡大' })
+    expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
+    // 地図が使える間はシート表示であることを知らせ、呼び出し側がピッカーを隠せるようにする（D-43）。
+    await waitFor(() => expect(onSheetModeChange).toHaveBeenCalledWith(true))
+    unmount()
+    // アンマウント時は「使えない」側へ戻し、地図が無い画面でピッカーが消えたままにならないようにする。
+    expect(onSheetModeChange).toHaveBeenLastCalledWith(false)
+    delete window.google
+  })
+
+  it('reports no sheet mode when the map is unavailable', () => {
+    const onSheetModeChange = vi.fn()
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    render(<MapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} onSheetModeChange={onSheetModeChange} />)
+    expect(onSheetModeChange).toHaveBeenCalledWith(false)
+    expect(onSheetModeChange).not.toHaveBeenCalledWith(true)
   })
 
   it('keeps the sheet and full-bleed layout with a filter-empty message when filtering leaves no quests', async () => {
@@ -647,7 +795,8 @@ describe('Google map panel', () => {
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
     const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    await screen.findByRole('button', { name: '地図を拡大' })
+    expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(container.querySelector('.explore-sheet')).not.toBeNull()
     expect(document.body).toHaveClass('explore-fullbleed')
     rerender(<ConfiguredMapPreview areas={areas} quests={[]} onOpenQuest={vi.fn()} />)
@@ -681,7 +830,8 @@ describe('Google map panel', () => {
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
     const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    await screen.findByRole('button', { name: '地図を拡大' })
+    expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     // スコープ表示「全国の謎」は置かず、選択中地域のチップだけを出す。
     expect(container.querySelector('.map-scope')).not.toBeInTheDocument()
     expect(screen.queryByText('全国の謎')).not.toBeInTheDocument()
@@ -709,19 +859,40 @@ describe('Google map panel', () => {
     const quests: PublicQuest[] = [
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
-    const { container, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={onOpenQuest} />)
+    const questScrollTarget = { current: null as HTMLDivElement | null }
+    const detailFor = (title: string) => <div><header className="quest-card-heading"><h3>{title}</h3></header></div>
+    const quests2: PublicQuest[] = [
+      ...quests,
+      { questId: 'q2', version: 1, title: '博多の灯台', clue: '海に突き出た灯台', areaId: 'area-a', visitConditions: '', hintCount: 2 },
+    ]
+    const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q2" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('博多の灯台')} />)
     const sheet = await waitFor(() => {
       const element = container.querySelector('.explore-sheet')
       expect(element).not.toBeNull()
       return element as HTMLElement
     })
-    // 覗き見（peek）の高さは、ハンドルと件数に加えて先頭カード1枚（peek では要約表示）が
-    // 丸ごと収まる前提で決める。要約表示になった分、従来の200pxより低く抑える。
+    // 覗き見（peek）の高さは、ハンドルと件数に加えて先頭の行1つ（タイトルだけの形、D-46）が
+    // 丸ごと収まる前提で決める。
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect(sheet.style.height).toBe(`${SHEET_PEEK_HEIGHT}px`)
-    expect(SHEET_PEEK_HEIGHT).toBe(140)
+    expect(SHEET_PEEK_HEIGHT).toBe(128)
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
+    // 呼び出し側が選択を切り替えると、詳細は新しい選択行の直下へ移る。
+    rerender(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q1" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('港の時計台')} />)
+    const scroll = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scroll
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    // 「問題を見る」の着地は、地図下の一覧へ移った詳細のタイトル（#70、D-46）。
+    const belowMap = screen.getByRole('region', { name: '地図の下の問題一覧' })
+    const title = screen.getByRole('heading', { name: '港の時計台' })
+    expect(belowMap).toContainElement(title)
+    expect(title).toHaveFocus()
+    expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+    expect(container.querySelector('.explore-sheet')).toBe(sheet)
+    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
     unmount()
     delete window.google
   })
@@ -750,7 +921,7 @@ describe('Google map panel', () => {
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
     const { unmount, container } = render(<ConfiguredMapPreview areas={areas} quests={[]} onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
-    await screen.findByRole('region', { name: '表示範囲の謎' })
+    await screen.findByRole('region', { name: '選べる謎の一覧' })
     const controls = container.querySelector('.map-controls')
     expect(controls?.parentElement).toBe(container.querySelector('.map-preview-shell'))
     expect(controls?.parentElement).not.toBe(container.querySelector('.map-preview'))

@@ -78,7 +78,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     const user = userEvent.setup()
     const view = render(<TeamPreview authClient={auth} />)
     // 地図が使える状態になり、連動リストがボトムシートに入ると全画面化の目印が付く。
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
     // 浮動化した導線：所属がある場合の自治体画面への入口が両ナビに残り、アカウントメニューも届く。
     const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
@@ -105,7 +105,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
     stubViewport(true)
     const wide = render(<TeamPreview authClient={auth} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     const panel = wide.container.querySelector('.explore-side-panel')
     expect(panel).not.toBeNull()
     expect(panel?.querySelector('.explore-list')).not.toBeNull()
@@ -114,35 +114,45 @@ describe('探索画面の縁なし（全画面）表示', () => {
     wide.unmount()
     stubViewport(false)
     const narrow = render(<TeamPreview authClient={auth} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(narrow.container.querySelector('.explore-sheet')).not.toBeNull()
     expect(narrow.container.querySelector('.explore-side-panel')).toBeNull()
     narrow.unmount()
   })
 
-  it('PC幅では地図の下に出ていた選択・注意書き類もサイドバー内に入り、スマホ幅では従来どおり地図の下に出る', async () => {
+  it('PC幅では詳細がサイドバー内に入り、地図が使える間はピッカーを出さない（スマホ幅のレールも同様）', async () => {
     vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
     stubViewport(true)
     const wide = render(<TeamPreview authClient={auth} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     const panel = wide.container.querySelector('.explore-side-panel')
     expect(panel).not.toBeNull()
-    // 問題の選択（更新ボタン）・閲覧の案内・共有検証の注記・フッターの文言がサイドバー内にある。
-    expect(panel?.querySelector('.api-quest-picker')).not.toBeNull()
-    expect(within(panel as HTMLElement).getByRole('button', { name: '公開情報を更新' })).toBeVisible()
-    expect(panel?.querySelector('.browse-note')).not.toBeNull()
-    expect(panel?.querySelector('.demo-note')).not.toBeNull()
-    expect(panel?.querySelector('.side-panel-footer-note')?.textContent).toContain('場所・問題は架空の開発用デモです')
+    // 詳細はサイドバー内の1か所だけに出る（タイトルの見出しは画面全体で1つだけ。
+    // カード＋ピッカー＋詳細の三重表示にはしない、D-43）。
+    expect(await within(panel as HTMLElement).findByRole('heading', { name: quest.title })).toBeVisible()
+    expect(screen.getAllByRole('heading', { name: quest.title })).toHaveLength(1)
+    // 地図が使える間は全件ピッカーと「公開情報を更新」を出さず、選択はカード一覧とピンに一本化する。
+    // 閲覧の案内・デモの注記・フッターの文言も出さない（D-39）。
+    await waitFor(() => expect(panel?.querySelector('.api-quest-picker')).toBeNull())
+    expect(within(panel as HTMLElement).queryByRole('button', { name: '公開情報を更新' })).not.toBeInTheDocument()
+    expect(wide.container.querySelector('.browse-note')).toBeNull()
+    expect(wide.container.querySelector('.demo-note')).toBeNull()
+    expect(wide.container.querySelector('.side-panel-footer-note')).toBeNull()
+    expect(wide.container.querySelector('.site-footer')).toBeNull()
     // 地図の下のレールは出さない。
     expect(wide.container.querySelector('.quest-rail')).toBeNull()
     wide.unmount()
-    // スマホ幅では従来どおり、注意書き類は地図の下のレールに出る。
+    // スマホ幅では詳細は従来どおり地図の下のレールに出るが、地図が使える間はピッカーを出さない。
     stubViewport(false)
     const narrow = render(<TeamPreview authClient={auth} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     const rail = narrow.container.querySelector('.quest-rail')
     expect(rail).not.toBeNull()
-    expect(rail?.querySelector('.demo-note')).not.toBeNull()
+    await waitFor(() => expect(rail?.querySelector('.api-quest-picker')).toBeNull())
+    expect(within(rail as HTMLElement).queryByRole('button', { name: '公開情報を更新' })).not.toBeInTheDocument()
+    // スマホ幅でも案内・注記類は出さない（D-39）。
+    expect(narrow.container.querySelector('.demo-note')).toBeNull()
+    expect(narrow.container.querySelector('.browse-note')).toBeNull()
     expect(narrow.container.querySelector('.explore-side-panel')).toBeNull()
     narrow.unmount()
   })
@@ -156,7 +166,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     stubViewport(true)
     vi.stubGlobal('fetch', stubFetcher([]))
     render(<TeamPreview authClient={auth} />)
-    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
     const mobileNav = screen.getByRole('navigation', { name: 'スマホ用ナビゲーション' })
     // 所属の確認が終わっても入口は出ず、自分の記録は所属がある場合と同じ2番目のまま。
