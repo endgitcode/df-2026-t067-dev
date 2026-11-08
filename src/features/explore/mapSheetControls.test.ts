@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const css = readFileSync(new URL('../../App.css', import.meta.url), 'utf8')
+const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
 const FOLLOW_RULE = '.map-preview-shell.has-sheet .map-controls'
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
