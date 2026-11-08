@@ -51,9 +51,7 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); z-index: 3; }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
     expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute;')
-    expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 10px);')
-    // peek でもシート（z-index 7）がボタンを覆わないよう、再表示ボタンを前面に置く。
-    expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8;')
+    expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 44px;')
   })
 
   it('stacks the area chip after the filter flow so one and two filter rows cannot overlap it', () => {
