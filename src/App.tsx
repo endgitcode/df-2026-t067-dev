@@ -6,6 +6,7 @@ import { QuestDetails } from './features/quests/QuestDetails'
 import { QuestReport } from './features/quests/QuestReport'
 import type { ChallengeSelection } from './features/quests/QuestDetails'
 import { MapPreview } from './features/explore/MapPreview'
+import { scrollBelowHeader } from './features/explore/scrollBelowHeader'
 import { Icon } from './components/Icon'
 import type { AuthClient, AuthSnapshot } from './features/auth/authTypes'
 import type { PublicArea, PublicQuest } from './shared/api/types'
@@ -114,7 +115,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const questCard = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (isQuestOpen && openedRequest && document.querySelector('.below-map-quests')) {
-      questCard.current?.scrollIntoView?.({ block: 'start' })
+      scrollBelowHeader(questCard.current)
     }
   }, [isQuestOpen, openedRequest])
   const authClient = useMemo(() => providedClient ?? createFirebaseAuthClient(), [providedClient])

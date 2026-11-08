@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
+import { mobileHeaderClearance, scrollBelowHeader } from './scrollBelowHeader'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance, type PolygonInstance } from './googleMapsLoader'
@@ -460,7 +461,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   useEffect(() => {
     const update = () => {
       const bottom = mapShell.current?.getBoundingClientRect().bottom
-      setPastMap(bottom !== undefined && bottom <= 1)
+      setPastMap(bottom !== undefined && bottom <= mobileHeaderClearance() + 1)
     }
     update()
     window.addEventListener('scroll', update, { passive: true })
@@ -472,7 +473,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   }, [sheetMode, panelMode, belowMap])
   const scrollToQuestList = () => {
     belowMapList.current?.focus({ preventScroll: true })
-    belowMapList.current?.scrollIntoView?.({ block: 'start' })
+    scrollBelowHeader(belowMapList.current)
   }
   useEffect(() => {
     if (!belowMap) return
