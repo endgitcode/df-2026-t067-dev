@@ -209,7 +209,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       </select>
     </>}
     {selectedAreaId && <button type="button" onClick={resetAreaSelection}>すべての公開問題を見る</button>}
-    {activeRegion && state !== 'loading' && state !== 'error' && !visibleChoices.length && <p role="status">この条件に公開問題はありません。</p>}
+    {activeRegion && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '一覧から問題を選んでください。' : 'この条件に公開問題はありません。'}</p>}
     {dataMode === 'durable-local' ? <ul aria-label="公開問題">{visibleChoices.map(item => <li key={item.questId}>
       <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => {
         clearRefreshNotice()
