@@ -237,14 +237,17 @@ describe('Google map panel', () => {
     class Marker { setMap() {} addListener() { return { remove() {} } } }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }), trigger } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { visibleAreaFitPadding } = await import('./fitPadding')
     const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    // PC幅でサイドバーが開いている間は、フィットにパネル幅ぶんの左パディングを見込む（D-37）。
+    expect(fitBounds).toHaveBeenCalledWith(expect.anything(), visibleAreaFitPadding(true))
     expect(trigger).toHaveBeenCalledWith(map, 'resize')
     unmount()
     delete window.google
   })
 
-  it('collapses and reopens the PC sidebar, resizing the map on each toggle', async () => {
+  it('collapses and reopens the PC sidebar without resizing or refitting the map', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query.includes('min-width'),
@@ -254,7 +257,9 @@ describe('Google map panel', () => {
     }))
     vi.resetModules()
     const trigger = vi.fn()
-    const map = { ...mapInstance, fitBounds: vi.fn(), setCenter: vi.fn() }
+    const fitBounds = vi.fn()
+    const setCenter = vi.fn()
+    const map = { ...mapInstance, fitBounds, setCenter }
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
     class Marker { setMap() {} addListener() { return { remove() {} } } }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }), trigger } } as never }
@@ -270,14 +275,22 @@ describe('Google map panel', () => {
     expect(container.querySelector('.explore-side-panel')).not.toBeNull()
     expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
     trigger.mockClear()
+    fitBounds.mockClear()
+    setCenter.mockClear()
     await user.click(closeToggle)
     const openToggle = screen.getByRole('button', { name: 'サイドバーを開く' })
     expect(openToggle).toHaveAttribute('aria-expanded', 'false')
     expect(document.body).toHaveClass('explore-sidebar-collapsed')
-    expect(trigger).toHaveBeenCalledWith(map, 'resize')
+    // フローティング方式（D-37）では開閉で地図コンテナが変わらないため、
+    // resize も再フィットも中心の移動も起きない。
+    expect(trigger).not.toHaveBeenCalled()
+    expect(fitBounds).not.toHaveBeenCalled()
+    expect(setCenter).not.toHaveBeenCalled()
     await user.click(openToggle)
     expect(screen.getByRole('button', { name: 'サイドバーを閉じる' })).toHaveAttribute('aria-expanded', 'true')
     expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
+    expect(trigger).not.toHaveBeenCalled()
+    expect(fitBounds).not.toHaveBeenCalled()
     unmount()
     delete window.google
   })

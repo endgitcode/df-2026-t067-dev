@@ -392,17 +392,21 @@ body.explore-fullbleed .site-footer { width: 100%; padding: 21px 32px calc(25px 
 body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bottom); }
 /* PC幅の縁なし表示は、左サイドバーに集約する（D-34）: 主要ナビはサイドバー上段に固定し、
    絞り込みと表示範囲連動リストはその下のパネル（.explore-side-panel）に入れる。ボトムシートは使わない。
-   地図はサイドバーの右側いっぱいに広げ、ヘッダー（アプリ名・ログイン）は地図の上に浮く帯として残す。 */
+   サイドバーは押し出し式ではなく、地図の上に浮くカード型にする（D-37、Google マップの
+   デスクトップ版の型）。地図は常に画面いっぱいで、ステージ側はオフセットしない
+   （ワークスペースの padding やシェルへの inset で押し出すと、相対配置と重なって
+   二重に効いた前例がある。2026-11-08 の実機報告）。ナビ（上段）とパネル（下段）は
+   周囲に余白を置いて浮く1枚のカードとして見えるよう、角丸と影を上下でつなげる。
+   地図側の浮動要素（ヘッダー・地域名チップ・状態表示）はパネルと重ならないよう
+   --pc-sidebar-offset の位置から始め、開閉では動かさない。 */
 @media (min-width: 981px) {
-  body.explore-fullbleed { --pc-sidebar-w: 380px; --pc-sidebar-nav-h: 68px; }
-  /* 地図ステージの左オフセットは .explore-workspace の padding-left だけで行う。
-     シェルは position: relative のため、ここで inset を重ねると相対オフセットとして
-     二重に効き、空白帯と右寄せの原因になる（2026-11-08 の実機報告で修正）。 */
-  body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-w); z-index: 25; grid-template-columns: 1fr auto; }
-  body.explore-fullbleed .desktop-nav { position: fixed; top: 0; left: 0; z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h); padding: 12px 16px; background: var(--ui-surface); border-right: var(--ui-border-width) solid var(--ui-line); border-bottom: var(--ui-border-width) solid var(--ui-line); }
+  body.explore-fullbleed { --pc-sidebar-w: 380px; --pc-sidebar-nav-h: 68px; --pc-sidebar-gap: 16px; --pc-sidebar-offset: calc(var(--pc-sidebar-w) + var(--pc-sidebar-gap) * 2); }
+  body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 25; grid-template-columns: 1fr auto; }
+  body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h); padding: 12px 16px; background: var(--ui-surface); border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: 6px 0 0 var(--ui-line); }
   body.explore-fullbleed .desktop-nav a, body.explore-fullbleed .desktop-nav button { flex: 1 1 0; justify-content: center; }
-  body.explore-fullbleed .explore-workspace { padding-left: var(--pc-sidebar-w); }
-  body.explore-fullbleed .explore-side-panel { position: fixed; top: var(--pc-sidebar-nav-h); bottom: 0; left: 0; z-index: 30; width: var(--pc-sidebar-w); overflow-y: auto; background: var(--ui-surface); border-right: var(--ui-border-width) solid var(--ui-line); padding: 0 16px 20px; }
+  body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; width: var(--pc-sidebar-w); overflow-y: auto; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-top: 0; border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow); padding: 0 16px 20px; }
+  body.explore-fullbleed .map-topline { left: calc(var(--pc-sidebar-offset) + 8px); }
+  body.explore-fullbleed .map-location-status.is-floating { left: calc(var(--pc-sidebar-offset) + 8px); max-width: calc(100% - var(--pc-sidebar-offset) - 118px); }
   body.explore-fullbleed .explore-side-panel .side-panel-filters { position: sticky; top: 0; z-index: 2; margin: 0 -16px; padding: 12px 16px 10px; background: var(--ui-surface); }
   body.explore-fullbleed .explore-side-panel .map-filter-chips { flex-wrap: wrap; overflow: visible; }
   body.explore-fullbleed .explore-side-panel .explore-list { margin: 10px 0 0; border: 0; border-radius: 0; box-shadow: none; padding-right: 0; padding-left: 0; background: transparent; }
@@ -413,12 +417,13 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .explore-side-panel .side-panel-rail { margin-top: 18px; padding-top: 16px; border-top: var(--ui-border-width) solid var(--ui-line); }
   body.explore-fullbleed .explore-side-panel .side-panel-footer-note { margin: 18px 0 0; }
   body.explore-fullbleed .site-footer { display: none; }
-  /* サイドバーの開閉トグル（D-36）：パネルの右端に付く小さなタブ。閉じると左端に残る。 */
-  body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: var(--pc-sidebar-w); z-index: 35; display: grid; place-items: center; width: 26px; height: 56px; padding: 0; transform: translate(-50%, -50%); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-m); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 18px; line-height: 1; cursor: pointer; }
-  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { left: 0; transform: translate(0, -50%); border-radius: 0 var(--radius-m) var(--radius-m) 0; }
-  body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace { padding-left: 0; }
+  /* サイドバーの開閉トグル（D-36）：開いている間は浮動カードの右端に付く小さなタブ。
+     フローティング方式（D-37）では開閉はカードの表示／非表示だけで、地図もヘッダーも動かない。
+     閉じている間は、左上に小さな浮動ボタンとして残す（ブランドチップはカードの右側に
+     寄せてあるため重ならない。地域名チップはさらに下に付く）。 */
+  body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-w)); z-index: 35; display: grid; place-items: center; width: 26px; height: 56px; padding: 0; transform: translate(-50%, -50%); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-m); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 18px; line-height: 1; cursor: pointer; }
+  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); width: 42px; height: 42px; transform: none; }
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { display: none; }
-  body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }
   body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { display: none; }
 }
 
