@@ -30,6 +30,7 @@ describe('map controls placement with the bottom sheet', () => {
     const closedRule = '.explore-sheet[data-snap="closed"]:not(.is-dragging) { z-index: 5; }'
     expect(css.indexOf(closedRule)).toBeGreaterThan(mobileAt)
     expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }')
+    expect(css).not.toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) { visibility: hidden; pointer-events: none; }')
   })
 })
 
@@ -148,7 +149,7 @@ describe('UI motion (D-42)', () => {
 
   it('glides the sheet snap with the drawer curve and delays hiding until the close finishes', () => {
     expect(css).toContain('transition: height 300ms var(--ease-drawer), visibility 0s;')
-    expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) { transition: height 300ms var(--ease-drawer), visibility 0s linear 300ms; }')
+    expect(css).not.toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) { transition: height 300ms var(--ease-drawer), visibility 0s linear 300ms; }')
   })
 
   it('animates the quest details entrance and the view swap with the shared keyframes', () => {
