@@ -307,7 +307,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const detailInList = (teamPreview || durableLocal) && Boolean(quest) && mapQuests.some((item) => item.questId === quest?.questId)
   const questDetailBlock = (
               !railFallback && <div ref={questCard}>
-                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
+                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={!teamPreview && apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
                   onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
@@ -405,7 +405,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       <main id="main" className="page" tabIndex={-1}>
         {showRecords ? <section className="owner-records view-enter" aria-labelledby="records-title">
           <h1 id="records-title">自分の記録</h1>
-          <p className="sample-note">開発用の本人記録です。</p>
           <button type="button" className="secondary-button" onClick={() => navigateToRecords(false)}>地図へ戻る</button>
           {auth.status === 'signed-out' && <button type="button" className="primary-button" disabled={visiblePending !== null}
             onClick={() => void login()}>Googleログインして記録を見る</button>}
