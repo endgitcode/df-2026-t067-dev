@@ -38,6 +38,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
   const [locationStatus, setLocationStatus] = useState('')
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
     if (locationStatus !== LOCATION_SUCCESS_MESSAGE) return
@@ -48,6 +49,31 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const locationRequest = useRef(0)
   const locationTimer = useRef<number | undefined>(undefined)
   const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    const instance = map.current
+    const Marker = window.google?.maps?.Marker
+    if (!instance || !Marker || status !== 'ready' || !currentLocation) return
+    try {
+      const marker = new Marker({
+        map: instance,
+        position: currentLocation,
+        title: '現在地',
+        clickable: false,
+        zIndex: 3,
+        icon: {
+          path: 'M9 -9 3 9 -1 1 -9 -3 9 -9Z',
+          fillColor: '#111827',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeOpacity: 1,
+          strokeWeight: 2,
+          scale: 1.4,
+        },
+      })
+      return () => { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
+    } catch { /* 現在地マークが表示できなくても地図は利用できる。 */ }
+  }, [currentLocation, status, attempt])
   const [areaAttempt, setAreaAttempt] = useState(0)
   const [areaFailed, setAreaFailed] = useState(false)
   const [pinAreaId, setPinAreaId] = useState<string | null>(null)
@@ -277,6 +303,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         if (!requestedMap || map.current !== requestedMap) { settle('現在地を取得できませんでした。もう一度お試しください。'); return }
         requestedMap.setCenter({ lat: latitude, lng: longitude })
         requestedMap.setZoom(LOCATION_ZOOM)
+        setCurrentLocation({ lat: latitude, lng: longitude })
         settle(LOCATION_SUCCESS_MESSAGE)
       }, (error) => {
         const message = error.code === 1 ? '位置情報が許可されませんでした。ブラウザが再確認を表示しない場合は、アドレスバーのサイト情報から位置情報を「確認」または「許可」に変更して、もう一度お試しください。'
