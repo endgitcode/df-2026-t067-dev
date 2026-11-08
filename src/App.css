@@ -111,6 +111,8 @@ button.explore-quest-card { cursor: pointer; }
 .explore-sheet[data-snap="closed"]:not(.is-dragging) { transition: height 300ms var(--ease-drawer), visibility 0s linear 300ms; }
 .explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { transition: visibility 0s linear 300ms; }
 .explore-sheet-reopen { display: none; }
+.below-map-quests { min-width: 0; min-height: 100svh; padding: 16px 12px calc(var(--mobile-tabbar-h, 70px) + 16px); background: var(--ui-surface); }
+.below-map-quests .explore-quest-list { max-height: none; overflow: visible; }
 .explore-sheet-handle { flex: none; display: grid; place-items: center; height: 34px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; }
 .explore-sheet-handle:active { cursor: grabbing; }
 .explore-sheet-grip { width: 46px; height: 6px; border-radius: 999px; background: var(--ui-line); opacity: .45; }
@@ -447,6 +449,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 }
 
 @media (max-width: 980px) {
+  body.explore-fullbleed .page { padding-bottom: calc(var(--mobile-tabbar-h) + 24px); }
   body.explore-fullbleed .site-header { padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }
   /* 上部は帯ではなく小さな浮きチップに留め、地図が周囲と上下に抜けて見えるようにする。 */
   body.explore-fullbleed .brand { padding: 4px 10px 4px 4px; gap: 8px; }
@@ -460,8 +463,11 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
   body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }
   body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 3; }
-  body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 40px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
+  body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
+  body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }
+  body.explore-fullbleed .map-preview-shell:has(.explore-sheet.is-dragging) + .map-browse-shortcut { display: none; }
   body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
   /* フッター廃止（D-39）に伴い、レールの末尾の下部余白はレール側で確保する。 */
+  body.explore-fullbleed .map-preview-shell:has(> .explore-sheet-reopen, + .map-browse-shortcut) .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 62px); }
   body.explore-fullbleed .quest-rail { padding: 22px 16px calc(25px + env(safe-area-inset-bottom)); }
 }

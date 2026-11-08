@@ -146,8 +146,9 @@ describe('Google map panel', () => {
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeEnabled()
     expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 4.5, maxZoom: 20 })
     expect(mapOptions?.styles).toEqual(MAP_STYLES)
-    // 日本国内専用（D-27／D-41）：移動範囲は日本の領土とデモ地域が余裕を持って収まる範囲に制限する。
-    expect(mapOptions?.restriction).toEqual({ latLngBounds: { north: 46.5, south: 23, east: 147, west: 122 }, strictBounds: false })
+    // restriction は付けない（D-41 追記）：表示範囲が restriction の幅より広いズームではライブラリが
+    // setCenter を restriction 中心へ固定し、fitBounds の中心が差し替わる不具合があったため撤去した。
+    expect(mapOptions?.restriction).toBeUndefined()
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeEnabled()
     for (let zoom = 6; zoom <= 12; zoom++) await user.click(screen.getByRole('button', { name: '地図を拡大' }))
     expect(currentZoom).toBe(12)

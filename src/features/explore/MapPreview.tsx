@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
+import { mobileHeaderClearance, scrollBelowHeader } from './scrollBelowHeader'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance, type PolygonInstance } from './googleMapsLoader'
@@ -12,10 +13,11 @@ import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, M
 import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
-// 日本国内専用（D-27／D-41）：地図の移動範囲を日本の周辺に制限する。strictBounds は使わず、端では柔らかく止める。
-// 境界は日本の領土（北端の宗谷岬45.5度・南端の波照間島24.1度・西端の与那国島123.0度・東端の納沙布岬145.8度）が
-// すべて収まり、10のデモ地域と郡山の代表点からも緯度3度・経度5度以上の余裕がある範囲に絞った（D-41）。
-const JAPAN_BOUNDS = { north: 46.5, south: 23, east: 147, west: 122 }
+// 日本国内専用の見た目（D-27／D-41）は、国外を薄く落とすベールと最小ズームで維持する。
+// 地図の restriction は使わない：表示範囲が restriction の幅より広いズームでは、ライブラリが
+// setCenter を restriction のメルカトル中心（北緯35.605…・東経134.5）へ固定してしまい、
+// fitBounds がセットした中心が差し替わって「ピンと違う場所へ飛ぶ」不具合になったため撤去した
+// （2026-11-08 の実測で確定。詳細は decisions.md の D-41 追記）。
 // これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
 // 初期表示の日本全体フィットは小さい画面でも 4.5 を下回らないため、その下限に合わせる。
 const MIN_ZOOM = 4.5
@@ -226,7 +228,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       try {
         instance = new google.Map(target.current, {
           center: JAPAN, zoom: INITIAL_ZOOM, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
-          restriction: { latLngBounds: JAPAN_BOUNDS, strictBounds: false },
           disableDefaultUI: true, mapTypeControl: false, streetViewControl: false,
           fullscreenControl: false, clickableIcons: false, gestureHandling: 'greedy',
           styles: MAP_STYLES,
@@ -512,6 +513,39 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const sheetMode = status === 'ready' && showPublicAreas
   // PC幅ではシートの代わりに左サイドバーのパネルへ同じ一覧を出す（D-34）。全画面化の扱いはシートと同じ。
   const panelMode = sheetMode && wideViewport
+  const [browseBelowMap, setBrowseBelowMap] = useState(false)
+  const belowMap = sheetMode && !panelMode && browseBelowMap
+  const belowMapList = useRef<HTMLElement>(null)
+  const mapShell = useRef<HTMLDivElement>(null)
+  const [pastMap, setPastMap] = useState(false)
+  useEffect(() => {
+    const update = () => {
+      const bottom = mapShell.current?.getBoundingClientRect().bottom
+      setPastMap(bottom !== undefined && bottom <= mobileHeaderClearance() + 1)
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [sheetMode, panelMode, belowMap])
+  const scrollToQuestList = () => {
+    belowMapList.current?.focus({ preventScroll: true })
+    scrollBelowHeader(belowMapList.current)
+  }
+  useEffect(() => {
+    if (!belowMap) return
+    scrollToQuestList()
+  }, [belowMap])
+
+  const returnToMap = () => {
+    setBrowseBelowMap(false)
+    mapShell.current?.focus({ preventScroll: true })
+    mapShell.current?.scrollIntoView?.({ block: 'start' })
+  }
+
   const questList = showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={visibleQuests} variant={sheetMode ? 'viewport' : 'fallback'}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)}
@@ -579,9 +613,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     return () => { document.body.classList.remove('explore-sidebar-collapsed') }
   }, [panelMode, sidebarCollapsed])
 
-  return (
-    <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
-      style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
+  return (<>
+    <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
+      style={sheetMode ? { '--sheet-h': `${panelMode || belowMap ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
       <div className="map-topline"><div className="map-topline-main">{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div></div>
       {status === 'ready' && topOverlay && !panelMode && <div className="map-filter-overlay">{topOverlay}</div>}
@@ -612,8 +646,16 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
               <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
             </button>
           </>
-          : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}{boundaryCredit}</ExploreBottomSheet>
+          : !belowMap && <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
+            onBrowseBelowMap={() => setBrowseBelowMap(true)}>{questList}{boundaryCredit}</ExploreBottomSheet>
         : <>{questList}{boundaryCredit}{panelExtra}</>}
     </div>
-  )
+    {sheetMode && !panelMode && (belowMap || pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
+      className="explore-sheet-reopen map-browse-shortcut"
+      onClick={pastMap ? returnToMap : belowMap ? scrollToQuestList : () => setBrowseBelowMap(true)}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
+    {belowMap && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
+      {questList}
+      {boundaryCredit}
+    </section>}
+  </>)
 }
