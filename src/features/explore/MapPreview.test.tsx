@@ -601,7 +601,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('uses the accent color for the selected area pin and passes themed styles to the map', async () => {
+  it('uses the active red for the selected area pin and passes themed styles to the map', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const instances: Marker[] = []
@@ -623,7 +623,9 @@ describe('Google map panel', () => {
     const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" />)
     await waitFor(() => expect(instances).toHaveLength(1))
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
-    expect(iconUrl).toContain('#f6d84a')
+    // 選択中のピンもホバーと同じ赤。ピン本体に黄色（#f6d84a）は使わない（黄色は地域の塗りだけ）。
+    expect(iconUrl).toContain('fill="#e7473f"')
+    expect(iconUrl).not.toContain('#f6d84a')
     expect(iconUrl).not.toContain('>1<')
     expect(mapOptions?.styles).toEqual(expect.arrayContaining([
       expect.objectContaining({ featureType: 'water', elementType: 'geometry' }),

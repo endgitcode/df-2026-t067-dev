@@ -7,7 +7,7 @@ import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
-import { MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
+import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
 import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
@@ -24,8 +24,8 @@ function pinIcon(color: string, count: number, emphasized = false): { url: strin
   const center = count >= 2
     ? `<circle cx="18" cy="17" r="9.5" fill="#ffffff"/><text x="18" y="21.5" text-anchor="middle" font-family="sans-serif" font-size="${count >= 10 ? 10 : 12}" font-weight="700" fill="${PIN_STROKE}">${count}</text>`
     : '<circle cx="18" cy="17" r="7" fill="#ffffff"/>'
-  // ホバー／フォーカス中は赤くして、PC・タッチ端末とも選択状態を分かりやすくする。
-  const fill = emphasized ? '#e7473f' : color
+  // ピンの色は青と赤だけ。ホバー／フォーカス中は赤くし、選択中も呼び出し側が同じ赤を渡す。
+  const fill = emphasized ? PIN_ACTIVE_COLOR : color
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="0 0 36 44"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
@@ -264,10 +264,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         const position = areaPinPosition(area)
         if (!position) continue
         const selected = area.areaId === selectedAreaId
+        // 選択中のピンもホバーと同じ赤にする（ピン本体に黄色は使わない。黄色は地域の塗りだけ）。
+        const pinColor = selected ? PIN_ACTIVE_COLOR : PIN_COLOR
         const marker = new google.Marker({
           position, map: instance,
           title: `${area.label}の探索エリア（${area.publishedCount}問）`,
-          icon: pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount),
+          icon: pinIcon(pinColor, area.publishedCount),
           cursor: 'pointer',
           zIndex: selected ? 2 : 1,
         })
@@ -280,10 +282,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         // Google Maps のポインタイベントに任せ、PC・タッチ端末で共通の強調表示を行う。
         if (marker.setIcon) {
           listeners.push(marker.addListener('mouseover', () => {
-            if (active) marker.setIcon?.(pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount, true))
+            if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, true))
           }))
           listeners.push(marker.addListener('mouseout', () => {
-            if (active) marker.setIcon?.(pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount))
+            if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount))
           }))
         }
         created.push(marker)
