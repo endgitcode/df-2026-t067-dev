@@ -13,10 +13,11 @@ import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, M
 import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
-// 日本国内専用（D-27／D-41）：地図の移動範囲を日本の周辺に制限する。strictBounds は使わず、端では柔らかく止める。
-// 境界は日本の領土（北端の宗谷岬45.5度・南端の波照間島24.1度・西端の与那国島123.0度・東端の納沙布岬145.8度）が
-// すべて収まり、10のデモ地域と郡山の代表点からも緯度3度・経度5度以上の余裕がある範囲に絞った（D-41）。
-const JAPAN_BOUNDS = { north: 46.5, south: 23, east: 147, west: 122 }
+// 日本国内専用の見た目（D-27／D-41）は、国外を薄く落とすベールと最小ズームで維持する。
+// 地図の restriction は使わない：表示範囲が restriction の幅より広いズームでは、ライブラリが
+// setCenter を restriction のメルカトル中心（北緯35.605…・東経134.5）へ固定してしまい、
+// fitBounds がセットした中心が差し替わって「ピンと違う場所へ飛ぶ」不具合になったため撤去した
+// （2026-11-08 の実測で確定。詳細は decisions.md の D-41 追記）。
 // これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
 // 初期表示の日本全体フィットは小さい画面でも 4.5 を下回らないため、その下限に合わせる。
 const MIN_ZOOM = 4.5
@@ -227,7 +228,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       try {
         instance = new google.Map(target.current, {
           center: JAPAN, zoom: INITIAL_ZOOM, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
-          restriction: { latLngBounds: JAPAN_BOUNDS, strictBounds: false },
           disableDefaultUI: true, mapTypeControl: false, streetViewControl: false,
           fullscreenControl: false, clickableIcons: false, gestureHandling: 'greedy',
           styles: MAP_STYLES,
