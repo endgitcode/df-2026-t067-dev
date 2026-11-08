@@ -405,6 +405,13 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .explore-side-panel .map-filter-chips { flex-wrap: wrap; overflow: visible; }
   body.explore-fullbleed .explore-side-panel .explore-list { margin: 10px 0 0; border: 0; border-radius: 0; box-shadow: none; padding-right: 0; padding-left: 0; background: transparent; }
   body.explore-fullbleed .explore-side-panel .map-boundary-credit { margin: 12px 0 0; }
+  /* サイドバーの開閉トグル（D-36）：パネルの右端に付く小さなタブ。閉じると左端に残る。 */
+  body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: var(--pc-sidebar-w); z-index: 35; display: grid; place-items: center; width: 26px; height: 56px; padding: 0; transform: translate(-50%, -50%); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-m); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 18px; line-height: 1; cursor: pointer; }
+  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { left: 0; transform: translate(0, -50%); border-radius: 0 var(--radius-m) var(--radius-m) 0; }
+  body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace { padding-left: 0; }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { display: none; }
+  body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }
+  body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { display: none; }
 }
 
 @media (max-width: 980px) {
