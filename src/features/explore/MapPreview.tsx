@@ -277,7 +277,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   return (
     <div className="map-preview-shell">
     <section className="map-preview" aria-label="全国の謎">
-      <div className="map-topline"><span className="map-scope"><Icon name="map" />全国の謎</span>{status === 'ready' && <div className="map-location-action"><button type="button" onClick={locate} disabled={locating}>現在地へ戻る</button><span>位置情報はGoogle Mapsに送信されます</span></div>}</div>
+      <div className="map-topline"><span className="map-scope"><Icon name="map" />全国の謎</span>{status === 'ready' && <div className="map-location-action"><span>位置情報はGoogle Mapsに送信されます</span></div>}</div>
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'}>
         {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。問題の閲覧は続けられます。</span></> :
@@ -288,9 +288,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       </div>}
       {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert"><strong>地域エリアを表示できませんでした</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
       {status === 'ready' && <div className="map-zoom" aria-label="地図の表示操作">
+        <div className="map-zoom-group">
         <button type="button" aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
         <button type="button" aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
         <button type="button" aria-label="地図の表示を戻す" onClick={reset}><Icon name="reset" /></button>
+        <button type="button" className="map-location-button" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating} onClick={locate}><Icon name="locate" /></button>
+        </div>
       </div>}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
       {status === 'ready' && pinArea && pinQuests.length > 0 && <div className="map-pin-card" aria-label={`${pinArea.label}の問題プレビュー`}>
