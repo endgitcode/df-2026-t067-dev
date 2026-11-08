@@ -573,11 +573,11 @@ describe('Google map panel', () => {
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
     expect(iconUrl).toContain('#4eb8d0')
     expect(iconUrl).toContain('>2<')
-    // 連動リストには地図下に問題カードが並び、代表点の注記もここで伝える。
+    // 連動リストには地図下に問題カードが並ぶ（代表点の注記は置かない、D-39）。
     expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
     expect(screen.getByRole('button', { name: '石畳の坂の詳細を見る' })).toBeVisible()
-    expect(screen.getByText('ピンは地域の代表点です。問題の場所そのものではありません。')).toBeVisible()
+    expect(screen.queryByText('ピンは地域の代表点です。問題の場所そのものではありません。')).not.toBeInTheDocument()
     // 地図が使える時は連動リストはボトムシートに入り、初期状態は覗き見（peek）。
     const sheet = container.querySelector('.explore-sheet')
     expect(sheet).not.toBeNull()

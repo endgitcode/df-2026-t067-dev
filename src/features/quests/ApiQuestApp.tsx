@@ -233,7 +233,6 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     <ul aria-label="公開問題">{visibleChoices.map((item) => <li key={item.questId}>
       <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => chooseQuest(item)}>{item.title}</button>
     </li>)}</ul>
-    <p>問題と地域名は公開APIから取得しています。架空の問題の位置は地図に表示しません。</p>
   </div>
 
   const quest = state === 'ready' ? current?.quest : undefined

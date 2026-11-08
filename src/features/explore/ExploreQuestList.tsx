@@ -37,7 +37,6 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
       <div className="explore-list-head">
         <span>{quests.length}件</span>
       </div>
-      <p className="explore-list-note">ピンは地域の代表点です。問題の場所そのものではありません。</p>
       {highlightArea && <div className="explore-list-focus">
         <strong>{highlightArea.label}</strong><span>{highlightCount}問</span>
         <button type="button" onClick={onClearHighlight}>閉じる</button>

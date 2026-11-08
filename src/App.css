@@ -41,7 +41,7 @@ p { overflow-wrap: anywhere; }
 .account-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; display: flex; flex-direction: column; gap: 8px; min-width: 200px; padding: 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 .account-menu-name { margin: 0; font-size: 13px; font-weight: var(--ui-weight-strong); overflow-wrap: anywhere; }
 .account-menu [role="menuitem"] { min-height: 40px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; }
-.page, .site-footer { width: min(100% - 64px, 1440px); margin-inline: auto; }
+.page { width: min(100% - 64px, 1440px); margin-inline: auto; }
 .page { padding-block: 36px 26px; }
 .api-quest-picker { display: grid; gap: 7px; margin: 18px 0; padding: 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); }
 .api-quest-picker ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
@@ -86,7 +86,6 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .explore-list { margin-top: 14px; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
 .explore-list-head { display: flex; align-items: baseline; gap: 10px; }
 .explore-list-head span { font-size: 12px; color: var(--ui-muted); }
-.explore-list-note { margin: 6px 0 0; font-size: 11px; color: var(--ui-muted); }
 .explore-list-focus { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-soft); }
 .explore-list-focus strong { font-size: 13px; }
 .explore-list-focus span { font-size: 12px; color: var(--ui-muted); }
@@ -116,8 +115,7 @@ button.explore-quest-card { cursor: pointer; }
 .explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; }
 .explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }
 .explore-sheet .explore-list { margin: 0; border: 0; box-shadow: none; padding-top: 2px; }
-/* peek の間は注意書き・手がかり抜粋・サムネイルを省き、先頭カードを要約表示（タイトル・地域名・問題番号のみ）にして高さを抑える。half/full では従来どおり全部出す。 */
-.explore-sheet[data-snap="peek"] .explore-list-note { display: none; }
+/* peek の間は手がかり抜粋・サムネイルを省き、先頭カードを要約表示（タイトル・地域名・問題番号のみ）にして高さを抑える。half/full では従来どおり全部出す。 */
 .explore-sheet[data-snap="peek"] .explore-quest-clue { display: none; }
 .explore-sheet[data-snap="peek"] .explore-quest-card > img { display: none; }
 .explore-sheet .explore-quest-list { max-height: none; overflow: visible; }
@@ -198,7 +196,6 @@ button.explore-quest-card { cursor: pointer; }
 .auth-feedback[role="alert"] { color: var(--ui-error); }
 .demo-note { display: flex; align-items: start; gap: 7px; margin-top: 21px; padding-top: 17px; border-top: var(--ui-border-width) solid var(--ui-line); color: var(--ui-muted); font-size: 12px; line-height: 1.85; }
 .demo-note-dot { width: 4px; height: 4px; margin-top: 7px; border-radius: var(--ui-radius); background: var(--ui-muted); flex: none; }
-.site-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-block: 21px 25px; border-top: var(--ui-border-width) solid var(--ui-line); color: var(--ui-muted); font-size: 12px; }
 .mobile-nav { display: none; }
 
 @media (max-width: 1100px) {
@@ -206,7 +203,7 @@ button.explore-quest-card { cursor: pointer; }
   .desktop-nav { gap: 16px; }
   .desktop-nav a, .desktop-nav button { font-size: 12px; }
   .explore-workspace { grid-template-columns: minmax(0, 1fr) 334px; gap: 20px; }
-  .page, .site-footer { width: calc(100% - 48px); }
+  .page { width: calc(100% - 48px); }
   .map-preview { height: 600px; }
 }
 @media (max-width: 980px) {
@@ -221,8 +218,9 @@ button.explore-quest-card { cursor: pointer; }
   .map-preview-shell.has-sheet { height: max(520px, calc(100svh - 224px)); min-height: 520px; }
   .map-filter-overlay { top: 74px; }
   .quest-card { display: block; }
-  .browse-note, .demo-note { max-width: 570px; }
-  .site-footer { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+  .demo-note { max-width: 570px; }
+  /* フッター廃止（D-39）に伴い、下部タブバーと重ならないための余白はページ側で確保する。 */
+  .page { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
   .owner-records { padding-bottom: calc(var(--mobile-tabbar-h) + 20px); }
   /* 主要な行き先は画面下のタブバーに置く（Google マップのスマホアプリと同型、D-32）。 */
   .mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: stretch; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: var(--ui-border-width) solid var(--ui-line); background: var(--ui-surface); }
@@ -238,7 +236,7 @@ button.explore-quest-card { cursor: pointer; }
   .brand-mark .icon { width: 22px; height: 22px; }
   .brand-copy { font-size: 13px; }
   .account-area { max-width: 122px; gap: 4px; }
-  .page, .site-footer { width: calc(100% - 32px); }
+  .page { width: calc(100% - 32px); }
   .page { padding-top: 25px; padding-bottom: 24px; }
   .explore-heading { margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
   .eyebrow { font-size: 12px; }
@@ -268,7 +266,6 @@ button.explore-quest-card { cursor: pointer; }
   .sample-label, .area-label, .sample-note, .unavailable-note { font-size: 12px; }
   .clue-text { font-size: 14px; }
   .demo-note { font-size: 12px; }
-  .site-footer { font-size: 12px; }
   .mobile-nav a, .mobile-nav button { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -328,7 +325,7 @@ button.explore-quest-card { cursor: pointer; }
   .quest-card-content { padding: 20px; }
   .map-credit { font-size: 10px; }
   .demo-map-label { max-width: 175px; font-size: 10px; }
-  .site-footer { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+  .page { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 }
 
 .api-quest-picker li button { border-color: var(--ui-control-line); }
@@ -347,8 +344,6 @@ button.explore-quest-card { cursor: pointer; }
 .quest-report-form, .quest-report-form label { display: grid; gap: 8px; }
 .quest-report-form { margin-top: 12px; }
 .quest-report-form textarea, .quest-report-form select { font: inherit; }
-.browse-note { margin-top: 20px; color: var(--ui-muted); font-size: 12px; line-height: 1.8; }
-.side-panel-footer-note { color: var(--ui-muted); font-size: 12px; line-height: 1.8; }
 @media (max-width: 640px) { .quest-card-heading { padding: 20px; } }
 
 .optional-hint { margin: 0 0 18px; }
@@ -390,7 +385,6 @@ body.explore-fullbleed .account-icon-button { box-shadow: var(--ui-control-shado
 body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 88px); }
 body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 136px); }
 body.explore-fullbleed .quest-rail { max-width: 760px; margin-inline: auto; padding: 24px 20px 0; }
-body.explore-fullbleed .site-footer { width: 100%; padding: 21px 32px calc(25px + env(safe-area-inset-bottom)); }
 body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bottom); }
 /* PC幅の縁なし表示は、左サイドバーに集約する（D-34）: 主要ナビはサイドバー上段に固定し、
    絞り込みと表示範囲連動リストはその下のパネル（.explore-side-panel）に入れる。ボトムシートは使わない。
@@ -413,12 +407,10 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .explore-side-panel .map-filter-chips { flex-wrap: wrap; overflow: visible; }
   body.explore-fullbleed .explore-side-panel .explore-list { margin: 10px 0 0; border: 0; border-radius: 0; box-shadow: none; padding-right: 0; padding-left: 0; background: transparent; }
   body.explore-fullbleed .explore-side-panel .map-boundary-credit { margin: 12px 0 0; }
-  /* 地図の下に通常フローで残っていたレール（問題の選択・詳細・注意書き）はサイドバー内に寄せた。
-     ページ下部のフッターも文言をパネル末尾へ移し、探索画面はサイドバー＋地図だけで完結させる
+  /* 地図の下に通常フローで残っていたレール（問題の選択・詳細）はサイドバー内に寄せ、
+     探索画面はサイドバー＋地図だけで完結させる
      （ページ自体のスクロールで下に何も出てこないようにする）。 */
   body.explore-fullbleed .explore-side-panel .side-panel-rail { margin-top: 18px; padding-top: 16px; border-top: var(--ui-border-width) solid var(--ui-line); }
-  body.explore-fullbleed .explore-side-panel .side-panel-footer-note { margin: 18px 0 0; }
-  body.explore-fullbleed .site-footer { display: none; }
   /* サイドバーの開閉トグル（D-36）：開いている間は浮動カードの右端に付く小さなタブ。
      フローティング方式（D-38）では開閉はカードの表示／非表示だけで、地図もヘッダーも動かない。
      閉じている間は、左上に小さな浮動ボタンとして残す（ブランドチップはカードの右側に
@@ -445,6 +437,6 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 3; }
   body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 40px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
   body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
-  body.explore-fullbleed .quest-rail { padding: 22px 16px 0; }
-  body.explore-fullbleed .site-footer { padding: 21px 16px calc(25px + env(safe-area-inset-bottom)); }
+  /* フッター廃止（D-39）に伴い、レールの末尾の下部余白はレール側で確保する。 */
+  body.explore-fullbleed .quest-rail { padding: 22px 16px calc(25px + env(safe-area-inset-bottom)); }
 }
