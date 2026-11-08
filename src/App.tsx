@@ -279,20 +279,27 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         <nav className="desktop-nav" aria-label="主要ナビゲーション">
           <a className={showRecords ? undefined : 'nav-active'} href="#explore-title" aria-current={showRecords ? undefined : 'page'}
             onClick={() => navigateToRecords(false)}><Icon name="map" />謎を探す</a>
-          {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
           {(!teamPreview || teamAnswerTrial) && <button type="button" className={showRecords ? 'nav-active' : undefined} aria-current={showRecords ? 'page' : undefined}
             disabled={!localApiMode || visiblePending !== null} onClick={() => navigateToRecords(true)}>
             <Icon name="book" />自分の記録{!localApiMode && <span>準備中</span>}
           </button>}
+          {/* 自治体画面への入口は主要ナビの末尾に固定し、有無で主要ナビの位置が変わらないようにする。 */}
+          {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
         </nav>
         <div className="account-area">
           <div className="account-status" role="status" aria-label="ログイン状態">
             <Icon name="user" /><span>{notice.title}</span>
             <span className="sr-only">{notice.description}</span>
           </div>
+          {/* ログイン／ログアウトは同じスロットに出し、状態で押す場所が変わらないようにする。 */}
           {auth.status === 'signed-in' && (
-            <button type="button" className="logout-button" disabled={visiblePending !== null} onClick={logout}>
+            <button type="button" className="account-action-button" disabled={visiblePending !== null} onClick={logout}>
               {visiblePending === 'sign-out' ? 'ログアウト中…' : 'ログアウト'}
+            </button>
+          )}
+          {auth.status === 'signed-out' && (
+            <button type="button" className="account-action-button" disabled={visiblePending !== null} onClick={() => void login()}>
+              {visiblePending === 'sign-in' ? 'ログイン中…' : 'ログイン'}
             </button>
           )}
         </div>
@@ -369,9 +376,10 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       <footer className="site-footer"><span>場所・問題は架空の開発用デモです。</span></footer>
       <nav className="mobile-nav" aria-label="スマホ用ナビゲーション">
         <a href="#explore-title" aria-current={showRecords ? undefined : 'page'} onClick={() => navigateToRecords(false)}><Icon name="map" /><span>謎を探す</span></a>
-        {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
         {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} disabled={!localApiMode || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{!localApiMode && <small>準備中</small>}</span></button>}
+        {/* 自治体画面への入口は主要ナビの末尾に固定し、有無で主要ナビの位置が変わらないようにする。 */}
+        {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
       </nav>
     </>
   )

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { area, quest } from '../../shared/api/testFixtures'
@@ -16,16 +16,23 @@ const auth: AuthClient = {
 }
 const membership = { orgId: 'demo-org', areaId: 'demo-area', label: '架空の自治体', role: 'publisher' }
 
-function stubFetcher() {
+function stubFetcher(memberships: unknown[] = [membership]) {
   return vi.fn<typeof fetch>(async (input) => {
     const path = String(input)
     if (path.startsWith('/api/v1/areas?')) return Response.json({ items: [area], nextCursor: null }, { headers })
     if (path.startsWith('/api/v1/quests?')) return Response.json({ items: [quest], nextCursor: null }, { headers })
     if (path === '/api/v1/quests/' + quest.questId) return Response.json(quest, { headers })
     if (path === '/api/v1/session') return Response.json({ uid: 'editor-a' }, { headers })
-    if (path.startsWith('/api/v1/me/memberships?')) return Response.json({ items: [membership], nextCursor: null }, { headers })
+    if (path.startsWith('/api/v1/me/memberships?')) return Response.json({ items: memberships, nextCursor: null }, { headers })
     if (path.startsWith('/api/v1/me/discoveries')) return Response.json({ items: [], nextCursor: null }, { headers })
     throw new Error('Unexpected request: ' + path)
+  })
+}
+
+function navOrder(nav: HTMLElement) {
+  return [...nav.querySelectorAll('a, button')].map((el) => {
+    const text = el.textContent ?? ''
+    return text.includes('自治体画面') ? '自治体画面' : text.includes('自分の記録') ? '自分の記録' : '謎を探す'
   })
 }
 
@@ -72,12 +79,15 @@ describe('探索画面の縁なし（全画面）表示', () => {
     const view = render(<TeamPreview authClient={auth} />)
     // 地図が使える状態になり、連動リストがボトムシートに入ると全画面化の目印が付く。
     expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
-    expect(document.body).toHaveClass('explore-fullbleed')
+    await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
     // 浮動化した導線：所属がある場合の自治体画面への入口が両ナビに残り、ログアウトも届く。
     const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
     const mobileNav = screen.getByRole('navigation', { name: 'スマホ用ナビゲーション' })
     expect(await within(desktopNav).findByRole('link', { name: '自治体画面' })).toHaveAttribute('href', '/admin')
     expect(await within(mobileNav).findByRole('link', { name: '自治体画面' })).toHaveAttribute('href', '/admin')
+    // 自治体画面への入口は両ナビとも主要ナビの末尾にあり、主要項目の並びは変わらない。
+    expect(navOrder(desktopNav)).toEqual(['謎を探す', '自分の記録', '自治体画面'])
+    expect(navOrder(mobileNav)).toEqual(['謎を探す', '自分の記録', '自治体画面'])
     expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
     // 浮動化したスマホ用ナビから自分の記録へ到達でき、記録画面では目印が外れて従来シェルに戻る。
     await user.click(within(mobileNav).getByRole('button', { name: /自分の記録/ }))
@@ -93,5 +103,21 @@ describe('探索画面の縁なし（全画面）表示', () => {
 
   it('スマホ幅（981px未満）でもシート表示の間は全画面化され、浮動化した導線に到達できる', async () => {
     await runScenario(false)
+  })
+
+  it('所属がない場合は入口が出ず、主要ナビの並びと位置は所属がある場合と同じになる', async () => {
+    vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
+    stubViewport(true)
+    vi.stubGlobal('fetch', stubFetcher([]))
+    render(<TeamPreview authClient={auth} />)
+    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
+    const mobileNav = screen.getByRole('navigation', { name: 'スマホ用ナビゲーション' })
+    // 所属の確認が終わっても入口は出ず、自分の記録は所属がある場合と同じ2番目のまま。
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
+    expect(navOrder(desktopNav)).toEqual(['謎を探す', '自分の記録'])
+    expect(navOrder(mobileNav)).toEqual(['謎を探す', '自分の記録'])
+    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
   })
 })
