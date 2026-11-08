@@ -858,7 +858,11 @@ describe('Google map panel', () => {
     const quests: PublicQuest[] = [
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
-    const { container, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={onOpenQuest} />)
+    const questScrollTarget = { current: null as HTMLDivElement | null }
+    const { container, unmount } = render(<>
+      <ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="q1" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} />
+      <div ref={questScrollTarget}><header className="quest-card-heading"><h3>港の時計台</h3></header></div>
+    </>)
     const sheet = await waitFor(() => {
       const element = container.querySelector('.explore-sheet')
       expect(element).not.toBeNull()
@@ -871,6 +875,15 @@ describe('Google map panel', () => {
     expect(SHEET_PEEK_HEIGHT).toBe(140)
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
+    const title = screen.getByRole('heading', { name: '港の時計台' })
+    const scroll = vi.fn()
+    title.scrollIntoView = scroll
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    expect(title).toHaveFocus()
+    expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+    expect(container.querySelector('.explore-sheet')).toBe(sheet)
+    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    expect(screen.queryByRole('region', { name: '地図の下の問題一覧' })).not.toBeInTheDocument()
     unmount()
     delete window.google
   })

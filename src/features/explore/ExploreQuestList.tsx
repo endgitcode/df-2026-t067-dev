@@ -3,7 +3,7 @@ import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { questThumbnail } from './viewportQuests'
 
 // 地図の表示範囲と連動する謎カードのリスト。地図が使えない場合は全地域分をそのまま並べる。
-export function ExploreQuestList({ areas, quests, variant, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onClearHighlight, emptyText }: {
+export function ExploreQuestList({ areas, quests, variant, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onClearHighlight, emptyText, scrollToHighlight = true }: {
   areas: PublicArea[]
   quests: PublicQuest[]
   variant: 'viewport' | 'fallback'
@@ -14,6 +14,7 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
   onClearHighlight?: () => void
   /** 空表示の文言。絞り込みの結果が全体で0件の場合など、範囲外が理由でない時に呼び出し側が差し替える。 */
   emptyText?: string
+  scrollToHighlight?: boolean
 }) {
   const listRef = useRef<HTMLUListElement>(null)
   const areaLabel = (areaId: string) => areas.find((area) => area.areaId === areaId)?.label ?? ''
@@ -24,13 +25,13 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
     : quests
 
   useEffect(() => {
-    if (!highlightArea || !listRef.current) return
+    if (!scrollToHighlight || !highlightArea || !listRef.current) return
     for (const item of listRef.current.querySelectorAll('[data-area-id]')) {
       if (item.getAttribute('data-area-id') !== highlightArea.areaId) continue
       try { (item as HTMLElement).scrollIntoView({ block: 'nearest' }) } catch { /* スクロール位置の補助であり、失敗しても一覧は使える。 */ }
       break
     }
-  }, [highlightArea])
+  }, [highlightArea, scrollToHighlight])
 
   return (
     <section className="explore-list" aria-label={variant === 'viewport' ? '表示範囲の謎' : '選べる謎の一覧'}>
