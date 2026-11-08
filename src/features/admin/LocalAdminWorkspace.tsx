@@ -11,6 +11,7 @@ import QuestDraftForm from './QuestDraftForm'
 import { QuestTaskWorkspace } from './QuestTaskWorkspace'
 import { ShootingAreasEditor } from './ShootingAreasEditor'
 import { PublicationWorkspace } from './PublicationWorkspace'
+import { remainingWork } from './publicationReadiness'
 import { HintAssetEditor } from './HintAssetEditor'
 import './admin.css'
 
@@ -51,7 +52,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable }: { api: Api
   function closeEditor() { setEditor(null); retry() }
   if (editor?.kind === 'draft' && durable) return <QuestTaskWorkspace api={api} member={member} initial={editor.initial} onBack={closeEditor} />
   if (editor?.kind === 'draft') return <QuestDraftForm teamPreview={teamPreview} connection={{ api, member, initial: editor.initial, onBack: closeEditor }} />
-  if (editor?.kind === 'areas') return <ShootingAreasEditor enableMap={durable} api={api} orgId={member.orgId} questId={editor.questId} onBack={closeEditor} />
+  if (editor?.kind === 'areas') return <ShootingAreasEditor enableMap={durable || teamPreview} api={api} orgId={member.orgId} questId={editor.questId} onBack={closeEditor} />
   if (editor?.kind === 'hint') return <HintAssetEditor rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor} />
   if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor}
     onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
@@ -80,6 +81,12 @@ function OrganizationWorkspace({ api, member, teamPreview, durable }: { api: Api
           <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>下書きを編集</button>
           <fieldset className="publish-prep"><legend>公開準備</legend>
             <p>撮影できる範囲（非公開）：{item.shootingAreaStatus === 'configured' ? '設定済み' : '未設定'}</p>
+            {item.status === 'published' ? <p>公開中です。</p> : <>
+              {remainingWork(item).length > 0
+                ? <><p>残りの作業</p><ul>{remainingWork(item).map((work) => <li key={work}>{work}</li>)}</ul></>
+                : <p>入力項目は揃っています。</p>}
+              <p>写真試験（一致・別対象）は「試験と公開確認」の画面で実施します。この一覧では実施状況を確認できません。</p>
+            </>}
             <div className="admin-list-actions">
               <button type="button" onClick={() => setEditor({ kind: 'areas', questId: item.questId })}>撮影範囲を設定</button>
               <button type="button" onClick={() => setEditor({ kind: 'hint', initial: item })}>ヒント画像を設定</button>

@@ -59,7 +59,10 @@ it('keeps publishing unavailable for an editor and stops work on an old draft', 
   const submitManagedQuestReview = vi.fn().mockRejectedValue(new ApiError('DRAFT_CONFLICT'))
   const api = { ...createApiClient(), submitManagedQuestReview }
   render(<PublicationWorkspace api={api} initial={initial} member={{ ...org, role: 'editor' }} onBack={vi.fn()} onPublished={vi.fn()} />)
-  expect(screen.queryByRole('button', { name: 'この版を公開' })).not.toBeInTheDocument()
+  expect(screen.getByText('公開の確認と実行は公開担当が行います。編集担当は確認依頼までを行ってください。')).toBeVisible()
+  expect(screen.getByText(/公開担当が自分の画面で写真試験を再度実施してから公開します/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'この版を公開' })).toBeDisabled()
+  for (const checkbox of screen.getAllByRole('checkbox')) expect(checkbox).toBeDisabled()
   const review = screen.getByRole('button', { name: 'この版の確認を依頼' })
   await user.click(review)
   expect(await screen.findByRole('alert')).toHaveTextContent('下書きの版が変わりました')
@@ -79,4 +82,27 @@ it('requires explicit rights application to a replacement private test photo', a
   await user.click(screen.getByLabelText('差し替えた写真を非公開試験に使う権利を確認し、入力済みの権利文を適用する'))
   await user.click(send)
   expect(testManagedQuest).toHaveBeenCalledOnce()
+})
+
+it('offers the exact fixture photos for download and explains fixtures-only recording', () => {
+  render(<PublicationWorkspace api={createApiClient()} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  expect(screen.getByText(/この検証環境の写真試験は、次の合成写真でのみ結果を記録します/)).toBeVisible()
+  const match = screen.getByRole('link', { name: /一致用の合成写真/ })
+  expect(match).toHaveAttribute('download', 'match.png')
+  expect(match.getAttribute('href')).toMatch(/^data:image\/png;base64,iVBORw0KGgo/)
+  const other = screen.getByRole('link', { name: /別対象の合成写真/ })
+  expect(other).toHaveAttribute('download', 'other-target.png')
+  expect(other.getAttribute('href')).toMatch(/^data:image\/png;base64,iVBORw0KGgo/)
+  expect(other.getAttribute('href')).not.toBe(match.getAttribute('href'))
+})
+
+it('explains that a real photo leaves no record when the fixture matcher rejects it', async () => {
+  const user = userEvent.setup()
+  const testManagedQuest = vi.fn().mockRejectedValue(new ApiError('SYSTEM_ERROR'))
+  const api = { ...createApiClient(), testManagedQuest }
+  render(<PublicationWorkspace api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  await user.type(screen.getByLabelText('試験写真の利用権'), '自分の写真')
+  await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.png', { type: 'image/png' }))
+  await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('実写真では結果が残りません')
 })
