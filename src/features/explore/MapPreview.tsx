@@ -94,6 +94,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [viewport, setViewport] = useState<ViewportBounds | null>(null)
   const viewportRef = useRef<ViewportBounds | null>(null)
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
+  // 地域を選ぶ直前のカメラ（中心・ズーム）。選択を解除したら、初期表示ではなくこの状態へ戻す。
+  const preSelectionCamera = useRef<{ map: MapInstance; center: { lat: number; lng: number }; zoom: number } | null>(null)
   const lastAreaSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   const areaFailureTimer = useRef<number | undefined>(undefined)
   const cancelLocationRequest = (updateState = true) => {
@@ -273,7 +275,29 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     if (lastAreaSelection.current?.map === instance && lastAreaSelection.current.areaId !== selectedAreaId) cancelLocationRequest()
     lastAreaSelection.current = { map: instance, areaId: selectedAreaId }
     if (lastViewportSelection.current?.map === instance && lastViewportSelection.current.areaId === selectedAreaId) return
-    if (!selectedAreaId) { instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM); lastViewportSelection.current = { map: instance, areaId: '' }; return }
+    if (!selectedAreaId) {
+      // 選択解除では初期表示へ戻さず、選択直前のカメラを復元する。選択後に手動で動かしていても、
+      // 解除時は選択前の状態へ戻す（「選ぶ前の地図に戻る」を単純な仕様として採る）。
+      const saved = preSelectionCamera.current
+      if (saved && saved.map === instance) {
+        instance.setCenter(saved.center)
+        instance.setZoom(saved.zoom)
+        preSelectionCamera.current = null
+      } else {
+        instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM)
+      }
+      lastViewportSelection.current = { map: instance, areaId: '' }
+      return
+    }
+    // 未選択から選択へ移る時だけ、フィット直前のカメラを覚える。地域A→Bの切替では上書きせず、
+    // 解除時に「最初に選ぶ前」の状態へ戻れるようにする。
+    const previousSelection = lastViewportSelection.current
+    if (!previousSelection || previousSelection.map !== instance || previousSelection.areaId === '') {
+      try {
+        const center = instance.getCenter?.()
+        if (center) preSelectionCamera.current = { map: instance, center: { lat: center.lat(), lng: center.lng() }, zoom: instance.getZoom() ?? INITIAL_ZOOM }
+      } catch { /* カメラが読めない時は復元を諦め、解除時は従来どおり初期表示へ戻す。 */ }
+    }
     try {
       const area = areas.find((candidate) => candidate.areaId === selectedAreaId)
       if (!area) return
