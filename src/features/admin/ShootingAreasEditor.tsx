@@ -100,7 +100,7 @@ function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClie
       {rows.map((_, index) => <option key={index} value={index}>撮影範囲 {index + 1}</option>)}
       <option value="new" disabled={rows.length >= 10}>新しい範囲</option>
     </select></label>
-    <p>地図を押すと選択中の範囲の中心を移動します。新しい範囲の半径は50mで、下で調整できます。</p>
+    <p>地図を押すと、選択中の範囲の中心を移動します。</p>
     <ShootingAreasMap zones={mapZones} selectedIndex={selectedIndex} disabled={saving || (selectedIndex === null && rows.length >= 10)} onSelect={(latitude, longitude) => {
       if (selectedIndex === null) {
         if (rows.length >= 10) return
@@ -142,7 +142,7 @@ export function ShootingAreasEditor({ api, orgId, questId, onBack, backLabel = '
   const { result, retry } = useRemote(true, read)
   return <section className="form-section" aria-labelledby="shooting-editor-title">
     <h2 id="shooting-editor-title">撮影できる範囲（非公開）</h2>
-    <p>撮影の立ち位置と半径を最大10件設定できます。旅行者向けの地図や通常のヒントには表示しません。</p>
+    <p>撮影の立ち位置と半径を最大10件まで設定できます。旅行者には表示されません。</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {result.status === 'loading' && <p role="status">撮影範囲を読み込んでいます…</p>}
     {result.status === 'error' && <><p role="alert">撮影範囲を取得できませんでした。</p><button type="button" onClick={retry}>読み直す</button></>}

@@ -53,11 +53,11 @@ export function HoursInput({ value, onChange }: { value: string; onChange: (valu
       <label>開始時刻<input type="time" step="60" value={start} onChange={event => { setStart(event.target.value); update(mode, event.target.value) }} /></label>
       <label>終了時刻<input type="time" step="60" value={end} onChange={event => { setEnd(event.target.value); update(mode, start, event.target.value) }} /></label>
       <label><input type="checkbox" checked={next} onChange={event => { setNext(event.target.checked); update(mode, start, end, event.target.checked) }} />終了は翌日</label>
-      {incomplete && <p role="status">時間は入力途中です。未設定・要確認の部分も案内文に明記して保存します。公開前に確認してください。</p>}
+      {incomplete && <p role="status">時間は入力途中です。未設定の部分も明記して保存します。</p>}
     </div>}
     {mode !== 'supplement' && <>
       <div className="phrase-chips">
-        <span className="helper">よくある休業・例外（押すと追加、もう一度押すと削除）</span>
+        <span className="helper">よくある休業・例外</span>
         <div role="group" aria-label="よくある休業・例外">
           {exceptionPhrases.map((phrase) => <button key={phrase} type="button" className="phrase-chip"
             aria-pressed={exceptions.split('\n').includes(phrase)}

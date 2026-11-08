@@ -114,7 +114,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
   return <section className="form-section" aria-labelledby="publication-workspace-title">
     <h2 id="publication-workspace-title">写真試験と公開確認</h2>
     <p>{quest.draft.content.title || '無題の下書き'}・下書き版 {draftRevision}</p>
-    <p>開発用の検証環境です。合成写真を使います。同じ画面で試験と確認を終えてください。</p>
+    <p>開発用の検証環境です。合成写真を使います。</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">操作結果を確認しています…</p>}

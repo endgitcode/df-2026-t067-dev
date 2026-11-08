@@ -48,6 +48,6 @@ export function PriceInput({ value, onChange }: { value: string; onChange: (valu
       <summary>料金の補足（任意）</summary>
       <label>料金の補足<input value={parsed.detail} onChange={event => setDetail(event.target.value)} placeholder="例：施設により異なります" /></label>
     </details>}
-    <p className="helper">区分を選んでも既存の補足は保持します。空欄は無料を意味しません。</p>
+    <p className="helper">補足は区分を変えても保持されます。空欄は無料を意味しません。</p>
   </div>
 }

@@ -238,7 +238,7 @@ describe('A03 admin demo', () => {
     renderExpanded(<QuestDraftForm />)
     expect(screen.queryByRole('radiogroup', { name: '紹介・解説の入力方法' })).not.toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: /AI自動入力/ })).not.toBeInTheDocument()
-    expect(screen.getByText('AIによる紹介・解説の自動入力は準備中です。生成APIは未接続です。')).toBeVisible()
+    expect(screen.getByText('AIによる自動入力は未接続です。')).toBeVisible()
     expect(screen.getByLabelText('地域のおすすめコメント')).toBeEnabled()
     expect(screen.getByLabelText('解説')).toBeEnabled()
   })
