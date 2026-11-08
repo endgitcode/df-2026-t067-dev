@@ -246,10 +246,10 @@ it('renders the admin entrance only for a signed-in account with a membership', 
   const entrances = await screen.findAllByRole('link', { name: '自治体画面' })
   expect(entrances.length).toBeGreaterThan(0)
   for (const entrance of entrances) expect(entrance).toHaveAttribute('href', '/admin')
-  // ログイン時は同じスロットに「ログアウト」だけが出て、「ログイン」と状態表示は出ない。
+  // ログイン時は同じスロットにアカウントアイコンだけが出て、「ログイン」と状態表示は出ない。
   const accountArea = document.querySelector('.account-area')!
-  const logoutButton = screen.getByRole('button', { name: 'ログアウト' })
-  expect(logoutButton.parentElement).toBe(accountArea)
+  const accountButton = screen.getByRole('button', { name: 'アカウントメニュー' })
+  expect(accountArea.contains(accountButton)).toBe(true)
   expect(accountArea.querySelector('.account-status')).not.toBeInTheDocument()
   expect(screen.queryByText('Googleログイン済み')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'ログイン' })).not.toBeInTheDocument()

@@ -83,7 +83,8 @@ export function createFirebaseAuthClient(env: Readonly<Record<string, unknown>> 
       if (!stop) {
         stop = onAuthStateChanged(auth, (user) => {
           update(user
-            ? { status: 'signed-in', user: { uid: user.uid, displayName: user.displayName } }
+            ? { status: 'signed-in', user: { uid: user.uid, displayName: user.displayName,
+                ...(user.photoURL ? { photoURL: user.photoURL } : {}) } }
             : { status: 'signed-out', user: null })
         }, () => update({ status: 'unavailable', user: null, message: 'ログイン状態を確認できませんでした。ページを再読み込みしてください。' }))
       }

@@ -185,8 +185,8 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp dataMode="durable-local" authClient={authClient} />)
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
     expect(screen.getByText('永続API・ローカル')).toBeVisible()
-    // ログイン済みはヘッダーの「ログアウト」ボタンで分かり、状態表示の説明文は出ない。
-    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
+    // ログイン済みはヘッダーのアカウントアイコンで分かり、状態表示の説明文は出ない。
+    expect(screen.getByRole('button', { name: 'アカウントメニュー' })).toBeVisible()
     expect(screen.queryByText('Googleアカウントでログインしています。', { exact: true })).not.toBeInTheDocument()
     const catalogCalls = fetcher.mock.calls.filter(([path]) => String(path).includes('/api/v1/quests'))
     expect(catalogCalls).toHaveLength(2)

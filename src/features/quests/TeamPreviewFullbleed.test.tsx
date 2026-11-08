@@ -80,7 +80,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     // 地図が使える状態になり、連動リストがボトムシートに入ると全画面化の目印が付く。
     expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
     await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
-    // 浮動化した導線：所属がある場合の自治体画面への入口が両ナビに残り、ログアウトも届く。
+    // 浮動化した導線：所属がある場合の自治体画面への入口が両ナビに残り、アカウントメニューも届く。
     const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
     const mobileNav = screen.getByRole('navigation', { name: 'スマホ用ナビゲーション' })
     expect(await within(desktopNav).findByRole('link', { name: '自治体画面' })).toHaveAttribute('href', '/admin')
@@ -88,7 +88,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     // 自治体画面への入口は両ナビとも主要ナビの末尾にあり、主要項目の並びは変わらない。
     expect(navOrder(desktopNav)).toEqual(['謎を探す', '自分の記録', '自治体画面'])
     expect(navOrder(mobileNav)).toEqual(['謎を探す', '自分の記録', '自治体画面'])
-    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'アカウントメニュー' })).toBeVisible()
     // スマホ用ナビ（スマホ幅では下部タブバー、D-32）から自分の記録へ到達でき、記録画面では目印が外れて従来シェルに戻る。
     await user.click(within(mobileNav).getByRole('button', { name: /自分の記録/ }))
     expect(await screen.findByRole('heading', { name: '自分の記録' })).toBeVisible()
@@ -137,6 +137,6 @@ describe('探索画面の縁なし（全画面）表示', () => {
     expect(screen.queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
     expect(navOrder(desktopNav)).toEqual(['謎を探す', '自分の記録'])
     expect(navOrder(mobileNav)).toEqual(['謎を探す', '自分の記録'])
-    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'アカウントメニュー' })).toBeVisible()
   })
 })

@@ -54,8 +54,8 @@ describe('Google sign-in from the selected quest', () => {
     expect(client.signInWithGoogle).toHaveBeenCalledTimes(1)
     expect(details).toBeVisible()
     expect(details).toHaveTextContent('この場所はどこ？')
-    // ログイン完了は、状態表示ではなくヘッダーの「ログアウト」ボタンで分かる。
-    expect(await screen.findByRole('button', { name: 'ログアウト' })).toBeVisible()
+    // ログイン完了は、状態表示ではなくヘッダーのアカウントアイコンで分かる。
+    expect(await screen.findByRole('button', { name: 'アカウントメニュー' })).toBeVisible()
     expect(screen.queryByText('Googleログイン済み')).not.toBeInTheDocument()
     expect(within(details).getByRole('button', { name: '挑戦を開始する' })).toBeEnabled()
     expect(onStartChallenge).toHaveBeenCalledWith({ questId: 'demo-harbor-clock', expectedVersion: 1 })
@@ -88,22 +88,23 @@ describe('Google sign-in from the selected quest', () => {
     render(<App authClient={client} onStartChallenge={onStartChallenge} />)
     const { details } = await openQuest()
     expect(details).toBeVisible()
-    // 確認中はヘッダーに状態表示もボタンも出ない。
+    // 確認中はヘッダーに状態表示を出さず、ログインアイコンは無効のままスロットに残る。
     expect(screen.queryByText('ログイン状態を確認中')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'ログイン' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'ログアウト' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'ログイン' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'アカウントメニュー' })).not.toBeInTheDocument()
     expect(within(details).getByRole('button', { name: 'Googleログインして挑戦する' })).toBeDisabled()
   })
   it('restores an existing session, avoids another sign-in, and supports sign-out', async () => {
     const { client, onStartChallenge } = authFixture({ status: 'signed-in', user: { uid: 'restored-user', displayName: 'テスト利用者' } })
     render(<App authClient={client} onStartChallenge={onStartChallenge} />)
     const { user, details } = await openQuest()
-    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'アカウントメニュー' })).toBeVisible()
     expect(within(details).getByRole('button', { name: '挑戦を開始する' })).toBeEnabled()
     expect(client.signInWithGoogle).not.toHaveBeenCalled()
     await user.click(within(details).getByRole('button', { name: '挑戦を開始する' }))
     expect(onStartChallenge).toHaveBeenCalledWith({ questId: 'demo-harbor-clock', expectedVersion: 1 })
-    await user.click(screen.getByRole('button', { name: 'ログアウト' }))
+    await user.click(screen.getByRole('button', { name: 'アカウントメニュー' }))
+    await user.click(screen.getByRole('menuitem', { name: 'ログアウト' }))
     await waitFor(() => expect(client.signOut).toHaveBeenCalledTimes(1))
     expect(await within(details).findByRole('button', { name: 'Googleログインして挑戦する' })).toBeEnabled()
     expect(details).toBeVisible()
@@ -123,9 +124,10 @@ describe('Google sign-in from the selected quest', () => {
     vi.mocked(client.signOut).mockRejectedValue(new AuthError('network'))
     render(<App authClient={client} onStartChallenge={onStartChallenge} />)
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'ログアウト' }))
+    await user.click(screen.getByRole('button', { name: 'アカウントメニュー' }))
+    await user.click(screen.getByRole('menuitem', { name: 'ログアウト' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('通信を確認')
-    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'アカウントメニュー' })).toBeEnabled()
   })
 
 

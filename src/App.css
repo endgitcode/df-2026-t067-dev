@@ -31,9 +31,16 @@ p { overflow-wrap: anywhere; }
 .desktop-nav button { color: var(--ui-muted); }
 .desktop-nav button span { font-size: 12px; }
 .desktop-nav .icon { width: 17px; height: 17px; }
-.account-area { display: flex; align-items: center; justify-content: end; flex-wrap: wrap; gap: 9px; }
-.account-action-button { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 7px 10px; color: var(--ui-muted); background: var(--ui-surface); font-size: 12px; min-height: 44px; }
-.account-action-button:disabled { opacity: .5; }
+.account-area { position: relative; display: flex; align-items: center; justify-content: end; flex-wrap: wrap; gap: 9px; }
+.account-menu-wrap { position: relative; }
+.account-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%; color: var(--ui-ink); background: var(--ui-surface); }
+.account-icon-button:disabled { opacity: .5; }
+.account-icon-button img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.account-icon-button .icon { width: 22px; height: 22px; }
+.account-initial { font-size: 17px; font-weight: var(--ui-weight-strong); line-height: 1; }
+.account-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; display: flex; flex-direction: column; gap: 8px; min-width: 200px; padding: 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
+.account-menu-name { margin: 0; font-size: 13px; font-weight: var(--ui-weight-strong); overflow-wrap: anywhere; }
+.account-menu [role="menuitem"] { min-height: 40px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; }
 .page, .site-footer { width: min(100% - 64px, 1440px); margin-inline: auto; }
 .page { padding-block: 36px 26px; }
 .api-quest-picker { display: grid; gap: 7px; margin: 18px 0; padding: 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); }
@@ -224,7 +231,6 @@ button.explore-quest-card { cursor: pointer; }
   .brand-mark .icon { width: 22px; height: 22px; }
   .brand-copy { font-size: 13px; }
   .account-area { max-width: 122px; gap: 4px; }
-  .account-action-button { min-height: 44px; font-size: 12px; padding: 4px 8px; }
   .page, .site-footer { width: calc(100% - 32px); }
   .page { padding-top: 25px; padding-bottom: 24px; }
   .explore-heading { margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
@@ -267,7 +273,6 @@ button.explore-quest-card { cursor: pointer; }
 .brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
 .desktop-nav .nav-active { color: var(--ui-ink); box-shadow: 0 3px 0 var(--ui-ink); }
 .desktop-nav button { color: var(--ui-muted); }
-.account-action-button { color: var(--ui-ink); }
 .explore-heading h1 { font-size: clamp(1.75rem, 3.2vw, 2.65rem); font-weight: var(--ui-weight-display); letter-spacing: -.04em; }
 .eyebrow { color: var(--ui-muted); }
 .preview-label { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-soft); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
@@ -300,7 +305,7 @@ button.explore-quest-card { cursor: pointer; }
 .quest-toggle:hover:not(:disabled), .primary-button:hover:not(:disabled), .api-load-state > button:hover:not(:disabled) { background: var(--ui-accent-hover); color: var(--ui-accent-ink); }
 .quest-toggle.is-open { background: var(--ui-tint); color: var(--ui-ink); }
 .quest-toggle.is-open:hover { background: var(--ui-tint); color: var(--ui-ink); }
-.retry-button, .account-action-button, .camera-actions .secondary-button { color: var(--ui-ink); background: var(--ui-surface); }
+.retry-button, .camera-actions .secondary-button { color: var(--ui-ink); background: var(--ui-surface); }
 .retry-button:hover { background: var(--ui-tint); }
 .sample-note, .api-quest-picker { color: var(--ui-muted); background: var(--ui-soft); }
 .api-quest-picker li button { color: var(--ui-ink); background: var(--ui-surface); }
@@ -373,7 +378,7 @@ body.explore-fullbleed .brand, body.explore-fullbleed .desktop-nav, body.explore
 body.explore-fullbleed .brand { padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .desktop-nav { align-self: center; gap: 18px; padding: 4px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .account-area { flex-wrap: nowrap; max-width: none; }
-body.explore-fullbleed .account-action-button { box-shadow: var(--ui-control-shadow); }
+body.explore-fullbleed .account-icon-button { box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 88px); }
 body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 136px); }
 body.explore-fullbleed .quest-rail { max-width: 760px; margin-inline: auto; padding: 24px 20px 0; }
