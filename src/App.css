@@ -122,7 +122,6 @@ button.explore-quest-card { cursor: pointer; }
 .pin-face .icon { transform: rotate(45deg); color: var(--ui-surface); width: 21px; height: 21px; }
 .pin-caption { margin-top: 4px; padding: 5px 10px; color: var(--ui-muted); background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); font-size: 12px; font-weight: var(--ui-weight-strong); white-space: nowrap; box-shadow: var(--ui-shadow); }
 .map-controls { position: absolute; right: 17px; bottom: 52px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.map-preview-shell.has-sheet .map-controls { bottom: calc(var(--sheet-h, 0px) + 14px); }
 .map-locate-fab { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); cursor: pointer; }
 .map-locate-fab:hover:not(:disabled) { background: var(--ui-tint); }
 .map-locate-fab:disabled { color: var(--ui-muted); background: var(--ui-disabled); cursor: not-allowed; }
@@ -248,6 +247,9 @@ button.explore-quest-card { cursor: pointer; }
   .map-location-status.is-floating { left: 12px; margin: 0; max-width: calc(100% - 84px); }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
   .map-controls { right: 11px; bottom: 72px; }
+  /* シートが横幅いっぱいに広がる幅だけ、右下の操作系をシートの高さに追随させる。
+     広い幅ではシートは左下の浮きカードなので、右側の操作系は通常位置に固定する。 */
+  .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--sheet-h, 0px) + 14px); }
   .map-zoom button { width: 44px; height: 44px; }
   .map-preview-shell.has-sheet { height: max(480px, calc(100svh - 224px)); min-height: 480px; }
   .map-filter-overlay { top: 112px; left: 12px; right: 12px; }
