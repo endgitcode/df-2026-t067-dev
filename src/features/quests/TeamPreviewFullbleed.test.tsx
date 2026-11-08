@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { area, quest } from '../../shared/api/testFixtures'
@@ -79,7 +79,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     const view = render(<TeamPreview authClient={auth} />)
     // 地図が使える状態になり、連動リストがボトムシートに入ると全画面化の目印が付く。
     expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
-    expect(document.body).toHaveClass('explore-fullbleed')
+    await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
     // 浮動化した導線：所属がある場合の自治体画面への入口が両ナビに残り、ログアウトも届く。
     const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
     const mobileNav = screen.getByRole('navigation', { name: 'スマホ用ナビゲーション' })
