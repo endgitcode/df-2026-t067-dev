@@ -3,7 +3,7 @@ import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { questThumbnail } from './viewportQuests'
 
 // 地図の表示範囲と連動する謎カードのリスト。地図が使えない場合は全地域分をそのまま並べる。
-export function ExploreQuestList({ areas, quests, variant, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onClearHighlight }: {
+export function ExploreQuestList({ areas, quests, variant, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onClearHighlight, emptyText }: {
   areas: PublicArea[]
   quests: PublicQuest[]
   variant: 'viewport' | 'fallback'
@@ -12,6 +12,8 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
   clearedQuestIds?: ReadonlySet<string>
   onOpenQuest?: (questId: string) => void
   onClearHighlight?: () => void
+  /** 空表示の文言。絞り込みの結果が全体で0件の場合など、範囲外が理由でない時に呼び出し側が差し替える。 */
+  emptyText?: string
 }) {
   const listRef = useRef<HTMLUListElement>(null)
   const areaLabel = (areaId: string) => areas.find((area) => area.areaId === areaId)?.label ?? ''
@@ -38,7 +40,7 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
         <button type="button" onClick={onClearHighlight}>閉じる</button>
       </div>}
       {quests.length === 0
-        ? <p className="explore-list-empty">この範囲に謎はありません。地図を移動すると、別の地域の謎が表示されます。</p>
+        ? <p className="explore-list-empty">{emptyText ?? 'この範囲に謎はありません。地図を移動すると、別の地域の謎が表示されます。'}</p>
         : <ul ref={listRef} className="explore-quest-list">
           {quests.map((quest) => {
             const thumbnail = questThumbnail(quest)

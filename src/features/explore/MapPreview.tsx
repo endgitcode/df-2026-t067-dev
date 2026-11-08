@@ -269,11 +269,11 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       const bounds = new google.LatLngBounds()
       validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => bounds.extend({ lat, lng }))))
       // ボトムシートが地図に重なる構成では、覗き見分の下パディングを取り、選んだ地域の下端がシート裏に隠れないようにする。
-      if (showPublicAreas && quests.length > 0) instance.fitBounds(bounds, { bottom: SHEET_PEEK_HEIGHT })
+      if (showPublicAreas) instance.fitBounds(bounds, { bottom: SHEET_PEEK_HEIGHT })
       else instance.fitBounds(bounds)
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
     } catch { failArea() }
-  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, quests.length])
+  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
@@ -323,10 +323,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const focusArea = highlightArea ?? areas.find((area) => area.areaId === selectedAreaId)
   const visibleQuests = status === 'ready' ? questsInViewport(areas, quests, viewport) : quests
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
-  const sheetMode = status === 'ready' && showPublicAreas && quests.length > 0
-  const questList = showPublicAreas && quests.length > 0 ? <ExploreQuestList areas={areas} quests={visibleQuests} variant={status === 'ready' ? 'viewport' : 'fallback'}
+  // シート表示は問題の件数に依存させない。絞り込みで0件になってもシートと全画面を維持し、空表示を出す。
+  const sheetMode = status === 'ready' && showPublicAreas
+  const questList = showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={visibleQuests} variant={sheetMode ? 'viewport' : 'fallback'}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
-    onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)} /> : null
+    onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)}
+    emptyText={sheetMode && quests.length === 0 ? '選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。' : undefined} /> : null
 
   // シート表示の間は、スマホ幅で探索画面を画面全体（縁なし）にするための目印を付ける。
   // シェル側（ヘッダー・下部ナビ等）の浮動配置は App.css がこのクラスとメディアクエリで切り替える。

@@ -439,6 +439,30 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('keeps the sheet and full-bleed layout with a filter-empty message when filtering leaves no quests', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    expect(container.querySelector('.explore-sheet')).not.toBeNull()
+    expect(document.body).toHaveClass('explore-fullbleed')
+    rerender(<ConfiguredMapPreview areas={areas} quests={[]} onOpenQuest={vi.fn()} />)
+    expect(container.querySelector('.explore-sheet')).not.toBeNull()
+    expect(container.querySelector('.map-preview-shell')).toHaveClass('has-sheet')
+    expect(document.body).toHaveClass('explore-fullbleed')
+    expect(screen.getByText('0件')).toBeVisible()
+    expect(screen.getByText('選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。')).toBeVisible()
+    unmount()
+    expect(document.body).not.toHaveClass('explore-fullbleed')
+    delete window.google
+  })
+
   it('does not mark the page as full-bleed when the map is unavailable', () => {
     const quests: PublicQuest[] = [
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
