@@ -644,6 +644,48 @@ describe('Google map panel', () => {
     unmount()
     delete window.google
   })
+
+  it('emphasizes a pin on hover only in hover-capable environments', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('hover'),
+      media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(() => false),
+    }))
+    vi.resetModules()
+    const map = { ...mapInstance, fitBounds: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const markers: Array<{ options: Record<string, unknown>; listeners: Map<string, () => void>; icons: Array<{ url: string }> }> = []
+    class Marker {
+      options: Record<string, unknown>
+      listeners = new Map<string, () => void>()
+      icons: Array<{ url: string }> = []
+      constructor(options: Record<string, unknown>) { this.options = options; markers.push(this) }
+      setMap() {}
+      addListener(name: string, callback: () => void) { this.listeners.set(name, callback); return { remove: () => {} } }
+      setIcon(icon: { url: string }) { this.icons.push(icon) }
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={[]} onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
+    await screen.findByRole('region', { name: '表示範囲の謎' })
+    expect(markers.length).toBeGreaterThan(0)
+    const marker = markers[0]
+    expect(marker.options.cursor).toBe('pointer')
+    expect(marker.listeners.has('mouseover')).toBe(true)
+    marker.listeners.get('mouseover')?.()
+    const hoverIcon = decodeURIComponent(marker.icons.at(-1)?.url ?? '')
+    expect(hoverIcon).toContain('width="42"')
+    expect(hoverIcon).toContain('fill="#ffffff" stroke=')
+    marker.listeners.get('mouseout')?.()
+    const baseIcon = decodeURIComponent(marker.icons.at(-1)?.url ?? '')
+    expect(baseIcon).toContain('width="36"')
+    expect(baseIcon).toContain('fill="#4eb8d0" stroke=')
+    unmount()
+    delete window.google
+    vi.unstubAllGlobals()
+  })
 })
 
 const mapInstance = { setZoom() {}, getZoom: () => 5, setCenter() {}, addListener: () => ({ remove() {} }) }
