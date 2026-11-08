@@ -394,6 +394,49 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('does not record the fit position when a drag interrupts the fit, so a re-tap refits instead of deselecting', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let center = { lat: 36.2048, lng: 138.2529 }
+    let zoom = 5
+    const idleCallbacks: Array<() => void> = []
+    const dragCallbacks: Array<() => void> = []
+    const fitBounds = vi.fn(() => { center = { lat: 35.5, lng: 139.5 }; zoom = 11 })
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn(), setZoom: vi.fn(),
+      getCenter: () => ({ lat: () => center.lat, lng: () => center.lng }), getZoom: () => zoom,
+      addListener: (name: string, callback: () => void) => {
+        if (name === 'idle') idleCallbacks.push(callback)
+        if (name === 'dragstart') dragCallbacks.push(callback)
+        return { remove() {} }
+      } }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const instances: Marker[] = []
+    class Marker {
+      setMap() {}
+      click?: () => void
+      constructor() { instances.push(this) }
+      addListener(name: string, callback: () => void) { if (name === 'click') this.click = callback; return { remove() {} } }
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSelectArea = vi.fn()
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" onSelectArea={onSelectArea} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(instances).toHaveLength(1))
+    // フィット完了（idle）の前に利用者が地図を掴み、別の場所で止めた状態を再現する（PR #65 指摘のケース）。
+    act(() => { dragCallbacks.splice(0).forEach((callback) => callback()) })
+    center = { lat: 34.0, lng: 135.0 }; zoom = 9
+    // ドラッグ後に静止しても、その位置はフィット完了位置として記録されない。
+    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
+    fitBounds.mockClear()
+    act(() => instances[0].click?.())
+    // ドラッグ先にいるカメラを「フィット位置」と誤認せず、解除ではなく寄せ直しに倒れる。
+    expect(onSelectArea).not.toHaveBeenCalled()
+    expect(fitBounds).toHaveBeenCalledTimes(1)
+    unmount()
+    delete window.google
+  })
+
   it('selects the area from its pin even when a quest is already selected without an area', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
@@ -957,6 +1000,48 @@ describe('Google map panel', () => {
     unmount()
     delete window.google
     vi.unstubAllGlobals()
+  })
+
+  it('clusters overlapping pins into one marker with the total quest count and fits to them on tap (D-52)', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const map = { ...mapInstance, setZoom: vi.fn(), fitBounds, getCenter: () => ({ lat: () => 36.2, lng: () => 138.25 }) }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const markers: Array<{ options: Record<string, unknown>; listeners: Map<string, () => void> }> = []
+    class Marker {
+      options: Record<string, unknown>
+      listeners = new Map<string, () => void>()
+      constructor(options: Record<string, unknown>) { this.options = options; markers.push(this) }
+      setMap() {}
+      addListener(name: string, callback: () => void) { this.listeners.set(name, callback); return { remove: () => {} } }
+      setIcon() {}
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const square = (lat: number, lng: number): PublicArea['publicGeometry'] => ({ type: 'Polygon', coordinates: [[[lng - 0.1, lat - 0.1], [lng + 0.1, lat - 0.1], [lng + 0.1, lat + 0.1], [lng - 0.1, lat + 0.1], [lng - 0.1, lat - 0.1]]] })
+    const clusterAreas: PublicArea[] = [
+      { areaId: 'close-a', label: '近い地域A', publishedCount: 2, marker: { latitude: 35, longitude: 139 }, publicGeometry: square(35, 139) },
+      { areaId: 'close-b', label: '近い地域B', publishedCount: 3, marker: { latitude: 35.1, longitude: 139.1 }, publicGeometry: square(35.1, 139.1) },
+      { areaId: 'far', label: '遠い地域', publishedCount: 1, marker: { latitude: 43, longitude: 141.3 }, publicGeometry: square(43, 141.3) },
+    ]
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={clusterAreas} quests={[]} onSelectArea={vi.fn()} />)
+    await screen.findByRole('region', { name: '選べる謎の一覧' })
+    // 近い2地域は1つのクラスタ（合計5問）にまとまり、遠い地域は単独ピンになる。
+    await waitFor(() => expect(markers.length).toBe(2))
+    const cluster = markers.find((marker) => String(marker.options.title).includes('合計5問'))
+    expect(cluster).toBeDefined()
+    expect(decodeURIComponent(String((cluster!.options.icon as { url: string }).url))).toContain('>5<')
+    fitBounds.mockClear()
+    cluster!.listeners.get('click')?.()
+    expect(fitBounds).toHaveBeenCalled()
+    // 選択中の地域のピンはクラスタに隠さない（D-52）。
+    markers.length = 0
+    rerender(<ConfiguredMapPreview areas={clusterAreas} quests={[]} selectedAreaId="close-a" onSelectArea={vi.fn()} />)
+    await waitFor(() => expect(markers.length).toBe(3))
+    expect(markers.some((marker) => String(marker.options.title).includes('合計'))).toBe(false)
+    unmount()
+    delete window.google
   })
 })
 

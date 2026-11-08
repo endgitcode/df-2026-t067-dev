@@ -307,7 +307,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const detailInList = (teamPreview || durableLocal) && Boolean(quest) && mapQuests.some((item) => item.questId === quest?.questId)
   const questDetailBlock = (
               !railFallback && <div ref={questCard}>
-                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
+                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={!teamPreview && apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
                   onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
@@ -369,8 +369,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             disabled={!localApiMode || visiblePending !== null} onClick={() => navigateToRecords(true)}>
             <Icon name="book" />自分の記録{!localApiMode && <span>準備中</span>}
           </button>}
-          {/* 自治体画面への入口は主要ナビの末尾に固定し、有無で主要ナビの位置が変わらないようにする。 */}
-          {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
         </nav>
         <div className="account-area">
           {/* 右上の固定スロットはアイコン型にする（#36 の固定スロットと、#42 の「状態表示を置かない」を維持）。
@@ -389,6 +387,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
               {accountMenuOpen && (
                 <div className="account-menu" role="menu">
                   <p className="account-menu-name">{auth.user.displayName ?? 'ログイン中のアカウント'}</p>
+                  {/* 自治体画面への入口はアカウントメニューの中だけに置き、ナビ／タブは全ユーザー共通にする（D-47）。 */}
+                  {teamPreview && hasAdminMembership && <a role="menuitem" href="/admin">自治体画面</a>}
                   <button type="button" role="menuitem" onClick={() => { setAccountMenuAnchor(null); void logout() }}>ログアウト</button>
                 </div>
               )}
@@ -405,7 +405,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       <main id="main" className="page" tabIndex={-1}>
         {showRecords ? <section className="owner-records view-enter" aria-labelledby="records-title">
           <h1 id="records-title">自分の記録</h1>
-          <p className="sample-note">開発用の本人記録です。</p>
           <button type="button" className="secondary-button" onClick={() => navigateToRecords(false)}>地図へ戻る</button>
           {auth.status === 'signed-out' && <button type="button" className="primary-button" disabled={visiblePending !== null}
             onClick={() => void login()}>Googleログインして記録を見る</button>}
@@ -439,8 +438,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         <a href="#explore-title" aria-current={showRecords ? undefined : 'page'} onClick={() => navigateToRecords(false)}><Icon name="map" /><span>謎を探す</span></a>
         {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} disabled={!localApiMode || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{!localApiMode && <small>準備中</small>}</span></button>}
-        {/* 自治体画面への入口は主要ナビの末尾に固定し、有無で主要ナビの位置が変わらないようにする。 */}
-        {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
       </nav>
     </>
   )

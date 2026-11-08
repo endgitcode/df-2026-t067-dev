@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { area, quest } from '../../shared/api/testFixtures'
@@ -210,6 +210,7 @@ it('does not render the admin entrance while signed out and never asks for membe
   render(<TeamPreview authClient={auth} />)
   expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
   expect(screen.queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: '自治体画面' })).not.toBeInTheDocument()
   expect(fetcher.mock.calls.some(([path]) => String(path).startsWith('/api/v1/me/memberships'))).toBe(false)
   // 未ログイン時は、固定スロットに「ログイン」だけが出る（ログイン状態の常時表示は無い）。
   const accountArea = document.querySelector('.account-area')!
@@ -227,11 +228,17 @@ it('does not render the admin entrance for a signed-in traveler without a member
     signInWithGoogle: vi.fn(), signOut: vi.fn(), getIdToken: vi.fn(async () => 'team-token'),
   }
   vi.stubGlobal('fetch', adminGateFetcher([]))
+  const user = userEvent.setup()
   render(<TeamPreview authClient={auth} />)
   expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
-  // 所属の確認が終わっても入口は出ない（DOMに存在しない）。
+  // 所属の確認が終わっても入口は出ない（DOMに存在しない）。アカウントメニューを開いても同様（D-47）。
   await new Promise((resolve) => setTimeout(resolve, 50))
   expect(screen.queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: '自治体画面' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'アカウントメニュー' }))
+  expect(await screen.findByRole('menuitem', { name: 'ログアウト' })).toBeVisible()
+  expect(screen.queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: '自治体画面' })).not.toBeInTheDocument()
 })
 
 it('renders the admin entrance only for a signed-in account with a membership', async () => {
@@ -242,10 +249,9 @@ it('renders the admin entrance only for a signed-in account with a membership', 
   }
   const membership = { orgId: 'demo-org', areaId: 'demo-area', label: '架空の自治体', role: 'publisher' }
   vi.stubGlobal('fetch', adminGateFetcher([membership]))
+  const user = userEvent.setup()
   render(<TeamPreview authClient={auth} />)
-  const entrances = await screen.findAllByRole('link', { name: '自治体画面' })
-  expect(entrances.length).toBeGreaterThan(0)
-  for (const entrance of entrances) expect(entrance).toHaveAttribute('href', '/admin')
+  expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
   // ログイン時は同じスロットにアカウントアイコンだけが出て、「ログイン」と状態表示は出ない。
   const accountArea = document.querySelector('.account-area')!
   const accountButton = screen.getByRole('button', { name: 'アカウントメニュー' })
@@ -253,8 +259,13 @@ it('renders the admin entrance only for a signed-in account with a membership', 
   expect(accountArea.querySelector('.account-status')).not.toBeInTheDocument()
   expect(screen.queryByText('Googleログイン済み')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'ログイン' })).not.toBeInTheDocument()
-  // 自治体画面への入口は主要ナビの末尾にある。
+  // 自治体画面への入口はナビ／タブバーには出さず、アカウントメニューの中だけに置く（D-47）。
   const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
-  const items = [...desktopNav.querySelectorAll('a, button')]
-  expect(items[items.length - 1]).toHaveAttribute('href', '/admin')
+  const mobileNav = screen.getByRole('navigation', { name: 'スマホ用ナビゲーション' })
+  expect(within(desktopNav).queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
+  expect(within(mobileNav).queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
+  await user.click(accountButton)
+  const entrance = await screen.findByRole('menuitem', { name: '自治体画面' })
+  expect(entrance).toHaveAttribute('href', '/admin')
+  expect(document.querySelector('.account-menu')).toContainElement(entrance)
 })

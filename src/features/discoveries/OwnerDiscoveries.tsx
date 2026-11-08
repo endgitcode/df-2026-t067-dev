@@ -10,10 +10,10 @@ function RecordDate({ date }: { date: string }) {
 }
 
 function ReadFailure({ code, retry }: { code?: ApiErrorCode; retry: () => void }) {
-  const message = code === 'NOT_FOUND' ? 'この記録を利用できません。'
-    : code === 'SYSTEM_ERROR' ? '記録の保存先に接続できません。'
-      : code === 'UNAUTHENTICATED' ? 'ログインを確認できませんでした。'
-        : '記録を読み込めませんでした。通信状況を確認してください。'
+  const message = code === 'NOT_FOUND' ? 'この記録は見つかりませんでした。'
+    : code === 'SYSTEM_ERROR' ? '記録を読み込めませんでした。しばらく待ってから、もう一度お試しください。'
+      : code === 'UNAUTHENTICATED' ? 'ログインを確認できませんでした。時間をおいて、もう一度お試しください。'
+        : '記録を読み込めませんでした。通信状況を確認して、もう一度お試しください。'
   return <>
     <p role="alert">{message}</p>
     <button type="button" className="retry-button" onClick={retry}>記録を読み直す</button>

@@ -41,6 +41,7 @@ p { overflow-wrap: anywhere; }
 .account-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; display: flex; flex-direction: column; gap: 8px; min-width: 200px; padding: 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 .account-menu-name { margin: 0; font-size: 13px; font-weight: var(--ui-weight-strong); overflow-wrap: anywhere; }
 .account-menu [role="menuitem"] { min-height: 40px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; }
+.account-menu a[role="menuitem"] { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .page { width: min(100% - 64px, 1440px); margin-inline: auto; }
 .page { padding-block: 36px 26px; }
 .api-quest-picker { display: grid; gap: 7px; margin: 18px 0; padding: 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); }
@@ -79,6 +80,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-filter-chips { display: flex; gap: 8px; max-width: 100%; overflow-x: auto; padding: 2px; pointer-events: auto; scrollbar-width: none; }
 .map-filter-chips::-webkit-scrollbar { display: none; }
 .filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; }
+.filter-toggle { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; }
 .filter-chip[aria-pressed="true"] { background: var(--ui-accent); }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .api-load-state .map-filter-panel { margin-top: 18px; }

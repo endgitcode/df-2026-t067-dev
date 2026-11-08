@@ -57,6 +57,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const [selectedAreaId, setSelectedAreaId] = useState(initialSelection.areaId)
   const [activeRegion, setActiveRegion] = useState('')
   const [activePrefecture, setActivePrefecture] = useState('')
+  const [filterOpen, setFilterOpen] = useState(false)
   const [retry, setRetry] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshNotice, setRefreshNotice] = useState<{ api: Api; text: string } | null>(null)
@@ -224,17 +225,24 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     : activeRegion ? '' : visibleChoices[0]?.questId ?? ''
   const selectRegion = (region: string) => { setActiveRegion(region); setActivePrefecture(''); resetAreaSelection() }
   const selectPrefecture = (prefecture: string) => { setActivePrefecture(prefecture); resetAreaSelection() }
-  // 地方・都道府県の絞り込みは地図の上に浮くチップで出す（フォールバック表示では通常フローに置く）。
-  // 「全国」チップは置かず、未選択（初期状態）が全国表示。選択中の地方チップをもう一度押すと解除される。
+  // 地方・都道府県の絞り込みは「場所で絞る」ボタンの中に畳む（D-48）。常時並べず、ボタンを
+  // 押した時だけチップを展開する（PC はパネル内、スマホは地図の上に浮く表示のまま）。
+  // ボタンの文言に現在の絞り込み状態を出す。地方・都道府県のどちらを選んでも展開は閉じる。
+  // 「全国」へのリセットは展開内の先頭に置く。選択中の地方チップの再押下でも解除できる。
   // 地方を解除・変更すると都道府県の選択も外れる（従来どおり selectRegion が都道府県をリセットする）。
+  const filterSummary = activeRegion ? `場所で絞る：${activeRegion}${activePrefecture ? `・${activePrefecture}` : ''}` : '場所で絞る'
   const filterControls = <div className="map-filter-panel">
-    <div className="map-filter-chips" role="group" aria-label="地方">
-      {REGIONS.map((region) => <button key={region.name} type="button" className="filter-chip" aria-pressed={activeRegion === region.name} onClick={() => selectRegion(activeRegion === region.name ? '' : region.name)}>{region.name}</button>)}
-    </div>
-    {activeRegion && <div className="map-filter-chips" role="group" aria-label="都道府県">
-      <button type="button" className="filter-chip" aria-pressed={activePrefecture === ''} onClick={() => selectPrefecture('')}>地方内すべて</button>
-      {prefOptions.map((prefecture) => <button key={prefecture} type="button" className="filter-chip" aria-pressed={activePrefecture === prefecture} onClick={() => selectPrefecture(prefecture)}>{prefecture}</button>)}
-    </div>}
+    <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={() => setFilterOpen((value) => !value)}>{filterSummary}</button>
+    {filterOpen && <>
+      <div className="map-filter-chips" role="group" aria-label="地方">
+        <button type="button" className="filter-chip" aria-pressed={activeRegion === ''} onClick={() => { selectRegion(''); setFilterOpen(false) }}>全国</button>
+        {REGIONS.map((region) => <button key={region.name} type="button" className="filter-chip" aria-pressed={activeRegion === region.name} onClick={() => { selectRegion(activeRegion === region.name ? '' : region.name); setFilterOpen(false) }}>{region.name}</button>)}
+      </div>
+      {activeRegion && <div className="map-filter-chips" role="group" aria-label="都道府県">
+        <button type="button" className="filter-chip" aria-pressed={activePrefecture === ''} onClick={() => { selectPrefecture(''); setFilterOpen(false) }}>地方内すべて</button>
+        {prefOptions.map((prefecture) => <button key={prefecture} type="button" className="filter-chip" aria-pressed={activePrefecture === prefecture} onClick={() => { selectPrefecture(prefecture); setFilterOpen(false) }}>{prefecture}</button>)}
+      </div>}
+    </>}
   </div>
   // 問題の選択は全モード共通で「リストの項目を押す」形に統一する（ドロップダウンは置かない）。
   // 地図のカードと同じく、押した問題の詳細を開くところまでを担う。
