@@ -105,6 +105,7 @@ button.explore-quest-card { cursor: pointer; }
 .explore-sheet-grip { width: 46px; height: 6px; border-radius: 999px; background: var(--ui-line); opacity: .45; }
 .explore-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; }
+.explore-sheet[data-snap="closed"] .explore-sheet-body { visibility: hidden; }
 .explore-sheet .explore-list { margin: 0; border: 0; box-shadow: none; padding-top: 2px; }
 .explore-sheet .explore-quest-list { max-height: none; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .explore-sheet { transition: none; } }
@@ -117,7 +118,7 @@ button.explore-quest-card { cursor: pointer; }
 .pin-face { display: grid; place-items: center; width: 43px; height: 43px; border-radius: var(--ui-radius); transform: rotate(-45deg); background: var(--ui-muted); border: 3px solid var(--ui-surface); box-shadow: var(--ui-shadow); transition: background 180ms ease; }
 .pin-face .icon { transform: rotate(45deg); color: var(--ui-surface); width: 21px; height: 21px; }
 .pin-caption { margin-top: 4px; padding: 5px 10px; color: var(--ui-muted); background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); font-size: 12px; font-weight: var(--ui-weight-strong); white-space: nowrap; box-shadow: var(--ui-shadow); }
-.map-controls { position: absolute; right: 17px; bottom: 52px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.map-controls { position: absolute; right: 17px; bottom: 52px; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .map-locate-fab { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); cursor: pointer; }
 .map-locate-fab:hover:not(:disabled) { background: var(--ui-tint); }
 .map-locate-fab:disabled { color: var(--ui-muted); background: var(--ui-disabled); cursor: not-allowed; }
@@ -238,9 +239,8 @@ button.explore-quest-card { cursor: pointer; }
   .map-location-status.is-floating { left: 12px; margin: 0; max-width: calc(100% - 84px); }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
   .map-controls { right: 11px; bottom: 72px; }
-  /* シートが横幅いっぱいに広がる幅だけ、右下の操作系をシートの高さに追随させる。
-     広い幅ではシートは左下の浮きカードなので、右側の操作系は通常位置に固定する。 */
-  .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--sheet-h, 0px) + 14px); }
+  /* スマホでは右下の地図操作をシートの高さと無関係な位置に固定する。 */
+  .map-preview-shell.has-sheet .map-controls { bottom: 72px; }
   .map-zoom button { width: 44px; height: 44px; }
   .map-preview-shell.has-sheet { height: max(480px, calc(100svh - 224px)); min-height: 480px; }
   .map-filter-overlay { top: 112px; left: 12px; right: 12px; }
@@ -370,7 +370,7 @@ body.explore-fullbleed .map-preview-shell.has-sheet { height: 100vh; height: 100
 body.explore-fullbleed .map-preview-shell.has-sheet .map-preview { border: 0; border-radius: 0; box-shadow: none; }
 body.explore-fullbleed .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 20; min-height: 0; padding: calc(10px + env(safe-area-inset-top)) 20px 10px; background: transparent; border-bottom: 0; pointer-events: none; }
 body.explore-fullbleed .brand, body.explore-fullbleed .desktop-nav, body.explore-fullbleed .account-area { pointer-events: auto; }
-body.explore-fullbleed .brand { padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
+body.explore-fullbleed .brand { width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .desktop-nav { align-self: center; gap: 18px; padding: 4px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .account-area { flex-wrap: nowrap; max-width: none; }
 body.explore-fullbleed .account-action-button { box-shadow: var(--ui-control-shadow); }
@@ -400,11 +400,12 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .site-header { padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
   /* スマホ幅では縁なし表示でもナビは下部タブバーのまま（D-32）。浮動ピルにはしない。
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
-  body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 88px); left: 12px; right: 12px; }
-  body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 136px); left: 12px; right: 12px; }
+  /* フィルターは最大2段になるため、選択中の地域チップはその下へ置く。 */
+  body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 154px); left: 12px; right: 12px; }
+  body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
   body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }
-  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
+  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }
   body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
   body.explore-fullbleed .quest-rail { padding: 22px 16px 0; }
   body.explore-fullbleed .site-footer { padding: 21px 16px calc(25px + env(safe-area-inset-bottom)); }

@@ -645,16 +645,16 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('emphasizes a pin on hover only in hover-capable environments', async () => {
+  it('uses the same red hover highlight when a touch-first pointer reports hover', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: query.includes('hover'),
+      matches: false,
       media: query, onchange: null,
       addEventListener: vi.fn(), removeEventListener: vi.fn(),
       addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(() => false),
     }))
     vi.resetModules()
-    const map = { ...mapInstance, fitBounds: vi.fn() }
+    const map = { ...mapInstance, setZoom: vi.fn(), fitBounds: vi.fn() }
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
     const markers: Array<{ options: Record<string, unknown>; listeners: Map<string, () => void>; icons: Array<{ url: string }> }> = []
     class Marker {
@@ -668,8 +668,14 @@ describe('Google map panel', () => {
     }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
-    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={[]} onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
+    const { unmount, container } = render(<ConfiguredMapPreview areas={areas} quests={[]} onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
     await screen.findByRole('region', { name: '表示範囲の謎' })
+    const controls = container.querySelector('.map-controls')
+    expect(controls?.parentElement).toBe(container.querySelector('.map-preview-shell'))
+    expect(controls?.parentElement).not.toBe(container.querySelector('.map-preview'))
+    const { userEvent } = await import('@testing-library/user-event')
+    await userEvent.setup().click(screen.getByRole('button', { name: '地図を拡大' }))
+    expect(map.setZoom).toHaveBeenCalledWith(6)
     expect(markers.length).toBeGreaterThan(0)
     const marker = markers[0]
     expect(marker.options.cursor).toBe('pointer')
@@ -677,7 +683,7 @@ describe('Google map panel', () => {
     marker.listeners.get('mouseover')?.()
     const hoverIcon = decodeURIComponent(marker.icons.at(-1)?.url ?? '')
     expect(hoverIcon).toContain('width="42"')
-    expect(hoverIcon).toContain('fill="#ffffff" stroke=')
+    expect(hoverIcon).toContain('fill="#e7473f" stroke=')
     marker.listeners.get('mouseout')?.()
     const baseIcon = decodeURIComponent(marker.icons.at(-1)?.url ?? '')
     expect(baseIcon).toContain('width="36"')
