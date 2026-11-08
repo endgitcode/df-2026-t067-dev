@@ -14,11 +14,14 @@ describe('exploration area hierarchy', () => {
     expect(regionForPrefecture('東京都')).toBe('関東')
   })
 
-  it('keeps unclassified areas accessible and filters classified areas by prefecture', () => {
+  it('shows unclassified areas only in the unfiltered list and filters classified areas by prefecture', () => {
     const areas = [area('tokyo', '川辺エリア', '13'), area('osaka', '森エリア', '27'), area('unknown', '川辺エリア')]
     expect(getRegionAreas(areas, '', '')).toEqual(areas)
     expect(getRegionAreas(areas, '関東', '東京都').map((item) => item.areaId)).toEqual(['tokyo'])
-    expect(getRegionAreas(areas, '未分類', '').map((item) => item.areaId)).toEqual(['unknown'])
+    // 未分類という分類は無い（D-33）: コードの無い地域はどの地方にも属さない。
+    for (const region of ['北海道', '東北', '関東', '中部', '近畿', '中国', '四国', '九州・沖縄']) {
+      expect(getRegionAreas(areas, region, '').map((item) => item.areaId)).not.toContain('unknown')
+    }
   })
 })
 

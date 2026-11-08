@@ -39,7 +39,7 @@ it('confirms durable identity and membership before saving a real-source shootin
     let body: unknown
     if (path === '/api/v1/session') body = { uid: snapshot.user.uid }
     else if (path.startsWith('/api/v1/me/memberships?')) body = { items: [{
-      orgId: quest.orgId, areaId: quest.areaId, label: '永続の架空自治体', role: 'publisher',
+      orgId: quest.orgId, areaId: quest.areaId, label: '永続の架空自治体', role: 'publisher', prefectureCode: '07',
     }], nextCursor: null }
     else if (path.endsWith('/shooting-areas')) body = init?.method === 'PUT'
       ? { ...areas, draftRevision: 3, zones: JSON.parse(String(init.body)).zones } : areas
@@ -216,7 +216,7 @@ it('publishes and pauses through durable session, membership and common HTTP con
     let body: unknown
     if (path === '/api/v1/session') body = { uid: snapshot.user.uid }
     else if (path.startsWith('/api/v1/me/memberships?')) body = { items: [{
-      orgId: quest.orgId, areaId: quest.areaId, label: '永続の公開自治体', role: 'publisher',
+      orgId: quest.orgId, areaId: quest.areaId, label: '永続の公開自治体', role: 'publisher', prefectureCode: '07',
     }], nextCursor: null }
     else if (path.endsWith('/test')) {
       trials++
@@ -290,7 +290,7 @@ it('shows remaining work and enables the shooting-area map on the shared preview
     let body: unknown
     if (path === '/api/v1/session') body = { uid: snapshot.user.uid }
     else if (path.startsWith('/api/v1/me/memberships?')) body = { items: [{
-      orgId: quest.orgId, areaId: quest.areaId, label: '共有検証の架空自治体', role: 'publisher',
+      orgId: quest.orgId, areaId: quest.areaId, label: '共有検証の架空自治体', role: 'publisher', prefectureCode: '13',
     }], nextCursor: null }
     else if (path.endsWith('/shooting-areas')) body = init?.method === 'PUT'
       ? { ...areas, draftRevision: 3, zones: JSON.parse(String(init.body)).zones } : areas
@@ -318,5 +318,38 @@ it('shows remaining work and enables the shooting-area map on the shared preview
     expect(screen.getByText('半径：1,000m（固定）')).toBeVisible()
     await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
     expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
+  } finally { vi.unstubAllGlobals() }
+})
+
+it('blocks creation and explains why publication is unavailable for an unclassified area', async () => {
+  const user = userEvent.setup()
+  const snapshot: AuthSnapshot = { status: 'signed-in', user: { uid: 'preview-manager', displayName: null } }
+  const authClient: AuthClient = {
+    getSnapshot: () => snapshot, subscribe: () => () => {},
+    signInWithGoogle: async () => {}, signOut: async () => {}, getIdToken: async () => 'preview-token',
+  }
+  const shared = { ...quest, source: 'real' } as ManagedQuest
+  const fetcher = vi.fn<typeof fetch>(async (input) => {
+    const path = String(input)
+    let body: unknown
+    if (path === '/api/v1/session') body = { uid: snapshot.user.uid }
+    else if (path.startsWith('/api/v1/me/memberships?')) body = { items: [{
+      orgId: quest.orgId, areaId: quest.areaId, label: '未分類の架空自治体', role: 'publisher',
+    }], nextCursor: null }
+    else if (path.startsWith('/api/v1/orgs/' + quest.orgId + '/quests?')) body = { items: [shared], nextCursor: null }
+    else throw new Error('Unexpected preview request: ' + path)
+    return new Response(JSON.stringify(body), { headers: {
+      'Content-Type': 'application/json', 'X-Quest-Data-Mode': 'team-preview',
+    } })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  try {
+    render(<LocalAdminWorkspace authClient={authClient} dataMode="team-preview" />)
+    await user.click(await screen.findByRole('button', { name: /未分類の架空自治体/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('未設定（未分類）のため、新しい問題を作成できず')
+    expect(screen.queryByRole('button', { name: '下書きを新規作成' })).not.toBeInTheDocument()
+    expect(await screen.findByText('この地域は未分類のため公開できません（都道府県コードが未設定です）。')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '試験と公開確認' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('未設定（未分類）のため、公開できません')
   } finally { vi.unstubAllGlobals() }
 })

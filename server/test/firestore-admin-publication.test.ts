@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { Storage } from '@google-cloud/storage'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import test from 'node:test'
 import sharp from 'sharp'
 import type { ManagedQuestDraft } from '../../src/shared/api/admin'
@@ -44,7 +44,7 @@ test('durable publishing freezes the tested version and pausing stops all public
   const photos = new AnswerPhotoStorage(new Storage({ projectId, apiEndpoint: 'http://' + storage }).bucket(bucketName))
   const orgId = 'publish-org', areaId = 'publish-area'
   const batch = db.batch()
-  batch.create(db.collection('areas').doc(areaId), { label: '架空の公開地域', marker: { latitude: 0, longitude: 0 },
+  batch.create(db.collection('areas').doc(areaId), { label: '架空の公開地域', marker: { latitude: 0, longitude: 0 }, prefectureCode: '13',
     boundarySource: 'fixture', publicGeometryJson: JSON.stringify({ type: 'Polygon', coordinates: [[[0, 0], [0, 1], [1, 1], [0, 0]]] }) })
   for (const [uid, org, role] of [['editor', orgId, 'editor'], ['publisher', orgId, 'publisher'], ['other', 'other-org', 'publisher']]) {
     const id = createHash('sha256').update(JSON.stringify([uid, org])).digest('hex')
@@ -267,4 +267,18 @@ test('durable publishing freezes the tested version and pausing stops all public
   assert.equal(await cleanupFinishedAnswerPhotos(db, photos, receipt.attemptId), true)
   await assert.rejects(photos.readIncoming(receipt.attemptId, digest, incoming), { code: 'SYSTEM_ERROR' })
   await assert.rejects(photos.readRecord(staged), { code: 'SYSTEM_ERROR' })
+
+  // D-33: 地域が都道府県コードを失う（未分類になる）と、既存の下書きも公開できない。
+  // 公開済みの版の表示・判定には影響しない。コードを戻せば再び公開できる。
+  const legacy = await editor.getManagedQuest(orgId, questId)
+  const revised = await editor.updateManagedQuest(orgId, questId, { expectedDraftRevision: legacy.draftRevision, draft: legacy.draft })
+  assert.equal((await editor.submitManagedQuestReview(orgId, questId, revised.draftRevision)).quest.status, 'review_pending')
+  const legacyMatch = await compare(image(syntheticPng), 'match-unclassified', revised.draftRevision)
+  const legacyMismatch = await compare(image(otherSyntheticPng), 'mismatch-unclassified', revised.draftRevision)
+  const legacyInput = { expectedDraftRevision: revised.draftRevision,
+    matchTestId: legacyMatch.testId, mismatchTestId: legacyMismatch.testId, confirmations }
+  await db.collection('areas').doc(areaId).update({ prefectureCode: FieldValue.delete() })
+  await assert.rejects(publisher.publishManagedQuest(orgId, questId, legacyInput), { code: 'AREA_UNCLASSIFIED' })
+  await db.collection('areas').doc(areaId).update({ prefectureCode: '13' })
+  assert.equal((await publisher.publishManagedQuest(orgId, questId, legacyInput)).publishedVersion, 3)
 })

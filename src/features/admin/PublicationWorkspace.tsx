@@ -39,8 +39,8 @@ function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
   }
 }
 
-export function PublicationWorkspace({ api, initial, member, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock' }: {
-  api: ApiClient; initial: ManagedQuest; member: OrgMembership; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; onBack: () => void; onPublished: () => void
+export function PublicationWorkspace({ api, initial, member, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock', areaUnclassified = false }: {
+  api: ApiClient; initial: ManagedQuest; member: OrgMembership; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; onBack: () => void; onPublished: () => void
 }) {
   const [quest, setQuest] = useState(initial)
   const [photo, setPhoto] = useState<File | null>(null)
@@ -120,6 +120,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
     <p>{quest.draft.content.title || '無題の下書き'}・下書き版 {draftRevision}</p>
     <p>{realPhotoTest ? '開発用の検証環境です。写真試験は実写真で照合します。' : '開発用の検証環境です。合成写真を使います。'}</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
+    {areaUnclassified && <p role="alert">この地域は都道府県コードが未設定（未分類）のため、公開できません。地域の分類が完了するまで公開は止まります。</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">操作結果を確認しています…</p>}
     <form onSubmit={trial}>

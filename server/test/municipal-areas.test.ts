@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { prepareN03Area, readMunicipalArea } from '../src/municipal-areas'
+import { areaPrefectureCode, prepareN03Area, readMunicipalArea } from '../src/municipal-areas'
 
 const outer = [[139, 35], [140, 35], [140, 36], [139, 36], [139, 35]]
 const hole = [[139.2, 35.2], [139.3, 35.2], [139.3, 35.3], [139.2, 35.3], [139.2, 35.2]]
@@ -71,4 +71,15 @@ test('prepares only the selected code and keeps every polygon and hole', () => {
   const prepared = prepareN03Area(data, options)
   assert.deepEqual(JSON.parse(prepared.data.publicGeometryJson), { type: 'MultiPolygon', coordinates: [[outer, hole], [island]] })
   assert.throws(() => prepareN03Area(data, { ...options, municipalityCode: '99999' }), /一致する区域がありません/)
+})
+
+test('areaPrefectureCode returns only a valid prefecture code from area data', () => {
+  assert.equal(areaPrefectureCode({ prefectureCode: '07' }), '07')
+  assert.equal(areaPrefectureCode({ prefectureCode: '47' }), '47')
+  assert.equal(areaPrefectureCode({}), undefined)
+  assert.equal(areaPrefectureCode({ prefectureCode: '7' }), undefined)
+  assert.equal(areaPrefectureCode({ prefectureCode: '48' }), undefined)
+  assert.equal(areaPrefectureCode({ prefectureCode: 7 }), undefined)
+  assert.equal(areaPrefectureCode(null), undefined)
+  assert.equal(areaPrefectureCode('07'), undefined)
 })

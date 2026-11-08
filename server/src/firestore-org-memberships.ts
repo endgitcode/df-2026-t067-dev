@@ -4,7 +4,7 @@ import { parseOrgMembership } from '../../src/shared/api/admin'
 import type { OrgMembership } from '../../src/shared/api/admin'
 import { HttpError } from './errors'
 import { answerTransaction, processingError } from './firestore-answer-data'
-import { readMunicipalArea } from './municipal-areas'
+import { areaPrefectureCode, readMunicipalArea } from './municipal-areas'
 
 function memberId(uid: string, orgId: string): string {
   return createHash('sha256').update(JSON.stringify([uid, orgId])).digest('hex')
@@ -43,7 +43,10 @@ export function listOrgMemberships(db: Firestore, uid: string) {
     return members.map((member): OrgMembership => {
       const area = byId.get(member.areaId)
       const found = readMunicipalArea(area ? { id: area.id, data: area.data() } : null, member)
-      return { ...member, exploration: found ? { name: found.area.label, ...found.boundary } : { source: 'unavailable' } }
+      // 地域の都道府県コードを所属にも載せ、管理画面が未分類（D-33）かどうかを表示できるようにする。
+      const prefectureCode = area ? areaPrefectureCode(area.data()) : undefined
+      return { ...member, ...(prefectureCode ? { prefectureCode } : {}),
+        exploration: found ? { name: found.area.label, ...found.boundary } : { source: 'unavailable' } }
     })
   }, true)
 }
