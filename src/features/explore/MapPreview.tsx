@@ -104,7 +104,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // PC幅サイドバーの開閉（D-36）。その場の操作感を優先し、状態はメモリのみで保持する。
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   // フィット時のパディングは「フィットする時点」の開閉状態で決める。開閉のたびに
-  // 再フィットすると地図の中心が動いてしまうため（D-37）、フィット側の effect の
+  // 再フィットすると地図の中心が動いてしまうため（D-38）、フィット側の effect の
   // 依存には開閉状態を入れず、ref 経由で現在の値だけを読む。
   const sidebarCollapsedRef = useRef(false)
   const [viewport, setViewport] = useState<ViewportBounds | null>(null)
@@ -450,7 +450,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 大きさが変わる。コンテナ確定前に走ったフィットは実サイズに合わず、選択中なのに
   // 初期表示のまま残ることがある（2026-11-08 の実機報告）。確定後にサイズの再認識を
   // 促し、未フィットの選択があればフィットをやり直す。
-  // サイドバーの開閉はフローティング化（D-37）でコンテナの大きさが変わらなくなったため、
+  // サイドバーの開閉はフローティング化（D-38）でコンテナの大きさが変わらなくなったため、
   // ここでの対象に含めない（開閉では resize も再フィットもしない）。
   const settledLayout = useRef('')
   useEffect(() => {

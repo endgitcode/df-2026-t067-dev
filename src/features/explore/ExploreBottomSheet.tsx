@@ -12,12 +12,11 @@ export const SHEET_PEEK_HEIGHT = 140
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
-const SHEET_HANDLE_HEIGHT = 34
 
 function snapHeights(stageHeight: number): Record<SheetSnap, number> {
   const half = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
   const full = Math.max(half, stageHeight - SHEET_TOP_GAP)
-  return { closed: SHEET_HANDLE_HEIGHT, peek: SHEET_PEEK_HEIGHT, half, full }
+  return { closed: 0, peek: SHEET_PEEK_HEIGHT, half, full }
 }
 
 // 地図の上に重なる引き上げ式シート。スナップは closed / peek / half / full の4段で、
@@ -30,6 +29,9 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
   onHeightChange?: (height: number) => void
 }) {
   const sheetRef = useRef<HTMLDivElement>(null)
+  const handleRef = useRef<HTMLButtonElement>(null)
+  const reopenRef = useRef<HTMLButtonElement>(null)
+  const focusAfterSnap = useRef<'handle' | 'reopen' | null>(null)
   const [stageHeight, setStageHeight] = useState(FALLBACK_STAGE_HEIGHT)
   const [snap, setSnap] = useState<SheetSnap>('peek')
   const [dragHeight, setDragHeight] = useState<number | null>(null)
@@ -61,6 +63,14 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
 
   useEffect(() => { onHeightChange?.(height) }, [height, onHeightChange])
 
+  useEffect(() => {
+    const target = focusAfterSnap.current
+    if (!target) return
+    focusAfterSnap.current = null
+    const element = target === 'handle' ? handleRef.current : reopenRef.current
+    element?.focus({ preventScroll: true })
+  }, [snap])
+
   const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return
     drag.current = { pointerId: event.pointerId, startY: event.clientY, startHeight: height, distance: 0 }
@@ -84,23 +94,31 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
       const target = dragHeight ?? heights[snap]
       const nearest = (Object.entries(heights) as Array<[SheetSnap, number]>)
         .reduce((best, entry) => (Math.abs(entry[1] - target) < Math.abs(best[1] - target) ? entry : best))
+      if (nearest[0] === 'closed') focusAfterSnap.current = 'reopen'
       setSnap(nearest[0])
     }
     setDragHeight(null)
   }
   const onClick = () => {
     if (suppressClick.current) { suppressClick.current = false; return }
+    if (snap === 'half' || snap === 'full') focusAfterSnap.current = 'reopen'
     setSnap((current) => (current === 'closed' ? 'peek' : current === 'peek' ? 'half' : 'closed'))
   }
+  const reopen = () => {
+    suppressClick.current = false
+    focusAfterSnap.current = 'handle'
+    setSnap('peek')
+  }
 
-  return (
+  return <>
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
-      <button type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
-        aria-label={snap === 'closed' || snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
+      {snap !== 'closed' && <button ref={handleRef} type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
+        aria-label={snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={onClick}>
         <span className="explore-sheet-grip" aria-hidden="true" />
-      </button>
+      </button>}
       <div className="explore-sheet-body" id={bodyId}>{children}</div>
     </div>
-  )
+    {snap === 'closed' && <button ref={reopenRef} type="button" className="explore-sheet-reopen" aria-expanded="false" aria-controls={bodyId} onClick={reopen}>謎リストを開く</button>}
+  </>
 }

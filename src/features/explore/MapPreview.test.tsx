@@ -240,7 +240,7 @@ describe('Google map panel', () => {
     const { visibleAreaFitPadding } = await import('./fitPadding')
     const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
-    // PC幅でサイドバーが開いている間は、フィットにパネル幅ぶんの左パディングを見込む（D-37）。
+    // PC幅でサイドバーが開いている間は、フィットにパネル幅ぶんの左パディングを見込む（D-38）。
     expect(fitBounds).toHaveBeenCalledWith(expect.anything(), visibleAreaFitPadding(true))
     expect(trigger).toHaveBeenCalledWith(map, 'resize')
     unmount()
@@ -281,7 +281,7 @@ describe('Google map panel', () => {
     const openToggle = screen.getByRole('button', { name: 'サイドバーを開く' })
     expect(openToggle).toHaveAttribute('aria-expanded', 'false')
     expect(document.body).toHaveClass('explore-sidebar-collapsed')
-    // フローティング方式（D-37）では開閉で地図コンテナが変わらないため、
+    // フローティング方式（D-38）では開閉で地図コンテナが変わらないため、
     // resize も再フィットも中心の移動も起きない。
     expect(trigger).not.toHaveBeenCalled()
     expect(fitBounds).not.toHaveBeenCalled()
