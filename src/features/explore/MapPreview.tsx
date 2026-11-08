@@ -9,6 +9,8 @@ import { MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLO
 import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
+// 日本国内専用（D-27）：地図の移動範囲を日本周辺に緩く制限する。strictBounds は使わず、端では柔らかく止める。
+const JAPAN_BOUNDS = { north: 50, south: 20, east: 158, west: 118 }
 const MIN_ZOOM = 3
 const INITIAL_ZOOM = 5
 const MAX_ZOOM = 20
@@ -112,6 +114,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       try {
         instance = new google.Map(target.current, {
           center: JAPAN, zoom: INITIAL_ZOOM, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
+          restriction: { latLngBounds: JAPAN_BOUNDS, strictBounds: false },
           disableDefaultUI: true, mapTypeControl: false, streetViewControl: false,
           fullscreenControl: false, clickableIcons: false, gestureHandling: 'greedy',
           styles: MAP_STYLES,
