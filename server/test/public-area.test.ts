@@ -20,3 +20,13 @@ test('readPublicArea treats a missing or invalid stored code as unclassified', (
   assert.equal(readPublicArea(row({ ...base, prefectureCode: '99' }), 1).prefectureCode, undefined)
   assert.equal(readPublicArea(row({ ...base, prefectureCode: 13 }), 1).prefectureCode, undefined)
 })
+
+test('readPublicArea exposes a stored municipality code', () => {
+  assert.equal(readPublicArea(row({ ...base, municipalityCode: '07203' }), 1).municipalityCode, '07203')
+})
+
+test('readPublicArea leaves a missing or invalid municipality code unset', () => {
+  assert.equal(readPublicArea(row(base), 1).municipalityCode, undefined)
+  assert.equal(readPublicArea(row({ ...base, municipalityCode: '7203' }), 1).municipalityCode, undefined)
+  assert.equal(readPublicArea(row({ ...base, municipalityCode: 7203 }), 1).municipalityCode, undefined)
+})

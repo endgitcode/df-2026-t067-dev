@@ -43,6 +43,13 @@ describe('public data boundary', () => {
       expect(() => parsePublicArea({ ...area, prefectureCode })).toThrow(ContractError)
     }
   })
+  it('keeps a valid municipality code and rejects invalid ones', () => {
+    expect(parsePublicArea({ ...area, municipalityCode: '07203' })).toEqual({ ...area, municipalityCode: '07203' })
+    expect(parsePublicArea(area)).not.toHaveProperty('municipalityCode')
+    for (const municipalityCode of ['7203', '072030', 'abcde', 7203, null]) {
+      expect(() => parsePublicArea({ ...area, municipalityCode })).toThrow(ContractError)
+    }
+  })
   it('validates list items and cursors, including an empty final page', () => {
     expect(parsePage({ items: [], nextCursor: null }, parsePublicQuest)).toEqual({ items: [], nextCursor: null })
     expect(parsePage({ items: [quest], nextCursor: 'page-2' }, parsePublicQuest).items).toEqual([quest])

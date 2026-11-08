@@ -106,8 +106,12 @@ export function isPrefectureCode(input: unknown): input is string {
   return typeof input === 'string' && /^[0-9]{2}$/u.test(input) && Number(input) >= 1 && Number(input) <= 47
 }
 
+export function isMunicipalityCode(input: unknown): input is string {
+  return typeof input === 'string' && /^[0-9]{5}$/u.test(input)
+}
+
 export function parsePublicArea(input: unknown): PublicArea {
-  const d = object(input, ['areaId', 'label', 'publicGeometry', 'marker', 'publishedCount', 'prefectureCode'], 'PublicArea')
+  const d = object(input, ['areaId', 'label', 'publicGeometry', 'marker', 'publishedCount', 'prefectureCode', 'municipalityCode'], 'PublicArea')
   const result: PublicArea = {
     areaId: text(d.areaId, 'areaId'), label: text(d.label, 'label'),
     publicGeometry: geometry(d.publicGeometry), marker: position(d.marker, 'marker'),
@@ -116,6 +120,10 @@ export function parsePublicArea(input: unknown): PublicArea {
   if (d.prefectureCode !== undefined) {
     if (!isPrefectureCode(d.prefectureCode)) throw new ContractError('PublicArea.prefectureCode')
     result.prefectureCode = d.prefectureCode
+  }
+  if (d.municipalityCode !== undefined) {
+    if (!isMunicipalityCode(d.municipalityCode)) throw new ContractError('PublicArea.municipalityCode')
+    result.municipalityCode = d.municipalityCode
   }
   return result
 }

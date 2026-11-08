@@ -1,6 +1,6 @@
 import type { DocumentSnapshot, Firestore, Transaction } from 'firebase-admin/firestore'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { isPrefectureCode, parsePublicArea, parsePublicQuest, parseQuestHint } from '../../src/shared/api/validation'
+import { isMunicipalityCode, isPrefectureCode, parsePublicArea, parsePublicQuest, parseQuestHint } from '../../src/shared/api/validation'
 import { publicHintImagePath, publicHintImagesPath } from './admin-publication'
 import type { AnswerPhotoStorage } from './answer-photo-storage'
 import { HttpError } from './errors'
@@ -43,9 +43,13 @@ export function readPublicArea(row: DocumentSnapshot, publishedCount: number) {
   // Only a stored value that is a valid prefecture code reaches the public
   // catalog; a missing or invalid value leaves the area unclassified.
   const prefectureCode = row.get('prefectureCode')
+  // Same rule for the standard municipality code (D-30): areas that span
+  // several municipalities (e.g. Tokyo's special wards) stay unset.
+  const municipalityCode = row.get('municipalityCode')
   return parsePublicArea({ areaId: storedId(row.id), label: row.get('label'), marker: row.get('marker'),
     publicGeometry: JSON.parse(row.get('publicGeometryJson')), publishedCount,
-    ...(isPrefectureCode(prefectureCode) ? { prefectureCode } : {}) })
+    ...(isPrefectureCode(prefectureCode) ? { prefectureCode } : {}),
+    ...(isMunicipalityCode(municipalityCode) ? { municipalityCode } : {}) })
 }
 
 export async function handlePublicCatalog(db: Firestore, request: IncomingMessage, response: ServerResponse,
