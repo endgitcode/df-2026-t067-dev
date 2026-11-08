@@ -944,6 +944,48 @@ describe('Google map panel', () => {
     delete window.google
     vi.unstubAllGlobals()
   })
+
+  it('clusters overlapping pins into one marker with the total quest count and fits to them on tap (D-52)', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const map = { ...mapInstance, setZoom: vi.fn(), fitBounds, getCenter: () => ({ lat: () => 36.2, lng: () => 138.25 }) }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const markers: Array<{ options: Record<string, unknown>; listeners: Map<string, () => void> }> = []
+    class Marker {
+      options: Record<string, unknown>
+      listeners = new Map<string, () => void>()
+      constructor(options: Record<string, unknown>) { this.options = options; markers.push(this) }
+      setMap() {}
+      addListener(name: string, callback: () => void) { this.listeners.set(name, callback); return { remove: () => {} } }
+      setIcon() {}
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const square = (lat: number, lng: number): PublicArea['publicGeometry'] => ({ type: 'Polygon', coordinates: [[[lng - 0.1, lat - 0.1], [lng + 0.1, lat - 0.1], [lng + 0.1, lat + 0.1], [lng - 0.1, lat + 0.1], [lng - 0.1, lat - 0.1]]] })
+    const clusterAreas: PublicArea[] = [
+      { areaId: 'close-a', label: '近い地域A', publishedCount: 2, marker: { latitude: 35, longitude: 139 }, publicGeometry: square(35, 139) },
+      { areaId: 'close-b', label: '近い地域B', publishedCount: 3, marker: { latitude: 35.1, longitude: 139.1 }, publicGeometry: square(35.1, 139.1) },
+      { areaId: 'far', label: '遠い地域', publishedCount: 1, marker: { latitude: 43, longitude: 141.3 }, publicGeometry: square(43, 141.3) },
+    ]
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={clusterAreas} quests={[]} onSelectArea={vi.fn()} />)
+    await screen.findByRole('region', { name: '選べる謎の一覧' })
+    // 近い2地域は1つのクラスタ（合計5問）にまとまり、遠い地域は単独ピンになる。
+    await waitFor(() => expect(markers.length).toBe(2))
+    const cluster = markers.find((marker) => String(marker.options.title).includes('合計5問'))
+    expect(cluster).toBeDefined()
+    expect(decodeURIComponent(String((cluster!.options.icon as { url: string }).url))).toContain('>5<')
+    fitBounds.mockClear()
+    cluster!.listeners.get('click')?.()
+    expect(fitBounds).toHaveBeenCalled()
+    // 選択中の地域のピンはクラスタに隠さない（D-52）。
+    markers.length = 0
+    rerender(<ConfiguredMapPreview areas={clusterAreas} quests={[]} selectedAreaId="close-a" onSelectArea={vi.fn()} />)
+    await waitFor(() => expect(markers.length).toBe(3))
+    expect(markers.some((marker) => String(marker.options.title).includes('合計'))).toBe(false)
+    unmount()
+    delete window.google
+  })
 })
 
 const mapInstance = { setZoom() {}, getZoom: () => 5, setCenter() {}, addListener: () => ({ remove() {} }) }
