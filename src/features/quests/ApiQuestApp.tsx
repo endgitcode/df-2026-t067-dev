@@ -65,6 +65,12 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const refreshInFlight = useRef(false)
   const refreshOperation = useRef(0)
   const loadGeneration = useRef(0)
+  // 問題そのものを明示的に選んだ経路の印。?quest= のみのディープリンクは地域選択を
+  // 伴わないため、そのままだと地図が所属地域へ寄らない。読み込みの途中で所属地域へ選択を
+  // 追随させ、地域を選んだ時と同じフィットを発生させる。ピッカー選択は選んだ瞬間に地域も
+  // 一緒に選択するため、この印はディープリンク（初期表示）専用に使う。
+  // 一覧の先頭問題が自動で選択されただけの場合は立てない（初期表示の日本全体を保つため）。
+  const explicitQuestId = useRef(initialSelection.questId)
   const refreshButton = useRef<HTMLButtonElement>(null)
   const restoreRefreshFocus = useRef(false)
   const [staleQuest, setStaleQuest] = useState<{ questId: string; version: number } | null>(null)
@@ -140,6 +146,17 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
           cache.choices.set(selectedAreaId, choices)
         }
         if (signal.aborted) return
+        // ?quest= のみのディープリンクでは、地域が未選択のまま問題だけが指定される。詳細を
+        // 読み込む前に、一覧で分かった所属地域へ選択を追随させ、地域で絞った読み込みとして
+        // やり直す（D-44）。地域・問題の組で来た場合や、先頭問題の自動選択では追随しない。
+        if (explicitQuestId.current && explicitQuestId.current === selectedId) {
+          const chosen = choices.find((item) => item.questId === selectedId)
+          if (chosen && chosen.areaId !== selectedAreaId) {
+            if (syncUrl) writeSelectionToUrl(chosen.areaId, selectedId, 'replace')
+            setSelectedAreaId(chosen.areaId)
+            return
+          }
+        }
         if (!choices.length) {
           if (selectedId) {
             if (syncUrl) writeSelectionToUrl(selectedAreaId, '', 'replace')
@@ -192,6 +209,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const regionAreas = useMemo(() => getRegionAreas(availableAreas, activeRegion, activePrefecture), [availableAreas, activeRegion, activePrefecture])
   const prefOptions = REGIONS.find((item) => item.name === activeRegion)?.prefectures ?? []
   const resetAreaSelection = () => {
+    explicitQuestId.current = ''
     if (!selectedAreaId) return
     clearRefreshNotice()
     if (syncUrl) writeSelectionToUrl('', '', 'push')
@@ -226,7 +244,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       return
     }
     clearRefreshNotice()
-    if (syncUrl) writeSelectionToUrl(selectedAreaId, item.questId, 'push')
+    // 地図側（共有検証）の問題選択と同じく、所属地域も一緒に選択し、地図を寄せる（D-44）。
+    if (syncUrl) writeSelectionToUrl(item.areaId, item.questId, 'push')
+    if (item.areaId !== selectedAreaId) setSelectedAreaId(item.areaId)
     setSelectedId(item.questId)
     if (dataMode === 'durable-local') {
       setOpenQuestRequest((previous) => ({ questId: item.questId, sequence: (previous?.sequence ?? 0) + 1 }))
@@ -266,6 +286,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     {refreshNotice?.api === api && <span role="status">{refreshNotice.text}</span>}
   </>
   const selectArea = (areaId: string) => {
+    explicitQuestId.current = ''
     // 選択中の地域がもう一度選ばれたら（ピンの再タップ等）選択を解除し、未選択＝全件表示に戻る。
     if (areaId === selectedAreaId) { resetAreaSelection(); return }
     if (!regionAreas.some((item) => item.areaId === areaId)) return
