@@ -89,7 +89,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     expect(navOrder(desktopNav)).toEqual(['謎を探す', '自分の記録', '自治体画面'])
     expect(navOrder(mobileNav)).toEqual(['謎を探す', '自分の記録', '自治体画面'])
     expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
-    // 浮動化したスマホ用ナビから自分の記録へ到達でき、記録画面では目印が外れて従来シェルに戻る。
+    // スマホ用ナビ（スマホ幅では下部タブバー、D-32）から自分の記録へ到達でき、記録画面では目印が外れて従来シェルに戻る。
     await user.click(within(mobileNav).getByRole('button', { name: /自分の記録/ }))
     expect(await screen.findByRole('heading', { name: '自分の記録' })).toBeVisible()
     expect(document.body).not.toHaveClass('explore-fullbleed')
