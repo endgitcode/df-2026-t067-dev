@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
+import { MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
 const MIN_ZOOM = 3
@@ -10,25 +11,6 @@ const MAX_ZOOM = 20
 const LOCATION_ZOOM = 14
 const LOCATION_DEADLINE_MS = 10_000
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
-const PIN_COLOR = '#4eb8d0'
-const PIN_SELECTED_COLOR = '#f6d84a'
-const PIN_STROKE = '#17212b'
-
-// 地図の基調をアプリのテーマに薄く寄せる。水・土地はティール系、主要道路だけアクセント色を淡く使う。
-const MAP_STYLES: Array<Record<string, unknown>> = [
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#bcdfe8' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#2f6d7e' }] },
-  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#edf3ee' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#e2eee1' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#e6efe8' }] },
-  { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#f2dd8f' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#17212b' }] },
-  { featureType: 'administrative', elementType: 'labels.text.fill', stylers: [{ color: '#17212b' }] },
-  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#8fb6bd' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }, { weight: 2 }] },
-]
 
 // ピンは問題の対象座標ではなく、公開探索エリアの代表点（外周リングの重心）に置く。
 // MultiPolygon は最初に有効なポリゴンの外周を使う。
@@ -170,9 +152,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       layer.setMap(map.current)
       layer.addGeoJson({ type: 'FeatureCollection', features })
       layer.setStyle((feature) => ({
-        fillColor: feature.getProperty('areaId') === selectedAreaId ? '#f6d84a' : '#4eb8d0',
+        fillColor: feature.getProperty('areaId') === selectedAreaId ? PIN_SELECTED_COLOR : PIN_COLOR,
         fillOpacity: feature.getProperty('areaId') === selectedAreaId ? 0.55 : 0.25,
-        strokeColor: '#17212b', strokeOpacity: 0.9, strokeWeight: feature.getProperty('areaId') === selectedAreaId ? 3 : 1.5,
+        strokeColor: PIN_STROKE, strokeOpacity: 0.9, strokeWeight: feature.getProperty('areaId') === selectedAreaId ? 3 : 1.5,
         clickable: true,
       }))
       listener = layer.addListener('click', (event) => {

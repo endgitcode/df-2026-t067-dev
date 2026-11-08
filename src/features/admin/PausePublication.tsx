@@ -50,7 +50,7 @@ export function PausePublication({ api, orgId, questId, version, onPaused, onRel
     }
   }
 
-  if (!open) return <button type="button" onClick={() => {
+  if (!open) return <button type="button" className="danger-button" onClick={() => {
     setCategory(''); setReason(''); setFailure((current) => current?.reload ? current : null); setOpen(true)
   }}>公開を休止</button>
   return <form aria-label="公開休止" onSubmit={pause}>
@@ -65,7 +65,7 @@ export function PausePublication({ api, orgId, questId, version, onPaused, onRel
     <div className="admin-list-actions">
       <button type="button" disabled={pending} onClick={() => setOpen(false)}>キャンセル</button>
       {failure?.reload ? <button type="button" onClick={onReload}>最新の問題一覧を確認</button>
-        : <button type="submit" disabled={pending || !valid}>{pending ? '休止を確認しています…' : 'この公開版を休止する'}</button>}
+        : <button type="submit" className="danger-button" disabled={pending || !valid}>{pending ? '休止を確認しています…' : 'この公開版を休止する'}</button>}
     </div>
   </form>
 }

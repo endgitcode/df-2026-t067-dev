@@ -1,18 +1,21 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
+import { MAP_STYLES } from '../explore/mapStyles'
 const loader = vi.hoisted(() => ({ loadGoogleMaps: vi.fn(), subscribeMapsAuthFailure: vi.fn(() => () => {}) }))
 vi.mock('../explore/googleMapsLoader', () => loader)
 beforeEach(() => { vi.resetModules(); vi.clearAllMocks(); vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key') })
 it('selects a shooting position on click, draws private radius and removes listeners and circles', async () => {
   let click!: (event: { latLng: { lat(): number; lng(): number } }) => void
   const remove = vi.fn(), setMap = vi.fn(), onSelect = vi.fn()
-  const Map = vi.fn(function () { return { addListener: (_: string, fn: typeof click) => { click = fn; return { remove } } } })
+  const Map = vi.fn(function (_element: HTMLElement, _options: Record<string, unknown>) { return { addListener: (_: string, fn: typeof click) => { click = fn; return { remove } } } })
   const Circle = vi.fn(function (_options: Record<string, unknown>) { return { setMap } })
   loader.loadGoogleMaps.mockResolvedValue({ Map, Circle, event: { addListener: (_map: unknown, _name: string, fn: typeof click) => { click = fn; return { remove } } } })
   const { ShootingAreasMap } = await import('./ShootingAreasMap')
   const view = render(<ShootingAreasMap zones={[{ latitude: 35, longitude: 135, radiusMeters: 80 }]} selectedIndex={0} disabled={false} onSelect={onSelect} />)
   await waitFor(() => expect(Circle).toHaveBeenCalled())
+  expect(Map.mock.calls[0][1]).toMatchObject({ styles: MAP_STYLES })
   expect(Circle.mock.calls[0][0]).toMatchObject({ center: { lat: 35, lng: 135 }, radius: 80 })
+  expect(Circle.mock.calls[0][0]).toMatchObject({ strokeColor: '#f6d84a', fillColor: '#4eb8d0', fillOpacity: 0.25 })
   act(() => click({ latLng: { lat: () => 36, lng: () => 136 } }))
   expect(onSelect).toHaveBeenCalledWith(36, 136)
   view.rerender(<ShootingAreasMap zones={[{ latitude: 36, longitude: 136, radiusMeters: 100 }]} selectedIndex={0} disabled={true} onSelect={onSelect} />)
@@ -23,6 +26,16 @@ it('selects a shooting position on click, draws private radius and removes liste
   view.unmount()
   expect(remove).toHaveBeenCalled()
   expect(setMap).toHaveBeenCalledWith(null)
+})
+it('draws unselected shooting areas with the traveler pin teal', async () => {
+  const Map = vi.fn(function () { return { addListener: () => ({ remove() {} }) } })
+  const Circle = vi.fn(function (_options: Record<string, unknown>) { return { setMap: vi.fn() } })
+  loader.loadGoogleMaps.mockResolvedValue({ Map, Circle, event: { addListener: () => ({ remove: () => {} }) } })
+  const { ShootingAreasMap } = await import('./ShootingAreasMap')
+  render(<ShootingAreasMap zones={[{ latitude: 35, longitude: 135, radiusMeters: 80 }, { latitude: 36, longitude: 136, radiusMeters: 50 }]} selectedIndex={1} disabled={false} onSelect={vi.fn()} />)
+  await waitFor(() => expect(Circle).toHaveBeenCalledTimes(2))
+  expect(Circle.mock.calls[0][0]).toMatchObject({ strokeColor: '#4eb8d0', fillColor: '#4eb8d0', fillOpacity: 0.1 })
+  expect(Circle.mock.calls[1][0]).toMatchObject({ strokeColor: '#f6d84a', fillColor: '#4eb8d0', fillOpacity: 0.25 })
 })
 it('does not request Maps without configuration', async () => {
   vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', '')

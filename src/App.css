@@ -124,6 +124,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .camera-status { margin-top: 10px; color: var(--ui-muted); font-size: 12px; }
 .camera-actions { display: grid; gap: 10px; margin-top: 14px; }
 .camera-actions .secondary-button { min-height: 44px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 9px 12px; color: var(--ui-ink); background: var(--ui-surface); font-size: 12px; }
+.camera-actions .danger-button { min-height: 44px; padding: 9px 12px; font-size: 12px; }
 .photo-rotation-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .photo-rotation-actions .secondary-button { min-width: 0; padding-inline: 6px; }
 .camera-map-reference { margin-top: 12px; }
@@ -246,13 +247,14 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-bottomline { color: var(--ui-ink); flex-wrap: wrap; background: var(--ui-surface); padding: 6px 8px; border-radius: var(--ui-radius); }
 .quest-pin { color: var(--ui-ink); }
 .pin-halo { border: 0; background: transparent; border-radius: 50%; }
-.pin-face { border: var(--ui-border-width) solid var(--ui-line); border-radius: 50% 50% 50% 8px; background: var(--ui-accent); box-shadow: -3px 3px 0 var(--ui-ink); }
+/* ピンの色は Google Maps 側（features/explore/mapStyles.ts の MAP_PIN_COLOR）と同値に揃える。 */
+.pin-face { border: var(--ui-border-width) solid var(--ui-line); border-radius: 50% 50% 50% 8px; background: #4eb8d0; box-shadow: -3px 3px 0 var(--ui-ink); }
 .pin-face .icon { color: var(--ui-accent-ink); }
 .pin-caption { color: var(--ui-ink); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
-.quest-pin.is-selected .pin-face, .quest-pin:hover .pin-face { background: var(--ui-tint); }
+.quest-pin.is-selected .pin-face, .quest-pin:hover .pin-face { background: #f6d84a; }
 .quest-pin.is-selected .pin-face .icon, .quest-pin:hover .pin-face .icon { color: var(--ui-ink); }
 .quest-pin.is-selected .pin-halo { background: transparent; border: 0; }
-.quest-pin.is-selected:hover .pin-face { background: var(--ui-tint); }
+.quest-pin.is-selected:hover .pin-face { background: #f6d84a; }
 .map-zoom { overflow: visible; background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 .map-zoom button { width: 44px; height: 44px; color: var(--ui-ink); background: transparent; }
 .map-zoom button:hover:not(:disabled) { background: var(--ui-tint); }

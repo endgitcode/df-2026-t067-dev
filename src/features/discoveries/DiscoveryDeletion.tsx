@@ -36,7 +36,7 @@ export function DiscoveryDeletion({ api, id, onDeleted }: { api: ApiClient; id: 
       <p>この記録と写真を削除しますか？</p>
       <div className="camera-actions">
         <button type="button" className="secondary-button" onClick={() => setState('idle')}>キャンセル</button>
-        <button type="button" className="primary-button" onClick={check}>記録と写真を削除する</button>
+        <button type="button" className="danger-button" onClick={check}>記録と写真を削除する</button>
       </div>
     </>}
     {state === 'working' && <p role="status">削除状態を確認しています…</p>}
