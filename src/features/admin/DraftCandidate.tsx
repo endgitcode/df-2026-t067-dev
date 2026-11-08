@@ -76,7 +76,7 @@ export function DraftCandidate({ api, saved, current, omitNotes = false, onApply
         </fieldset>
         <button type="button" disabled={selected.length === 0} onClick={apply}>この案を編集欄に入れる</button>
       </>}
-      {state.status === 'applied' && <p role="status">編集欄に反映しました。内容を確認して下書きを保存してください。</p>}
+      {state.status === 'applied' && <p role="status">編集欄に反映しました（未保存）。</p>}
     </details>
   </section>
 }
