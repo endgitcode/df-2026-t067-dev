@@ -36,6 +36,13 @@ describe('public data boundary', () => {
     expect(() => parsePublicArea({ ...area, marker: { latitude: 91, longitude: 0 } })).toThrow(ContractError)
     expect(() => parsePublicArea({ ...area, publishedCount: -1 })).toThrow(ContractError)
   })
+  it('keeps a valid prefecture code and rejects invalid ones', () => {
+    expect(parsePublicArea({ ...area, prefectureCode: '13' })).toEqual({ ...area, prefectureCode: '13' })
+    expect(parsePublicArea(area)).not.toHaveProperty('prefectureCode')
+    for (const prefectureCode of ['1', '00', '48', 'ab', 13, null]) {
+      expect(() => parsePublicArea({ ...area, prefectureCode })).toThrow(ContractError)
+    }
+  })
   it('validates list items and cursors, including an empty final page', () => {
     expect(parsePage({ items: [], nextCursor: null }, parsePublicQuest)).toEqual({ items: [], nextCursor: null })
     expect(parsePage({ items: [quest], nextCursor: 'page-2' }, parsePublicQuest).items).toEqual([quest])

@@ -1,6 +1,6 @@
 import type { DocumentSnapshot, Firestore, Transaction } from 'firebase-admin/firestore'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { parsePublicArea, parsePublicQuest, parseQuestHint } from '../../src/shared/api/validation'
+import { isPrefectureCode, parsePublicArea, parsePublicQuest, parseQuestHint } from '../../src/shared/api/validation'
 import { publicHintImagePath, publicHintImagesPath } from './admin-publication'
 import type { AnswerPhotoStorage } from './answer-photo-storage'
 import { HttpError } from './errors'
@@ -40,8 +40,12 @@ async function listPublished(db: Firestore, tx: Transaction) {
 }
 
 export function readPublicArea(row: DocumentSnapshot, publishedCount: number) {
+  // Only a stored value that is a valid prefecture code reaches the public
+  // catalog; a missing or invalid value leaves the area unclassified.
+  const prefectureCode = row.get('prefectureCode')
   return parsePublicArea({ areaId: storedId(row.id), label: row.get('label'), marker: row.get('marker'),
-    publicGeometry: JSON.parse(row.get('publicGeometryJson')), publishedCount })
+    publicGeometry: JSON.parse(row.get('publicGeometryJson')), publishedCount,
+    ...(isPrefectureCode(prefectureCode) ? { prefectureCode } : {}) })
 }
 
 export async function handlePublicCatalog(db: Firestore, request: IncomingMessage, response: ServerResponse,

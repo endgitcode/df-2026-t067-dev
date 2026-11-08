@@ -102,13 +102,22 @@ function geometry(input: unknown): PublicGeometry {
   throw new ContractError('geometry.type')
 }
 
+export function isPrefectureCode(input: unknown): input is string {
+  return typeof input === 'string' && /^[0-9]{2}$/u.test(input) && Number(input) >= 1 && Number(input) <= 47
+}
+
 export function parsePublicArea(input: unknown): PublicArea {
-  const d = object(input, ['areaId', 'label', 'publicGeometry', 'marker', 'publishedCount'], 'PublicArea')
-  return {
+  const d = object(input, ['areaId', 'label', 'publicGeometry', 'marker', 'publishedCount', 'prefectureCode'], 'PublicArea')
+  const result: PublicArea = {
     areaId: text(d.areaId, 'areaId'), label: text(d.label, 'label'),
     publicGeometry: geometry(d.publicGeometry), marker: position(d.marker, 'marker'),
     publishedCount: integer(d.publishedCount, 'publishedCount'),
   }
+  if (d.prefectureCode !== undefined) {
+    if (!isPrefectureCode(d.prefectureCode)) throw new ContractError('PublicArea.prefectureCode')
+    result.prefectureCode = d.prefectureCode
+  }
+  return result
 }
 
 export function parseShootingConditions(input: unknown): ShootingConditions {
