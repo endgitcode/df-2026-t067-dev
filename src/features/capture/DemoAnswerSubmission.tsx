@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { ApiError } from '../../shared/api'
+import { ClearCelebration } from './ClearCelebration'
 import type { ApiClient, AttemptOutcome, AttemptResult, CaptureMetadata, LocalApiDataMode } from '../../shared/api'
 
 export interface DemoAnswerContext {
@@ -10,7 +11,7 @@ export interface DemoAnswerContext {
   dataMode?: LocalApiDataMode
 }
 
-type ReceiptView = { attemptId: string; message: string; canCheck: boolean; reload?: boolean; discoveryId?: string }
+type ReceiptView = { attemptId: string; message: string; canCheck: boolean; reload?: boolean; discoveryId?: string; cleared?: boolean }
 type Failure = { message: string; reload?: true; retake?: true; retryAfterSeconds?: number }
 type Operation = { controller: AbortController; deadline?: ReturnType<typeof setTimeout> }
 
@@ -51,6 +52,8 @@ function receiptView(result: AttemptResult, dataMode: LocalApiDataMode | undefin
     const messages = dataMode === 'durable-local' ? durableMessages : trialMessages
     return { attemptId, canCheck: false, message: messages[result.outcome],
       discoveryId: result.outcome === 'CORRECT' || result.outcome === 'ALREADY_CLEARED' ? result.optionalDiscoveryId : undefined,
+      // 演出は初回クリアの確定時だけ（D-42）。クリア済み・その他の結果では出さない。
+      cleared: result.outcome === 'CORRECT',
       reload: result.outcome === 'QUEST_CHANGED' || result.outcome === 'QUEST_UNAVAILABLE' }
   }
   if (result.state === 'RECEIVED') {
@@ -175,6 +178,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   }
 
   return <div className="camera-actions" aria-label="開発用の回答受付">
+    {receipt?.cleared && <ClearCelebration />}
     {receipt && <p role="status">{receipt.message}</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {pollLimit && <p role="status">自動確認をいったん終了しました。処理の失敗ではありません。同じ受付IDで再確認できます。</p>}

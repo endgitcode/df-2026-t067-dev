@@ -387,7 +387,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       </header>
 
       <main id="main" className="page" tabIndex={-1}>
-        {showRecords ? <section className="owner-records" aria-labelledby="records-title">
+        {showRecords ? <section className="owner-records view-enter" aria-labelledby="records-title">
           <h1 id="records-title">自分の記録</h1>
           <p className="sample-note">開発用の本人記録です。</p>
           <button type="button" className="secondary-button" onClick={() => navigateToRecords(false)}>地図へ戻る</button>
@@ -402,7 +402,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
               : <p role="status">ログインを確認しています…</p>)}
           {feedback && <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
         </section> : (!teamPreview ? catalogFallback : undefined) ?? <>
-        <section className="explore" aria-labelledby="explore-title">
+        <section className="explore view-enter" aria-labelledby="explore-title">
           <div className="explore-heading">
             <div>
               <h1 id="explore-title">全国から謎を探す</h1>
