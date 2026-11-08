@@ -7,7 +7,7 @@ import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance, type PolygonInstance } from './googleMapsLoader'
-import { buildJapanVeilPaths } from './japanOutline'
+import { buildJapanVeilPaths } from './japanVeil'
 import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
 import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
 
@@ -19,10 +19,10 @@ const JAPAN_BOUNDS = { north: 46.5, south: 23, east: 147, west: 122 }
 // これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
 // 初期表示の日本全体フィットは小さい画面でも 4.5 を下回らないため、その下限に合わせる。
 const MIN_ZOOM = 4.5
-// 日本の外側を薄く落とすベール（D-41）。日本周辺を覆う外周リングから日本の輪郭（japanOutline）を
-// 穴としてくり抜いたポリゴンを、ベースタイルより上・地域の塗りとピンより下に重ねる。
+// 日本の外側を薄く落とすベール（D-41）。日本周辺を覆う外周リングから、日本列島が入る大きな円
+// （円形のスポットライト）を穴としてくり抜いたポリゴンを、ベースタイルより上・地域の塗りとピンより下に重ねる。
 // 消すのではなく沈める濃さにする。外周を世界全体の矩形にすると球面上で内側が反転するため、
-// 外周の範囲と巻き方向は japanOutline 側で構造として担保する（buildJapanVeilPaths）。
+// 外周の範囲と巻き方向は japanVeil 側で構造として担保する（buildJapanVeilPaths）。
 const OUTSIDE_JAPAN_VEIL_COLOR = '#3f4a56'
 const OUTSIDE_JAPAN_VEIL_OPACITY = 0.38
 const INITIAL_ZOOM = 5
