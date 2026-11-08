@@ -90,16 +90,29 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     setRefreshing(false)
   }
 
+  // 地方・都道府県の絞り込みは履歴に含まれない一時状態。popstate ハンドラからは
+  // 最新の絞り込みを ref 経由で読む。
+  const filterStateRef = useRef({ region: '', prefecture: '' })
+  useEffect(() => { filterStateRef.current = { region: activeRegion, prefecture: activePrefecture } }, [activeRegion, activePrefecture])
+
   useEffect(() => {
     if (!syncUrl) return
     const onPopState = () => {
       clearRefreshNotice()
       const selection = readSelectionFromUrl()
-      // History stores the selected area and quest, so clear transient filters.
-      setActiveRegion('')
-      setActivePrefecture('')
       setSelectedAreaId(selection.areaId)
       setSelectedId(selection.questId)
+      // 絞り込みを無条件に外すと、履歴の往復だけで「絞り込みは全国・地域と問題は
+      // 選択中のまま」という食い違いになる。復元された地域が現在の絞り込みの外に
+      // ある時だけ、両立しない組み合わせを避けるため絞り込みを外す。
+      if (selection.areaId) {
+        const areas = catalog.current?.areas
+        const { region, prefecture } = filterStateRef.current
+        if (areas && region && !getRegionAreas(areas, region, prefecture).some((area) => area.areaId === selection.areaId)) {
+          setActiveRegion('')
+          setActivePrefecture('')
+        }
+      }
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
@@ -220,9 +233,10 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
 
   const visibleAreaIds = useMemo(() => new Set(regionAreas.map((area) => area.areaId)), [regionAreas])
   const visibleChoices = activeRegion ? choices.filter((item) => visibleAreaIds.has(item.areaId)) : choices
-  const selectedQuestId = visibleChoices.some((item) => item.questId === selectedId)
-    ? selectedId
-    : activeRegion ? '' : visibleChoices[0]?.questId ?? ''
+  // 表示上の「選択中の問題」は、実際に選択されている問題だけを指す。一覧の先頭を
+  // 勝手に選択扱いすると、URL や詳細に出ている問題と別の問題が選択中として
+  // 見えてしまう。先頭問題の自動選択は読み込み側が選択状態と URL を更新して行う。
+  const selectedQuestId = visibleChoices.some((item) => item.questId === selectedId) ? selectedId : ''
   const selectRegion = (region: string) => { setActiveRegion(region); setActivePrefecture(''); resetAreaSelection() }
   const selectPrefecture = (prefecture: string) => { setActivePrefecture(prefecture); resetAreaSelection() }
   // 地方・都道府県の絞り込みは「場所で絞る」ボタンの中に畳む（D-48）。常時並べず、ボタンを

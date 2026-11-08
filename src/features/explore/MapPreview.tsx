@@ -74,9 +74,13 @@ function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | 
   return points
 }
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
+  /** 探索画面が前面にあるか。記録画面の表示中は探索側を隠したまま常駐させるため、
+      その間は全画面化のシェル（body クラス）を外し、シート表示の通知も止める。
+      地図インスタンスやフィット記録は保持し、戻った時にそのまま続きから使える。 */
+  viewActive?: boolean
   /** 選択中の問題の詳細。一覧の選択中の行の直下にアコーディオンとして差し込む（D-46）。
       別枠で下に置くとタイトルが二重に出て煩雑になるため、置き場所は一覧の中に寄せる。 */
   questDetail?: ReactNode
@@ -611,19 +615,32 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
 
   // シート表示の間は、スマホ幅で探索画面を画面全体（縁なし）にするための目印を付ける。
   // シェル側（ヘッダー・下部ナビ等）の浮動配置は App.css がこのクラスとメディアクエリで切り替える。
+  // 記録画面の表示中（viewActive でない間）は探索が前面にないため付けない。
   useEffect(() => {
-    if (!sheetMode) return
+    if (!sheetMode || !viewActive) return
     document.body.classList.add('explore-fullbleed')
     return () => { document.body.classList.remove('explore-fullbleed') }
-  }, [sheetMode])
+  }, [sheetMode, viewActive])
 
   // シート表示かどうかを呼び出し側へ知らせる（D-43）。コールバックの同一性に依存しないよう
   // ref 経由で最新のものを呼び、アンマウント時は「地図は使えない」側へ戻す。地図が無い画面
   // （記録画面や、フォールバックが本文になる永続側）でピッカーが消えたままにならないため。
   const sheetModeChangeRef = useRef(onSheetModeChange)
   useEffect(() => { sheetModeChangeRef.current = onSheetModeChange }, [onSheetModeChange])
-  useEffect(() => { sheetModeChangeRef.current?.(sheetMode) }, [sheetMode])
+  useEffect(() => { sheetModeChangeRef.current?.(sheetMode && viewActive) }, [sheetMode, viewActive])
   useEffect(() => () => { sheetModeChangeRef.current?.(false) }, [])
+
+  // 隠れていた探索が前面に戻ったら、地図コンテナの大きさが戻る。Google Maps は
+  // 中心・ズームを保持するため、サイズの再認識だけを促せば表示が復帰する。
+  const wasViewActive = useRef(viewActive)
+  useEffect(() => {
+    const becameActive = viewActive && !wasViewActive.current
+    wasViewActive.current = viewActive
+    if (!becameActive || !sheetMode) return
+    const instance = map.current
+    if (!instance) return
+    try { window.google?.maps?.event.trigger?.(instance, 'resize') } catch { /* サイズ再認識は補助であり、失敗しても地図は使える。 */ }
+  }, [viewActive, sheetMode])
 
   // レイアウトが確定する遷移（全画面化・サイドバー方式への切替）では地図コンテナの
   // 大きさが変わる。コンテナ確定前に走ったフィットは実サイズに合わず、選択中なのに
@@ -650,12 +667,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
 
   // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
   // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。
+  // 探索が前面にない間はクラスを外すが、開閉状態そのものは保持する。
   useEffect(() => {
     if (!panelMode) return
     sidebarCollapsedRef.current = sidebarCollapsed
+    if (!viewActive) return
     document.body.classList.toggle('explore-sidebar-collapsed', sidebarCollapsed)
     return () => { document.body.classList.remove('explore-sidebar-collapsed') }
-  }, [panelMode, sidebarCollapsed])
+  }, [panelMode, sidebarCollapsed, viewActive])
 
   return (<>
     <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '') + (belowMap ? ' is-browsing-below-map' : '')}
