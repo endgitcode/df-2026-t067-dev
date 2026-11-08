@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { DocumentSnapshot, Firestore, Transaction } from 'firebase-admin/firestore'
 import { parseCaptureZones, parseManagedQuest, parseUpdateShootingAreas, shootingAreaStatus } from '../../src/shared/api/admin'
+import { isQuestNumber } from '../../src/shared/api/validation'
 import type { AssetPurpose, ManagedQuestDraft, ManagedShootingAreas, ReviewSubmission, UpdateManagedQuest, UpdateShootingAreas } from '../../src/shared/api/admin'
 import { missingReviewFields } from './admin-review'
 import { HttpError, invalidInput } from './errors'
@@ -150,7 +151,9 @@ function readDraft(snapshot: DocumentSnapshot, orgId: string) {
 
 function managedQuest(questId: string, data: Record<string, unknown>, shootingAreaStatus: 'configured' | 'unconfigured' | 'needs-review') {
   const { orgId, areaId, draftRevision, publishedVersion, status, draft } = data
-  return parseManagedQuest({ questId, orgId, areaId, draftRevision, publishedVersion, status, draft, shootingAreaStatus, source: 'real' })
+  // 問題番号は公開時にサーバーが確定して問題ドキュメントへ保存する（D-31）。妥当な保存値だけを読み出す。
+  return parseManagedQuest({ questId, orgId, areaId, draftRevision, publishedVersion, status, draft, shootingAreaStatus, source: 'real',
+    ...(isQuestNumber(data.questNumber) ? { questNumber: data.questNumber } : {}) })
 }
 
 function nextRevision(current: number, expected: number): number {

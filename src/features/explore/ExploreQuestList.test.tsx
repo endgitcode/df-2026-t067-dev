@@ -16,6 +16,12 @@ const quests: PublicQuest[] = [
 ]
 
 describe('ExploreQuestList', () => {
+  it('shows the quest number on the card only when one is assigned', () => {
+    const numbered: PublicQuest[] = [{ ...quests[0], questNumber: '14-01' }, quests[1]]
+    render(<ExploreQuestList areas={areas} quests={numbered} variant="viewport" onOpenQuest={() => {}} />)
+    expect(screen.getByText('No. 14-01')).toBeVisible()
+    expect(screen.queryByText(/No\. 40-/)).not.toBeInTheDocument()
+  })
   it('renders quest cards with title, area, clue and a hint thumbnail', () => {
     render(<ExploreQuestList areas={areas} quests={quests} variant="viewport" onOpenQuest={() => {}} />)
     expect(screen.getByRole('heading', { name: 'この範囲の謎' })).toBeVisible()

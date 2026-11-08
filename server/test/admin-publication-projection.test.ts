@@ -23,6 +23,11 @@ test('projects legacy hint into slot one without duplicating its standalone cont
   assert.equal(quest.optionalHintImage, undefined)
 })
 
+test('includes the quest number in the public projection only when assigned', () => {
+  assert.equal(projectManagedQuest(base, 4, '40-01').quest.questNumber, '40-01')
+  assert.equal(projectManagedQuest(base, 4).quest.questNumber, undefined)
+})
+
 test('preserves an independent legacy image when slot one has an explicitly different asset', () => {
   const { quest } = projectManagedQuest({ ...base, draft: { ...base.draft, hintAssetIds: ['new-hint', null, null] } }, 4)
   assert.equal(quest.hintImages?.[0], publicHintImagesPath('quest-a', 1, 4))

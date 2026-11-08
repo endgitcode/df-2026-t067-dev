@@ -18,12 +18,12 @@
 | DTO | 必須項目 |
 |---|---|
 | PublicArea | areaId, label, publicGeometry, marker, publishedCount |
-| PublicQuest | questId, version, title, clue, areaId, visitConditions, hintCount。任意のhintImages、optionalHintImage、shootingConditions |
+| PublicQuest | questId, version, title, clue, areaId, visitConditions, hintCount。任意のhintImages、optionalHintImage、shootingConditions、questNumber（問題番号。都道府県コード＋連番、D-31） |
 | Challenge | challengeId, questId, version, createdAt |
 | CaptureMetadata | capturedAt, position: { latitude, longitude, accuracyMeters, measuredAt } |
 | AttemptResult | attemptId, state, outcome, nextAction, source, optionalDiscoveryId |
 | Discovery | discoveryId, placeId, questId, questVersion, firstClearedAt, placeName, descriptionSnapshot, ownerPhoto, revealedLocation。本人詳細に任意の `afterClear` |
-| ManagedQuest | questId, orgId, draftRevision, publishedVersion, status, draft内容、確認状態 |
+| ManagedQuest | questId, orgId, draftRevision, publishedVersion, status, draft内容、確認状態。公開時に確定した任意のquestNumber（問題番号、D-31） |
 
 `outcome`は完了前null。`source`はreal / mock（mockは独立した検証環境のみ）。写真URLは認可付き取得先または短命URL。PublicQuestにはplaceIdに紐付く内部情報、参考全景、撮影中心・半径、正解名を含めない。
 
