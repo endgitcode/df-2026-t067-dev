@@ -369,8 +369,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             disabled={!localApiMode || visiblePending !== null} onClick={() => navigateToRecords(true)}>
             <Icon name="book" />自分の記録{!localApiMode && <span>準備中</span>}
           </button>}
-          {/* 自治体画面への入口は主要ナビの末尾に固定し、有無で主要ナビの位置が変わらないようにする。 */}
-          {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
         </nav>
         <div className="account-area">
           {/* 右上の固定スロットはアイコン型にする（#36 の固定スロットと、#42 の「状態表示を置かない」を維持）。
@@ -389,6 +387,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
               {accountMenuOpen && (
                 <div className="account-menu" role="menu">
                   <p className="account-menu-name">{auth.user.displayName ?? 'ログイン中のアカウント'}</p>
+                  {/* 自治体画面への入口はアカウントメニューの中だけに置き、ナビ／タブは全ユーザー共通にする（D-47）。 */}
+                  {teamPreview && hasAdminMembership && <a role="menuitem" href="/admin">自治体画面</a>}
                   <button type="button" role="menuitem" onClick={() => { setAccountMenuAnchor(null); void logout() }}>ログアウト</button>
                 </div>
               )}
@@ -439,8 +439,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         <a href="#explore-title" aria-current={showRecords ? undefined : 'page'} onClick={() => navigateToRecords(false)}><Icon name="map" /><span>謎を探す</span></a>
         {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} disabled={!localApiMode || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{!localApiMode && <small>準備中</small>}</span></button>}
-        {/* 自治体画面への入口は主要ナビの末尾に固定し、有無で主要ナビの位置が変わらないようにする。 */}
-        {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
       </nav>
     </>
   )
