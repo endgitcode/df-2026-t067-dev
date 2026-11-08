@@ -8,7 +8,7 @@ import { HttpError, invalidInput } from './errors'
 import { answerTransaction, notFound, processingError } from './firestore-answer-data'
 import { readOrgAssetRecord } from './firestore-org-assets'
 import { listOrgMemberships, requireOrgMember } from './firestore-org-memberships'
-import { readMunicipalArea } from './municipal-areas'
+import { areaPrefectureCode, readMunicipalArea } from './municipal-areas'
 
 const maxOrgDrafts = 100
 const maxDrafts = 1000
@@ -59,6 +59,8 @@ export class FirestoreManagedDraftStore {
       const area = await tx.get(this.db.collection('areas').doc(member.areaId))
       const exploration = readMunicipalArea({ id: area.id, data: area.data() }, member)
       if (!exploration) throw new HttpError(503, 'SYSTEM_ERROR', '所属自治体の行政区域を確認できません。')
+      // 場所（都道府県コードで分類された地域）は必須（D-33）。未分類の地域では作成を拒否する。
+      if (!areaPrefectureCode(area.data())) throw new HttpError(409, 'AREA_UNCLASSIFIED', 'この地域は都道府県コードが未設定のため、問題を作成できません。')
       await this.checkAssets(tx, orgId, draft)
       await this.reserveCapacity(tx, orgId)
       const data = { orgId, areaId: exploration.area.areaId, explorationBoundary: exploration.boundary,

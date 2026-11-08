@@ -47,6 +47,9 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
     : api.listManagedReports(member.orgId, { cursor, limit: 20 }, { signal }), [api, member.orgId, cursor, section])
   const { result, retry } = useRemote<Page<ManagedQuest | ManagedReport>>(editor === null, read)
   const heading = section === 'quests' ? '担当組織の問題' : '担当組織の報告'
+  // 実データ側（共有検証・永続）では、都道府県コードの無い地域は「未分類」として作成・公開できない（D-33）。
+  // 開発用デモは地域の分類自体を持たないため対象外にする。
+  const areaUnclassified = (teamPreview || durable) && !member.prefectureCode
   function select(next: typeof section) { setNotice(''); setCursor(undefined); setSection(next) }
 
   function closeEditor() { setEditor(null); retry() }
@@ -54,18 +57,19 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
   if (editor?.kind === 'draft') return <QuestDraftForm teamPreview={teamPreview} connection={{ api, member, initial: editor.initial, onBack: closeEditor }} />
   if (editor?.kind === 'areas') return <ShootingAreasEditor enableMap={durable || teamPreview} api={api} orgId={member.orgId} questId={editor.questId} onBack={closeEditor} />
   if (editor?.kind === 'hint') return <HintAssetEditor rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor} />
-  if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} photoTestSource={photoTestSource} api={api} initial={editor.initial} member={member} onBack={closeEditor}
+  if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} photoTestSource={photoTestSource} api={api} initial={editor.initial} member={member} areaUnclassified={areaUnclassified} onBack={closeEditor}
     onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
 
   return <section className="form-section" aria-labelledby="org-workspace-title">
     <h2 id="org-workspace-title">{heading}</h2>
     <p>{member.label}・{roleLabels[member.role]}</p>
+    {areaUnclassified && <p role="alert">この組織の地域は都道府県コードが未設定（未分類）のため、新しい問題を作成できず、既存の下書きも公開できません。</p>}
     {notice && <p role="status">{notice}</p>}
     {member.role === 'publisher' && !teamPreview && <div className="admin-list-actions">
       <button type="button" aria-pressed={section === 'quests'} onClick={() => select('quests')}>問題一覧</button>
       <button type="button" aria-pressed={section === 'reports'} onClick={() => select('reports')}>問題報告</button>
     </div>}
-    {section === 'quests' && result.status === 'ready' &&
+    {section === 'quests' && result.status === 'ready' && !areaUnclassified &&
       <button type="button" onClick={() => setEditor({ kind: 'draft', initial: null })}>下書きを新規作成</button>}
     {result.status === 'loading' && <p role="status">読み込んでいます…</p>}
     {result.status === 'error' && <><p role="alert">{result.code === 'FORBIDDEN' ? 'この組織の操作権限を確認できません。'
@@ -81,6 +85,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
           <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>下書きを編集</button>
           <fieldset className="publish-prep"><legend>公開準備</legend>
             <p>撮影できる範囲（非公開）：{item.shootingAreaStatus === 'configured' ? '設定済み' : '未設定'}</p>
+            {areaUnclassified && item.status !== 'published' && <p>この地域は未分類のため公開できません（都道府県コードが未設定です）。</p>}
             {item.status === 'published' ? <p>公開中です。</p> : <>
               {remainingWork(item).length > 0
                 ? <><p>残りの作業</p><ul>{remainingWork(item).map((work) => <li key={work}>{work}</li>)}</ul></>

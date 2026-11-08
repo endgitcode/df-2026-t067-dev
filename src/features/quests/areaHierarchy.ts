@@ -29,7 +29,8 @@ export function getRegionAreas(areas: PublicArea[], region: string, prefecture: 
   if (!region) return areas
   return areas.filter((area) => {
     const classifiedPrefecture = prefectureForArea(area)
-    if (!classifiedPrefecture) return region === '未分類'
+    // 「未分類」という分類は廃止した（D-33）。コードの無い地域は、未選択（全件表示）の時だけ出る。
+    if (!classifiedPrefecture) return false
     return regionForPrefecture(classifiedPrefecture) === region && (!prefecture || classifiedPrefecture === prefecture)
   })
 }

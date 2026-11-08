@@ -1,4 +1,4 @@
-import { parsePublicArea } from '../../src/shared/api/validation'
+import { isPrefectureCode, parsePublicArea } from '../../src/shared/api/validation'
 import type { PublicArea } from '../../src/shared/api/types'
 
 export type MunicipalAreaBoundary =
@@ -22,6 +22,15 @@ export interface ReadMunicipalArea {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+/**
+ * 地域データに都道府県コード（D-22）が正しく付いている場合だけその値を返す。
+ * 付いていない地域は「未分類」であり、問題の作成・公開を拒否する判定に使う（D-33）。
+ */
+export function areaPrefectureCode(data: unknown): string | undefined {
+  if (!isRecord(data)) return undefined
+  return isPrefectureCode(data.prefectureCode) ? data.prefectureCode : undefined
 }
 
 /**

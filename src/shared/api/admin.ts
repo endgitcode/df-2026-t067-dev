@@ -1,4 +1,4 @@
-import { ContractError, isQuestNumber, parseAfterClearContent, parseShootingConditions } from './validation'
+import { ContractError, isPrefectureCode, isQuestNumber, parseAfterClearContent, parseShootingConditions } from './validation'
 import type { AfterClearContent, ShootingConditions } from './types'
 
 export type { AfterClearContent, ShootingConditions } from './types'
@@ -19,6 +19,9 @@ export type ExplorationAreaStatus = { source: 'unavailable' } | { source: 'fixtu
 export interface OrgMembership {
   orgId: string; label: string; role: 'editor' | 'publisher'; areaId: string
   municipalityCode?: string
+  // 所属地域の都道府県コード（D-22）。サーバーが地域データから解決して返す。
+  // 無い所属は「未分類」であり、実データ側では問題を作成・公開できない（D-33）。
+  prefectureCode?: string
   exploration?: ExplorationAreaStatus
 }
 export interface ManagedAsset { assetId: string; orgId: string; purpose: AssetPurpose }
@@ -122,14 +125,16 @@ export function parsePhotoTestResult(input: unknown): PhotoTestResult {
 }
 
 export function parseOrgMembership(input: unknown): OrgMembership {
-  const d = fields(input, ['orgId', 'label', 'role', 'areaId', 'municipalityCode', 'exploration'], 'membership')
+  const d = fields(input, ['orgId', 'label', 'role', 'areaId', 'municipalityCode', 'prefectureCode', 'exploration'], 'membership')
   if (d.role !== 'editor' && d.role !== 'publisher') throw new ContractError('membership.role')
   const label = text(d.label, 'membership.label', 200)
   if (!label.trim()) throw new ContractError('membership.label')
   const municipalityCode = d.municipalityCode === undefined ? undefined : text(d.municipalityCode, 'municipalityCode', 5)
   if (municipalityCode !== undefined && !/^\d{5}$/.test(municipalityCode)) throw new ContractError('municipalityCode')
+  if (d.prefectureCode !== undefined && !isPrefectureCode(d.prefectureCode)) throw new ContractError('membership.prefectureCode')
   return { orgId: identifier(d.orgId, 'orgId'), label, role: d.role, areaId: identifier(d.areaId, 'areaId'),
     ...(municipalityCode ? { municipalityCode } : {}),
+    ...(d.prefectureCode ? { prefectureCode: d.prefectureCode } : {}),
     ...(d.exploration === undefined ? {} : { exploration: parseExploration(d.exploration, municipalityCode) }) }
 }
 

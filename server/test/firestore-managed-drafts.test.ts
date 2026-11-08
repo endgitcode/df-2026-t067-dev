@@ -29,8 +29,12 @@ test('durable managed drafts isolate organizations and use one revision for text
   const member = (uid: string, org: string) =>
     db.collection('memberships').doc(createHash('sha256').update(JSON.stringify([uid, org])).digest('hex'))
   const batch = db.batch()
-  batch.create(db.collection('areas').doc(areaId), { label: '架空の地域', boundarySource: 'N03', municipalityCode: '00001', boundaryYear: 2025,
+  batch.create(db.collection('areas').doc(areaId), { label: '架空の地域', boundarySource: 'N03', municipalityCode: '00001', boundaryYear: 2025, prefectureCode: '01',
     marker: { latitude: 0, longitude: 0 }, publicGeometryJson: JSON.stringify({ type: 'Polygon', coordinates: [[[0, 0], [0, 1], [1, 1], [0, 0]]] }) })
+  // 都道府県コードの無い（未分類の）地域と、その地域だけに所属する編集者（D-33 の作成拒否の確認用）。
+  batch.create(db.collection('areas').doc('open-area'), { label: '未分類の地域', boundarySource: 'fixture',
+    marker: { latitude: 0, longitude: 0 }, publicGeometryJson: JSON.stringify({ type: 'Polygon', coordinates: [[[0, 0], [0, 1], [1, 1], [0, 0]]] }) })
+  batch.create(member('creator', 'open-org'), { uid: 'creator', orgId: 'open-org', active: true, role: 'editor', label: '未分類の自治体', areaId: 'open-area' })
   for (const [uid, org] of [['editor', orgId], ['colleague', orgId], ['other', 'other-org']]) {
     batch.create(member(uid, org), { uid, orgId: org, active: true, role: 'editor', label: '架空の自治体', areaId,
       municipalityCode: org === orgId ? '00001' : '00002' })
@@ -57,6 +61,9 @@ test('durable managed drafts isolate organizations and use one revision for text
   assert.deepEqual((await first('traveler').listMemberships()).items, [])
   assert.deepEqual((await editor.listMemberships()).items[0]?.exploration,
     { name: '架空の地域', source: 'N03', municipalityCode: '00001', year: 2025 })
+  assert.equal((await editor.listMemberships()).items[0]?.prefectureCode, '01')
+  assert.equal((await first('creator').listMemberships()).items[0]?.prefectureCode, undefined)
+  await assert.rejects(first('creator').createManagedQuest('open-org', draft), { code: 'AREA_UNCLASSIFIED' })
   assert.deepEqual((await first('other').listMemberships()).items[0]?.exploration, { source: 'unavailable' })
   await assert.rejects(first('other').createManagedQuest('other-org', draft), { code: 'SYSTEM_ERROR' })
   await assert.rejects(editor.createManagedQuest(orgId, { ...draft, areaId: 'foreign-area' } as ManagedQuestDraft), { code: 'INVALID_INPUT' })
