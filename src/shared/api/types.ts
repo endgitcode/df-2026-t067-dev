@@ -11,6 +11,7 @@ export interface PublicArea {
   marker: Position
   publishedCount: number
   prefectureCode?: string
+  municipalityCode?: string
 }
 export interface ShootingConditions { requiresBoat: boolean; requiresPaidFacility: boolean }
 export interface PublicQuest {
