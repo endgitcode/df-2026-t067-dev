@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { createApiClient } from '../../shared/api'
 import type { ManagedQuest, OrgMembership } from '../../shared/api'
-import { parseMapsSpotLink } from './mapsSpotLink'
+import { parseDurableMapsLink, parseMapsSpotLink } from './mapsSpotLink'
 import QuestDraftForm from './QuestDraftForm'
 
 const member: OrgMembership = { orgId: 'test-org', areaId: 'n03-00001-2025', label: 'テスト自治体', role: 'editor',
@@ -17,10 +17,10 @@ it('reads a Maps pin, requires confirmation after editing, and restores the save
   }))
   const api = createApiClient()
   const connection = { api: { ...api, createManagedQuest }, initial: null as ManagedQuest | null, member, onBack: vi.fn() }
-  const view = render(<QuestDraftForm connection={connection} />)
+  const view = render(<QuestDraftForm teamPreview connection={connection} />)
   expect(screen.getByText(/区域テスト/)).toBeVisible()
   await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://www.google.com/maps/place/Pin/@35,139,15z/data=!3d36!4d140')
-  await user.click(screen.getByRole('button', { name: 'リンクから位置候補を読み取る' }))
+  await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
   expect(screen.getByLabelText('スポットの緯度')).toHaveValue('36')
   await user.type(screen.getByLabelText('スポット名・施設名'), '施設')
   await user.type(screen.getByLabelText('確認済み住所'), '確認住所')
@@ -35,24 +35,49 @@ it('reads a Maps pin, requires confirmation after editing, and restores the save
   const saved = await createManagedQuest.mock.results[0].value
   expect(saved.draft.afterClear.spot).toEqual({ name: '施設', address: '確認住所', position: { latitude: 36, longitude: 141 } })
   view.unmount()
-  render(<QuestDraftForm connection={{ ...connection, initial: saved }} />)
+  render(<QuestDraftForm teamPreview connection={{ ...connection, initial: saved }} />)
   expect(screen.getByLabelText('確認済み住所')).toHaveValue('確認住所')
   expect(screen.getByLabelText('スポットの経度')).toHaveValue('141')
   expect(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).toBeChecked()
   expect(screen.getByLabelText('Google Maps共有URL')).toHaveValue('')
+  await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://www.google.com/maps/search/?api=1&query=place_id:ChIJ_other')
+  expect(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).not.toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
+  expect(screen.getByText('ChIJ_other')).toBeVisible()
+  expect(screen.getByLabelText('スポット名・施設名')).toHaveValue('')
+  expect(screen.getByLabelText('確認済み住所')).toHaveValue('')
+  expect(screen.getByLabelText('スポットの緯度')).toHaveValue('')
+  expect(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).toBeDisabled()
 })
 
 it('leaves manual inputs usable after an unresolved short link', async () => {
   const user = userEvent.setup()
-  render(<QuestDraftForm connection={{ api: createApiClient(), initial: null, member, onBack: vi.fn() }} />)
-  await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://maps.app.goo.gl/test')
-  await user.click(screen.getByRole('button', { name: 'リンクから位置候補を読み取る' }))
-  expect(screen.getByText(/短縮リンクはこの画面で展開できません/)).toBeVisible()
+  render(<QuestDraftForm teamPreview connection={{ api: createApiClient(), initial: null, member, onBack: vi.fn() }} />)
+  await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://maps.app.goo.gl/test?ignored=true')
+  await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
+  expect(screen.getByText(/表示されたURLを貼り直してください/)).toBeVisible()
+  expect(screen.getByRole('link', { name: /Google Mapsで短縮リンクを開く/ })).toHaveAttribute('href', 'https://maps.app.goo.gl/test')
   await user.type(screen.getByLabelText('スポットの緯度'), '36')
   await user.type(screen.getByLabelText('スポットの経度'), '140')
   await user.type(screen.getByLabelText('スポット名・施設名'), '施設')
   await user.type(screen.getByLabelText('確認済み住所'), '住所')
   expect(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).toBeEnabled()
+})
+
+it('parses only permitted Maps links and separates labels, coordinate pins and Place IDs', () => {
+  expect(parseDurableMapsLink('https://www.google.com/maps/place/Example+Hall/@1,2,15z/data=!3d35!4d139!1sChIJfixture'))
+    .toMatchObject({ kind: 'place', position: { latitude: 35, longitude: 139 }, label: 'Example Hall', googlePlaceId: 'ChIJfixture' })
+  expect(parseDurableMapsLink('https://www.google.com/maps/search/?api=1&query=Example+Hall')).toMatchObject({ kind: 'place', position: null, label: 'Example Hall' })
+  expect(parseDurableMapsLink('https://maps.google.co.jp/?q=35,139')).toMatchObject({ kind: 'place', position: { latitude: 35, longitude: 139 } })
+  expect(parseDurableMapsLink('https://goo.gl/maps/sample')).toEqual({ kind: 'short', href: 'https://goo.gl/maps/sample' })
+  for (const url of ['http://maps.app.goo.gl/test', 'https://maps.app.goo.gl@127.0.0.1/test', 'https://www.google.com.evil.test/maps?q=1,2']) {
+    expect(parseDurableMapsLink(url)).toEqual({ kind: 'invalid' })
+  }
+  for (const url of ['https://www.google.com/maps/@35,139,15z', 'https://www.google.com/maps/dir/Start/End',
+    'https://www.google.com/maps/place/Hall/data=!3d35!4d139?q=36,139',
+    'https://www.google.com/maps/search/?query=place_id:ChIJ_first&query_place_id=ChIJ_second']) {
+    expect(parseDurableMapsLink(url)).toEqual({ kind: 'unsupported' })
+  }
 })
 
 it('does not infer a spot from the viewport, an arbitrary host, or a directions URL', () => {
