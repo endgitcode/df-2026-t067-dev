@@ -107,6 +107,8 @@ button.explore-quest-card { cursor: pointer; }
 .explore-quest-cleared { flex: none; padding: 3px 8px; font-size: 11px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
 .explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 260ms ease; }
 .explore-sheet.is-dragging { transition: none; }
+.explore-sheet[data-snap="closed"]:not(.is-dragging) { visibility: hidden; pointer-events: none; }
+.explore-sheet-reopen { display: none; }
 .explore-sheet-handle { flex: none; display: grid; place-items: center; height: 34px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; }
 .explore-sheet-handle:active { cursor: grabbing; }
 .explore-sheet-grip { width: 46px; height: 6px; border-radius: 999px; background: var(--ui-line); opacity: .45; }
@@ -424,12 +426,12 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .brand-copy { font-size: 13px; }
   /* スマホ幅では縁なし表示でもナビは下部タブバーのまま（D-32）。浮動ピルにはしない。
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
-  /* フィルターは最大2段になるため、選択中の地域チップはその下へ置く。 */
-  body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 154px); left: 12px; right: 12px; }
   body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }
+  body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 154px); left: 12px; right: 12px; }
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
   body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }
-  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }
+  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 3; }
+  body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 40px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
   body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
   body.explore-fullbleed .quest-rail { padding: 22px 16px 0; }
   body.explore-fullbleed .site-footer { padding: 21px 16px calc(25px + env(safe-area-inset-bottom)); }

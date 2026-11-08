@@ -17,7 +17,7 @@ describe('ExploreBottomSheet', () => {
     expect(onHeightChange).toHaveBeenLastCalledWith(140)
   })
 
-  it('opens from peek and can close fully while keeping the handle available', async () => {
+  it('opens from peek and can close fully', async () => {
     const user = userEvent.setup()
     const { container } = render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>)
     const sheet = container.querySelector('.explore-sheet')
@@ -27,12 +27,17 @@ describe('ExploreBottomSheet', () => {
     expect(screen.getByRole('button', { name: '謎リストを縮める' })).toHaveAttribute('aria-expanded', 'true')
     await user.click(screen.getByRole('button', { name: '謎リストを縮める' }))
     expect(sheet).toHaveAttribute('data-snap', 'closed')
-    expect((sheet as HTMLElement).style.height).toBe('34px')
-    expect(screen.getByRole('button', { name: '謎リストを広げる' })).toBeVisible()
-    expect(screen.getByRole('button', { name: '謎リストを広げる' })).toHaveAttribute('aria-expanded', 'false')
-    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    expect((sheet as HTMLElement).style.height).toBe('0px')
+    expect(screen.queryByRole('button', { name: '謎リストを広げる' })).not.toBeInTheDocument()
+    const reopen = screen.getByRole('button', { name: '謎リストを開く' })
+    expect(reopen).toHaveAttribute('aria-expanded', 'false')
+    expect(document.activeElement).toBe(reopen)
+    await user.click(reopen)
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect((sheet as HTMLElement).style.height).toBe('140px')
+    const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+    expect(handle).toHaveAttribute('aria-expanded', 'false')
+    expect(document.activeElement).toBe(handle)
   })
 
   it('drags the handle and snaps to the nearest stage without toggling', () => {
@@ -62,17 +67,27 @@ describe('ExploreBottomSheet', () => {
     expect(sheet.style.height).toBe('556px')
   })
 
-  it('drags fully down to the handle only', () => {
+  it('can hide the handle completely and reopen from an independent control', async () => {
+    const user = userEvent.setup()
     const { container } = render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>)
-    const sheet = container.querySelector('.explore-sheet') as HTMLElement
+    const sheet = container.querySelector('.explore-sheet')
     const handle = screen.getByRole('button', { name: '謎リストを広げる' })
-    fireEvent.pointerDown(handle, { pointerId: 3, pointerType: 'touch', clientY: 100 })
+    fireEvent.pointerDown(handle, { pointerId: 3, pointerType: 'touch', clientY: 200 })
     fireEvent.pointerMove(handle, { pointerId: 3, pointerType: 'touch', clientY: 400 })
     fireEvent.pointerUp(handle, { pointerId: 3, pointerType: 'touch', clientY: 400 })
     expect(sheet).toHaveAttribute('data-snap', 'closed')
-    expect(sheet.style.height).toBe('34px')
-    expect(screen.getByRole('button', { name: '謎リストを広げる' })).toBeVisible()
-    expect(screen.getByRole('button', { name: '謎リストを広げる' })).toHaveAttribute('aria-expanded', 'false')
+    expect((sheet as HTMLElement).style.height).toBe('0px')
+    expect(screen.queryByRole('button', { name: '謎リストを広げる' })).not.toBeInTheDocument()
+    const reopen = screen.getByRole('button', { name: '謎リストを開く' })
+    expect(reopen).toHaveAttribute('aria-expanded', 'false')
+    expect(document.activeElement).toBe(reopen)
+    await user.click(reopen)
+    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    const reopenedHandle = screen.getByRole('button', { name: '謎リストを広げる' })
+    expect(document.activeElement).toBe(reopenedHandle)
+    // 閉じるドラッグ後の抑止フラグが残っていても、再表示後の初回タップは有効。
+    await user.click(reopenedHandle)
+    expect(sheet).toHaveAttribute('data-snap', 'half')
   })
 
   it('opens to half when a new area is signalled, and stays where the user left it for the same signal', async () => {
