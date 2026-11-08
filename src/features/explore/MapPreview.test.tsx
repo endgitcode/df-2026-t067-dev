@@ -305,6 +305,37 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('fits every polygon of a MultiPolygon area, not just the first one', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const extended: Array<{ lat: number; lng: number }> = []
+    class RecordingBounds { extend(point: { lat: number; lng: number }) { extended.push(point) } }
+    const fitBounds = vi.fn()
+    const map = { ...mapInstance, fitBounds }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker: class { setMap() {} addListener() { return { remove() {} } } }, LatLngBounds: RecordingBounds, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    // 東京のデモ地域のように、離れた複数のポリゴンからなる地域。最初のポリゴンは全体の中央付近で、西端・東端は別のポリゴンにある。
+    const multi: PublicArea = { areaId: 'area-multi', label: 'M', publishedCount: 1, marker: { latitude: 35.68, longitude: 139.72 },
+      publicGeometry: { type: 'MultiPolygon', coordinates: [
+        [[[139.70, 35.65], [139.74, 35.65], [139.74, 35.70], [139.70, 35.70], [139.70, 35.65]]],
+        [[[139.56, 35.53], [139.60, 35.53], [139.60, 35.58], [139.56, 35.58], [139.56, 35.53]]],
+        [[[139.88, 35.78], [139.92, 35.78], [139.92, 35.82], [139.88, 35.82], [139.88, 35.78]]],
+      ] } }
+    const { unmount } = render(<ConfiguredMapPreview areas={[multi]} selectedAreaId="area-multi" />)
+    expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeVisible()
+    await waitFor(() => expect(fitBounds).toHaveBeenCalled())
+    // フィット範囲は全ポリゴンを走査した全体の広がりになる（最初のポリゴンだけではない）。
+    const lngs = extended.map((point) => point.lng)
+    const lats = extended.map((point) => point.lat)
+    expect(Math.min(...lngs)).toBeCloseTo(139.56)
+    expect(Math.max(...lngs)).toBeCloseTo(139.92)
+    expect(Math.min(...lats)).toBeCloseTo(35.53)
+    expect(Math.max(...lats)).toBeCloseTo(35.82)
+    unmount()
+    delete window.google
+  })
+
   it('cancels a pending location request when the selected region changes without a usable boundary', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
