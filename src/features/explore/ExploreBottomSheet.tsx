@@ -9,6 +9,7 @@ export type SheetSnap = 'closed' | 'peek' | 'half' | 'full'
 // タイトル行 約46＋余裕 約20。
 // 全開では上部の地図操作（範囲チップ等）を残す。
 export const SHEET_PEEK_HEIGHT = 128
+const SHEET_CLOSED_HEIGHT = 34
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
@@ -16,7 +17,7 @@ const DRAG_TAP_THRESHOLD = 6
 function snapHeights(stageHeight: number): Record<SheetSnap, number> {
   const half = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
   const full = Math.max(half, stageHeight - SHEET_TOP_GAP)
-  return { closed: 0, peek: SHEET_PEEK_HEIGHT, half, full }
+  return { closed: SHEET_CLOSED_HEIGHT, peek: SHEET_PEEK_HEIGHT, half, full }
 }
 
 // 地図の上に重なる引き上げ式シート。スナップは closed / peek / half / full の4段で、
@@ -118,11 +119,11 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
 
   return <>
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
-      {snap !== 'closed' && <button type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
-        aria-label={snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
+      <button type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
+        aria-label={snap === 'closed' || snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={onClick}>
         <span className="explore-sheet-grip" aria-hidden="true" />
-      </button>}
+      </button>
       <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
     </div>
     {(snap === 'closed' || snap === 'peek') && <button ref={reopenRef} type="button" className="explore-sheet-reopen"

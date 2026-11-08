@@ -121,10 +121,6 @@ button.explore-quest-card { cursor: pointer; }
 .explore-quest-detail { margin-top: 10px; }
 .explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 300ms var(--ease-drawer), visibility 0s; }
 .explore-sheet.is-dragging { transition: none; }
-.explore-sheet[data-snap="closed"]:not(.is-dragging) { visibility: hidden; pointer-events: none; }
-/* 閉じる時は高さの滑りが見えるよう、非表示への切り替えを遷移の終わりに遅らせる（D-42）。 */
-.explore-sheet[data-snap="closed"]:not(.is-dragging) { transition: height 300ms var(--ease-drawer), visibility 0s linear 300ms; }
-.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { transition: visibility 0s linear 300ms; }
 .explore-sheet-reopen { display: none; }
 .below-map-quests { min-width: 0; min-height: 100svh; padding: 16px 12px calc(var(--mobile-tabbar-h, 70px) + 16px); background: var(--ui-surface); }
 .below-map-quests .explore-quest-list { max-height: none; overflow: visible; }
@@ -133,11 +129,11 @@ button.explore-quest-card { cursor: pointer; }
 .explore-sheet-grip { width: 46px; height: 6px; border-radius: 999px; background: var(--ui-line); opacity: .45; }
 .explore-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; }
-.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }
+.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; transition: visibility 0s linear 300ms; }
 .explore-sheet .explore-list { margin: 0; border: 0; box-shadow: none; padding-top: 2px; }
 /* 一覧の行はタイトルだけの形（D-46）なので、peek でも追加の要約化はしない。 */
 .explore-sheet .explore-quest-list { max-height: none; overflow: visible; }
-@media (prefers-reduced-motion: reduce) { .explore-sheet { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .explore-sheet { transition: none; } .explore-sheet-body { transition: none !important; } }
 .demo-map-label { padding: 4px 7px; font-size: 12px; color: var(--ui-muted); background: var(--ui-muted); border-radius: var(--ui-radius); }
 .map-viewport { position: absolute; inset: 0; overflow: hidden; }
 .map-canvas { position: relative; width: 100%; height: 100%; transform-origin: 50% 50%; transition: transform 200ms ease; }
