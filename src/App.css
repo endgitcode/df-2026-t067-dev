@@ -379,7 +379,7 @@ body.explore-fullbleed .map-preview-shell.has-sheet { height: 100vh; height: 100
 body.explore-fullbleed .map-preview-shell.has-sheet .map-preview { border: 0; border-radius: 0; box-shadow: none; }
 body.explore-fullbleed .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 20; min-height: 0; padding: calc(10px + env(safe-area-inset-top)) 20px 10px; background: transparent; border-bottom: 0; pointer-events: none; }
 body.explore-fullbleed .brand, body.explore-fullbleed .desktop-nav, body.explore-fullbleed .account-area { pointer-events: auto; }
-body.explore-fullbleed .brand { padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
+body.explore-fullbleed .brand { justify-self: start; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .desktop-nav { align-self: center; gap: 18px; padding: 4px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .account-area { flex-wrap: nowrap; max-width: none; }
 body.explore-fullbleed .account-icon-button { box-shadow: var(--ui-control-shadow); }
@@ -393,7 +393,9 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
    地図はサイドバーの右側いっぱいに広げ、ヘッダー（アプリ名・ログイン）は地図の上に浮く帯として残す。 */
 @media (min-width: 981px) {
   body.explore-fullbleed { --pc-sidebar-w: 380px; --pc-sidebar-nav-h: 68px; }
-  body.explore-fullbleed .map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }
+  /* 地図ステージの左オフセットは .explore-workspace の padding-left だけで行う。
+     シェルは position: relative のため、ここで inset を重ねると相対オフセットとして
+     二重に効き、空白帯と右寄せの原因になる（2026-11-08 の実機報告で修正）。 */
   body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-w); z-index: 25; grid-template-columns: 1fr auto; }
   body.explore-fullbleed .desktop-nav { position: fixed; top: 0; left: 0; z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h); padding: 12px 16px; background: var(--ui-surface); border-right: var(--ui-border-width) solid var(--ui-line); border-bottom: var(--ui-border-width) solid var(--ui-line); }
   body.explore-fullbleed .desktop-nav a, body.explore-fullbleed .desktop-nav button { flex: 1 1 0; justify-content: center; }

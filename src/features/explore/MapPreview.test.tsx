@@ -221,6 +221,29 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('triggers a map resize once the layout settles in wide mode and fits the selection exactly once', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('min-width'),
+      media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(() => false),
+    }))
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const trigger = vi.fn()
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }), trigger } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    expect(trigger).toHaveBeenCalledWith(map, 'resize')
+    unmount()
+    delete window.google
+  })
+
   it('restores the camera from before the selection when the selection is cleared, even across area switches', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
