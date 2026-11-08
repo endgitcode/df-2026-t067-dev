@@ -28,9 +28,11 @@ function pinIcon(color: string, count: number): { url: string } {
 
 const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
+  /** 境界データの出典（国土数値情報 N03）をシート内に小さく出す。共有検証サイトの探索地図でのみ有効にする。 */
+  showBoundaryCredit?: boolean
   /** 地図の上部に浮かせて出す操作（地方・都道府県フィルタ等）。地図が使えない時は地図下の通常フローに出す。 */
   topOverlay?: ReactNode
 }) {
@@ -43,10 +45,17 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
-    if (locationStatus !== LOCATION_SUCCESS_MESSAGE) return
+    if (!locationStatus.startsWith(LOCATION_SUCCESS_MESSAGE)) return
     const timeout = window.setTimeout(() => setLocationStatus(''), 5000)
     return () => window.clearTimeout(timeout)
   }, [locationStatus])
+  // 位置情報の送信案内は常駐させず、そのセッションで初めて現在地を使う時に結果メッセージへ一度だけ添える（D-28）。
+  const locationNoticeShown = useRef(false)
+  const withLocationNotice = (message: string) => {
+    if (locationNoticeShown.current) return message
+    locationNoticeShown.current = true
+    return `${message} 位置情報はGoogle Mapsに送信されます。`
+  }
   const [locating, setLocating] = useState(false)
   const locationRequest = useRef(0)
   const locationTimer = useRef<number | undefined>(undefined)
@@ -294,7 +303,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       window.clearTimeout(locationTimer.current)
       locationTimer.current = undefined
       setLocating(false)
-      setLocationStatus(message)
+      setLocationStatus(withLocationNotice(message))
     }
     locationTimer.current = window.setTimeout(() => settle('現在地を取得できませんでした。もう一度お試しください。'), LOCATION_DEADLINE_MS)
     try {
@@ -332,6 +341,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)}
     emptyText={sheetMode && quests.length === 0 ? '選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。' : undefined} /> : null
+  // 境界データの出典表記（N03 の利用条件）。シート内・フォールバックのリスト末尾に小さく出す。
+  const boundaryCredit = showBoundaryCredit && showPublicAreas
+    ? <p className="map-boundary-credit">境界データ：国土数値情報（行政区域データ）N03（国土交通省）をもとに作成</p>
+    : null
 
   // シート表示の間は、スマホ幅で探索画面を画面全体（縁なし）にするための目印を付ける。
   // シェル側（ヘッダー・下部ナビ等）の浮動配置は App.css がこのクラスとメディアクエリで切り替える。
@@ -345,7 +358,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
       style={sheetMode ? { '--sheet-h': `${sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
-      <div className="map-topline"><div className="map-topline-main"><span className="map-scope"><Icon name="map" />全国の謎</span>{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div>{status === 'ready' && <div className="map-location-action"><span>位置情報はGoogle Mapsに送信されます</span></div>}</div>
+      <div className="map-topline"><div className="map-topline-main"><span className="map-scope"><Icon name="map" />全国の謎</span>{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div></div>
       {status === 'ready' && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'}>
@@ -372,8 +385,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
       {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status">{locationStatus}</div>}
       {sheetMode
-        ? <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}</ExploreBottomSheet>
-        : questList}
+        ? <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}{boundaryCredit}</ExploreBottomSheet>
+        : <>{questList}{boundaryCredit}</>}
     </div>
   )
 }
