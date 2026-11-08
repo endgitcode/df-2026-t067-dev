@@ -130,6 +130,9 @@ describe('探索画面の縁なし（全画面）表示', () => {
     expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     const panel = wide.container.querySelector('.explore-side-panel')
     expect(panel).not.toBeNull()
+    // 初期表示は未選択（D-56）のため、一覧の行から選んで初めて詳細がパネル内に出る。
+    const user = userEvent.setup()
+    await user.click(within(panel as HTMLElement).getByRole('button', { name: quest.title + 'の詳細を見る' }))
     // 詳細はサイドバー内の1か所だけに出る（タイトルの見出しは画面全体で1つだけ。
     // カード＋ピッカー＋詳細の三重表示にはしない、D-43）。
     expect(await within(panel as HTMLElement).findByRole('heading', { name: quest.title })).toBeVisible()

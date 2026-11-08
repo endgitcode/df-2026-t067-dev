@@ -29,7 +29,7 @@ p { overflow-wrap: anywhere; }
    あるのと基点を揃え、画面が変わってもタブの位置の考え方が変わらないようにする。 */
 .desktop-nav { display: flex; align-items: center; gap: 26px; align-self: stretch; justify-self: start; }
 .desktop-nav a, .desktop-nav button { min-height: 44px; display: flex; align-items: center; gap: 7px; border: 0; padding: 6px 0; font-size: 13px; background: transparent; }
-.desktop-nav .nav-active { color: var(--ui-ink); font-weight: var(--ui-weight-display); box-shadow: var(--ui-shadow); }
+.desktop-nav .nav-active { color: var(--ui-ink); font-weight: var(--ui-weight-display); }
 .desktop-nav button { color: var(--ui-muted); }
 .desktop-nav button span { font-size: 12px; }
 .desktop-nav .icon { width: 17px; height: 17px; }
@@ -311,7 +311,7 @@ button.explore-quest-card { cursor: pointer; }
 /* Shared theme treatments for traveler, API, authentication and camera states. */
 .site-header { background: var(--ui-surface); }
 .brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
-.desktop-nav .nav-active { color: var(--ui-ink); box-shadow: 0 3px 0 var(--ui-ink); }
+.desktop-nav .nav-active { color: var(--ui-ink); }
 .desktop-nav button { color: var(--ui-muted); }
 .explore-heading h1 { font-size: clamp(1.75rem, 3.2vw, 2.65rem); font-weight: var(--ui-weight-display); letter-spacing: -.04em; }
 .eyebrow { color: var(--ui-muted); }
