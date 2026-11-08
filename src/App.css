@@ -64,10 +64,8 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-topline { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; z-index: 2; pointer-events: none; }
 .map-scope { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); font-weight: var(--ui-weight-strong); font-size: 12px; box-shadow: var(--ui-shadow); }
 .map-scope .icon { width: 16px; height: 16px; color: var(--ui-muted); }
-.map-location-action { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; pointer-events: auto; }
-.map-location-action button { min-height: 44px; padding: 7px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-weight: var(--ui-weight-strong); }
-.map-location-action button:disabled { opacity: .65; }
-.map-location-action span { padding: 3px 6px; border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 10px; }
+.map-location-action { display: flex; align-items: flex-start; pointer-events: none; }
+.map-location-action span { max-width: 32ch; padding: 5px 8px; border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 11px; line-height: 1.4; box-shadow: var(--ui-control-shadow); }
 .map-location-status { position: absolute; left: 20px; bottom: 20px; z-index: 3; max-width: 70%; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; box-shadow: var(--ui-control-shadow); }
 .map-preview-shell:has(> .explore-list) { position: relative; top: 0; }
 .explore-list { margin-top: 14px; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
@@ -100,7 +98,8 @@ button.explore-quest-card { cursor: pointer; }
 .pin-face { display: grid; place-items: center; width: 43px; height: 43px; border-radius: var(--ui-radius); transform: rotate(-45deg); background: var(--ui-muted); border: 3px solid var(--ui-surface); box-shadow: var(--ui-shadow); transition: background 180ms ease; }
 .pin-face .icon { transform: rotate(45deg); color: var(--ui-surface); width: 21px; height: 21px; }
 .pin-caption { margin-top: 4px; padding: 5px 10px; color: var(--ui-muted); background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); font-size: 12px; font-weight: var(--ui-weight-strong); white-space: nowrap; box-shadow: var(--ui-shadow); }
-.map-zoom { position: absolute; right: 17px; bottom: 52px; z-index: 3; display: flex; flex-direction: column; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); overflow: hidden; box-shadow: var(--ui-shadow); }
+.map-zoom { position: absolute; right: 17px; bottom: 52px; z-index: 3; }
+.map-zoom-group { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); }
 .map-zoom button { display: grid; place-items: center; width: 43px; height: 43px; padding: 0; border: 0; background: var(--ui-surface); color: var(--ui-muted); }
 .map-zoom button + button { border-top: var(--ui-border-width) solid var(--ui-line); }
 .map-zoom button:hover:not(:disabled) { background: var(--ui-muted); }
@@ -208,7 +207,6 @@ button.explore-quest-card { cursor: pointer; }
   .map-scope { padding: 7px 9px; font-size: 12px; gap: 6px; }
   .map-scope .icon { width: 14px; height: 14px; }
   .map-location-action { display: contents; }
-  .map-location-action button { justify-self: end; min-height: 44px; padding: 6px 8px; font-size: 12px; pointer-events: auto; }
   .map-location-action span { grid-column: 1 / -1; justify-self: end; text-align: right; overflow-wrap: anywhere; font-size: 10px; }
   .map-location-status { position: relative; inset: auto; z-index: auto; max-width: none; margin: 8px 12px 0; padding: 7px 9px; font-size: 11px; }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
@@ -254,7 +252,8 @@ button.explore-quest-card { cursor: pointer; }
 .pin-face { border: var(--ui-border-width) solid var(--ui-line); border-radius: 50% 50% 50% 8px; background: #4eb8d0; box-shadow: -3px 3px 0 var(--ui-ink); }
 .pin-face .icon { color: var(--ui-accent-ink); }
 .pin-caption { color: var(--ui-ink); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
-.map-zoom { overflow: visible; background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
+.map-zoom-group { background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
+.map-zoom .map-location-button .icon { fill: currentColor; stroke: none; }
 .map-zoom button { width: 44px; height: 44px; color: var(--ui-ink); background: transparent; }
 .map-zoom button:hover:not(:disabled) { background: var(--ui-tint); }
 .map-zoom button:disabled { color: var(--ui-muted); background: var(--ui-disabled); }
