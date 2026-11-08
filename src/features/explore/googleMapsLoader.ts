@@ -1,7 +1,6 @@
 export interface GoogleMapsApi {
   Map: new (element: HTMLElement, options: Record<string, unknown>) => MapInstance
   Marker?: new (options: Record<string, unknown>) => MarkerInstance
-  Polygon?: new (options: Record<string, unknown>) => PolygonInstance
   Circle?: new (options: Record<string, unknown>) => { setMap(map: MapInstance | null): void }
   Data: new () => DataLayer
   LatLngBounds: new () => Bounds
@@ -28,10 +27,6 @@ export interface MarkerInstance {
   setMap(map: MapInstance | null): void
   setIcon?(icon: { url: string }): void
   addListener(name: string, callback: () => void): { remove(): void }
-}
-
-export interface PolygonInstance {
-  setMap(map: MapInstance | null): void
 }
 
 export interface DataLayer {

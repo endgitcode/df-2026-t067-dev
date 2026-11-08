@@ -7,26 +7,21 @@ import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 import { mobileHeaderClearance, scrollBelowHeader } from './scrollBelowHeader'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
-import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance, type PolygonInstance } from './googleMapsLoader'
-import { buildJapanVeilPaths } from './japanVeil'
+import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
 import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
 import { areaPinPosition } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
-// 日本国内専用の見た目（D-27／D-41）は、国外を薄く落とすベールと最小ズームで維持する。
+// 日本国内専用の見た目（D-27／D-41）は、初期表示の日本全体フィットと最小ズームで維持する。
 // 地図の restriction は使わない：表示範囲が restriction の幅より広いズームでは、ライブラリが
 // setCenter を restriction のメルカトル中心（北緯35.605…・東経134.5）へ固定してしまい、
 // fitBounds がセットした中心が差し替わって「ピンと違う場所へ飛ぶ」不具合になったため撤去した
 // （2026-11-08 の実測で確定。詳細は decisions.md の D-41 追記）。
+// 国外を薄く落とすベールも、相方だった restriction の撤去で飾りだけが残り、見た目も
+// しっくり来なかったため撤去した（D-41 追記）。移動範囲は制限しない。
 // これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
 // 初期表示の日本全体フィットは小さい画面でも 4.5 を下回らないため、その下限に合わせる。
 const MIN_ZOOM = 4.5
-// 日本の外側を薄く落とすベール（D-41）。日本周辺を覆う外周リングから、日本列島が入る大きな円
-// （円形のスポットライト）を穴としてくり抜いたポリゴンを、ベースタイルより上・地域の塗りとピンより下に重ねる。
-// 消すのではなく沈める濃さにする。外周を世界全体の矩形にすると球面上で内側が反転するため、
-// 外周の範囲と巻き方向は japanVeil 側で構造として担保する（buildJapanVeilPaths）。
-const OUTSIDE_JAPAN_VEIL_COLOR = '#3f4a56'
-const OUTSIDE_JAPAN_VEIL_OPACITY = 0.38
 const INITIAL_ZOOM = 5
 const MAX_ZOOM = 20
 const LOCATION_ZOOM = 14
@@ -91,7 +86,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
 }) {
   const target = useRef<HTMLDivElement>(null)
   const map = useRef<MapInstance | null>(null)
-  const veil = useRef<PolygonInstance | null>(null)
   const dataLayer = useRef<DataLayer | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
   // PC幅（981px以上）ではボトムシートを使わず、左サイドバーのパネルに一覧を出す（D-34）。
@@ -238,19 +232,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         }) as MapInstance
         if (authFailed) return
         map.current = instance
-        // 日本の外側を薄く落とすベールは、地域レイヤーより先に地図へ載せて下に置く（D-41）。
-        // 装飾のため、作れなくても地図本体は使える状態を保つ。
-        try {
-          if (google.Polygon) {
-            const japanVeil = new google.Polygon({
-              paths: buildJapanVeilPaths(),
-              fillColor: OUTSIDE_JAPAN_VEIL_COLOR, fillOpacity: OUTSIDE_JAPAN_VEIL_OPACITY,
-              strokeWeight: 0, clickable: false,
-            })
-            japanVeil.setMap(instance)
-            veil.current = japanVeil
-          }
-        } catch { /* ベールが表示できなくても地図は利用できる。 */ }
         try {
           const layer = new google.Data()
           layer.setMap(instance)
@@ -271,8 +252,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       window.clearTimeout(areaFailureTimer.current)
       unsubscribeAuth()
       try { zoomListener?.remove() } catch { /* SDK teardown is best effort. */ }
-      try { veil.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
-      veil.current = null
       try { dataLayer.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
       dataLayer.current = null
       map.current = null

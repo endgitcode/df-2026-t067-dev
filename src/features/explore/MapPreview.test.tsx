@@ -168,35 +168,20 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('dims everything outside Japan with a click-through veil placed under the area layer', async () => {
+  it('does not draw any veil polygon over the map', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
-    const order: string[] = []
-    let veilOptions: Record<string, unknown> | undefined
-    const veilSetMap = vi.fn()
-    class Polygon { constructor(options: Record<string, unknown>) { veilOptions = options; order.push('veil') } setMap = veilSetMap }
-    class Data { setMap() { order.push('data:setMap') } addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const polygonConstructor = vi.fn()
+    class Polygon { constructor(options: Record<string, unknown>) { polygonConstructor(options) } setMap() {} }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
     const map = { ...mapInstance }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Polygon, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
-    const { JAPAN_VEIL_OUTER_RING, JAPAN_VEIL_SPOTLIGHT_RING } = await import('./japanVeil')
     const { unmount } = render(<ConfiguredMapPreview areas={areas} />)
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeVisible()
-    await waitFor(() => expect(veilOptions).toBeDefined())
-    // ベールは地図操作を妨げず（clickable: false）、枠線も引かない（D-41）。
-    expect(veilOptions).toMatchObject({ clickable: false, strokeWeight: 0, fillOpacity: 0.38 })
-    const paths = veilOptions?.paths as Array<Array<{ lat: number; lng: number }>>
-    expect(paths).toHaveLength(2)
-    // 先頭は日本周辺を覆う外周リングで、次がスポットライトの円（穴）。どちらも [経度, 緯度] から {lat, lng} へ変換済み。
-    // 世界全体の矩形（経度±180）にすると球面上で内側が反転して日本だけが塗られるため、外周は ±180 に触れない。
-    expect(paths[0]).toEqual(JAPAN_VEIL_OUTER_RING.map(([lng, lat]) => ({ lat, lng })))
-    for (const path of paths) for (const point of path) expect(Math.abs(point.lng)).toBeLessThan(180)
-    expect(paths[1]).toEqual(JAPAN_VEIL_SPOTLIGHT_RING.map(([lng, lat]) => ({ lat, lng })))
-    expect(veilSetMap).toHaveBeenCalledWith(map)
-    // ベールは地域レイヤーより先に地図へ載る（重なり順で下になる）。
-    expect(order.indexOf('veil')).toBeLessThan(order.indexOf('data:setMap'))
+    // 国外を薄く落とすベールは撤去した（D-41 追記）。地図には一切ポリゴンを重ねない。
+    expect(polygonConstructor).not.toHaveBeenCalled()
     unmount()
-    expect(veilSetMap).toHaveBeenLastCalledWith(null)
     delete window.google
   })
 
@@ -762,7 +747,8 @@ describe('Google map panel', () => {
     // 一覧は地図の読み込み完了でシート内へ移るため、ready を待ってからシート内の一覧を見る。
     await screen.findByRole('button', { name: '地図を拡大' })
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
-    expect(document.body).toHaveClass('explore-fullbleed')
+    // シート表示の目印（body のクラス）は effect で付くため、付くまで待つ。
+    await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
     unmount()
     expect(document.body).not.toHaveClass('explore-fullbleed')
     delete window.google
