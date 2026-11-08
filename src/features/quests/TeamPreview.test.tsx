@@ -211,6 +211,13 @@ it('does not render the admin entrance while signed out and never asks for membe
   expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
   expect(screen.queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
   expect(fetcher.mock.calls.some(([path]) => String(path).startsWith('/api/v1/me/memberships'))).toBe(false)
+  // 未ログイン時は、ログイン状態表示の直後（ログアウトと同じスロット）に「ログイン」が出る。
+  const accountArea = document.querySelector('.account-area')!
+  const loginButton = screen.getByRole('button', { name: 'ログイン' })
+  expect(loginButton.parentElement).toBe(accountArea)
+  const status = accountArea.querySelector('.account-status')!
+  expect(status.compareDocumentPosition(loginButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'ログアウト' })).not.toBeInTheDocument()
 })
 
 it('does not render the admin entrance for a signed-in traveler without a membership', async () => {
@@ -239,4 +246,15 @@ it('renders the admin entrance only for a signed-in account with a membership', 
   const entrances = await screen.findAllByRole('link', { name: '自治体画面' })
   expect(entrances.length).toBeGreaterThan(0)
   for (const entrance of entrances) expect(entrance).toHaveAttribute('href', '/admin')
+  // ログイン時は同じスロットに「ログアウト」が出て、「ログイン」は出ない。
+  const accountArea = document.querySelector('.account-area')!
+  const logoutButton = screen.getByRole('button', { name: 'ログアウト' })
+  expect(logoutButton.parentElement).toBe(accountArea)
+  const status = accountArea.querySelector('.account-status')!
+  expect(status.compareDocumentPosition(logoutButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'ログイン' })).not.toBeInTheDocument()
+  // 自治体画面への入口は主要ナビの末尾にある。
+  const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
+  const items = [...desktopNav.querySelectorAll('a, button')]
+  expect(items[items.length - 1]).toHaveAttribute('href', '/admin')
 })
