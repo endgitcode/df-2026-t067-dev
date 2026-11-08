@@ -178,7 +178,7 @@ describe('Google map panel', () => {
     const map = { ...mapInstance }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Polygon, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
-    const { JAPAN_OUTLINE_RINGS } = await import('./japanOutline')
+    const { JAPAN_OUTLINE_RINGS, JAPAN_VEIL_OUTER_RING } = await import('./japanOutline')
     const { unmount } = render(<ConfiguredMapPreview areas={areas} />)
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeVisible()
     await waitFor(() => expect(veilOptions).toBeDefined())
@@ -186,8 +186,10 @@ describe('Google map panel', () => {
     expect(veilOptions).toMatchObject({ clickable: false, strokeWeight: 0, fillOpacity: 0.38 })
     const paths = veilOptions?.paths as Array<Array<{ lat: number; lng: number }>>
     expect(paths).toHaveLength(JAPAN_OUTLINE_RINGS.length + 1)
-    // 先頭は世界全体の矩形で、以降は日本の輪郭（[経度, 緯度] から {lat, lng} へ変換済み）。
-    expect(paths[0]).toHaveLength(5)
+    // 先頭は日本周辺を覆う外周リングで、以降は日本の輪郭（[経度, 緯度] から {lat, lng} へ変換済み）。
+    // 世界全体の矩形（経度±180）にすると球面上で内側が反転して日本だけが塗られるため、外周は ±180 に触れない。
+    expect(paths[0]).toEqual(JAPAN_VEIL_OUTER_RING.map(([lng, lat]) => ({ lat, lng })))
+    for (const path of paths) for (const point of path) expect(Math.abs(point.lng)).toBeLessThan(180)
     expect(paths[1][0]).toEqual({ lat: JAPAN_OUTLINE_RINGS[0][0][1], lng: JAPAN_OUTLINE_RINGS[0][0][0] })
     expect(veilSetMap).toHaveBeenCalledWith(map)
     // ベールは地域レイヤーより先に地図へ載る（重なり順で下になる）。
