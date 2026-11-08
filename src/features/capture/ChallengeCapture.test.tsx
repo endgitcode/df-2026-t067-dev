@@ -239,4 +239,23 @@ describe('challenge before camera', () => {
     expect(f.getUserMedia).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: '挑戦を始める' })).toBeEnabled()
   })
+  it('team-preview shows trial wording and displays the real result through completion', async () => {
+    const f = fixture('team-preview')
+    const receipt = { attemptId: 'trial-receipt', state: 'RECEIVED', outcome: null, nextAction: 'WAIT', source: 'real' }
+    f.submitAnswer.mockResolvedValue(receipt)
+    f.getAttempt.mockResolvedValue({ ...receipt, state: 'COMPLETED', outcome: 'CORRECT',
+      nextAction: 'OPEN_DISCOVERY', optionalDiscoveryId: 'trial-discovery' })
+    expect(screen.getByText('ログインを確認しました。撮影して回答を試せます。')).toBeVisible()
+    await f.user.click(screen.getByRole('button', { name: '挑戦を始める' }))
+    await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('挑戦を開始しました。写真と位置を確認してから送信できます。')).toBeVisible()
+    takePhoto()
+    expect(screen.getByText(/撮影範囲の確認と写真の判定を行います/)).toBeVisible()
+    await f.user.click(screen.getByRole('button', { name: '写真と位置を送信' }))
+    expect(await screen.findByText('回答を受け付けました。判定結果を確認できます。')).toBeVisible()
+    await f.user.click(screen.getByRole('button', { name: '判定結果を確認' }))
+    expect(await screen.findByText('クリアしました。「自分の記録」で確認できます。')).toBeVisible()
+    expect(f.getAttempt).toHaveBeenCalledExactlyOnceWith(receipt.attemptId, { signal: expect.any(AbortSignal) })
+    expect(f.submitAnswer).toHaveBeenCalledTimes(1)
+  })
 })

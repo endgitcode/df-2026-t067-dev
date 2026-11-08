@@ -127,6 +127,9 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const [localStaleQuestKey, setLocalStaleQuestKey] = useState('')
   const questStale = providedQuestStale || (questKey !== '' && localStaleQuestKey === questKey)
   const serverIdentity = useServerIdentity((!teamPreview || teamAnswerTrial) && (apiMode || source === 'local-api'), api, auth)
+  const identityErrorMessage = teamAnswerTrial && serverIdentity.result?.status === 'error' && serverIdentity.result.code === 'FORBIDDEN'
+    ? 'この回答試験は招待された人だけが使えます。このアカウントは招待されていません。'
+    : 'ログインを確認できませんでした。時間をおいて再試行してください。'
   const uid = auth.status === 'signed-in' ? auth.user.uid : null
   const canUseCamera = uid !== null && (!(apiMode || source === 'local-api') || serverIdentity.result?.status === 'ready')
   const [cameraOwner, setCameraOwner] = useState<{ auth: AuthSnapshot; confirmation: typeof serverIdentity.result; questId: string; version: number } | null>(null)
@@ -326,7 +329,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       onAutoStartConsumed={() => setStartIntent(null)}
                       onOpenDiscovery={durableLocal ? (id) => { setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
                       onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
-                    {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">ログインを確認できませんでした。時間をおいて再試行してください。</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
+                    {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
                     {cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} />}
                     {localApiMode && !teamPreview && <QuestReport key={questKey} api={api} questId={quest.questId} dataMode={apiDataMode}
                       ownerUid={canUseCamera && visiblePending === null ? uid : null} canSignIn={auth.status === 'signed-out'}

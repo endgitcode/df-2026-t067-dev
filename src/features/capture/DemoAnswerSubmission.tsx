@@ -26,16 +26,30 @@ const durableMessages: Record<AttemptOutcome, string> = {
   SYSTEM_ERROR: '回答を処理できませんでした。時間をおいて試し直してください。',
 }
 
-function receiptView(result: AttemptResult, durable: boolean, expectedId?: string): ReceiptView {
-  if (result.source !== (durable ? 'real' : 'mock') || (expectedId !== undefined && result.attemptId !== expectedId)) {
+const trialMessages: Record<AttemptOutcome, string> = {
+  CORRECT: 'クリアしました。「自分の記録」で確認できます。',
+  ALREADY_CLEARED: 'クリア済みです。「自分の記録」に初回の写真が残っています。',
+  OUTSIDE_AREA: '指定の撮影範囲外です。範囲内で撮り直してください。',
+  LOCATION_UNCERTAIN: '位置を確認できませんでした。撮影場所を確認して撮り直してください。',
+  WRONG_TARGET: '写真の対象が一致しませんでした。対象を確認して撮り直してください。',
+  IMAGE_UNCERTAIN: '写真の対象を確認できませんでした。写真を撮り直してください。',
+  QUEST_UNAVAILABLE: 'この問題の受付は終了しました。問題を読み直してください。',
+  QUEST_CHANGED: '問題が更新されました。最新版を読み直してください。',
+  SYSTEM_ERROR: '回答を処理できませんでした。時間をおいて試し直してください。',
+}
+
+function receiptView(result: AttemptResult, dataMode: LocalApiDataMode | undefined, expectedId?: string): ReceiptView {
+  const real = dataMode === 'durable-local' || dataMode === 'team-preview'
+  if (result.source !== (real ? 'real' : 'mock') || (expectedId !== undefined && result.attemptId !== expectedId)) {
     throw new ApiError('INVALID_RESPONSE')
   }
   const attemptId = result.attemptId
-  if (durable) {
+  if (real) {
     if (result.state !== 'COMPLETED') {
       return { attemptId, canCheck: true, message: '回答を受け付けました。判定結果を確認できます。' }
     }
-    return { attemptId, canCheck: false, message: durableMessages[result.outcome],
+    const messages = dataMode === 'durable-local' ? durableMessages : trialMessages
+    return { attemptId, canCheck: false, message: messages[result.outcome],
       discoveryId: result.outcome === 'CORRECT' || result.outcome === 'ALREADY_CLEARED' ? result.optionalDiscoveryId : undefined,
       reload: result.outcome === 'QUEST_CHANGED' || result.outcome === 'QUEST_UNAVAILABLE' }
   }
@@ -75,7 +89,8 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   onSubmissionStarted: () => void
 }) {
   const onOpenDiscovery = context.onOpenDiscovery
-  const durable = context.dataMode === 'durable-local'
+  const dataMode = context.dataMode
+  const real = dataMode === 'durable-local' || dataMode === 'team-preview'
   const [receipt, setReceipt] = useState<ReceiptView | null>(null)
   const [failure, setFailure] = useState<Failure | null>(null)
   const [pending, setPending] = useState(false)
@@ -100,10 +115,10 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   useEffect(() => {
     if (!failure?.retryAfterSeconds) return
     const timer = setTimeout(() => {
-      setFailure((current) => current === failure ? (durable && receipt?.canCheck ? null : { message: failure.message }) : current)
+      setFailure((current) => current === failure ? (real && receipt?.canCheck ? null : { message: failure.message }) : current)
     }, failure.retryAfterSeconds * 1000)
     return () => clearTimeout(timer)
-  }, [failure, durable, receipt])
+  }, [failure, real, receipt])
 
   const cancel = useCallback((message: string) => {
     automaticStopped.current = true
@@ -114,14 +129,14 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
 
   const poll = useEffectEvent(() => { void exchange(true) })
   useEffect(() => {
-    if (!durable || !receipt?.canCheck || pending || failure || automaticStopped.current) return
+    if (!real || !receipt?.canCheck || pending || failure || automaticStopped.current) return
     if (automaticReads.current >= 6) { setPollLimit(true); return }
     const timer = setTimeout(() => {
       automaticReads.current += 1
       poll()
     }, Math.min(1000 * 2 ** automaticReads.current, 8000))
     return () => clearTimeout(timer)
-  }, [durable, receipt, pending, failure])
+  }, [real, receipt, pending, failure])
 
   useEffect(() => {
     const leave = () => cancel(receipt ? '受付状態の確認を中止しました。同じ受付IDで再確認できます。' : '送信を中止しました。受付済みか確認できませんでした。')
@@ -146,7 +161,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
         : await context.api.submitAnswer({ challengeId: context.challengeId, photo, metadata,
           idempotencyKey: idempotencyKey.current ??= crypto.randomUUID() }, call)
       if (active.current !== operation) return
-      const nextReceipt = receiptView(response, durable, receipt?.attemptId)
+      const nextReceipt = receiptView(response, dataMode, receipt?.attemptId)
       setReceipt(nextReceipt)
     } catch (cause) {
       if (active.current !== operation) return
@@ -166,8 +181,9 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     {(failure?.reload || receipt?.reload) && <button type="button" className="retry-button" onClick={context.onReloadQuest}>問題を読み直す</button>}
     {!failure?.reload && !failure?.retake && (!receipt || receipt.canCheck) &&
       <button type="button" className="primary-button" disabled={disabled || pending || !!failure?.retryAfterSeconds} onClick={() => void exchange()}>
-        {pending ? '受付を確認しています…' : receipt ? (durable ? '判定結果を確認' : '受付状態を確認')
-          : failure ? '同じ回答を再送' : durable ? '写真と位置をテスト送信' : '写真と位置をデモ送信'}
+        {pending ? '受付を確認しています…' : receipt ? (real ? '判定結果を確認' : '受付状態を確認')
+          : failure ? '同じ回答を再送' : dataMode === 'durable-local' ? '写真と位置をテスト送信'
+            : dataMode === 'team-preview' ? '写真と位置を送信' : '写真と位置をデモ送信'}
       </button>}
     {pending && <button type="button" className="secondary-button" onClick={() => cancel(receipt
       ? '受付状態の確認を中止しました。' : '送信を中止しました。受付済みか確認できませんでした。')}>受付の確認をキャンセル</button>}
