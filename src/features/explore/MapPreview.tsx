@@ -101,6 +101,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [areaFailed, setAreaFailed] = useState(false)
   const [pinAreaId, setPinAreaId] = useState<string | null>(null)
   const [sheetHeight, setSheetHeight] = useState(SHEET_PEEK_HEIGHT)
+  // PC幅サイドバーの開閉（D-36）。その場の操作感を優先し、状態はメモリのみで保持する。
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [viewport, setViewport] = useState<ViewportBounds | null>(null)
   const viewportRef = useRef<ViewportBounds | null>(null)
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
@@ -439,7 +441,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     if (!sheetMode) return
     const instance = map.current
     if (!instance) return
-    const signature = `${sheetMode}:${panelMode}`
+    const signature = `${sheetMode}:${panelMode}:${sidebarCollapsed}`
     if (settledLayout.current !== signature) {
       settledLayout.current = signature
       try { window.google?.maps?.event.trigger?.(instance, 'resize') } catch { /* サイズ再認識は補助であり、失敗しても地図は使える。 */ }
@@ -449,7 +451,15 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       lastViewportSelection.current = null
       setFitRequest((value) => value + 1)
     }
-  }, [sheetMode, panelMode, selectedAreaId])
+  }, [sheetMode, panelMode, selectedAreaId, sidebarCollapsed])
+
+  // サイドバーの開閉はシェル側（ナビ・ヘッダー・ワークスペースの余白）にも効かせるため、
+  // body のクラスで CSS と協調する。
+  useEffect(() => {
+    if (!panelMode) return
+    document.body.classList.toggle('explore-sidebar-collapsed', sidebarCollapsed)
+    return () => { document.body.classList.remove('explore-sidebar-collapsed') }
+  }, [panelMode, sidebarCollapsed])
 
   return (
     <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
@@ -483,7 +493,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status">{locationStatus}</div>}
       {sheetMode
         ? panelMode
-          ? <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{questList}{boundaryCredit}</div>
+          ? <>
+            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{questList}{boundaryCredit}</div>
+            <button type="button" className="sidebar-toggle" aria-expanded={!sidebarCollapsed}
+              aria-label={sidebarCollapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
+              onClick={() => setSidebarCollapsed((value) => !value)}>
+              <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
+            </button>
+          </>
           : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}{boundaryCredit}</ExploreBottomSheet>
         : <>{questList}{boundaryCredit}</>}
     </div>

@@ -244,6 +244,44 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('collapses and reopens the PC sidebar, resizing the map on each toggle', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('min-width'),
+      media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(() => false),
+    }))
+    vi.resetModules()
+    const trigger = vi.fn()
+    const map = { ...mapInstance, fitBounds: vi.fn(), setCenter: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }), trigger } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { container, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    const closeToggle = await screen.findByRole('button', { name: 'サイドバーを閉じる' })
+    expect(closeToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.explore-side-panel')).not.toBeNull()
+    expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
+    trigger.mockClear()
+    await user.click(closeToggle)
+    const openToggle = screen.getByRole('button', { name: 'サイドバーを開く' })
+    expect(openToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(document.body).toHaveClass('explore-sidebar-collapsed')
+    expect(trigger).toHaveBeenCalledWith(map, 'resize')
+    await user.click(openToggle)
+    expect(screen.getByRole('button', { name: 'サイドバーを閉じる' })).toHaveAttribute('aria-expanded', 'true')
+    expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
+    unmount()
+    delete window.google
+  })
+
   it('restores the camera from before the selection when the selection is cleared, even across area switches', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()

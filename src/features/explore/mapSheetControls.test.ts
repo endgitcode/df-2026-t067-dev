@@ -90,6 +90,14 @@ describe('PC sidebar layout integrity', () => {
   it('keeps the floating brand a compact chip instead of a stretched bar', () => {
     expect(css).toContain('body.explore-fullbleed .brand { justify-self: start;')
   })
+
+  it('collapses the sidebar fully: workspace, nav, header and panel follow the collapsed class', () => {
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace { padding-left: 0; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { display: none; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { display: none; }')
+    expect(css).toContain('body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: var(--pc-sidebar-w);')
+  })
 })
 
 describe('mobile fullbleed finish', () => {
