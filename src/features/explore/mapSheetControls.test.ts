@@ -76,3 +76,17 @@ describe('rounded corner scale (D-35)', () => {
     expect(css).toContain('border-radius: var(--radius-l) var(--radius-l) 0 0;')
   })
 })
+
+describe('mobile fullbleed finish', () => {
+  it('keeps the peek sheet compact: note, clue excerpt and thumbnail are hidden at peek only', () => {
+    expect(css).toContain('.explore-sheet[data-snap="peek"] .explore-list-note { display: none; }')
+    expect(css).toContain('.explore-sheet[data-snap="peek"] .explore-quest-clue { display: none; }')
+    expect(css).toContain('.explore-sheet[data-snap="peek"] .explore-quest-card > img { display: none; }')
+  })
+
+  it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
+    expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }')
+    expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
+    expect(css).toContain('body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 64px); left: 12px; right: 12px; }')
+  })
+})
