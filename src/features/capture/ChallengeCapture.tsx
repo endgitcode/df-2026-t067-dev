@@ -98,9 +98,12 @@ export function ChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, a
     </button>
     <p id="challenge-note" className="unavailable-note" role="status">
       {state.status === 'ready' ? (dataMode === 'durable-local' ? '挑戦を開始しました。写真と位置を確認してからテスト送信できます。'
-        : '挑戦を開始しました。写真と位置を確認してからデモ送信できます。')
+        : dataMode === 'team-preview' ? '挑戦を開始しました。写真と位置を確認してから送信できます。'
+          : '挑戦を開始しました。写真と位置を確認してからデモ送信できます。')
         : state.status === 'starting' ? 'サーバーで挑戦の開始を確認しています…'
-          : dataMode === 'durable-local' ? 'ログインを確認しました。合成素材で回答と判定を試せます。' : 'ログインを確認しました。デモの回答受付を試せます。'}
+          : dataMode === 'durable-local' ? 'ログインを確認しました。合成素材で回答と判定を試せます。'
+            : dataMode === 'team-preview' ? 'ログインを確認しました。撮影して回答を試せます。'
+              : 'ログインを確認しました。デモの回答受付を試せます。'}
     </p>
     {state.status === 'starting' && <button type="button" className="retry-button" onClick={() => { abort(); setState({ status: 'idle' }) }}>開始をキャンセル</button>}
     {state.status === 'error' && <div className="auth-feedback">
