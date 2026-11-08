@@ -181,6 +181,16 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
           setResult({ api, selection: selectedId, areaSelection: selectedAreaId, retry, state: 'empty', choices, areas })
           return
         }
+        if (!selectedId && !selectedAreaId) {
+          // 未選択（パラメータなしの初期表示と、選択解除で戻った状態）：一覧と地域は
+          // 出すが、先頭問題を自動では選ばない（D-56）。詳細は取得せず、URL に
+          // ?quest= も付けない。地域が選ばれている場合と、問題IDだけが残っている
+          // 場合（ディープリンク・履歴復元・再試行で消えた選択の置換）は従来どおり
+          // 下の経路で先頭問題へ合わせる。
+          settled = true
+          setResult({ api, selection: selectedId, areaSelection: selectedAreaId, retry, state: 'ready', choices, areas })
+          return
+        }
         setResult({ api, selection: selectedId, areaSelection: selectedAreaId, retry, state: 'loading', choices, areas })
         const id = choices.some((item) => item.questId === selectedId) ? selectedId : choices[0].questId
         if (id !== selectedId) {
@@ -338,7 +348,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     setOpenQuestRequest((previous) => ({ questId, sequence: (previous?.sequence ?? 0) + 1 }))
   }
   const FallbackHeading = dataMode === 'team-preview' ? 'h2' : 'h1'
-  const fallback = !quest ? <section className="api-load-state" aria-live="polite">
+  // 読み込み済みで未選択（D-56）の時はフォールバック枠を出さない。出るのは
+  // 読み込み中・0件・エラーの時だけであり、未選択は探索画面の一覧で完結する。
+  const fallback = !quest && state !== 'ready' ? <section className="api-load-state" aria-live="polite">
       {dataMode !== 'team-preview' && <p className="eyebrow">{dataMode === 'durable-local' ? '永続API・ローカル' : '公開APIデモ'}</p>}
       <FallbackHeading id={dataMode === 'team-preview' ? undefined : 'explore-title'}>{state === 'loading' ? '公開問題を読み込み中' : state === 'empty' ? '公開問題はありません' : '公開問題を取得できませんでした'}</FallbackHeading>
       {state === 'loading' && <p role="status">サーバーから問題を取得しています。</p>}
