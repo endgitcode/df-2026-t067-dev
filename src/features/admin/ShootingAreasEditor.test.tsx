@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { ApiError, createApiClient } from '../../shared/api'
@@ -75,6 +75,6 @@ it('keeps legacy radii visible and requires an explicit fixed-radius update befo
   await user.click(screen.getByRole('button', { name: 'すべての半径を1,000mに変更' }))
   expect(screen.getByText('半径：1,000m（固定）')).toBeVisible()
   await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
-  expect(await screen.findByText('非公開の撮影範囲を保存しました。')).toBeVisible()
+  expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
   expect(updateShootingAreas.mock.calls[0][2]).toEqual({ expectedDraftRevision: 8, zones: [{ latitude: 35, longitude: 139, radiusMeters: 1000 }] })
 })

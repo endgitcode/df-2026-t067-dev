@@ -315,8 +315,7 @@ it('shows remaining work and enables the shooting-area map on the shared preview
     await user.click(screen.getByRole('button', { name: '範囲を追加' }))
     await user.type(screen.getByLabelText('緯度'), '35')
     await user.type(screen.getByLabelText('経度'), '135')
-    await user.clear(screen.getByLabelText('半径（m）'))
-    await user.type(screen.getByLabelText('半径（m）'), '100')
+    expect(screen.getByText('半径：1,000m（固定）')).toBeVisible()
     await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
     expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
   } finally { vi.unstubAllGlobals() }
