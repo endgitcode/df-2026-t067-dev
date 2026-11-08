@@ -124,6 +124,24 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const content = connection.result.status === 'ready' ? connection.result.value : null
   const quest = externalQuest ?? (!apiMode && !catalogFallback && content ? (({ areaLabel: _area, ...dto }) => dto)(content) : null)
   const areaLabel = externalAreaLabel ?? content?.areaLabel ?? demoAreaLabel
+  // PC（広い画面）では挑戦の主導線をスマホへ受け渡す。その問題の詳細を直接開くURLをQRにする。
+  const handoffUrl = useMemo(() => {
+    if (!quest) return undefined
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.set('area', quest.areaId)
+      url.searchParams.set('quest', quest.questId)
+      url.hash = ''
+      return url.toString()
+    } catch { return undefined }
+  }, [quest])
+  // ディープリンク（?quest=）で開かれた場合は、その問題の詳細を最初から開く。
+  const [initialQuestParam] = useState(() => { try { return new URLSearchParams(window.location.search).get('quest') ?? '' } catch { return '' } })
+  const [deepLinkOpenedFor, setDeepLinkOpenedFor] = useState('')
+  if (!externalQuest && initialQuestParam && quest && quest.questId === initialQuestParam && deepLinkOpenedFor !== initialQuestParam) {
+    setDeepLinkOpenedFor(initialQuestParam)
+    setOpenState({ quest: externalQuest, open: true })
+  }
   const questKey = quest ? `${quest.questId}:${quest.version}` : ''
   const [localStaleQuestKey, setLocalStaleQuestKey] = useState('')
   const questStale = providedQuestStale || (questKey !== '' && localStaleQuestKey === questKey)
@@ -311,7 +329,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
               <div className="rail-heading"><h2>選べる謎</h2>{!apiMode && <span>1件</span>}</div>
               {railFallback ?? questPicker}
               {!railFallback && <div ref={questCard}>
-                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen}
+                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
                   onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}

@@ -1,12 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { area, quest } from '../../shared/api/testFixtures'
 import type { AuthClient } from '../auth/authTypes'
 import { TeamPreview } from './TeamPreview'
 
 const signedOut = { status: 'signed-out', user: null } as const
 const headers = { 'X-Quest-Data-Mode': 'team-preview' }
+
+// URLの選択状態（?area= / ?quest=）はテスト間で持ち越さない。
+beforeEach(() => {
+  window.history.replaceState(null, '', '/')
+})
+
+afterEach(() => {
+  window.history.replaceState(null, '', '/')
+})
 
 it('lets a signed-out traveler browse the map, published problem and public hint photo', async () => {
   const user = userEvent.setup()

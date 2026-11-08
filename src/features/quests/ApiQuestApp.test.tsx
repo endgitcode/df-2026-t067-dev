@@ -557,8 +557,8 @@ describe('APIから問題を表示', () => {
     window.history.replaceState(null, '', '/?area=area-a&quest=quest-a&other=keep#map')
     render(<ApiQuestApp api={api} />)
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
-    expect(screen.getByText('詳細版の手がかり')).toBeVisible()
+    // URLで問題を指定して開いたため、詳細は最初から開いている。
+    expect(await screen.findByText('詳細版の手がかり')).toBeVisible()
     const refreshButton = screen.getByRole('button', { name: '公開情報を更新' })
     refreshButton.focus()
     await user.click(refreshButton)
@@ -594,8 +594,8 @@ describe('APIから問題を表示', () => {
     window.history.replaceState(null, '', '/?area=area-a&quest=quest-a')
     render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="durable-local" />)
     expect(await screen.findByRole('heading', { name: initial.title })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
-    expect(screen.getByText(initial.clue)).toBeVisible()
+    // URLで問題を指定して開いたため、詳細は最初から開いている。
+    expect(await screen.findByText(initial.clue)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'ヒント1を見る' }))
     expect(await screen.findByText('公開版1のヒント')).toBeVisible()
 
@@ -981,4 +981,23 @@ it('opens a durable quest directly from its public card with a region list fallb
   expect(await screen.findByRole('region', { name: 'サンプル問題の詳細' })).toBeVisible()
   expect(api.getQuest).toHaveBeenLastCalledWith(second.questId, expect.anything())
   expect(screen.getByRole('button', { name: '関東' })).toBeVisible()
+})
+
+describe('ディープリンク', () => {
+  it('URLで問題を指定して開くと、その問題の詳細が最初から開いている', async () => {
+    window.history.replaceState(null, '', '/?area=area-a&quest=quest-a')
+    const api = apiFixture()
+    render(<ApiQuestApp api={api} />)
+    expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
+    expect(await screen.findByText('詳細版の手がかり')).toBeVisible()
+    expect(screen.getByRole('button', { name: '問題を閉じる' })).toBeVisible()
+  })
+
+  it('URL指定がなければ詳細は閉じたまま表示される', async () => {
+    const api = apiFixture()
+    render(<ApiQuestApp api={api} />)
+    expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
+    expect(screen.getByRole('button', { name: '問題を見てみる' })).toBeVisible()
+    expect(screen.queryByText('詳細版の手がかり')).not.toBeInTheDocument()
+  })
 })

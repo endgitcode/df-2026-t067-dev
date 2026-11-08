@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import App from './App'
+import { demoQuest } from './features/quests/demoQuest'
 
 describe('未接続の起動画面', () => {
   it('認証設定がなくても入口を閲覧でき、未接続であることが分かる', () => {
@@ -49,5 +50,18 @@ describe('未接続の起動画面', () => {
     await user.keyboard('{Enter}')
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(toggle).toHaveFocus()
+  })
+})
+
+describe('ディープリンク', () => {
+  it('URLで問題を指定すると、その問題の詳細が開いた状態で表示される', async () => {
+    window.history.replaceState(null, '', `/?quest=${demoQuest.questId}`)
+    try {
+      render(<App />)
+      expect(await screen.findByRole('region', { name: 'サンプル問題の詳細' })).toBeVisible()
+      expect(screen.getByRole('button', { name: '問題を閉じる' })).toBeVisible()
+    } finally {
+      window.history.replaceState(null, '', '/')
+    }
   })
 })
