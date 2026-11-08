@@ -3,8 +3,10 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 
 export type SheetSnap = 'peek' | 'half' | 'full'
 
-// 覗き見では見出しと先頭カードが見える高さ。全開では上部の地図操作（範囲チップ等）を残す。
-export const SHEET_PEEK_HEIGHT = 178
+// 覗き見では、ハンドル＋件数＋注意書き＋先頭カード1枚が丸ごと収まる高さにする
+// （ドラッグしなくても最初の謎に届くことが狙い）。内訳の目安：ハンドル34＋リスト上部（件数・注意書き・余白）約55
+// ＋カード約95＋影・枠の余裕。全開では上部の地図操作（範囲チップ等）を残す。
+export const SHEET_PEEK_HEIGHT = 200
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
