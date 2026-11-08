@@ -66,15 +66,16 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-area-error button { pointer-events: auto; }
 .map-state span { max-width: 32ch; }
 .map-state button { min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
-.map-topline { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; z-index: 2; pointer-events: none; }
+.map-topline { position: static; width: 100%; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; pointer-events: none; }
+.map-topline.is-sidebar { position: absolute; top: calc(env(safe-area-inset-top) + 88px); left: 20px; right: 20px; z-index: 2; width: auto; }
 .map-location-status { width: fit-content; max-width: 100%; margin-top: 8px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; box-shadow: var(--ui-control-shadow); }
 .map-boundary-credit { margin: 10px 2px 2px; font-size: 11px; color: var(--ui-muted); }
 .map-location-status.is-floating { position: absolute; left: 20px; bottom: calc(var(--sheet-h, 0px) + 14px); z-index: 5; margin: 0; max-width: calc(100% - 110px); }
 .map-preview-shell:has(> .explore-list) { position: relative; top: 0; }
 .map-preview-shell.has-sheet { position: relative; top: 0; height: min(82svh, 840px); min-height: 560px; }
 .map-preview-shell.has-sheet .map-preview { position: absolute; inset: 0; height: auto; }
-.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; pointer-events: none; }
-.map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
+.map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; min-width: 0; }
 .map-filter-chips { display: flex; gap: 8px; max-width: 100%; overflow-x: auto; padding: 2px; pointer-events: auto; scrollbar-width: none; }
 .map-filter-chips::-webkit-scrollbar { display: none; }
 .filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; }
@@ -246,7 +247,7 @@ button.explore-quest-card { cursor: pointer; }
   .preview-label { display: none; }
   .preview-label.api-source { display: inline-flex; }
   .map-preview { height: 338px; border-radius: var(--ui-radius); }
-  .map-topline { top: 12px; left: 12px; right: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; justify-items: start; gap: 4px 6px; }
+  .map-topline { position: static; width: 100%; }
   .map-location-status { margin: 8px 12px 0; max-width: calc(100% - 24px); padding: 7px 9px; font-size: 11px; }
   .map-location-status.is-floating { left: 12px; margin: 0; max-width: calc(100% - 84px); }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
@@ -387,8 +388,7 @@ body.explore-fullbleed .brand { justify-self: start; width: fit-content; padding
 body.explore-fullbleed .desktop-nav { align-self: center; gap: 18px; padding: 4px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .account-area { flex-wrap: nowrap; max-width: none; }
 body.explore-fullbleed .account-icon-button { box-shadow: var(--ui-control-shadow); }
-body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 88px); }
-body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 136px); }
+body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 88px); }
 body.explore-fullbleed .quest-rail { max-width: 760px; margin-inline: auto; padding: 24px 20px 0; }
 body.explore-fullbleed .site-footer { width: 100%; padding: 21px 32px calc(25px + env(safe-area-inset-bottom)); }
 body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bottom); }
@@ -434,10 +434,9 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* スマホ幅では縁なし表示でもナビは下部タブバーのまま（D-32）。浮動ピルにはしない。
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
   body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }
-  body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 154px); left: 12px; right: 12px; }
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
-  body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }
-  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 3; }
+  body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); }
+  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); z-index: 3; }
   body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 40px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
   body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
   body.explore-fullbleed .quest-rail { padding: 22px 16px 0; }
