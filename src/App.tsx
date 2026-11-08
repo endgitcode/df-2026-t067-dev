@@ -287,11 +287,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
         </nav>
         <div className="account-area">
-          <div className="account-status" role="status" aria-label="ログイン状態">
-            <Icon name="user" /><span>{notice.title}</span>
-            <span className="sr-only">{notice.description}</span>
-          </div>
-          {/* ログイン／ログアウトは同じスロットに出し、状態で押す場所が変わらないようにする。 */}
+          {/* ログイン状態の常時表示は置かず、ログイン／ログアウトのボタンだけを同じスロットに出す。 */}
           {auth.status === 'signed-in' && (
             <button type="button" className="account-action-button" disabled={visiblePending !== null} onClick={logout}>
               {visiblePending === 'sign-out' ? 'ログアウト中…' : 'ログアウト'}

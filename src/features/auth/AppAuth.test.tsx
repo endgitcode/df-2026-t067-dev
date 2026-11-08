@@ -38,7 +38,9 @@ describe('Google sign-in from the selected quest', () => {
     expect(client.signInWithGoogle).toHaveBeenCalledTimes(1)
     expect(details).toBeVisible()
     expect(details).toHaveTextContent('この場所はどこ？')
-    expect(await screen.findByText('Googleログイン済み')).toBeVisible()
+    // ログイン完了は、状態表示ではなくヘッダーの「ログアウト」ボタンで分かる。
+    expect(await screen.findByRole('button', { name: 'ログアウト' })).toBeVisible()
+    expect(screen.queryByText('Googleログイン済み')).not.toBeInTheDocument()
     expect(within(details).getByRole('button', { name: '撮影を始める' })).toBeEnabled()
   })
   it('keeps the selected question after cancellation and permits another attempt', async () => {
@@ -67,14 +69,17 @@ describe('Google sign-in from the selected quest', () => {
     render(<App authClient={client} />)
     const { details } = await openQuest()
     expect(details).toBeVisible()
-    expect(screen.getByText('ログイン状態を確認中')).toBeVisible()
+    // 確認中はヘッダーに状態表示もボタンも出ない。
+    expect(screen.queryByText('ログイン状態を確認中')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ログイン' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ログアウト' })).not.toBeInTheDocument()
     expect(within(details).getByRole('button', { name: 'Googleログインして挑戦する' })).toBeDisabled()
   })
   it('restores an existing session, avoids another sign-in, and supports sign-out', async () => {
     const { client } = authFixture({ status: 'signed-in', user: { uid: 'restored-user', displayName: 'テスト利用者' } })
     render(<App authClient={client} />)
     const { user, details } = await openQuest()
-    expect(screen.getByText('Googleログイン済み')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
     expect(within(details).getByRole('button', { name: '撮影を始める' })).toBeEnabled()
     expect(client.signInWithGoogle).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'ログアウト' }))
@@ -98,7 +103,6 @@ describe('Google sign-in from the selected quest', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'ログアウト' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('通信を確認')
-    expect(screen.getByText('Googleログイン済み')).toBeVisible()
     expect(screen.getByRole('button', { name: 'ログアウト' })).toBeEnabled()
   })
 })

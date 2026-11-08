@@ -10,7 +10,10 @@ describe('未接続の起動画面', () => {
 
     expect(screen.getByRole('main')).toBeVisible()
     expect(screen.getByRole('heading', { level: 1 })).toBeVisible()
-    expect(screen.getByRole('status', { name: 'ログイン状態' })).toHaveTextContent('ログイン準備中')
+    // ヘッダーにログイン状態の常時表示は無く、未接続時はボタンも出ない。
+    expect(screen.queryByRole('status', { name: 'ログイン状態' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ログイン' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ログアウト' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '問題を見てみる' })).toBeEnabled()
     expect(screen.queryByRole('region', { name: 'サンプル問題の詳細' })).not.toBeInTheDocument()
   })
@@ -26,7 +29,7 @@ describe('未接続の起動画面', () => {
     expect(startButton).toBeDisabled()
     await user.click(startButton)
     expect(details).toBeVisible()
-    expect(screen.getByRole('status', { name: 'ログイン状態' })).toHaveTextContent('ログイン準備中')
+    expect(screen.queryByRole('status', { name: 'ログイン状態' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '問題を閉じる' }))
     expect(screen.queryByRole('region', { name: 'サンプル問題の詳細' })).not.toBeInTheDocument()
