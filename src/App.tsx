@@ -301,10 +301,12 @@ export default function App({ authClient: providedClient, apiClient: providedApi
 
   const exploreFeedback = !isQuestOpen && feedback
     ? <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p> : null
-  const railContent = (
-    <>
-              {railFallback ?? questPicker}
-              {!railFallback && <div ref={questCard}>
+  // 詳細は、地図が使える表示（共有検証・永続）では一覧の選択中の行の直下へアコーディオンとして
+  // 差し込む（D-46）。対象の問題が一覧に無い使い方（固定問題の埋め込み等）と、それ以外
+  // （スタンドアロンのデモ表示等）では従来どおりレールに置く。
+  const detailInList = (teamPreview || durableLocal) && Boolean(quest) && mapQuests.some((item) => item.questId === quest?.questId)
+  const questDetailBlock = (
+              !railFallback && <div ref={questCard}>
                 {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
@@ -333,7 +335,12 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       signInPending={visiblePending !== null} onSignIn={() => void login()} />}
                   </QuestDetails>
                   : apiMode ? null : connection.result.status === 'loading' ? <p role="status" aria-label="問題の読み込み">問題を読み込んでいます…</p> : <div role="alert">{source === 'invalid' ? '表示設定を確認してください。' : '問題を読み込めませんでした。'}<button type="button" className="retry-button" onClick={connection.retry}>問題を再読み込み</button></div>}
-              </div>}
+              </div>
+  )
+  const railContent = (
+    <>
+              {railFallback ?? questPicker}
+              {!detailInList && questDetailBlock}
               {/* 共有検証（team-preview）ではデモの断り書きを出さない（D-39）。永続・公開APIデモでは、
                   合成画像・架空座標の使用や「実際に訪問できる場所ではない」という制限の明示として残す。 */}
               {!teamPreview && <div className="demo-note"><span className="demo-note-dot" /><p>{durableLocal ? '永続APIの確認用です。回答の送信には合成画像と架空の座標を使ってください。' : apiMode ? '公開APIが返す架空のデモデータです。実際に訪問できる場所ではありません。' : '今はデザイン確認用の架空の1問を表示しています。実際に訪問できる場所ではありません。'}</p></div>}
@@ -420,7 +427,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} />
 
 {!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>

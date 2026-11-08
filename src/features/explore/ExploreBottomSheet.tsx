@@ -3,12 +3,12 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 
 export type SheetSnap = 'closed' | 'peek' | 'half' | 'full'
 
-// 覗き見では、ハンドル＋件数＋先頭カード1枚が丸ごと収まる高さにする
-// （ドラッグしなくても最初の謎に届くことが狙い）。peek の間、先頭カードは要約表示
-// （タイトル・地域名・問題番号のみ。注意書き・手がかり抜粋・サムネイルは出さない）
-// になる前提で、内訳の目安：ハンドル34＋件数行・余白 約30＋要約カード 約68＋余裕。
+// 覗き見では、ハンドル＋件数＋先頭の行1つが丸ごと収まる高さにする
+// （ドラッグしなくても最初の謎に届くことが狙い）。一覧の行はタイトルだけの
+// 簡素な形（D-46）になったため、内訳の目安：ハンドル34＋件数行・余白 約28＋
+// タイトル行 約46＋余裕 約20。
 // 全開では上部の地図操作（範囲チップ等）を残す。
-export const SHEET_PEEK_HEIGHT = 140
+export const SHEET_PEEK_HEIGHT = 128
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6

@@ -153,9 +153,11 @@ describe('UI motion (D-42)', () => {
 })
 
 describe('mobile fullbleed finish', () => {
-  it('keeps the peek sheet compact: clue excerpt and thumbnail are hidden at peek only', () => {
-    expect(css).toContain('.explore-sheet[data-snap="peek"] .explore-quest-clue { display: none; }')
-    expect(css).toContain('.explore-sheet[data-snap="peek"] .explore-quest-card > img { display: none; }')
+  it('keeps the peek sheet compact: rows are title-only at every snap (D-46)', () => {
+    // 行そのものがタイトルだけの形になったため、peek 専用の抜粋・サムネイル隠しは不要になった。
+    expect(css).not.toContain('.explore-quest-clue')
+    expect(css).not.toContain('.explore-quest-card > img')
+    expect(css).toContain('.explore-quest-detail { margin-top: 10px; }')
   })
 
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {

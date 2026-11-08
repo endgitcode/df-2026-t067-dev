@@ -8,8 +8,8 @@ import type { AuthClient, AuthSnapshot } from '../auth/authTypes'
 import { ApiQuestApp } from './ApiQuestApp'
 import { ApiError } from '../../shared/api/client'
 
-vi.mock('../explore/MapPreview', () => ({ MapPreview: (props: { areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (id: string) => void; topOverlay?: ReactNode }) =>
-  <div data-testid="map-state" data-area={props.selectedAreaId}>地図 {props.areas?.length ?? 0} {props.selectedAreaId}{props.areas?.map((area) => <button key={area.areaId} type="button" aria-label={area.areaId === 'area-b' ? '地図の公開地域を選択' : '地図の川辺エリアを選択'} onClick={() => props.onSelectArea?.(area.areaId)}>{area.label}のピン</button>)}{props.topOverlay}</div> }))
+vi.mock('../explore/MapPreview', () => ({ MapPreview: (props: { areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (id: string) => void; topOverlay?: ReactNode; questDetail?: ReactNode }) =>
+  <div data-testid="map-state" data-area={props.selectedAreaId}>地図 {props.areas?.length ?? 0} {props.selectedAreaId}{props.areas?.map((area) => <button key={area.areaId} type="button" aria-label={area.areaId === 'area-b' ? '地図の公開地域を選択' : '地図の川辺エリアを選択'} onClick={() => props.onSelectArea?.(area.areaId)}>{area.label}のピン</button>)}{props.topOverlay}{props.questDetail}</div> }))
 
 const first: PublicQuest = { questId: 'quest-a', version: 2, title: '川辺の謎', clue: '詳細版の手がかり', areaId: 'area-a', visitConditions: '訪問条件', hintCount: 0 }
 const second: PublicQuest = { questId: 'quest-b', version: 1, title: '森の謎', clue: '森の手がかり', areaId: 'area-b', visitConditions: '訪問条件', hintCount: 0 }

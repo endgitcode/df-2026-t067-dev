@@ -4,17 +4,17 @@ import { describe, expect, it, vi } from 'vitest'
 import { ExploreBottomSheet } from './ExploreBottomSheet'
 
 // jsdomでは親の高さが測れないため、段階の高さは代替値（ステージ640px想定:
-// peek 140 / half 352 / full 556）で決まる。
+// peek 128 / half 352 / full 556）で決まる。
 describe('ExploreBottomSheet', () => {
   it('starts at the peek snap showing the toggle as collapsed', () => {
     const onHeightChange = vi.fn()
     const { container } = render(<ExploreBottomSheet onHeightChange={onHeightChange}><p>リスト本文</p></ExploreBottomSheet>)
     const sheet = container.querySelector('.explore-sheet')
     expect(sheet).toHaveAttribute('data-snap', 'peek')
-    expect((sheet as HTMLElement).style.height).toBe('140px')
+    expect((sheet as HTMLElement).style.height).toBe('128px')
     expect(screen.getByRole('button', { name: '謎リストを広げる' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByText('リスト本文')).toBeVisible()
-    expect(onHeightChange).toHaveBeenLastCalledWith(140)
+    expect(onHeightChange).toHaveBeenLastCalledWith(128)
   })
 
   it('opens from peek and can close fully', async () => {
@@ -43,7 +43,7 @@ describe('ExploreBottomSheet', () => {
     const handle = screen.getByRole('button', { name: '謎リストを広げる' })
     fireEvent.pointerDown(handle, { pointerId: 1, pointerType: 'touch', clientY: 300 })
     fireEvent.pointerMove(handle, { pointerId: 1, pointerType: 'touch', clientY: 100 })
-    expect(sheet.style.height).toBe('340px')
+    expect(sheet.style.height).toBe('328px')
     expect(sheet).toHaveClass('is-dragging')
     fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'touch', clientY: 100 })
     expect(sheet).toHaveAttribute('data-snap', 'half')

@@ -22,18 +22,45 @@ describe('ExploreQuestList', () => {
     expect(screen.getByText('No. 14-01')).toBeVisible()
     expect(screen.queryByText(/No\. 40-/)).not.toBeInTheDocument()
   })
-  it('renders quest cards with title, area, clue and a hint thumbnail', () => {
+  it('renders title-only rows without clue, area name or thumbnail', () => {
     render(<ExploreQuestList areas={areas} quests={quests} onOpenQuest={() => {}} />)
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'この範囲の謎' })).not.toBeInTheDocument()
     expect(screen.getByText('2件')).toBeVisible()
     expect(screen.getByText('港の時計台')).toBeVisible()
-    expect(screen.getByText('横浜')).toBeVisible()
-    expect(screen.getByText('大きな時計が見える場所')).toBeVisible()
+    // 行はタイトルだけ（D-46）。地域名・本文の抜粋・サムネイルは行に出さず、詳細側で出す。
+    expect(screen.queryByText('横浜')).not.toBeInTheDocument()
+    expect(screen.queryByText('大きな時計が見える場所')).not.toBeInTheDocument()
     expect(screen.queryByText('ピンは地域の代表点です。問題の場所そのものではありません。')).not.toBeInTheDocument()
     const card = screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('.explore-quest-card')
-    expect(card?.querySelector('img')).toHaveAttribute('src', 'https://example.test/hint.jpg')
+    expect(card?.querySelector('img')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' }).querySelector('img')).not.toBeInTheDocument()
+  })
+
+  it('opens the detail under the selected row as an accordion and toggles it from the row', async () => {
+    const user = userEvent.setup()
+    const onOpenQuest = vi.fn()
+    const detail = <div><h3>港の時計台の詳細</h3></div>
+    render(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q1" onOpenQuest={onOpenQuest} detailContent={detail} />)
+    const row = screen.getByRole('button', { name: '港の時計台の詳細を見る' })
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' })).toHaveAttribute('aria-expanded', 'false')
+    // 詳細は選択中の行の直下（同じ li の中）にだけ出る。
+    const detailElement = screen.getByRole('heading', { name: '港の時計台の詳細' })
+    expect(row.closest('li')).toContainElement(detailElement)
+    expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' }).closest('li')).not.toContainElement(detailElement)
+    // 選択中の行をもう一度押すと、選択は変えずに閉じる（onOpenQuest は呼ばない）。
+    await user.click(row)
+    expect(onOpenQuest).not.toHaveBeenCalled()
+    expect(screen.queryByRole('heading', { name: '港の時計台の詳細' })).not.toBeInTheDocument()
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    // もう一度押すと開き直す。
+    await user.click(row)
+    expect(onOpenQuest).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: '港の時計台の詳細' })).toBeVisible()
+    // 別の行は従来どおり選択として伝える。
+    await user.click(screen.getByRole('button', { name: '博多の灯台の詳細を見る' }))
+    expect(onOpenQuest).toHaveBeenCalledWith('q2')
   })
 
   it('opens the quest detail from a card', async () => {
@@ -68,7 +95,7 @@ describe('ExploreQuestList', () => {
     const highlighted = screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('li')
     expect(highlighted).toHaveClass('is-highlighted')
     expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' }).closest('li')).not.toHaveClass('is-highlighted')
-    // 選択中地域のサマリバー（地域名＋問数＋閉じる）は出さない（D-45）。地域名はカード側に既にある。
+    // 選択中地域のサマリバー（地域名＋問数＋閉じる）は出さない（D-45）。
     expect(container.querySelector('.explore-list-focus')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '閉じる' })).not.toBeInTheDocument()
   })
