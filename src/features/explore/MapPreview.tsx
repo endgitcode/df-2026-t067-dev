@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
+import { mobileHeaderClearance, scrollBelowHeader } from './scrollBelowHeader'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance, type PolygonInstance } from './googleMapsLoader'
@@ -512,6 +513,39 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const sheetMode = status === 'ready' && showPublicAreas
   // PC幅ではシートの代わりに左サイドバーのパネルへ同じ一覧を出す（D-34）。全画面化の扱いはシートと同じ。
   const panelMode = sheetMode && wideViewport
+  const [browseBelowMap, setBrowseBelowMap] = useState(false)
+  const belowMap = sheetMode && !panelMode && browseBelowMap
+  const belowMapList = useRef<HTMLElement>(null)
+  const mapShell = useRef<HTMLDivElement>(null)
+  const [pastMap, setPastMap] = useState(false)
+  useEffect(() => {
+    const update = () => {
+      const bottom = mapShell.current?.getBoundingClientRect().bottom
+      setPastMap(bottom !== undefined && bottom <= mobileHeaderClearance() + 1)
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [sheetMode, panelMode, belowMap])
+  const scrollToQuestList = () => {
+    belowMapList.current?.focus({ preventScroll: true })
+    scrollBelowHeader(belowMapList.current)
+  }
+  useEffect(() => {
+    if (!belowMap) return
+    scrollToQuestList()
+  }, [belowMap])
+
+  const returnToMap = () => {
+    setBrowseBelowMap(false)
+    mapShell.current?.focus({ preventScroll: true })
+    mapShell.current?.scrollIntoView?.({ block: 'start' })
+  }
+
   const questList = showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={visibleQuests} variant={sheetMode ? 'viewport' : 'fallback'}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)}
@@ -579,9 +613,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     return () => { document.body.classList.remove('explore-sidebar-collapsed') }
   }, [panelMode, sidebarCollapsed])
 
-  return (
-    <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
-      style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
+  return (<>
+    <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
+      style={sheetMode ? { '--sheet-h': `${panelMode || belowMap ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
       <div className="map-topline"><div className="map-topline-main">{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div></div>
       {status === 'ready' && topOverlay && !panelMode && <div className="map-filter-overlay">{topOverlay}</div>}
@@ -612,8 +646,16 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
               <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
             </button>
           </>
-          : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}{boundaryCredit}</ExploreBottomSheet>
+          : !belowMap && <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
+            onBrowseBelowMap={() => setBrowseBelowMap(true)}>{questList}{boundaryCredit}</ExploreBottomSheet>
         : <>{questList}{boundaryCredit}{panelExtra}</>}
     </div>
-  )
+    {sheetMode && !panelMode && (belowMap || pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
+      className="explore-sheet-reopen map-browse-shortcut"
+      onClick={pastMap ? returnToMap : belowMap ? scrollToQuestList : () => setBrowseBelowMap(true)}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
+    {belowMap && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
+      {questList}
+      {boundaryCredit}
+    </section>}
+  </>)
 }

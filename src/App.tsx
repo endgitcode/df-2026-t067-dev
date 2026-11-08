@@ -6,6 +6,7 @@ import { QuestDetails } from './features/quests/QuestDetails'
 import { QuestReport } from './features/quests/QuestReport'
 import type { ChallengeSelection } from './features/quests/QuestDetails'
 import { MapPreview } from './features/explore/MapPreview'
+import { scrollBelowHeader } from './features/explore/scrollBelowHeader'
 import { Icon } from './components/Icon'
 import type { AuthClient, AuthSnapshot } from './features/auth/authTypes'
 import type { PublicArea, PublicQuest } from './shared/api/types'
@@ -112,6 +113,11 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const [recordDestination, setRecordDestination] = useState<{ auth: AuthSnapshot; id: string } | null>(null)
   const [recordsOpen, setRecordsOpen] = useState(false)
   const questCard = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (isQuestOpen && openedRequest && document.querySelector('.below-map-quests')) {
+      scrollBelowHeader(questCard.current)
+    }
+  }, [isQuestOpen, openedRequest])
   const authClient = useMemo(() => providedClient ?? createFirebaseAuthClient(), [providedClient])
   const auth = useSyncExternalStore(authClient.subscribe, authClient.getSnapshot, authClient.getSnapshot)
   const source = readDataSource(import.meta.env.VITE_QUEST_DATA_SOURCE, import.meta.env.DEV)
