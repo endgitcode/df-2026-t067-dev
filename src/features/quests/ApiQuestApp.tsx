@@ -229,6 +229,10 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       disabled={!visibleChoices.length}
       onChange={(event) => {
         const questId = event.target.value
+        if (dataMode === 'team-preview') {
+          openQuestFromMap(questId)
+          return
+        }
         clearRefreshNotice()
         if (syncUrl) writeSelectionToUrl(selectedAreaId, questId, 'push')
         setSelectedId(questId)
@@ -272,8 +276,8 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     setSelectedAreaId(areaId)
     setSelectedId('')
   }
-  const openQuestFromMap = (questId: string) => {
-    const target = choices.find((item) => item.questId === questId)
+  function openQuestFromMap(questId: string) {
+    const target = visibleChoices.find((item) => item.questId === questId)
     if (!target) return
     clearRefreshNotice()
     if (syncUrl) writeSelectionToUrl(target.areaId, questId, 'push')
