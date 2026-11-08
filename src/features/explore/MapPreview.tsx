@@ -28,11 +28,13 @@ function pinIcon(color: string, count: number): { url: string } {
 
 const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
   /** 境界データの出典（国土数値情報 N03）をシート内に小さく出す。共有検証サイトの探索地図でのみ有効にする。 */
   showBoundaryCredit?: boolean
+  /** 地域の塗りを「選択中の地域だけ」にする（D-29）。共有検証サイトの探索地図でのみ有効にする。 */
+  fillSelectedAreaOnly?: boolean
   /** 地図の上部に浮かせて出す操作（地方・都道府県フィルタ等）。地図が使えない時は地図下の通常フローに出す。 */
   topOverlay?: ReactNode
 }) {
@@ -205,12 +207,19 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       if (!features.length) return () => { active = false }
       layer.setMap(map.current)
       layer.addGeoJson({ type: 'FeatureCollection', features })
-      layer.setStyle((feature) => ({
-        fillColor: feature.getProperty('areaId') === selectedAreaId ? PIN_SELECTED_COLOR : PIN_COLOR,
-        fillOpacity: feature.getProperty('areaId') === selectedAreaId ? 0.55 : 0.25,
-        strokeColor: PIN_STROKE, strokeOpacity: 0.9, strokeWeight: feature.getProperty('areaId') === selectedAreaId ? 3 : 1.5,
-        clickable: true,
-      }))
+      layer.setStyle((feature) => {
+        const selected = feature.getProperty('areaId') === selectedAreaId
+        // D-29: 選択中の地域だけ塗るモードでは、未選択の地域は塗りも枠線も出さずピンだけにする。
+        if (fillSelectedAreaOnly && !selected) {
+          return { fillColor: PIN_COLOR, fillOpacity: 0, strokeColor: PIN_STROKE, strokeOpacity: 0, strokeWeight: 0, clickable: false }
+        }
+        return {
+          fillColor: selected ? PIN_SELECTED_COLOR : PIN_COLOR,
+          fillOpacity: selected ? 0.55 : 0.25,
+          strokeColor: PIN_STROKE, strokeOpacity: 0.9, strokeWeight: selected ? 3 : 1.5,
+          clickable: true,
+        }
+      })
       listener = layer.addListener('click', (event) => {
         const areaId = event.feature.getProperty('areaId')
         if (active && typeof areaId === 'string' && areas.some((area) => area.areaId === areaId)) { setPinAreaId(null); onSelectArea?.(areaId) }
@@ -221,7 +230,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       failArea()
     }
     return () => { active = false; window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; try { listener?.remove(); layer.setMap(null) } catch { /* SDK teardown is best effort. */ } }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly])
 
   useEffect(() => {
     const instance = map.current
