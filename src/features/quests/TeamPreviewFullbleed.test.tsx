@@ -97,8 +97,27 @@ describe('探索画面の縁なし（全画面）表示', () => {
     expect(document.body).not.toHaveClass('explore-fullbleed')
   }
 
-  it('PC幅（981px以上）でもシート表示の間は全画面化され、浮動化した導線に到達できる', async () => {
+  it('PC幅（981px以上）でも全画面化され、浮動化した導線に到達できる', async () => {
     await runScenario(true)
+  })
+
+  it('PC幅ではボトムシートではなく左パネルに一覧が出て、スマホ幅ではシートになる', async () => {
+    vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
+    stubViewport(true)
+    const wide = render(<TeamPreview authClient={auth} />)
+    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    const panel = wide.container.querySelector('.explore-side-panel')
+    expect(panel).not.toBeNull()
+    expect(panel?.querySelector('.explore-list')).not.toBeNull()
+    expect(panel?.querySelector('.side-panel-filters')).not.toBeNull()
+    expect(wide.container.querySelector('.explore-sheet')).toBeNull()
+    wide.unmount()
+    stubViewport(false)
+    const narrow = render(<TeamPreview authClient={auth} />)
+    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(narrow.container.querySelector('.explore-sheet')).not.toBeNull()
+    expect(narrow.container.querySelector('.explore-side-panel')).toBeNull()
+    narrow.unmount()
   })
 
   it('スマホ幅（981px未満）でもシート表示の間は全画面化され、浮動化した導線に到達できる', async () => {

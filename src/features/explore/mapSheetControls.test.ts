@@ -44,3 +44,20 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).toContain('.owner-records { padding-bottom: calc(var(--mobile-tabbar-h) + 20px); }')
   })
 })
+
+// PC幅（981px以上）の縁なし表示は左サイドバー方式（D-34）: 地図はサイドバーの右側に広げ、
+// ナビとパネルを左の固定列に入れる。シート前提の規則とは幅で分ける。
+describe('PC left sidebar (D-34)', () => {
+  it('offsets the full-bleed map stage by the sidebar width on wide viewports', () => {
+    const mediaAt = css.indexOf('@media (min-width: 981px)')
+    expect(mediaAt).toBeGreaterThan(-1)
+    const rule = 'body.explore-fullbleed .map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }'
+    expect(css).toContain(rule)
+    expect(css.indexOf(rule)).toBeGreaterThan(mediaAt)
+  })
+
+  it('fixes the primary nav and the side panel into the left column', () => {
+    expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: 0; left: 0;')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel { position: fixed; top: var(--pc-sidebar-nav-h); bottom: 0; left: 0;')
+  })
+})
