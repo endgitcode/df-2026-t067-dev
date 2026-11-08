@@ -23,7 +23,7 @@ const confirmationLabels: ReadonlyArray<readonly [Confirmation, string]> = [
 type Failure = { message: string; stale?: true }
 type TestProofs = Partial<Record<'MATCH' | 'WRONG_TARGET', string>>
 
-function publicationFailure(cause: unknown): Failure {
+function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
   const code = cause instanceof ApiError ? cause.code : undefined
   switch (code) {
     case 'DRAFT_CONFLICT': return { message: '下書きの版が変わりました。一覧から最新版を確認してください。', stale: true }
@@ -32,13 +32,15 @@ function publicationFailure(cause: unknown): Failure {
     case 'REVIEW_REQUIRED': return { message: 'この版の確認依頼と確認項目を見直してください。' }
     case 'INVALID_INPUT': return { message: '試験写真・利用権と保存済みの参考素材を確認してください。' }
     case 'RATE_LIMITED': return { message: '試験の受付上限に達しました。時間をおいて再試行してください。' }
-    case 'SYSTEM_ERROR': return { message: '試験を処理できませんでした。この検証環境では合成写真でのみ記録されるため、実写真では結果が残りません。' }
+    case 'SYSTEM_ERROR': return realPhotoTest
+      ? { message: '試験を処理できませんでした。時間をおいて再試行してください。' }
+      : { message: '試験を処理できませんでした。この検証環境では合成写真でのみ記録されるため、実写真では結果が残りません。' }
     default: return { message: '結果を確認できませんでした。通信状況を確認して再試行してください。' }
   }
 }
 
-export function PublicationWorkspace({ api, initial, member, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る' }: {
-  api: ApiClient; initial: ManagedQuest; member: OrgMembership; rightsAssist?: boolean; backLabel?: string; onBack: () => void; onPublished: () => void
+export function PublicationWorkspace({ api, initial, member, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock' }: {
+  api: ApiClient; initial: ManagedQuest; member: OrgMembership; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; onBack: () => void; onPublished: () => void
 }) {
   const [quest, setQuest] = useState(initial)
   const [photo, setPhoto] = useState<File | null>(null)
@@ -59,6 +61,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
     ['image/jpeg', 'image/png', 'image/webp'].includes(photo.type)
   const reviewed = quest.status === 'review_pending' && !!proofs.MATCH && !!proofs.WRONG_TARGET
   const ready = reviewed && confirmationLabels.every(([item]) => checked.includes(item))
+  const realPhotoTest = photoTestSource === 'real'
 
   async function perform<T>(work: (signal: AbortSignal) => Promise<T>, receive: (value: T) => void) {
     if (failure?.stale) return
@@ -73,7 +76,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
       const result = await work(operation.signal)
       if (operation.isCurrent()) receive(result)
     } catch (cause) {
-      if (operation.isCurrent()) setFailure(publicationFailure(cause))
+      if (operation.isCurrent()) setFailure(publicationFailure(cause, realPhotoTest))
     } finally {
       if (operation.isCurrent()) setBusy(false)
       operation.finish()
@@ -87,7 +90,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
       expectedDraftRevision: draftRevision, photo, photoRights: rights,
       idempotencyKey: key.current ??= crypto.randomUUID(),
     }, { signal }), (result) => {
-      if (result.source !== 'mock') throw new ApiError('INVALID_RESPONSE')
+      if (result.source !== photoTestSource) throw new ApiError('INVALID_RESPONSE')
       setOutcome(result.outcome)
       setChecked([])
       if (result.outcome !== 'IMAGE_UNCERTAIN') {
@@ -115,18 +118,20 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
   return <section className="form-section" aria-labelledby="publication-workspace-title">
     <h2 id="publication-workspace-title">写真試験と公開確認</h2>
     <p>{quest.draft.content.title || '無題の下書き'}・下書き版 {draftRevision}</p>
-    <p>開発用の検証環境です。合成写真を使います。</p>
+    <p>{realPhotoTest ? '開発用の検証環境です。写真試験は実写真で照合します。' : '開発用の検証環境です。合成写真を使います。'}</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">操作結果を確認しています…</p>}
     <form onSubmit={trial}>
       <fieldset disabled={disabled}>
         <legend>写真試験</legend>
-        <p>この検証環境の写真試験は、次の合成写真でのみ結果を記録します。実写真では記録されません。参考写真には一致用を登録してください。</p>
-        <ul>
-          <li><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真（match.png）をダウンロード</a></li>
-          <li><a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真（other-target.png）をダウンロード</a></li>
-        </ul>
+        {realPhotoTest
+          ? <p>写真試験は、保存済みの参考写真と確認済み特徴で実写真を照合します。送信ごとに、回答と共用の送信枠（上限20回）を1回消費します。参考写真と同じ対象の写真で一致を、別の対象の写真で別対象を確認してください。</p>
+          : <><p>この検証環境の写真試験は、次の合成写真でのみ結果を記録します。実写真では記録されません。参考写真には一致用を登録してください。</p>
+            <ul>
+              <li><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真（match.png）をダウンロード</a></li>
+              <li><a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真（other-target.png）をダウンロード</a></li>
+            </ul></>}
         <label>試験写真<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
           const next = event.target.files?.[0] ?? null
           if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
@@ -143,7 +148,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
     </form>
     {proofs.MATCH && <p role="status">一致試験を確認しました。</p>}
     {proofs.WRONG_TARGET && <p role="status">別対象の試験を確認しました。</p>}
-    {outcome === 'IMAGE_UNCERTAIN' && <p role="status">試験写真を確認できませんでした。別の合成写真でお試しください。</p>}
+    {outcome === 'IMAGE_UNCERTAIN' && <p role="status">{realPhotoTest ? '試験写真を確認できませんでした。対象がはっきり写った別の写真でお試しください。' : '試験写真を確認できませんでした。別の合成写真でお試しください。'}</p>}
     <fieldset disabled={disabled}>
       <legend>確認依頼</legend>
       <button type="button" onClick={review}>この版の確認を依頼</button>

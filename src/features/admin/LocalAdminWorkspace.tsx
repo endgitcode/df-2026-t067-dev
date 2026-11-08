@@ -37,7 +37,7 @@ function Pager({ cursor, next, onMove }: { cursor?: string; next?: string | null
   </div>
 }
 
-function OrganizationWorkspace({ api, member, teamPreview, durable }: { api: ApiClient; member: OrgMembership; teamPreview: boolean; durable: boolean }) {
+function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSource }: { api: ApiClient; member: OrgMembership; teamPreview: boolean; durable: boolean; photoTestSource: 'mock' | 'real' }) {
   const [section, setSection] = useState<'quests' | 'reports'>('quests')
   const [cursor, setCursor] = useState<string>()
   const [notice, setNotice] = useState('')
@@ -54,7 +54,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable }: { api: Api
   if (editor?.kind === 'draft') return <QuestDraftForm teamPreview={teamPreview} connection={{ api, member, initial: editor.initial, onBack: closeEditor }} />
   if (editor?.kind === 'areas') return <ShootingAreasEditor enableMap={durable || teamPreview} api={api} orgId={member.orgId} questId={editor.questId} onBack={closeEditor} />
   if (editor?.kind === 'hint') return <HintAssetEditor rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor} />
-  if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor}
+  if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} photoTestSource={photoTestSource} api={api} initial={editor.initial} member={member} onBack={closeEditor}
     onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
 
   return <section className="form-section" aria-labelledby="org-workspace-title">
@@ -108,7 +108,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable }: { api: Api
   </section>
 }
 
-function Memberships({ api, teamPreview, durable }: { api: ApiClient; teamPreview: boolean; durable: boolean }) {
+function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiClient; teamPreview: boolean; durable: boolean; photoTestSource: 'mock' | 'real' }) {
   const [cursor, setCursor] = useState<string>()
   const [selected, setSelected] = useState<string | null>(null)
   const read = useCallback((signal: AbortSignal) => api.listMemberships({ cursor, limit: 20 }, { signal }), [api, cursor])
@@ -128,7 +128,7 @@ function Memberships({ api, teamPreview, durable }: { api: ApiClient; teamPrevie
       <Pager cursor={cursor} next={result.status === 'ready' ? result.value.nextCursor : undefined}
         onMove={(next) => { setSelected(null); setCursor(next) }} />
     </section>
-    {current && <OrganizationWorkspace key={JSON.stringify([current.orgId, current.role])} api={api} member={current} teamPreview={teamPreview} durable={durable} />}
+    {current && <OrganizationWorkspace key={JSON.stringify([current.orgId, current.role])} api={api} member={current} teamPreview={teamPreview} durable={durable} photoTestSource={photoTestSource} />}
   </>
 }
 
@@ -137,6 +137,11 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
   const api = useMemo(() => providedApi ?? createApiClient({ expectedDataMode: dataMode, getIdToken: authClient.getIdToken }), [providedApi, authClient, dataMode])
   const auth = useSyncExternalStore(authClient.subscribe, authClient.getSnapshot, authClient.getSnapshot)
   const teamPreview = dataMode === 'team-preview'
+  // Build-time mirror of the server's QUEST_TEAM_ANSWER_TRIAL switch, the
+  // same pattern as the traveler side (TeamPreview). With the trial on, the
+  // server runs admin photo tests against real Vertex matching (D-18); the
+  // source on each returned result stays authoritative.
+  const photoTestSource = teamPreview && import.meta.env.VITE_QUEST_TEAM_ANSWER_TRIAL === 'true' ? 'real' as const : 'mock' as const
   const identity = useServerIdentity(true, api, auth)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
@@ -166,7 +171,7 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
       {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p>Googleログインの設定を確認してください。</p>}
       {error && <p role="alert">{error}</p>}
     </section>
-    {!pending && auth.status === 'signed-in' && (identity.result?.status === 'ready' ? <Memberships key={auth.user.uid} api={api} teamPreview={teamPreview} durable={dataMode === 'durable-local'} />
+    {!pending && auth.status === 'signed-in' && (identity.result?.status === 'ready' ? <Memberships key={auth.user.uid} api={api} teamPreview={teamPreview} durable={dataMode === 'durable-local'} photoTestSource={photoTestSource} />
       : identity.result?.status === 'error' ? <div className="form-section"><p role="alert">{teamPreview && identity.result.code === 'FORBIDDEN'
         ? 'このアカウントは共有検証に招待されていません。' : 'ログインを確認できませんでした。'}</p>
         <button type="button" onClick={identity.retry}>ログインを確認し直す</button></div>

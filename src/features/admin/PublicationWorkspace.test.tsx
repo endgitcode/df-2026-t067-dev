@@ -96,6 +96,45 @@ it('offers the exact fixture photos for download and explains fixtures-only reco
   expect(other.getAttribute('href')).not.toBe(match.getAttribute('href'))
 })
 
+it('guides real-photo tests and accepts real results in answer-trial photo test mode', async () => {
+  const user = userEvent.setup()
+  const testManagedQuest = vi.fn().mockResolvedValue({ orgId: org.orgId, questId: initial.questId, draftRevision: 4, source: 'real', testId: 'real-match', outcome: 'MATCH' })
+  const api = { ...createApiClient(), testManagedQuest }
+  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  expect(screen.getByText(/写真試験は実写真で照合します/)).toBeVisible()
+  expect(screen.getByText(/回答と共用の送信枠（上限20回）を1回消費します/)).toBeVisible()
+  expect(screen.queryByRole('link', { name: /合成写真/ })).not.toBeInTheDocument()
+  await user.type(screen.getByLabelText('試験写真の利用権'), '自作の対象を自分で撮影した写真')
+  await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.jpg', { type: 'image/jpeg' }))
+  await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
+  expect(await screen.findByText('一致試験を確認しました。')).toBeVisible()
+})
+
+it('rejects a mock result in real photo test mode', async () => {
+  const user = userEvent.setup()
+  const testManagedQuest = vi.fn().mockResolvedValue({ orgId: org.orgId, questId: initial.questId, draftRevision: 4, source: 'mock', testId: 'mock-match', outcome: 'MATCH' })
+  const api = { ...createApiClient(), testManagedQuest }
+  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  await user.type(screen.getByLabelText('試験写真の利用権'), '自作の対象を自分で撮影した写真')
+  await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.jpg', { type: 'image/jpeg' }))
+  await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('結果を確認できませんでした')
+  expect(screen.queryByText('一致試験を確認しました。')).not.toBeInTheDocument()
+})
+
+it('explains a system error in real photo test mode without fixture wording', async () => {
+  const user = userEvent.setup()
+  const testManagedQuest = vi.fn().mockRejectedValue(new ApiError('SYSTEM_ERROR'))
+  const api = { ...createApiClient(), testManagedQuest }
+  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  await user.type(screen.getByLabelText('試験写真の利用権'), '自作の対象を自分で撮影した写真')
+  await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.jpg', { type: 'image/jpeg' }))
+  await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('試験を処理できませんでした')
+  expect(alert).not.toHaveTextContent('実写真では結果が残りません')
+})
+
 it('explains that a real photo leaves no record when the fixture matcher rejects it', async () => {
   const user = userEvent.setup()
   const testManagedQuest = vi.fn().mockRejectedValue(new ApiError('SYSTEM_ERROR'))

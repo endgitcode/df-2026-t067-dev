@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { Storage } from '@google-cloud/storage'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import type { AdminPhotoTestOptions } from './admin-photo-tests-http'
 import { AnswerPhotoStorage } from './answer-photo-storage'
 import { DemoAnswerStore } from './answers'
 import { teamPreviewDatabase, type TeamPreviewConfig } from './config'
@@ -13,6 +14,7 @@ import { createDurableAnswerRuntime } from './durable-answer-runtime'
 import { createFirebaseVerifier } from './firebase-auth'
 import { FirestoreManagedDraftStore } from './firestore-managed-drafts'
 import { FirestoreOrgAssetStore } from './firestore-org-assets'
+import type { PhotoMatcher } from './photo-match'
 import { createPublishedAnswerMaterialLoader } from './published-answer-material'
 import { createVertexPhotoMatcher } from './vertex-match'
 import { createFirestoreVertexTrialTransport } from './vertex-trial-firestore'
@@ -21,6 +23,14 @@ import { createFirestoreVertexTrialTransport } from './vertex-trial-firestore'
 // trial values; the production values remain undecided (decisions O-03) and
 // the per-quest shooting zones themselves come from the published material.
 const teamTrialLocationLimits = { maxAccuracyMeters: 50, maxAgeMs: 120_000, maxFutureSkewMs: 5000, maxCaptureMeasurementGapMs: 30_000 }
+
+// Photo tests in the answer trial run the same Vertex matcher as traveler
+// answers (D-18), so their results are recorded with source 'real' and the
+// publication evidence can come from real photos. The matcher timeout
+// matches the answer worker's.
+export function answerTrialPhotoTest(matcher: PhotoMatcher): AdminPhotoTestOptions {
+  return { matcher, source: 'real', timeoutMs: 30_000 }
+}
 
 export async function createTeamPreviewRuntime(config: TeamPreviewConfig) {
   const webDirectory = resolve('dist-team-preview')
@@ -57,12 +67,16 @@ export async function createTeamPreviewRuntime(config: TeamPreviewConfig) {
       return { server, close, label: 'TEAM PREVIEW, synthetic fixtures' }
     }
     // Answer trial: the invited accounts run the traveler flow against real
-    // Vertex matching. Admin photo tests stay on the fixture matcher so they
-    // never consume the shared D-13 send allowance; only traveler answers do.
+    // Vertex matching, and admin photo tests use the same matcher so quests
+    // can be checked and published with real photos (D-18). The trial
+    // transport reserves one slot per send from the shared D-13 Firestore
+    // counter, so answers and photo tests draw on the same 20-send
+    // allowance and every send fails closed when the counter document is
+    // missing or the allowance is exhausted.
     const matcher = createVertexPhotoMatcher(createFirestoreVertexTrialTransport(db))
     const material = createPublishedAnswerMaterialLoader(db, photos, teamTrialLocationLimits)
     const runtime = createDurableAnswerRuntime({
-      ...shared, answerTrial: true,
+      ...shared, answerTrial: true, photoTest: answerTrialPhotoTest(matcher),
       worker: { ...material, leaseDurationMs: 180_000, authorize: verifier.isActiveUser, matcher, matchTimeoutMs: 30_000 },
       maintenance: { intervalMs: 1000, maximumJobs: 8, retryDelayMs: 5000,
         orphanPhotos: { storage: photos, minimumAgeMs: 300_000, intervalMs: 60_000 },
