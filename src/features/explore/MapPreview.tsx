@@ -661,8 +661,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '') + (belowMap ? ' is-browsing-below-map' : '')}
       style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
-      <div className="map-topline"><div className="map-topline-main">{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div></div>
-      {status === 'ready' && topOverlay && !panelMode && <div className="map-filter-overlay">{topOverlay}</div>}
+      {status === 'ready' && !panelMode && (topOverlay || focusArea) && <div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}</div>}
+      {status === 'ready' && panelMode && focusArea && <div className="map-topline is-sidebar"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'}>
         {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。問題の閲覧は続けられます。</span></> :

@@ -111,6 +111,10 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
     focusAfterSnap.current = 'body'
     setSnap('half')
   }
+  const onReopenClick = () => {
+    if (snap !== 'closed' && onBrowseBelowMap) onBrowseBelowMap()
+    else reopen()
+  }
 
   return <>
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
@@ -122,7 +126,8 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
       <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
     </div>
     {(snap === 'closed' || snap === 'peek') && <button ref={reopenRef} type="button" className="explore-sheet-reopen"
-      aria-expanded={onBrowseBelowMap ? undefined : false} aria-controls={onBrowseBelowMap ? undefined : bodyId}
-      onClick={onBrowseBelowMap ?? reopen}>問題を見る</button>}
+      aria-expanded={snap === 'closed' || !onBrowseBelowMap ? false : undefined}
+      aria-controls={snap === 'closed' || !onBrowseBelowMap ? bodyId : undefined}
+      onClick={onReopenClick}>問題を見る</button>}
   </>
 }

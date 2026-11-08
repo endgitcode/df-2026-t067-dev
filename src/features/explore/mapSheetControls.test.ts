@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
 const PLAIN_FIXED = '.map-preview-shell.has-sheet .map-controls { bottom: 72px; }'
+const mapPreview = readFileSync(resolve(process.cwd(), 'src/features/explore/MapPreview.tsx'), 'utf8')
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
 // 右下の地図操作系はシートの高さに追随せず、同じ場所に固定する。
@@ -47,9 +48,19 @@ describe('mobile bottom tab bar (D-32)', () => {
 
   it('keeps the mobile map controls fixed behind the sheet and the sheet above the tab bar', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); z-index: 3; }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
     expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute;')
+    expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 44px;')
+  })
+
+  it('stacks the area chip after the filter flow so one and two filter rows cannot overlap it', () => {
+    expect(mapPreview).toContain('<div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline">')
+    expect(css).toContain('.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;')
+    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
+    expect(css).not.toContain('body.explore-fullbleed .map-topline { top:')
+    expect(css).toContain('.map-topline.is-sidebar { position: absolute; top: calc(env(safe-area-inset-top) + 88px);')
+    expect(css).toContain('.map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; min-width: 0; }')
   })
 
   it('keeps the records screen clear of the tab bar', () => {
@@ -163,6 +174,6 @@ describe('mobile fullbleed finish', () => {
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
     expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }')
     expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
-    expect(css.indexOf('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px)')).toBeLessThan(css.indexOf('body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 154px)'))
+    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
   })
 })

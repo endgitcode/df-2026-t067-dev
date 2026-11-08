@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MapPreview } from './MapPreview'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
@@ -919,6 +919,7 @@ describe('Google map panel', () => {
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect(sheet.style.height).toBe(`${SHEET_PEEK_HEIGHT}px`)
     expect(SHEET_PEEK_HEIGHT).toBe(128)
+    expect(screen.getByRole('button', { name: '問題を見る' })).not.toHaveAttribute('aria-expanded')
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
     // 呼び出し側が選択を切り替えると、詳細は新しい選択行の直下へ移る。
@@ -935,6 +936,19 @@ describe('Google map panel', () => {
     expect(scroll).toHaveBeenCalledWith({ block: 'start' })
     expect(container.querySelector('.explore-sheet')).toBe(sheet)
     expect(sheet).toHaveAttribute('data-snap', 'peek')
+    // The real browse callback is wired above. Once the sheet is fully closed,
+    // the same button must reopen it instead of navigating to the below-map list.
+    const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+    fireEvent.pointerDown(handle, { pointerId: 30, pointerType: 'touch', clientY: 200 })
+    fireEvent.pointerMove(handle, { pointerId: 30, pointerType: 'touch', clientY: 300 })
+    fireEvent.pointerUp(handle, { pointerId: 30, pointerType: 'touch', clientY: 300 })
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+    const reopen = screen.getByRole('button', { name: '問題を見る' })
+    expect(reopen).toHaveAttribute('aria-expanded', 'false')
+    expect(reopen.getAttribute('aria-controls')).toBeTruthy()
+    await user.click(reopen)
+    expect(sheet).toHaveAttribute('data-snap', 'half')
+    expect(document.activeElement).toBe(sheet.querySelector('.explore-sheet-body'))
     HTMLElement.prototype.scrollIntoView = originalScrollIntoView
     unmount()
     delete window.google
