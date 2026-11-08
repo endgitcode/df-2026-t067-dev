@@ -255,7 +255,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         })
         listeners.push(marker.addListener('click', () => {
           if (!active) return
-          setPinAreaId(area.areaId)
+          // 選択中のピンをもう一度押したらハイライトを外す。選択自体の解除は呼び出し側が同じ地域の再選択として扱う。
+          setPinAreaId((current) => (current === area.areaId ? null : area.areaId))
           onSelectArea?.(area.areaId)
         }))
         created.push(marker)
@@ -391,7 +392,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
       style={sheetMode ? { '--sheet-h': `${sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
-      <div className="map-topline"><div className="map-topline-main"><span className="map-scope"><Icon name="map" />全国の謎</span>{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div></div>
+      <div className="map-topline"><div className="map-topline-main">{status === 'ready' && focusArea && <span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span>}</div></div>
       {status === 'ready' && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'}>

@@ -37,8 +37,9 @@ p { overflow-wrap: anywhere; }
 .page, .site-footer { width: min(100% - 64px, 1440px); margin-inline: auto; }
 .page { padding-block: 36px 26px; }
 .api-quest-picker { display: grid; gap: 7px; margin: 18px 0; padding: 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); }
-.api-quest-picker label { font-size: 12px; font-weight: var(--ui-weight-strong); color: var(--ui-muted); }
-.api-quest-picker select { width: 100%; min-height: 44px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 7px 10px; color: var(--ui-ink); background: var(--ui-surface); font: inherit; }
+.api-quest-picker ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.api-quest-picker li button { width: 100%; min-height: 44px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.api-quest-picker li button[aria-pressed="true"] { background: var(--ui-accent); color: var(--ui-accent-ink); font-weight: var(--ui-weight-strong); }
 .api-quest-picker p, .api-quest-picker span { font-size: 12px; color: var(--ui-muted); line-height: 1.7; }
 .api-load-state { width: min(100% - 40px, 620px); margin: 12vh auto; padding: 28px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }
 .api-load-state h1 { margin-bottom: 12px; }
@@ -59,8 +60,6 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-state span { max-width: 32ch; }
 .map-state button { min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
 .map-topline { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; z-index: 2; pointer-events: none; }
-.map-scope { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); font-weight: var(--ui-weight-strong); font-size: 12px; box-shadow: var(--ui-shadow); }
-.map-scope .icon { width: 16px; height: 16px; color: var(--ui-muted); }
 .map-location-status { width: fit-content; max-width: 100%; margin-top: 8px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; box-shadow: var(--ui-control-shadow); }
 .map-boundary-credit { margin: 10px 2px 2px; font-size: 11px; color: var(--ui-muted); }
 .map-location-status.is-floating { position: absolute; left: 20px; bottom: calc(var(--sheet-h, 0px) + 14px); z-index: 5; margin: 0; max-width: calc(100% - 110px); }
@@ -73,14 +72,12 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-filter-chips::-webkit-scrollbar { display: none; }
 .filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; }
 .filter-chip[aria-pressed="true"] { background: var(--ui-accent); }
-.filter-chip-clear { background: var(--ui-tint); pointer-events: auto; }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .api-load-state .map-filter-panel { margin-top: 18px; }
 .map-filter-flow { margin-top: 12px; }
 .map-filter-flow .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .explore-list { margin-top: 14px; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
 .explore-list-head { display: flex; align-items: baseline; gap: 10px; }
-.explore-list-head h2 { font-size: 14px; font-weight: var(--ui-weight-strong); }
 .explore-list-head span { font-size: 12px; color: var(--ui-muted); }
 .explore-list-note { margin: 6px 0 0; font-size: 11px; color: var(--ui-muted); }
 .explore-list-focus { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-soft); }
@@ -133,9 +130,6 @@ button.explore-quest-card { cursor: pointer; }
 .map-zoom .icon { width: 18px; height: 18px; }
 .map-bottomline { position: absolute; bottom: 12px; left: 17px; right: 17px; display: flex; justify-content: space-between; gap: 12px; color: var(--ui-muted); font-size: 12px; line-height: 1.4; }
 .map-credit { font-size: 12px; flex: none; }
-.rail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 1px 1px 0; }
-.rail-heading h2 { font-size: 14px; font-weight: var(--ui-weight-strong); }
-.rail-heading > span { font-size: 12px; color: var(--ui-muted); }
 .quest-card { overflow: hidden; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); box-shadow: var(--ui-shadow); }
 .quest-card.is-open { border-color: var(--ui-line); }
 .connection-message { min-height: 240px; padding: 25px 21px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-muted); font-size: 13px; }
@@ -235,8 +229,6 @@ button.explore-quest-card { cursor: pointer; }
   .preview-label.api-source { display: inline-flex; }
   .map-preview { height: 338px; border-radius: var(--ui-radius); }
   .map-topline { top: 12px; left: 12px; right: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; justify-items: start; gap: 4px 6px; }
-  .map-scope { padding: 7px 9px; font-size: 12px; gap: 6px; }
-  .map-scope .icon { width: 14px; height: 14px; }
   .map-location-status { margin: 8px 12px 0; max-width: calc(100% - 24px); padding: 7px 9px; font-size: 11px; }
   .map-location-status.is-floating { left: 12px; margin: 0; max-width: calc(100% - 84px); }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
@@ -278,8 +270,6 @@ button.explore-quest-card { cursor: pointer; }
 .status-dot, .demo-note-dot { background: var(--ui-ink); border-radius: 50%; }
 .explore-workspace { grid-template-columns: minmax(0, 1fr) 400px; }
 .map-preview { background: var(--ui-blue); box-shadow: var(--ui-shadow); }
-.map-scope { background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
-.map-scope .icon { color: var(--ui-ink); }
 .demo-map-label { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-soft); color: var(--ui-ink); }
 .map-bottomline { color: var(--ui-ink); flex-wrap: wrap; background: var(--ui-surface); padding: 6px 8px; border-radius: var(--ui-radius); }
 .pin-halo { border: 0; background: transparent; border-radius: 50%; }
@@ -294,8 +284,6 @@ button.explore-quest-card { cursor: pointer; }
 .map-zoom button:disabled { color: var(--ui-muted); background: var(--ui-disabled); }
 .map-zoom button:first-child { border-radius: var(--ui-radius) var(--ui-radius) 0 0; }
 .map-zoom button:last-child { border-radius: 0 0 var(--ui-radius) var(--ui-radius); }
-.rail-heading h2 { font-size: 16px; font-weight: var(--ui-weight-display); }
-.rail-heading > span { color: var(--ui-muted); }
 .quest-card, .connection-message, .api-load-state { background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
 .quest-rail, .quest-rail > div { min-width: 0; }
 .quest-card-content { padding: 24px; }
@@ -311,9 +299,7 @@ button.explore-quest-card { cursor: pointer; }
 .retry-button, .account-action-button, .camera-actions .secondary-button { color: var(--ui-ink); background: var(--ui-surface); }
 .retry-button:hover { background: var(--ui-tint); }
 .sample-note, .api-quest-picker { color: var(--ui-muted); background: var(--ui-soft); }
-.api-quest-picker select { color: var(--ui-ink); background: var(--ui-surface); }
-.api-quest-picker select:disabled { color: var(--ui-muted); background: var(--ui-disabled); }
-.api-quest-picker label { color: var(--ui-ink); }
+.api-quest-picker li button { color: var(--ui-ink); background: var(--ui-surface); }
 .camera-panel { padding: 16px; background: var(--ui-soft); }
 .camera-video, .photo-preview { background: #1d1d1b; border: var(--ui-border-width) solid var(--ui-line); }
 .camera-panel .photo-preview { height: auto; }
@@ -332,10 +318,7 @@ button.explore-quest-card { cursor: pointer; }
   .site-footer { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 }
 
-.api-quest-picker select { border-color: var(--ui-control-line); }
-
-/* The card's title and actions communicate its structure without decorative captions. */
-.rail-heading { margin-bottom: 20px; }
+.api-quest-picker li button { border-color: var(--ui-control-line); }
 .quest-card-heading { padding: 20px 24px; border-bottom: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); }
 .quest-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .quest-title-row h3 { min-width: 0; overflow-wrap: anywhere; }

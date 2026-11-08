@@ -31,7 +31,6 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
   return (
     <section className="explore-list" aria-label={variant === 'viewport' ? '表示範囲の謎' : '選べる謎の一覧'}>
       <div className="explore-list-head">
-        <h2>{variant === 'viewport' ? 'この範囲の謎' : 'すべての地域の謎'}</h2>
         <span>{quests.length}件</span>
       </div>
       <p className="explore-list-note">ピンは地域の代表点です。問題の場所そのものではありません。</p>

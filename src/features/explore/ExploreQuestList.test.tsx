@@ -24,7 +24,8 @@ describe('ExploreQuestList', () => {
   })
   it('renders quest cards with title, area, clue and a hint thumbnail', () => {
     render(<ExploreQuestList areas={areas} quests={quests} variant="viewport" onOpenQuest={() => {}} />)
-    expect(screen.getByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    expect(screen.getByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'この範囲の謎' })).not.toBeInTheDocument()
     expect(screen.getByText('2件')).toBeVisible()
     expect(screen.getByText('港の時計台')).toBeVisible()
     expect(screen.getByText('横浜')).toBeVisible()
@@ -73,9 +74,11 @@ describe('ExploreQuestList', () => {
     expect(onClearHighlight).toHaveBeenCalledTimes(1)
   })
 
-  it('renders a fallback heading when the map is unavailable', () => {
+  it('renders the fallback list without a heading when the map is unavailable', () => {
     render(<ExploreQuestList areas={areas} quests={quests} variant="fallback" />)
-    expect(screen.getByRole('heading', { name: 'すべての地域の謎' })).toBeVisible()
+    expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'すべての地域の謎' })).not.toBeInTheDocument()
+    expect(screen.getByText('2件')).toBeVisible()
     expect(screen.getByText('博多の灯台')).toBeVisible()
   })
 })

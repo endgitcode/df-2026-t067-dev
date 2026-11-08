@@ -329,7 +329,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} />
 
             <aside className="quest-rail" aria-label="選べる謎">
-              <div className="rail-heading"><h2>選べる謎</h2>{!apiMode && <span>1件</span>}</div>
               {railFallback ?? questPicker}
               {!railFallback && <div ref={questCard}>
                 {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}

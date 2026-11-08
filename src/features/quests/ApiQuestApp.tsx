@@ -4,7 +4,7 @@ import type { AuthClient } from '../auth/authTypes'
 import { ApiError, createApiClient } from '../../shared/api/client'
 import type { LocalApiDataMode } from '../../shared/api/client'
 import type { Page, PublicArea, PublicQuest } from '../../shared/api/types'
-import { getRegionAreas, prefectureForArea, REGIONS } from './areaHierarchy'
+import { getRegionAreas, REGIONS } from './areaHierarchy'
 
 type Api = Pick<ReturnType<typeof createApiClient>, 'listQuests' | 'getQuest' | 'listAreas' | 'getHint'>
 const emptyAreas: PublicArea[] = []
@@ -203,43 +203,36 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const selectRegion = (region: string) => { setActiveRegion(region); setActivePrefecture(''); resetAreaSelection() }
   const selectPrefecture = (prefecture: string) => { setActivePrefecture(prefecture); resetAreaSelection() }
   // 地方・都道府県の絞り込みは地図の上に浮くチップで出す（フォールバック表示では通常フローに置く）。
+  // 「全国」チップは置かず、未選択（初期状態）が全国表示。選択中の地方チップをもう一度押すと解除される。
+  // 地方を解除・変更すると都道府県の選択も外れる（従来どおり selectRegion が都道府県をリセットする）。
   const filterControls = <div className="map-filter-panel">
     <div className="map-filter-chips" role="group" aria-label="地方">
-      <button type="button" className="filter-chip" aria-pressed={activeRegion === ''} onClick={() => selectRegion('')}>全国</button>
-      {REGIONS.map((region) => <button key={region.name} type="button" className="filter-chip" aria-pressed={activeRegion === region.name} onClick={() => selectRegion(region.name)}>{region.name}</button>)}
-      {availableAreas.some((area) => !prefectureForArea(area)) && <button type="button" className="filter-chip" aria-pressed={activeRegion === '未分類'} onClick={() => selectRegion('未分類')}>未分類</button>}
+      {REGIONS.map((region) => <button key={region.name} type="button" className="filter-chip" aria-pressed={activeRegion === region.name} onClick={() => selectRegion(activeRegion === region.name ? '' : region.name)}>{region.name}</button>)}
     </div>
-    {activeRegion && activeRegion !== '未分類' && <div className="map-filter-chips" role="group" aria-label="都道府県">
+    {activeRegion && <div className="map-filter-chips" role="group" aria-label="都道府県">
       <button type="button" className="filter-chip" aria-pressed={activePrefecture === ''} onClick={() => selectPrefecture('')}>地方内すべて</button>
       {prefOptions.map((prefecture) => <button key={prefecture} type="button" className="filter-chip" aria-pressed={activePrefecture === prefecture} onClick={() => selectPrefecture(prefecture)}>{prefecture}</button>)}
     </div>}
-    {selectedAreaId && <button type="button" className="filter-chip filter-chip-clear" onClick={resetAreaSelection}>すべての公開問題を見る</button>}
   </div>
+  // 問題の選択は全モード共通で「リストの項目を押す」形に統一する（ドロップダウンは置かない）。
+  // 地図のカードと同じく、押した問題の詳細を開くところまでを担う。
+  const chooseQuest = (item: PublicQuest) => {
+    if (dataMode === 'team-preview') {
+      openQuestFromMap(item.questId)
+      return
+    }
+    clearRefreshNotice()
+    if (syncUrl) writeSelectionToUrl(selectedAreaId, item.questId, 'push')
+    setSelectedId(item.questId)
+    if (dataMode === 'durable-local') {
+      setOpenQuestRequest((previous) => ({ questId: item.questId, sequence: (previous?.sequence ?? 0) + 1 }))
+    }
+  }
   const picker = <div className="api-quest-picker">
     {activeRegion && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '一覧から問題を選んでください。' : 'この条件に公開問題はありません。'}</p>}
-    {dataMode === 'durable-local' ? <ul aria-label="公開問題">{visibleChoices.map(item => <li key={item.questId}>
-      <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => {
-        clearRefreshNotice()
-        if (syncUrl) writeSelectionToUrl(selectedAreaId, item.questId, 'push')
-        setSelectedId(item.questId)
-        setOpenQuestRequest(previous => ({ questId: item.questId, sequence: (previous?.sequence ?? 0) + 1 }))
-      }}>{item.title}</button>
-    </li>)}</ul> : <><label htmlFor="api-quest-select">公開APIの問題を選択</label>
-    <select id="api-quest-select" aria-label="公開APIの問題を選択" value={selectedQuestId}
-      disabled={!visibleChoices.length}
-      onChange={(event) => {
-        const questId = event.target.value
-        if (dataMode === 'team-preview') {
-          openQuestFromMap(questId)
-          return
-        }
-        clearRefreshNotice()
-        if (syncUrl) writeSelectionToUrl(selectedAreaId, questId, 'push')
-        setSelectedId(questId)
-      }}>
-      {!selectedQuestId && <option value="" disabled>{state === 'loading' ? '問題を読み込み中' : visibleChoices.length ? '問題を選択してください' : '選べる問題がありません'}</option>}
-      {visibleChoices.map((item) => <option key={item.questId} value={item.questId}>{item.title}</option>)}
-    </select></>}
+    <ul aria-label="公開問題">{visibleChoices.map((item) => <li key={item.questId}>
+      <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => chooseQuest(item)}>{item.title}</button>
+    </li>)}</ul>
     <p>問題と地域名は公開APIから取得しています。架空の問題の位置は地図に表示しません。</p>
   </div>
 
@@ -270,7 +263,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     {refreshNotice?.api === api && <span role="status">{refreshNotice.text}</span>}
   </>
   const selectArea = (areaId: string) => {
-    if (areaId === selectedAreaId || !regionAreas.some((item) => item.areaId === areaId)) return
+    // 選択中の地域がもう一度選ばれたら（ピンの再タップ等）選択を解除し、未選択＝全件表示に戻る。
+    if (areaId === selectedAreaId) { resetAreaSelection(); return }
+    if (!regionAreas.some((item) => item.areaId === areaId)) return
     clearRefreshNotice()
     if (syncUrl) writeSelectionToUrl(areaId, '', 'push')
     setSelectedAreaId(areaId)
@@ -290,7 +285,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       {dataMode !== 'team-preview' && <p className="eyebrow">{dataMode === 'durable-local' ? '永続API・ローカル' : '公開APIデモ'}</p>}
       <FallbackHeading id={dataMode === 'team-preview' ? undefined : 'explore-title'}>{state === 'loading' ? '公開問題を読み込み中' : state === 'empty' ? '公開問題はありません' : '公開問題を取得できませんでした'}</FallbackHeading>
       {state === 'loading' && <p role="status">サーバーから問題を取得しています。</p>}
-      {state === 'empty' && <p>{selectedAreaId ? 'この地域に公開問題はありません。地域を変えるか全国からお選びください。' : '現在選べる公開問題はありません。'}</p>}
+      {state === 'empty' && <p>{selectedAreaId ? 'この地域に公開問題はありません。地図や地方の絞り込みから別の地域をお選びください。' : '現在選べる公開問題はありません。'}</p>}
       {state === 'error' && <p role="alert">{current?.missing
         ? 'この問題は公開されていないか、見つかりません。別の問題を選べます。'
         : 'サーバーとの通信を確認して、もう一度お試しください。'}</p>}

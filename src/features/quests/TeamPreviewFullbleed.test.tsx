@@ -78,7 +78,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     const user = userEvent.setup()
     const view = render(<TeamPreview authClient={auth} />)
     // 地図が使える状態になり、連動リストがボトムシートに入ると全画面化の目印が付く。
-    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
     await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
     // 浮動化した導線：所属がある場合の自治体画面への入口が両ナビに残り、ログアウトも届く。
     const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
@@ -110,7 +110,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     stubViewport(true)
     vi.stubGlobal('fetch', stubFetcher([]))
     render(<TeamPreview authClient={auth} />)
-    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
     const desktopNav = screen.getByRole('navigation', { name: '主要ナビゲーション' })
     const mobileNav = screen.getByRole('navigation', { name: 'スマホ用ナビゲーション' })
     // 所属の確認が終わっても入口は出ず、自分の記録は所属がある場合と同じ2番目のまま。
