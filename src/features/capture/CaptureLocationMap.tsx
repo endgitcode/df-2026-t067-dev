@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadGoogleMaps, subscribeMapsAuthFailure } from '../explore/googleMapsLoader'
+import { MAP_STYLES } from '../explore/mapStyles'
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
 
@@ -23,6 +24,7 @@ export function CaptureLocationMap({ latitude, longitude }: { latitude: number; 
       const map = new google.Map(target.current, {
         center, zoom: 17, disableDefaultUI: false, mapTypeControl: false,
         streetViewControl: false, fullscreenControl: false, clickableIcons: false,
+        styles: MAP_STYLES,
       })
       if (authFailed) return
       if (!google.Marker) throw new Error('unavailable')
