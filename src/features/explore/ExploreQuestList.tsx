@@ -1,0 +1,66 @@
+import { useEffect, useRef } from 'react'
+import type { PublicArea, PublicQuest } from '../../shared/api/types'
+import { questThumbnail } from './viewportQuests'
+
+// 地図の表示範囲と連動する謎カードのリスト。地図が使えない場合は全地域分をそのまま並べる。
+export function ExploreQuestList({ areas, quests, variant, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onClearHighlight }: {
+  areas: PublicArea[]
+  quests: PublicQuest[]
+  variant: 'viewport' | 'fallback'
+  highlightArea?: PublicArea
+  selectedQuestId?: string
+  clearedQuestIds?: ReadonlySet<string>
+  onOpenQuest?: (questId: string) => void
+  onClearHighlight?: () => void
+}) {
+  const listRef = useRef<HTMLUListElement>(null)
+  const areaLabel = (areaId: string) => areas.find((area) => area.areaId === areaId)?.label ?? ''
+  const highlightCount = highlightArea ? quests.filter((quest) => quest.areaId === highlightArea.areaId).length : 0
+
+  useEffect(() => {
+    if (!highlightArea || !listRef.current) return
+    for (const item of listRef.current.querySelectorAll('[data-area-id]')) {
+      if (item.getAttribute('data-area-id') !== highlightArea.areaId) continue
+      try { (item as HTMLElement).scrollIntoView({ block: 'nearest' }) } catch { /* スクロール位置の補助であり、失敗しても一覧は使える。 */ }
+      break
+    }
+  }, [highlightArea])
+
+  return (
+    <section className="explore-list" aria-label={variant === 'viewport' ? '表示範囲の謎' : '選べる謎の一覧'}>
+      <div className="explore-list-head">
+        <h2>{variant === 'viewport' ? 'この範囲の謎' : 'すべての地域の謎'}</h2>
+        <span>{quests.length}件</span>
+      </div>
+      <p className="explore-list-note">ピンは地域の代表点です。問題の場所そのものではありません。</p>
+      {highlightArea && <div className="explore-list-focus">
+        <strong>{highlightArea.label}</strong><span>{highlightCount}問</span>
+        <button type="button" onClick={onClearHighlight}>閉じる</button>
+      </div>}
+      {quests.length === 0
+        ? <p className="explore-list-empty">この範囲に謎はありません。地図を移動すると、別の地域の謎が表示されます。</p>
+        : <ul ref={listRef} className="explore-quest-list">
+          {quests.map((quest) => {
+            const thumbnail = questThumbnail(quest)
+            const cleared = clearedQuestIds?.has(quest.questId) ?? false
+            const content = <>
+              {thumbnail && <img src={thumbnail} alt="" />}
+              <span className="explore-quest-main">
+                <span className="explore-quest-title">{quest.title}</span>
+                <span className="explore-quest-area">{areaLabel(quest.areaId)}</span>
+                <span className="explore-quest-clue">{quest.clue}</span>
+              </span>
+              {cleared && <span className="explore-quest-cleared">クリア済み</span>}
+            </>
+            return <li key={quest.questId} data-area-id={quest.areaId} className={highlightArea?.areaId === quest.areaId ? 'is-highlighted' : undefined}>
+              {onOpenQuest
+                ? <button type="button" className={'explore-quest-card' + (quest.questId === selectedQuestId ? ' is-selected' : '')}
+                  aria-pressed={selectedQuestId ? quest.questId === selectedQuestId : undefined}
+                  aria-label={`${quest.title}の詳細を見る`} onClick={() => onOpenQuest(quest.questId)}>{content}</button>
+                : <div className="explore-quest-card">{content}</div>}
+            </li>
+          })}
+        </ul>}
+    </section>
+  )
+}

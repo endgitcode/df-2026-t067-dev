@@ -9,11 +9,16 @@ export interface GoogleMapsApi {
 
 export interface Bounds { extend(point: { lat: number; lng: number }): void }
 
+export interface MapLatLng { lat(): number; lng(): number }
+
+export interface MapBounds { getNorthEast(): MapLatLng; getSouthWest(): MapLatLng }
+
 export interface MapInstance {
   setZoom(value: number): void
   getZoom(): number | undefined
   setCenter(value: { lat: number; lng: number }): void
   fitBounds(bounds: Bounds): void
+  getBounds?(): MapBounds | undefined
   addListener(name: string, callback: () => void): { remove(): void }
 }
 

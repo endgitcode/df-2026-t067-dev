@@ -264,7 +264,37 @@ describe('Google map panel', () => {
     vi.useRealTimers()
   })
 
-  it('places one pin per area at the public geometry centroid and opens a quest preview card on tap', async () => {
+  it('filters the linked quest list to the visible map bounds when the map goes idle', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const listeners = new Map<string, () => void>()
+    let bounds = { north: 32, south: 30, east: 132, west: 129 }
+    const map = { ...mapInstance,
+      addListener: (name: string, callback: () => void) => { listeners.set(name, callback); return { remove: () => { listeners.delete(name) } } },
+      getBounds: () => ({
+        getNorthEast: () => ({ lat: () => bounds.north, lng: () => bounds.east }),
+        getSouthWest: () => ({ lat: () => bounds.south, lng: () => bounds.west }),
+      }),
+    }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    expect(await screen.findByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    act(() => listeners.get('idle')?.())
+    expect(await screen.findByText('この範囲に謎はありません。地図を移動すると、別の地域の謎が表示されます。')).toBeVisible()
+    expect(screen.queryByRole('button', { name: '港の時計台の詳細を見る' })).not.toBeInTheDocument()
+    bounds = { north: 37, south: 34, east: 141, west: 138 }
+    act(() => listeners.get('idle')?.())
+    expect(await screen.findByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    unmount()
+    delete window.google
+  })
+
+  it('places one pin per area at the public geometry centroid and highlights its quests in the linked list on tap', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const instances: Marker[] = []
@@ -296,18 +326,20 @@ describe('Google map panel', () => {
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
     expect(iconUrl).toContain('#4eb8d0')
     expect(iconUrl).toContain('>2<')
+    // 連動リストには地図下に問題カードが並び、代表点の注記もここで伝える。
+    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '石畳の坂の詳細を見る' })).toBeVisible()
+    expect(screen.getByText('ピンは地域の代表点です。問題の場所そのものではありません。')).toBeVisible()
     act(() => instances[0].click?.())
     expect(onSelectArea).toHaveBeenCalledWith('area-a')
-    expect(await screen.findByText('港の時計台')).toBeVisible()
-    expect(screen.getByText('石畳の坂')).toBeVisible()
-    expect(screen.getByText('ピンは地域の代表点です。問題の場所そのものではありません。')).toBeVisible()
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('li')).toHaveClass('is-highlighted')
+    expect(screen.getByRole('button', { name: '石畳の坂の詳細を見る' }).closest('li')).toHaveClass('is-highlighted')
     await user.click(screen.getByRole('button', { name: '閉じる' }))
-    expect(screen.queryByText('港の時計台')).not.toBeInTheDocument()
-    act(() => instances[0].click?.())
-    expect(await screen.findByText('港の時計台')).toBeVisible()
-    await user.click(screen.getAllByRole('button', { name: '詳細を見る' })[0])
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('li')).not.toHaveClass('is-highlighted')
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
-    expect(screen.queryByText('港の時計台')).not.toBeInTheDocument()
     rerender(<ConfiguredMapPreview areas={[{ ...areas[0], publishedCount: 0 }]} quests={quests} onSelectArea={onSelectArea} onOpenQuest={onOpenQuest} />)
     await waitFor(() => expect(instances[0].setMap).toHaveBeenCalledWith(null))
     expect(instances[0].removeListener).toHaveBeenCalled()
