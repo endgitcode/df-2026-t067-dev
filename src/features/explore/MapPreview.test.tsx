@@ -486,8 +486,8 @@ describe('Google map panel', () => {
     // 位置情報の送信案内は地図の右上に常駐しない（D-28）。使う時にだけ結果メッセージへ出す。
     expect(screen.queryByText(/位置情報はGoogle Mapsに送信されます/)).not.toBeInTheDocument()
     expect(document.querySelector('.map-location-action')).not.toBeInTheDocument()
-    // 境界データの出典はシート内に小さく常駐する。
-    expect(screen.getByText('境界データ：国土数値情報（行政区域データ）N03（国土交通省）をもとに作成')).toBeInTheDocument()
+    // 境界データの出典は短い文言でシート内に小さく常駐する（D-46）。
+    expect(screen.getByText('境界データ：国土数値情報N03（国土交通省）')).toBeInTheDocument()
     unmount()
     const { unmount: unmountPlain } = render(<ConfiguredMapPreview areas={areas} quests={[]} />)
     expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
@@ -860,31 +860,39 @@ describe('Google map panel', () => {
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
     const questScrollTarget = { current: null as HTMLDivElement | null }
-    const { container, unmount } = render(<>
-      <ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="q1" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} />
-      <div ref={questScrollTarget}><header className="quest-card-heading"><h3>港の時計台</h3></header></div>
-    </>)
+    const detailFor = (title: string) => <div><header className="quest-card-heading"><h3>{title}</h3></header></div>
+    const quests2: PublicQuest[] = [
+      ...quests,
+      { questId: 'q2', version: 1, title: '博多の灯台', clue: '海に突き出た灯台', areaId: 'area-a', visitConditions: '', hintCount: 2 },
+    ]
+    const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q2" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('博多の灯台')} />)
     const sheet = await waitFor(() => {
       const element = container.querySelector('.explore-sheet')
       expect(element).not.toBeNull()
       return element as HTMLElement
     })
-    // 覗き見（peek）の高さは、ハンドルと件数に加えて先頭カード1枚（peek では要約表示）が
-    // 丸ごと収まる前提で決める。要約表示になった分、従来の200pxより低く抑える。
+    // 覗き見（peek）の高さは、ハンドルと件数に加えて先頭の行1つ（タイトルだけの形、D-46）が
+    // 丸ごと収まる前提で決める。
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect(sheet.style.height).toBe(`${SHEET_PEEK_HEIGHT}px`)
-    expect(SHEET_PEEK_HEIGHT).toBe(140)
+    expect(SHEET_PEEK_HEIGHT).toBe(128)
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
-    const title = screen.getByRole('heading', { name: '港の時計台' })
+    // 呼び出し側が選択を切り替えると、詳細は新しい選択行の直下へ移る。
+    rerender(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q1" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('港の時計台')} />)
     const scroll = vi.fn()
-    title.scrollIntoView = scroll
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scroll
     await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    // 「問題を見る」の着地は、地図下の一覧へ移った詳細のタイトル（#70、D-46）。
+    const belowMap = screen.getByRole('region', { name: '地図の下の問題一覧' })
+    const title = screen.getByRole('heading', { name: '港の時計台' })
+    expect(belowMap).toContainElement(title)
     expect(title).toHaveFocus()
     expect(scroll).toHaveBeenCalledWith({ block: 'start' })
     expect(container.querySelector('.explore-sheet')).toBe(sheet)
     expect(sheet).toHaveAttribute('data-snap', 'peek')
-    expect(screen.queryByRole('region', { name: '地図の下の問題一覧' })).not.toBeInTheDocument()
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
     unmount()
     delete window.google
   })

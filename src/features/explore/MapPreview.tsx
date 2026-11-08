@@ -66,9 +66,12 @@ function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | 
   return points
 }
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
+  /** 選択中の問題の詳細。一覧の選択中の行の直下にアコーディオンとして差し込む（D-46）。
+      別枠で下に置くとタイトルが二重に出て煩雑になるため、置き場所は一覧の中に寄せる。 */
+  questDetail?: ReactNode
   /** シート表示（地図が使えてカード一覧が出ている状態）かどうかを呼び出し側へ知らせる。
       問題の選択手段の出し分け（地図が使える間はカード一覧に一本化し、全件ピッカーは
       地図が使えないフォールバック専用にする、D-43）に使う。 */
@@ -519,13 +522,17 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     updateMapScrollPosition()
   }
 
-  const renderQuestList = (scrollToHighlight = true) => showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={quests}
+  // 詳細（questDetail）は一覧の選択中の行の直下にだけ差し込む。同時に2か所へは出さない
+  // （状態を持つ詳細が二重にマウントされるのを避けるため）。地図下の一覧を開いている間は
+  // そちらへ寄せ、「問題を見る」の着地（#70）が地図下の詳細になるようにする。
+  const renderQuestList = (scrollToHighlight = true, withDetail = false) => showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={quests}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     scrollToHighlight={scrollToHighlight}
+    detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget}
     onOpenQuest={onOpenQuest} /> : null
-  // 境界データの出典表記（N03 の利用条件）。シート内・フォールバックのリスト末尾に小さく出す。
+  // 境界データの出典表記（N03 の利用条件）。短い文言で、パネル／シートの一番下に小さく出す（D-46）。
   const boundaryCredit = showBoundaryCredit && showPublicAreas
-    ? <p className="map-boundary-credit">境界データ：国土数値情報（行政区域データ）N03（国土交通省）をもとに作成</p>
+    ? <p className="map-boundary-credit">境界データ：国土数値情報N03（国土交通省）</p>
     : null
   const mapControls = status === 'ready' ? <div className="map-controls">
     <div className="map-zoom" aria-label="地図の表示操作">
@@ -612,7 +619,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {sheetMode
         ? panelMode
           ? <>
-            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{renderQuestList()}{boundaryCredit}{panelExtra}</div>
+            <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{renderQuestList(true, true)}{panelExtra}{boundaryCredit}</div>
             <button type="button" className="sidebar-toggle" aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
               onClick={() => setSidebarCollapsed((value) => !value)}>
@@ -620,14 +627,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
             </button>
           </>
           : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
-            onBrowseBelowMap={browseQuests}>{renderQuestList()}{boundaryCredit}</ExploreBottomSheet>
-        : <>{renderQuestList()}{boundaryCredit}{panelExtra}</>}
+            onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap)}{boundaryCredit}</ExploreBottomSheet>
+        : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>
     {sheetMode && !panelMode && (pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
       className="explore-sheet-reopen map-browse-shortcut"
       onClick={pastMap ? returnToMap : browseQuests}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
-    {belowMap && !(questScrollTarget && selectedQuestId) && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
-      {renderQuestList(false)}
+    {belowMap && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
+      {renderQuestList(false, true)}
       {boundaryCredit}
     </section>}
   </>)
