@@ -335,7 +335,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       ownerUid={canUseCamera && visiblePending === null ? uid : null} canSignIn={auth.status === 'signed-out'}
                       signInPending={visiblePending !== null} onSignIn={() => void login()} />}
                   </QuestDetails>
-                  : connection.result.status === 'loading' ? <p role="status" aria-label="問題の読み込み">問題を読み込んでいます…</p> : <div role="alert">{source === 'invalid' ? '表示設定を確認してください。' : '問題を読み込めませんでした。'}<button type="button" className="retry-button" onClick={connection.retry}>問題を再読み込み</button></div>}
+                  : apiMode ? null : connection.result.status === 'loading' ? <p role="status" aria-label="問題の読み込み">問題を読み込んでいます…</p> : <div role="alert">{source === 'invalid' ? '表示設定を確認してください。' : '問題を読み込めませんでした。'}<button type="button" className="retry-button" onClick={connection.retry}>問題を再読み込み</button></div>}
               </div>}
               <p className="browse-note">問題の閲覧にログインは必要ありません。</p>
               <div className="demo-note"><span className="demo-note-dot" /><p>{teamAnswerTrial ? '自治体画面で公開した架空の問題を確認できます。招待された4人は撮影と回答も試せます。' : teamPreview ? '自治体画面で公開した架空の問題を確認できます。' : durableLocal ? '永続APIの確認用です。回答の送信には合成画像と架空の座標を使ってください。' : apiMode ? '公開APIが返す架空のデモデータです。実際に訪問できる場所ではありません。' : '今はデザイン確認用の架空の1問を表示しています。実際に訪問できる場所ではありません。'}</p></div>
