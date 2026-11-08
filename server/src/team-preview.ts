@@ -19,10 +19,10 @@ import { createPublishedAnswerMaterialLoader } from './published-answer-material
 import { createVertexPhotoMatcher } from './vertex-match'
 import { createFirestoreVertexTrialTransport } from './vertex-trial-firestore'
 
-// Trial location limits for the answer trial. These mirror the durable-local
-// trial values; the production values remain undecided (decisions O-03) and
-// the per-quest shooting zones themselves come from the published material.
-const teamTrialLocationLimits = { maxAccuracyMeters: 50, maxAgeMs: 120_000, maxFutureSkewMs: 5000, maxCaptureMeasurementGapMs: 30_000 }
+// Shared answer trial allows 100m accuracy; other limits match durable-local.
+// Production values remain undecided (decisions O-03). Shooting zones come
+// from the published material.
+export const teamTrialLocationLimits = { maxAccuracyMeters: 100, maxAgeMs: 120_000, maxFutureSkewMs: 5000, maxCaptureMeasurementGapMs: 30_000 }
 
 // Photo tests in the answer trial run the same Vertex matcher as traveler
 // answers (D-18), so their results are recorded with source 'real' and the

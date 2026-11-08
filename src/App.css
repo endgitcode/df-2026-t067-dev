@@ -67,32 +67,37 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-location-action { display: flex; align-items: flex-start; pointer-events: none; }
 .map-location-action span { max-width: 32ch; padding: 5px 8px; border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 11px; line-height: 1.4; box-shadow: var(--ui-control-shadow); }
 .map-location-status { position: absolute; left: 20px; bottom: 20px; z-index: 3; max-width: 70%; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; box-shadow: var(--ui-control-shadow); }
-.map-pin-card { position: absolute; left: 17px; right: 76px; bottom: 52px; z-index: 4; max-height: 46%; overflow: auto; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
-.map-pin-card-head { display: flex; align-items: center; gap: 10px; }
-.map-pin-card-head strong { font-size: 14px; }
-.map-pin-card-head span { font-size: 12px; color: var(--ui-muted); }
-.map-pin-card-head button { margin-left: auto; flex: none; min-height: 36px; padding: 4px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); }
-.map-pin-card-note { margin: 6px 0 0; font-size: 11px; color: var(--ui-muted); }
-.map-pin-card ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.map-pin-card li { display: flex; align-items: flex-start; gap: 10px; }
-.map-pin-card-quest { min-width: 0; flex: 1; }
-.map-pin-card-quest strong { display: block; font-size: 13px; }
-.map-pin-card-quest p { margin: 2px 0 0; font-size: 12px; color: var(--ui-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.map-pin-card li > button { flex: none; min-height: 36px; padding: 4px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-weight: var(--ui-weight-strong); }
+.map-preview-shell:has(> .explore-list) { position: relative; top: 0; }
+.explore-list { margin-top: 14px; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
+.explore-list-head { display: flex; align-items: baseline; gap: 10px; }
+.explore-list-head h2 { font-size: 14px; font-weight: var(--ui-weight-strong); }
+.explore-list-head span { font-size: 12px; color: var(--ui-muted); }
+.explore-list-note { margin: 6px 0 0; font-size: 11px; color: var(--ui-muted); }
+.explore-list-focus { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-soft); }
+.explore-list-focus strong { font-size: 13px; }
+.explore-list-focus span { font-size: 12px; color: var(--ui-muted); }
+.explore-list-focus button { margin-left: auto; flex: none; min-height: 36px; padding: 4px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); }
+.explore-list-empty { margin: 10px 0 0; font-size: 13px; color: var(--ui-muted); line-height: 1.7; }
+.explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; }
+.explore-quest-card { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font: inherit; text-align: left; }
+button.explore-quest-card { cursor: pointer; }
+.explore-quest-list li.is-highlighted .explore-quest-card { background: var(--ui-soft); }
+.explore-quest-card.is-selected { background: var(--ui-accent); }
+.explore-quest-card img { flex: none; width: 56px; height: 56px; object-fit: cover; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); }
+.explore-quest-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.explore-quest-title { font-size: 13px; font-weight: var(--ui-weight-strong); }
+.explore-quest-area { font-size: 11px; color: var(--ui-muted); }
+.explore-quest-clue { font-size: 12px; color: var(--ui-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.explore-quest-cleared { flex: none; padding: 3px 8px; font-size: 11px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
 .demo-map-label { padding: 4px 7px; font-size: 12px; color: var(--ui-muted); background: var(--ui-muted); border-radius: var(--ui-radius); }
 .map-viewport { position: absolute; inset: 0; overflow: hidden; }
 .map-canvas { position: relative; width: 100%; height: 100%; transform-origin: 50% 50%; transition: transform 200ms ease; }
 .map-canvas picture { display: block; width: 100%; height: 100%; }
 .map-image { width: 100%; height: 100%; display: block; object-fit: cover; user-select: none; }
-.quest-pin { position: absolute; left: 56%; top: 54%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; border: 0; padding: 5px; background: transparent; color: var(--ui-muted); }
 .pin-halo { display: grid; place-items: center; width: 66px; height: 66px; border-radius: var(--ui-radius); background: var(--ui-muted); border: var(--ui-border-width) solid var(--ui-line); }
 .pin-face { display: grid; place-items: center; width: 43px; height: 43px; border-radius: var(--ui-radius); transform: rotate(-45deg); background: var(--ui-muted); border: 3px solid var(--ui-surface); box-shadow: var(--ui-shadow); transition: background 180ms ease; }
 .pin-face .icon { transform: rotate(45deg); color: var(--ui-surface); width: 21px; height: 21px; }
 .pin-caption { margin-top: 4px; padding: 5px 10px; color: var(--ui-muted); background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); font-size: 12px; font-weight: var(--ui-weight-strong); white-space: nowrap; box-shadow: var(--ui-shadow); }
-.quest-pin.is-selected .pin-face { background: var(--ui-ink); }
-.quest-pin.is-selected .pin-halo { background: var(--ui-muted); border-color: var(--ui-line); }
-.quest-pin:hover .pin-face { background: var(--ui-muted); }
-.quest-pin.is-selected:hover .pin-face { background: var(--ui-ink); }
 .map-zoom { position: absolute; right: 17px; bottom: 52px; z-index: 3; }
 .map-zoom-group { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); }
 .map-zoom button { display: grid; place-items: center; width: 43px; height: 43px; padding: 0; border: 0; background: var(--ui-surface); color: var(--ui-muted); }
@@ -107,7 +112,6 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .rail-heading > span { font-size: 12px; color: var(--ui-muted); }
 .quest-card { overflow: hidden; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); box-shadow: var(--ui-shadow); }
 .quest-card.is-open { border-color: var(--ui-line); }
-.quest-pin:disabled { opacity: .45; }
 .connection-message { min-height: 240px; padding: 25px 21px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-muted); font-size: 13px; }
 .connection-message [role="alert"] { color: var(--ui-error); }
 .retry-button { min-height: 44px; margin-top: 12px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); color: var(--ui-ink); background: var(--ui-surface); font-size: 12px; }
@@ -208,7 +212,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
   .map-zoom { right: 11px; bottom: 72px; }
   .map-zoom button { width: 44px; height: 44px; }
-  .map-pin-card { left: 12px; right: 12px; bottom: 124px; max-height: 42%; }
+  .explore-quest-list { max-height: 300px; }
   .map-bottomline { left: 12px; right: 12px; bottom: 11px; font-size: 12px; gap: 6px; }
   .map-credit { font-size: 12px; }
   .quest-card { display: block; border-radius: var(--ui-radius); }
@@ -243,16 +247,11 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-scope .icon { color: var(--ui-ink); }
 .demo-map-label { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-soft); color: var(--ui-ink); }
 .map-bottomline { color: var(--ui-ink); flex-wrap: wrap; background: var(--ui-surface); padding: 6px 8px; border-radius: var(--ui-radius); }
-.quest-pin { color: var(--ui-ink); }
 .pin-halo { border: 0; background: transparent; border-radius: 50%; }
 /* ピンの色は Google Maps 側（features/explore/mapStyles.ts の MAP_PIN_COLOR）と同値に揃える。 */
 .pin-face { border: var(--ui-border-width) solid var(--ui-line); border-radius: 50% 50% 50% 8px; background: #4eb8d0; box-shadow: -3px 3px 0 var(--ui-ink); }
 .pin-face .icon { color: var(--ui-accent-ink); }
 .pin-caption { color: var(--ui-ink); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
-.quest-pin.is-selected .pin-face, .quest-pin:hover .pin-face { background: #f6d84a; }
-.quest-pin.is-selected .pin-face .icon, .quest-pin:hover .pin-face .icon { color: var(--ui-ink); }
-.quest-pin.is-selected .pin-halo { background: transparent; border: 0; }
-.quest-pin.is-selected:hover .pin-face { background: #f6d84a; }
 .map-zoom-group { background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 .map-zoom .map-location-button .icon { fill: currentColor; stroke: none; }
 .map-zoom button { width: 44px; height: 44px; color: var(--ui-ink); background: transparent; }

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
+import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
 import { MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
+import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
 const MIN_ZOOM = 3
@@ -12,27 +14,6 @@ const LOCATION_ZOOM = 14
 const LOCATION_DEADLINE_MS = 10_000
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
 
-// ピンは問題の対象座標ではなく、公開探索エリアの代表点（外周リングの重心）に置く。
-// MultiPolygon は最初に有効なポリゴンの外周を使う。
-function areaPinPosition(area: PublicArea): { lat: number; lng: number } | null {
-  const geometry = area.publicGeometry
-  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
-  for (const polygon of polygons) {
-    const ring = polygon?.[0]
-    if (!ring || ring.length < 4) continue
-    if (!ring.every(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lng) <= 180 && Math.abs(lat) <= 90)) continue
-    const [firstLng, firstLat] = ring[0]
-    const [lastLng, lastLat] = ring[ring.length - 1]
-    const points = firstLng === lastLng && firstLat === lastLat ? ring.slice(0, -1) : ring
-    if (!points.length) continue
-    let lat = 0
-    let lng = 0
-    for (const [pointLng, pointLat] of points) { lng += pointLng; lat += pointLat }
-    return { lat: lat / points.length, lng: lng / points.length }
-  }
-  return null
-}
-
 function pinIcon(color: string, count: number): { url: string } {
   const center = count >= 2
     ? `<circle cx="18" cy="17" r="9.5" fill="#ffffff"/><text x="18" y="21.5" text-anchor="middle" font-family="sans-serif" font-size="${count >= 10 ? 10 : 12}" font-weight="700" fill="${PIN_STROKE}">${count}</text>`
@@ -41,9 +22,9 @@ function pinIcon(color: string, count: number): { url: string } {
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
-  quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void
+  quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
 }) {
   const target = useRef<HTMLDivElement>(null)
   const map = useRef<MapInstance | null>(null)
@@ -58,6 +39,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [areaAttempt, setAreaAttempt] = useState(0)
   const [areaFailed, setAreaFailed] = useState(false)
   const [pinAreaId, setPinAreaId] = useState<string | null>(null)
+  const [viewport, setViewport] = useState<ViewportBounds | null>(null)
+  const viewportRef = useRef<ViewportBounds | null>(null)
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   const lastAreaSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   const areaFailureTimer = useRef<number | undefined>(undefined)
@@ -77,6 +60,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     let active = true
     let authFailed = false
     let zoomListener: { remove(): void } | undefined
+    let idleListener: { remove(): void } | undefined
+    viewportRef.current = null
+    setViewport(null)
     const unsubscribeAuth = subscribeMapsAuthFailure(() => {
       authFailed = true
       if (active) { cancelLocationRequest(); map.current = null; setStatus('auth-error') }
@@ -98,6 +84,22 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           layer.setMap(instance)
           dataLayer.current = layer
         } catch { failArea() }
+        idleListener = instance.addListener('idle', () => {
+          if (!active) return
+          try {
+            const bounds = instance.getBounds?.()
+            if (!bounds) return
+            const northEast = bounds.getNorthEast()
+            const southWest = bounds.getSouthWest()
+            const next = { north: northEast.lat(), south: southWest.lat(), east: northEast.lng(), west: southWest.lng() }
+            if (![next.north, next.south, next.east, next.west].every(Number.isFinite)) return
+            const previous = viewportRef.current
+            if (previous && Math.abs(previous.north - next.north) < 1e-9 && Math.abs(previous.south - next.south) < 1e-9
+              && Math.abs(previous.east - next.east) < 1e-9 && Math.abs(previous.west - next.west) < 1e-9) return
+            viewportRef.current = next
+            setViewport(next)
+          } catch { /* 表示範囲が読めない間は全件表示を維持する。 */ }
+        })
         zoomListener = instance.addListener('zoom_changed', () => {
           if (active) setZoom(instance.getZoom() ?? 5)
         })
@@ -113,6 +115,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       window.clearTimeout(areaFailureTimer.current)
       unsubscribeAuth()
       try { zoomListener?.remove() } catch { /* SDK teardown is best effort. */ }
+      try { idleListener?.remove() } catch { /* SDK teardown is best effort. */ }
       try { dataLayer.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
       dataLayer.current = null
       map.current = null
@@ -271,8 +274,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     } catch { settle('現在地を取得できません。位置情報を確認して、もう一度お試しください。') }
   }
 
-  const pinArea = pinAreaId ? areas.find((area) => area.areaId === pinAreaId) : undefined
-  const pinQuests = pinArea ? quests.filter((quest) => quest.areaId === pinArea.areaId) : []
+  // ピン以外（地域セレクト等）で別の地域が選ばれたら、ピンのハイライトは外れたものとして扱う。
+  const effectivePinAreaId = pinAreaId && (!selectedAreaId || selectedAreaId === pinAreaId) ? pinAreaId : null
+  const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
+  const visibleQuests = status === 'ready' ? questsInViewport(areas, quests, viewport) : quests
 
   return (
     <div className="map-preview-shell">
@@ -296,16 +301,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         </div>
       </div>}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
-      {status === 'ready' && pinArea && pinQuests.length > 0 && <div className="map-pin-card" aria-label={`${pinArea.label}の問題プレビュー`}>
-        <div className="map-pin-card-head"><strong>{pinArea.label}</strong><span>{pinQuests.length}問</span>
-          <button type="button" onClick={() => setPinAreaId(null)}>閉じる</button></div>
-        <p className="map-pin-card-note">ピンは地域の代表点です。問題の場所そのものではありません。</p>
-        <ul>{pinQuests.map((item) => <li key={item.questId}>
-          <div className="map-pin-card-quest"><strong>{item.title}</strong><p>{item.clue}</p></div>
-          {onOpenQuest && <button type="button" onClick={() => { setPinAreaId(null); onOpenQuest(item.questId) }}>詳細を見る</button>}
-        </li>)}</ul>
-      </div>}
     </section>
+      {showPublicAreas && quests.length > 0 && <ExploreQuestList areas={areas} quests={visibleQuests} variant={status === 'ready' ? 'viewport' : 'fallback'}
+        highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
+        onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)} />}
       {status === 'ready' && locationStatus && <div className="map-location-status" role="status">{locationStatus}</div>}
     </div>
   )

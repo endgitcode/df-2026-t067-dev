@@ -40,9 +40,7 @@ B担当が実地図へ接続する際も、[共通API](api.md#8-最初の共通a
 
 ## 地形の出典
 
-旧SVG素材はNatural Earthの1:110m国境データから作成した静的プレビューです。現在の画面では使用していません。
-
-- [`japan-overview.svg`](../src/assets/japan-overview.svg)と[`japan-overview-wide.svg`](../src/assets/japan-overview-wide.svg)：旧プレビュー素材。
+旧SVG素材はNatural Earthの1:110m国境データから作成した静的プレビューでした。現在の画面では使用せず、素材ファイル（japan-overview.svg／japan-overview-wide.svg）は削除済みです。
 
 低解像度の概観であり、小島や境界の精密な表示には使わない。正解位置、実写真、個人の行動履歴は含まない。コンパス等の小さなアイコンはコードで作成し、外部画像や新しい依存パッケージは追加していない。
 

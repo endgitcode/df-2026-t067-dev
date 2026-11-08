@@ -7,6 +7,7 @@ import type { Page, PublicArea, PublicQuest } from '../../shared/api/types'
 import { getRegionAreas, prefectureForArea, REGIONS } from './areaHierarchy'
 
 type Api = Pick<ReturnType<typeof createApiClient>, 'listQuests' | 'getQuest' | 'listAreas' | 'getHint'>
+const emptyAreas: PublicArea[] = []
 type Result = {
   api: Api; selection: string; areaSelection: string; retry: number
   state: 'loading' | 'ready' | 'empty' | 'error'
@@ -52,6 +53,8 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const [openQuestRequest, setOpenQuestRequest] = useState<{ questId: string; sequence: number }>()
   const [selectedId, setSelectedId] = useState(initialSelection.questId)
   const [selectedAreaId, setSelectedAreaId] = useState(initialSelection.areaId)
+  const [activeRegion, setActiveRegion] = useState('')
+  const [activePrefecture, setActivePrefecture] = useState('')
   const [retry, setRetry] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshNotice, setRefreshNotice] = useState<{ api: Api; text: string } | null>(null)
@@ -179,9 +182,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const current = result?.api === api && result.selection === selectedId && result.areaSelection === selectedAreaId && result.retry === retry ? result : null
   const state = current?.state ?? 'loading'
   const choices = current?.choices ?? []
-  const availableAreas = result?.api === api ? result.areas : []
-  const [activeRegion, setActiveRegion] = useState('')
-  const [activePrefecture, setActivePrefecture] = useState('')
+  const availableAreas = result?.api === api ? result.areas : emptyAreas
   const regionAreas = useMemo(() => getRegionAreas(availableAreas, activeRegion, activePrefecture), [availableAreas, activeRegion, activePrefecture])
   const prefOptions = REGIONS.find((item) => item.name === activeRegion)?.prefectures ?? []
   const resetAreaSelection = () => {
