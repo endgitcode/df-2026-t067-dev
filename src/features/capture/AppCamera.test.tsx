@@ -100,7 +100,7 @@ describe('camera ownership and cleanup', () => {
     const media = mount()
     await start(media.user)
     await waitFor(() => expect(screen.getByLabelText('カメラ映像')).toHaveProperty('srcObject', media.stream))
-    await media.user.click(screen.getAllByRole('link', { name: '謎を探す' })[0])
+    await media.user.click(screen.getAllByRole('button', { name: '謎を探す' })[0])
     expect(media.stop).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('region', { name: '写真撮影と確認' })).not.toBeInTheDocument()
   })

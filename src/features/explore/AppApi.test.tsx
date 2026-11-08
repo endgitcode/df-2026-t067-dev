@@ -345,7 +345,7 @@ describe('explicit local API integration', () => {
       await user.click(screen.getByRole('button', { name: 'アカウントメニュー' }))
       await user.click(screen.getByRole('menuitem', { name: 'ログアウト' }))
     }
-    else if (leave === 'map') await user.click(screen.getAllByRole('link', { name: '謎を探す' })[0])
+    else if (leave === 'map') await user.click(screen.getAllByRole('button', { name: '謎を探す' })[0])
     else act(() => auth.emit({ status: 'signed-in', user: { uid: 'next-user', displayName: null } }))
     expect(post[1]?.signal?.aborted).toBe(true)
     await act(async () => resolve(json(challenge, 201)))

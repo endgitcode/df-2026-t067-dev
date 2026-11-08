@@ -270,9 +270,101 @@ describe('APIから問題を表示', () => {
     await waitFor(() => expect(api.getQuest).toHaveBeenCalled())
     expect(screen.getByRole('heading', { name: '自分の記録' })).toBeVisible()
     expect(fetcher.mock.calls.filter(([path]) => String(path).startsWith('/api/v1/me/discoveries?'))).toHaveLength(1)
-    await user.click(screen.getByRole('button', { name: '地図へ戻る' }))
+    await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '謎を探す' }))
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
   })
+  it('記録タブとの往復で地方の絞り込み・一覧・地図の選択とURLが一致したまま保たれる', async () => {
+    const user = userEvent.setup()
+    const hiroshimaQuest: PublicQuest = { questId: 'quest-hiroshima', version: 1, title: '広島のもみじを探せ', clue: '手がかり', areaId: 'area-hiroshima', visitConditions: '訪問条件', hintCount: 0, questNumber: '34-01' }
+    const tokyoQuest: PublicQuest = { questId: 'quest-tokyo', version: 1, title: '東京の鯉を探せ', clue: '手がかり', areaId: 'area-tokyo', visitConditions: '訪問条件', hintCount: 0, questNumber: '13-01' }
+    const regionAreas: PublicArea[] = [
+      { areaId: 'area-hiroshima', label: '広島', prefectureCode: '34', publicGeometry: { type: 'Polygon', coordinates: [] }, marker: { latitude: 34.39, longitude: 132.45 }, publishedCount: 1 },
+      { areaId: 'area-tokyo', label: '東京', prefectureCode: '13', publicGeometry: { type: 'Polygon', coordinates: [] }, marker: { latitude: 35.68, longitude: 139.76 }, publishedCount: 1 },
+    ]
+    const api = apiFixture()
+    api.listAreas.mockResolvedValue(page(regionAreas))
+    api.listQuests.mockImplementation(async (query?: { areaId?: string }) => query?.areaId === 'area-hiroshima' ? page([hiroshimaQuest])
+      : query?.areaId === 'area-tokyo' ? page([tokyoQuest]) : page([hiroshimaQuest, tokyoQuest]))
+    api.getQuest.mockImplementation(async (id: string) => id === hiroshimaQuest.questId ? hiroshimaQuest : tokyoQuest)
+    const snapshot = { status: 'signed-in' as const, user: { uid: 'round-trip-owner', displayName: null } }
+    const authClient = { ...signedOutAuth(), getSnapshot: () => snapshot, getIdToken: async () => 'demo-token' }
+    const fetcher = vi.fn<typeof fetch>(async (path) => new Response(JSON.stringify(
+      path === '/api/v1/session' ? { uid: snapshot.user.uid } : page([]),
+    ), { headers: { 'Content-Type': 'application/json', 'X-Quest-Data-Mode': 'demo' } }))
+    vi.stubGlobal('fetch', fetcher)
+    render(<ApiQuestApp api={api} authClient={authClient} />)
+    expect(await screen.findByRole('heading', { name: hiroshimaQuest.title })).toBeVisible()
+
+    // 地方フィルタで中国を選び、広島の問題まで選択する。
+    await clickFilterChip(user, '中国')
+    expect(screen.getByRole('button', { name: '場所で絞る：中国' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: '東京の鯉を探せを開く' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '広島のもみじを探せを開く' }))
+    await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-hiroshima'))
+    expect(new URL(window.location.href).searchParams.get('area')).toBe('area-hiroshima')
+    expect(new URL(window.location.href).searchParams.get('quest')).toBe('quest-hiroshima')
+
+    // 記録タブへ行き、探索へ戻る。往復の前後で4つの状態が一致したままであること。
+    const nav = () => within(screen.getByRole('navigation', { name: '主要ナビゲーション' }))
+    await user.click(nav().getByRole('button', { name: '自分の記録' }))
+    expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+    // 探索側はアンマウントされず、絞り込みも保持されている（隠れているだけ）。
+    expect(screen.getByTestId('map-state')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '場所で絞る：中国', hidden: true })).toBeInTheDocument()
+    await user.click(nav().getByRole('button', { name: '謎を探す' }))
+    expect(await screen.findByRole('heading', { name: hiroshimaQuest.title })).toBeVisible()
+    expect(screen.getByRole('button', { name: '場所で絞る：中国' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: '東京の鯉を探せを開く' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-hiroshima')
+    // 表示されている問題は URL の ?quest= と必ず一致する。
+    expect(new URL(window.location.href).searchParams.get('quest')).toBe(hiroshimaQuest.questId)
+  })
+
+  it('未ログインの記録画面では読み込みエラーではなくログインの案内を出す', async () => {
+    const user = userEvent.setup()
+    const api = apiFixture()
+    render(<ApiQuestApp api={api} authClient={signedOutAuth()} />)
+    expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
+    await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
+    expect(await screen.findByText('自分の記録を見るにはログインが必要です。クリアした問題の写真と日付は、ログインした本人だけが見られます。')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Googleログインして記録を見る' })).toBeVisible()
+    expect(screen.queryByText(/記録を読み込めませんでした/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '記録を読み直す' })).not.toBeInTheDocument()
+    // 戻り導線はタブに一本化され、本文に重複した戻りボタンは置かない。
+    expect(screen.queryByRole('button', { name: '地図へ戻る' })).not.toBeInTheDocument()
+  })
+
+  it('履歴の復元では、復元された地域と両立する絞り込みを保持し、両立しない時だけ外す', async () => {
+    const user = userEvent.setup()
+    const hiroshimaQuest: PublicQuest = { questId: 'quest-hiroshima', version: 1, title: '広島のもみじを探せ', clue: '手がかり', areaId: 'area-hiroshima', visitConditions: '訪問条件', hintCount: 0, questNumber: '34-01' }
+    const tokyoQuest: PublicQuest = { questId: 'quest-tokyo', version: 1, title: '東京の鯉を探せ', clue: '手がかり', areaId: 'area-tokyo', visitConditions: '訪問条件', hintCount: 0, questNumber: '13-01' }
+    const regionAreas: PublicArea[] = [
+      { areaId: 'area-hiroshima', label: '広島', prefectureCode: '34', publicGeometry: { type: 'Polygon', coordinates: [] }, marker: { latitude: 34.39, longitude: 132.45 }, publishedCount: 1 },
+      { areaId: 'area-tokyo', label: '東京', prefectureCode: '13', publicGeometry: { type: 'Polygon', coordinates: [] }, marker: { latitude: 35.68, longitude: 139.76 }, publishedCount: 1 },
+    ]
+    const api = apiFixture()
+    api.listAreas.mockResolvedValue(page(regionAreas))
+    api.listQuests.mockImplementation(async (query?: { areaId?: string }) => query?.areaId === 'area-hiroshima' ? page([hiroshimaQuest])
+      : query?.areaId === 'area-tokyo' ? page([tokyoQuest]) : page([hiroshimaQuest, tokyoQuest]))
+    api.getQuest.mockImplementation(async (id: string) => id === hiroshimaQuest.questId ? hiroshimaQuest : tokyoQuest)
+    render(<ApiQuestApp api={api} authClient={signedOutAuth()} />)
+    expect(await screen.findByRole('heading', { name: hiroshimaQuest.title })).toBeVisible()
+    await clickFilterChip(user, '中国')
+    await user.click(screen.getByRole('button', { name: '広島のもみじを探せを開く' }))
+    await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-hiroshima'))
+
+    // 同じ選択への履歴復元では、絞り込みはそのまま残る。
+    act(() => { window.dispatchEvent(new PopStateEvent('popstate')) })
+    expect(screen.getByRole('button', { name: '場所で絞る：中国' })).toBeVisible()
+
+    // 絞り込みの外の地域が復元されたら、両立しないため絞り込みだけが外れる。
+    window.history.pushState(null, '', '/?area=area-tokyo&quest=quest-tokyo')
+    act(() => { window.dispatchEvent(new PopStateEvent('popstate')) })
+    expect(await screen.findByRole('heading', { name: tokyoQuest.title })).toBeVisible()
+    expect(screen.getByRole('button', { name: '場所で絞る' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: '場所で絞る：中国' })).not.toBeInTheDocument()
+  })
+
   it('URLの地域・問題を復元し、初期読み込みでは履歴を追加しない', async () => {
     window.history.replaceState(null, '', '/?campaign=spring&area=area-b&quest=quest-b#map')
     const api = apiFixture()

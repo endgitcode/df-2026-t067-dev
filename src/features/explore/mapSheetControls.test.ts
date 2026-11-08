@@ -123,16 +123,18 @@ describe('PC sidebar layout integrity', () => {
     expect(css).toContain('body.explore-fullbleed .brand { justify-self: start;')
   })
 
-  it('collapses the sidebar by hiding the card only: the stage and the header do not move', () => {
+  it('collapses the sidebar by hiding the panel only: the tabs stay reachable and the stage and the header do not move', () => {
     // D-42 以降、畳む時は display ではなく opacity / visibility / transform で
     // 滑らせて消す（非表示への切り替えは遷移の終わりに遅らせる）。
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { opacity: 0; visibility: hidden;')
+    // D-53 以降、畳むのはパネルだけで、タブ（主要ナビ）は単独カードとして残す。
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { opacity: 0; visibility: hidden;')
+    expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { opacity: 0;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); box-shadow: var(--ui-shadow); }')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace')
     expect(css).toContain('body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-w));')
-    // 閉じている間は左上に小さな浮動ボタンとして残る。
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap);')
+    // 閉じている間は、開くボタンをナビカードの直下（カードの左端のライン）に残す。
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h) + 8px); left: var(--pc-sidebar-gap);')
   })
 })
 

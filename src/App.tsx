@@ -112,6 +112,10 @@ export default function App({ authClient: providedClient, apiClient: providedApi
 
   const [recordDestination, setRecordDestination] = useState<{ auth: AuthSnapshot; id: string } | null>(null)
   const [recordsOpen, setRecordsOpen] = useState(false)
+  // 記録画面は一度開いたらアンマウントせず、隠して常駐させる。探索側（地図・パネル・
+  // 選択状態）も同様に隠すだけで壊さないため、タブ往復でフィルタ・一覧・地図・選択が
+  // 食い違わない（往復の前後で状態は visibility だけが変わる）。
+  const [recordsVisited, setRecordsVisited] = useState(false)
   const questCard = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (isQuestOpen && openedRequest && document.querySelector('.is-browsing-below-map')) {
@@ -293,10 +297,20 @@ export default function App({ authClient: providedClient, apiClient: providedApi
 
   function navigateToRecords(open: boolean) {
     if (!open) setRecordDestination(null)
+    else setRecordsVisited(true)
     closeCamera()
     selectionGeneration.current++
     setFeedback(null)
     setRecordsOpen(open)
+  }
+
+  // 探索へ戻る導線はタブに一本化する（記録画面の本文に重複した戻りボタンは置かない）。
+  // 通常フロー表示では、従来の #explore-title アンカーと同じく見出しの位置へ戻す。
+  function navigateToExplore() {
+    navigateToRecords(false)
+    requestAnimationFrame(() => {
+      try { document.getElementById('explore-title')?.scrollIntoView({ block: 'start' }) } catch { /* スクロールは補助であり、失敗しても画面遷移は完了している。 */ }
+    })
   }
 
   const exploreFeedback = !isQuestOpen && feedback
@@ -363,8 +377,10 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           <span className="brand-copy">全国観光謎アプリ</span>
         </div>
         <nav className="desktop-nav" aria-label="主要ナビゲーション">
-          <a className={showRecords ? undefined : 'nav-active'} href="#explore-title" aria-current={showRecords ? undefined : 'page'}
-            onClick={() => navigateToRecords(false)}><Icon name="map" />謎を探す</a>
+          {/* 画面遷移のタブは2つともボタンで揃える（片方だけリンクだと URL のハッシュが
+              残ったり消えたりして、URL と表示の対応が分かりにくくなるため）。 */}
+          <button type="button" className={showRecords ? undefined : 'nav-active'} aria-current={showRecords ? undefined : 'page'}
+            onClick={navigateToExplore}><Icon name="map" />謎を探す</button>
           {(!teamPreview || teamAnswerTrial) && <button type="button" className={showRecords ? 'nav-active' : undefined} aria-current={showRecords ? 'page' : undefined}
             disabled={!localApiMode || visiblePending !== null} onClick={() => navigateToRecords(true)}>
             <Icon name="book" />自分の記録{!localApiMode && <span>準備中</span>}
@@ -403,11 +419,16 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       </header>
 
       <main id="main" className="page" tabIndex={-1}>
-        {showRecords ? <section className="owner-records view-enter" aria-labelledby="records-title">
+        {/* 記録画面と探索画面はどちらもアンマウントせず、hidden で切り替える。地図や
+            パネルを再マウントするとカメラ・フィット記録・選択状態が初期化され、タブ
+            往復の前後で表示が食い違うため（状態の保持は D-53）。 */}
+        {recordsVisited && <section className="owner-records view-enter" aria-labelledby="records-title" hidden={!showRecords}>
           <h1 id="records-title">自分の記録</h1>
-          <button type="button" className="secondary-button" onClick={() => navigateToRecords(false)}>地図へ戻る</button>
-          {auth.status === 'signed-out' && <button type="button" className="primary-button" disabled={visiblePending !== null}
-            onClick={() => void login()}>Googleログインして記録を見る</button>}
+          {auth.status === 'signed-out' && <>
+            <p>自分の記録を見るにはログインが必要です。クリアした問題の写真と日付は、ログインした本人だけが見られます。</p>
+            <button type="button" className="primary-button" disabled={visiblePending !== null}
+              onClick={() => void login()}>Googleログインして記録を見る</button>
+          </>}
           {auth.status === 'checking' && <p role="status">ログイン状態を確認しています…</p>}
           {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">{notice.description}</p>}
           {uid !== null && visiblePending === null && (serverIdentity.result?.status === 'ready'
@@ -416,7 +437,9 @@ export default function App({ authClient: providedClient, apiClient: providedApi
               ? <><p role="alert">ログインを確認できませんでした。</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></>
               : <p role="status">ログインを確認しています…</p>)}
           {feedback && <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
-        </section> : (!teamPreview ? catalogFallback : undefined) ?? <>
+        </section>}
+        <div className="explore-view" hidden={showRecords}>
+        {(!teamPreview ? catalogFallback : undefined) ?? <>
         <section className="explore view-enter" aria-labelledby="explore-title">
           <div className="explore-heading">
             <div>
@@ -426,16 +449,17 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
 
 {!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>
         </section>
         {!panelArrangement && exploreFeedback}
         </>}
+        </div>
       </main>
       <nav className="mobile-nav" aria-label="スマホ用ナビゲーション">
-        <a href="#explore-title" aria-current={showRecords ? undefined : 'page'} onClick={() => navigateToRecords(false)}><Icon name="map" /><span>謎を探す</span></a>
+        <button type="button" aria-current={showRecords ? undefined : 'page'} onClick={navigateToExplore}><Icon name="map" /><span>謎を探す</span></button>
         {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} disabled={!localApiMode || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{!localApiMode && <small>準備中</small>}</span></button>}
       </nav>
