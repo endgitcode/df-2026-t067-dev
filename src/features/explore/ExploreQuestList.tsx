@@ -18,6 +18,10 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
   const listRef = useRef<HTMLUListElement>(null)
   const areaLabel = (areaId: string) => areas.find((area) => area.areaId === areaId)?.label ?? ''
   const highlightCount = highlightArea ? quests.filter((quest) => quest.areaId === highlightArea.areaId).length : 0
+  // ピンで選ばれた地域の問題は先頭に寄せ、シートを開いた時にスクロールなしで先頭に出るようにする。
+  const orderedQuests = highlightArea
+    ? [...quests.filter((quest) => quest.areaId === highlightArea.areaId), ...quests.filter((quest) => quest.areaId !== highlightArea.areaId)]
+    : quests
 
   useEffect(() => {
     if (!highlightArea || !listRef.current) return
@@ -41,7 +45,7 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
       {quests.length === 0
         ? <p className="explore-list-empty">{emptyText ?? 'この範囲に謎はありません。地図を移動すると、別の地域の謎が表示されます。'}</p>
         : <ul ref={listRef} className="explore-quest-list">
-          {quests.map((quest) => {
+          {orderedQuests.map((quest) => {
             const thumbnail = questThumbnail(quest)
             const cleared = clearedQuestIds?.has(quest.questId) ?? false
             const content = <>

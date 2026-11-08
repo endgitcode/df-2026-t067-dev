@@ -613,6 +613,37 @@ describe('Google map panel', () => {
     unmount()
     delete window.google
   })
+
+  it('shows the first quest card in the peeked sheet and opens it on tap without dragging', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const map = { ...mapInstance, fitBounds: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { SHEET_PEEK_HEIGHT } = await import('./ExploreBottomSheet')
+    const { userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    const onOpenQuest = vi.fn()
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { container, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={onOpenQuest} />)
+    const sheet = await waitFor(() => {
+      const element = container.querySelector('.explore-sheet')
+      expect(element).not.toBeNull()
+      return element as HTMLElement
+    })
+    // 覗き見（peek）の高さは、ハンドルと件数に加えて先頭カード1枚が丸ごと収まる前提で決める。
+    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    expect(sheet.style.height).toBe(`${SHEET_PEEK_HEIGHT}px`)
+    expect(SHEET_PEEK_HEIGHT).toBeGreaterThanOrEqual(200)
+    await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
+    expect(onOpenQuest).toHaveBeenCalledWith('q1')
+    unmount()
+    delete window.google
+  })
 })
 
 const mapInstance = { setZoom() {}, getZoom: () => 5, setCenter() {}, addListener: () => ({ remove() {} }) }

@@ -74,6 +74,13 @@ describe('ExploreQuestList', () => {
     expect(onClearHighlight).toHaveBeenCalledTimes(1)
   })
 
+  it('puts the pinned area quests first so they lead the list without scrolling', () => {
+    render(<ExploreQuestList areas={areas} quests={quests} variant="viewport" highlightArea={areas[1]} onOpenQuest={() => {}} />)
+    const cards = screen.getAllByRole('button', { name: /の詳細を見る/ })
+    expect(cards[0]).toHaveAccessibleName('博多の灯台の詳細を見る')
+    expect(cards[1]).toHaveAccessibleName('港の時計台の詳細を見る')
+  })
+
   it('renders the fallback list without a heading when the map is unavailable', () => {
     render(<ExploreQuestList areas={areas} quests={quests} variant="fallback" />)
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
