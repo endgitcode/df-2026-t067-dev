@@ -3,21 +3,32 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
-const PLAIN_FOLLOW = '.map-preview-shell.has-sheet .map-controls { bottom: calc(var(--sheet-h, 0px) + 14px); }'
+const PLAIN_FIXED = '.map-preview-shell.has-sheet .map-controls { bottom: 72px; }'
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
-// 右下の地図操作系がシートの高さに追随するのは、シートが横幅いっぱいに広がる幅だけに限る。
-// 広い幅ではシートは左下の浮きカードであり、右側の操作系は通常位置に固定する。
+// 右下の地図操作系はシートの高さに追随せず、同じ場所に固定する。
 describe('map controls placement with the bottom sheet', () => {
-  it('follows the sheet height only in the full-width sheet range', () => {
-    expect(css.split(PLAIN_FOLLOW).length - 1).toBe(1)
+  it('keeps controls fixed in the full-width sheet range', () => {
+    expect(css.split(PLAIN_FIXED).length - 1).toBe(1)
     const mediaAt = css.indexOf('@media (max-width: 640px)')
     expect(mediaAt).toBeGreaterThan(-1)
-    expect(css.indexOf(PLAIN_FOLLOW)).toBeGreaterThan(mediaAt)
+    expect(css.indexOf(PLAIN_FIXED)).toBeGreaterThan(mediaAt)
   })
 
   it('keeps the wide-layout controls at their fixed bottom position', () => {
     expect(css).toContain('.map-controls { position: absolute; right: 17px; bottom: 52px;')
+  })
+
+  it('puts controls above the closed mobile handle and the sheet above controls while open or dragging', () => {
+    const mobileAt = css.indexOf('@media (max-width: 640px)')
+    const desktopSheetRule = '.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4;'
+    const mobileSheetRule = '.explore-sheet { left: 0; right: 0; bottom: 0; z-index: 7;'
+    expect(css).toContain(desktopSheetRule)
+    expect(css.indexOf(mobileSheetRule)).toBeGreaterThan(mobileAt)
+    expect(css).toContain('.map-controls { position: absolute; right: 17px; bottom: 52px; z-index: 6;')
+    const closedRule = '.explore-sheet[data-snap="closed"]:not(.is-dragging) { z-index: 5; }'
+    expect(css.indexOf(closedRule)).toBeGreaterThan(mobileAt)
+    expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }')
   })
 })
 
@@ -36,7 +47,7 @@ describe('mobile bottom tab bar (D-32)', () => {
 
   it('lifts the sheet and floating elements above the tab bar in full-bleed', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
   })
 
@@ -110,6 +121,7 @@ describe('mobile fullbleed finish', () => {
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
     expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }')
     expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
-    expect(css).toContain('body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 64px); left: 12px; right: 12px; }')
+    expect(css).toContain('body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 154px); left: 12px; right: 12px; }')
+    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
   })
 })

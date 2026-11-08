@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 
-export type SheetSnap = 'peek' | 'half' | 'full'
+export type SheetSnap = 'closed' | 'peek' | 'half' | 'full'
 
 // 覗き見では、ハンドル＋件数＋先頭カード1枚が丸ごと収まる高さにする
 // （ドラッグしなくても最初の謎に届くことが狙い）。peek の間、先頭カードは要約表示
@@ -12,14 +12,15 @@ export const SHEET_PEEK_HEIGHT = 140
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
+const SHEET_HANDLE_HEIGHT = 34
 
 function snapHeights(stageHeight: number): Record<SheetSnap, number> {
   const half = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
   const full = Math.max(half, stageHeight - SHEET_TOP_GAP)
-  return { peek: SHEET_PEEK_HEIGHT, half, full }
+  return { closed: SHEET_HANDLE_HEIGHT, peek: SHEET_PEEK_HEIGHT, half, full }
 }
 
-// 地図の上に重なる引き上げ式シート。スナップは peek / half / full の3段で、
+// 地図の上に重なる引き上げ式シート。スナップは closed / peek / half / full の4段で、
 // ハンドルのドラッグとタップ（ボタン）の両方で開閉できる。シート本体が地図とは
 // 別の要素なので、シート上のスクロールやドラッグが地図へ伝わることはない。
 export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
@@ -50,7 +51,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
 
   useEffect(() => {
     if (openSignal && openSignal !== lastOpenSignal.current) {
-      setSnap((current) => (current === 'peek' ? 'half' : current))
+      setSnap((current) => (current === 'closed' || current === 'peek' ? 'half' : current))
     }
     lastOpenSignal.current = openSignal ?? null
   }, [openSignal])
@@ -72,7 +73,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
     if (!active || event.pointerId !== active.pointerId) return
     const delta = active.startY - event.clientY
     active.distance = Math.max(active.distance, Math.abs(delta))
-    setDragHeight(Math.min(heights.full, Math.max(heights.peek, active.startHeight + delta)))
+    setDragHeight(Math.min(heights.full, Math.max(heights.closed, active.startHeight + delta)))
   }
   const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const active = drag.current
@@ -89,13 +90,13 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange }: {
   }
   const onClick = () => {
     if (suppressClick.current) { suppressClick.current = false; return }
-    setSnap((current) => (current === 'peek' ? 'half' : 'peek'))
+    setSnap((current) => (current === 'closed' ? 'peek' : current === 'peek' ? 'half' : 'closed'))
   }
 
   return (
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
-      <button type="button" className="explore-sheet-handle" aria-expanded={snap !== 'peek'} aria-controls={bodyId}
-        aria-label={snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
+      <button type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
+        aria-label={snap === 'closed' || snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={onClick}>
         <span className="explore-sheet-grip" aria-hidden="true" />
       </button>

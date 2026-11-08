@@ -24,8 +24,8 @@ function pinIcon(color: string, count: number, emphasized = false): { url: strin
   const center = count >= 2
     ? `<circle cx="18" cy="17" r="9.5" fill="#ffffff"/><text x="18" y="21.5" text-anchor="middle" font-family="sans-serif" font-size="${count >= 10 ? 10 : 12}" font-weight="700" fill="${PIN_STROKE}">${count}</text>`
     : '<circle cx="18" cy="17" r="7" fill="#ffffff"/>'
-  // ホバー中（emphasized）は一回り大きくし、通常色のピンは白抜きにして選択中（黄色）とも通常（水色）とも区別する。
-  const fill = emphasized && color === PIN_COLOR ? '#ffffff' : color
+  // ホバー／フォーカス中は赤くして、PC・タッチ端末とも選択状態を分かりやすくする。
+  const fill = emphasized ? '#e7473f' : color
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="0 0 36 44"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
@@ -46,9 +46,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const map = useRef<MapInstance | null>(null)
   const dataLayer = useRef<DataLayer | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
-  // ホバー可能なポインタ（マウス等）がある環境か。タッチ主体の環境ではピンのホバー切替を付けない。
-  const [hoverCapable] = useState(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    && window.matchMedia('(hover: hover) and (pointer: fine)').matches)
   // PC幅（981px以上）ではボトムシートを使わず、左サイドバーのパネルに一覧を出す（D-34）。
   const wideViewport = useWideViewport()
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
@@ -273,8 +270,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           setPinAreaId((current) => (current === area.areaId ? null : area.areaId))
           onSelectArea?.(area.areaId)
         }))
-        // ホバーできる環境（マウス等）でのみ、ピンの見た目を切り替える。タッチには付けない。
-        if (hoverCapable && marker.setIcon) {
+        // Google Maps のポインタイベントに任せ、PC・タッチ端末で共通の強調表示を行う。
+        if (marker.setIcon) {
           listeners.push(marker.addListener('mouseover', () => {
             if (active) marker.setIcon?.(pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount, true))
           }))
@@ -306,7 +303,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, hoverCapable, wideViewport])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport])
 
   useEffect(() => {
     const instance = map.current
@@ -423,6 +420,16 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const boundaryCredit = showBoundaryCredit && showPublicAreas
     ? <p className="map-boundary-credit">境界データ：国土数値情報（行政区域データ）N03（国土交通省）をもとに作成</p>
     : null
+  const mapControls = status === 'ready' ? <div className="map-controls">
+    <div className="map-zoom" aria-label="地図の表示操作">
+      <div className="map-zoom-group">
+        <button type="button" aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
+        <button type="button" aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
+        <button type="button" aria-label="地図の表示を戻す" onClick={reset}><Icon name="reset" /></button>
+      </div>
+    </div>
+    <button type="button" className="map-locate-fab" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating} onClick={locate}><Icon name="locate" /></button>
+  </div> : null
 
   // シート表示の間は、スマホ幅で探索画面を画面全体（縁なし）にするための目印を付ける。
   // シェル側（ヘッダー・下部ナビ等）の浮動配置は App.css がこのクラスとメディアクエリで切り替える。
@@ -476,18 +483,11 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
               : <button type="button" onClick={() => { setStatus('loading'); setAttempt((value) => value + 1) }}>地図を再試行</button>}</>}
       </div>}
       {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert"><strong>地域エリアを表示できませんでした</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
-      {status === 'ready' && <div className="map-controls">
-        <div className="map-zoom" aria-label="地図の表示操作">
-          <div className="map-zoom-group">
-          <button type="button" aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
-          <button type="button" aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
-          <button type="button" aria-label="地図の表示を戻す" onClick={reset}><Icon name="reset" /></button>
-          </div>
-        </div>
-        <button type="button" className="map-locate-fab" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating} onClick={locate}><Icon name="locate" /></button>
-      </div>}
+      {!sheetMode && mapControls}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
     </section>
+      {/* 地図の独立レイヤーより上で操作できるよう、シート時はシェル直下に置く。 */}
+      {sheetMode && mapControls}
       {/* 地図が使えない時は浮かせず、地図の下に通常フローで出して絞り込み自体は失わせない。 */}
       {status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
       {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status">{locationStatus}</div>}

@@ -17,7 +17,7 @@ describe('ExploreBottomSheet', () => {
     expect(onHeightChange).toHaveBeenLastCalledWith(140)
   })
 
-  it('toggles between peek and half by tapping the handle', async () => {
+  it('opens from peek and can close fully while keeping the handle available', async () => {
     const user = userEvent.setup()
     const { container } = render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>)
     const sheet = container.querySelector('.explore-sheet')
@@ -26,6 +26,11 @@ describe('ExploreBottomSheet', () => {
     expect((sheet as HTMLElement).style.height).toBe('352px')
     expect(screen.getByRole('button', { name: '謎リストを縮める' })).toHaveAttribute('aria-expanded', 'true')
     await user.click(screen.getByRole('button', { name: '謎リストを縮める' }))
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+    expect((sheet as HTMLElement).style.height).toBe('34px')
+    expect(screen.getByRole('button', { name: '謎リストを広げる' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '謎リストを広げる' })).toHaveAttribute('aria-expanded', 'false')
+    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect((sheet as HTMLElement).style.height).toBe('140px')
   })
@@ -57,6 +62,19 @@ describe('ExploreBottomSheet', () => {
     expect(sheet.style.height).toBe('556px')
   })
 
+  it('drags fully down to the handle only', () => {
+    const { container } = render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>)
+    const sheet = container.querySelector('.explore-sheet') as HTMLElement
+    const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+    fireEvent.pointerDown(handle, { pointerId: 3, pointerType: 'touch', clientY: 100 })
+    fireEvent.pointerMove(handle, { pointerId: 3, pointerType: 'touch', clientY: 400 })
+    fireEvent.pointerUp(handle, { pointerId: 3, pointerType: 'touch', clientY: 400 })
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+    expect(sheet.style.height).toBe('34px')
+    expect(screen.getByRole('button', { name: '謎リストを広げる' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '謎リストを広げる' })).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('opens to half when a new area is signalled, and stays where the user left it for the same signal', async () => {
     const user = userEvent.setup()
     const { container, rerender } = render(<ExploreBottomSheet openSignal={null}><p>リスト本文</p></ExploreBottomSheet>)
@@ -64,9 +82,9 @@ describe('ExploreBottomSheet', () => {
     rerender(<ExploreBottomSheet openSignal="area-a"><p>リスト本文</p></ExploreBottomSheet>)
     expect(sheet).toHaveAttribute('data-snap', 'half')
     await user.click(screen.getByRole('button', { name: '謎リストを縮める' }))
-    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
     rerender(<ExploreBottomSheet openSignal="area-a"><p>リスト本文</p></ExploreBottomSheet>)
-    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
     rerender(<ExploreBottomSheet openSignal="area-b"><p>リスト本文</p></ExploreBottomSheet>)
     expect(sheet).toHaveAttribute('data-snap', 'half')
   })
