@@ -239,6 +239,8 @@ describe('Google map panel', () => {
     act(() => failure?.({ code: 1 }))
     expect(document.querySelector('.map-location-status')).toHaveTextContent('位置情報が許可されませんでした')
     expect(document.querySelector('.map-location-status')).toHaveTextContent('アドレスバーのサイト情報から位置情報を「確認」または「許可」に変更')
+    // そのセッションで最初の現在地利用なので、結果メッセージに送信案内が一度だけ添えられる（D-28）。
+    expect(document.querySelector('.map-location-status')).toHaveTextContent('位置情報はGoogle Mapsに送信されます')
     await user.click(screen.getByRole('button', { name: '現在地へ戻る' }))
     expect(getCurrentPosition).toHaveBeenCalledTimes(3)
     act(() => success?.({ coords: { latitude: 35.6812, longitude: 139.7671 } }))
@@ -248,9 +250,33 @@ describe('Google map panel', () => {
       position: { lat: 35.6812, lng: 139.7671 }, title: '現在地', clickable: false,
     }))
     expect(document.querySelector('.map-location-status')).toHaveTextContent('現在地を地図の中心に表示しました')
+    // 2回目以降の現在地利用では送信案内は繰り返さない。
+    expect(document.querySelector('.map-location-status')).not.toHaveTextContent('送信されます')
     expect(onSelectArea).not.toHaveBeenCalled()
     unmount()
     expect(setMarkerMap).toHaveBeenCalledWith(null)
+    delete window.google
+  })
+
+  it('has no persistent location notice and shows the boundary credit only when requested', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const map = { ...mapInstance, setCenter: vi.fn(), setZoom: vi.fn(), fitBounds: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker: class { setMap() {} addListener() { return { remove() {} } } }, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={[]} showBoundaryCredit />)
+    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    // 位置情報の送信案内は地図の右上に常駐しない（D-28）。使う時にだけ結果メッセージへ出す。
+    expect(screen.queryByText(/位置情報はGoogle Mapsに送信されます/)).not.toBeInTheDocument()
+    expect(document.querySelector('.map-location-action')).not.toBeInTheDocument()
+    // 境界データの出典はシート内に小さく常駐する。
+    expect(screen.getByText('境界データ：国土数値情報（行政区域データ）N03（国土交通省）をもとに作成')).toBeInTheDocument()
+    unmount()
+    const { unmount: unmountPlain } = render(<ConfiguredMapPreview areas={areas} quests={[]} />)
+    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    expect(screen.queryByText(/国土数値情報/)).not.toBeInTheDocument()
+    unmountPlain()
     delete window.google
   })
 

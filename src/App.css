@@ -63,9 +63,8 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-topline { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; z-index: 2; pointer-events: none; }
 .map-scope { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); font-weight: var(--ui-weight-strong); font-size: 12px; box-shadow: var(--ui-shadow); }
 .map-scope .icon { width: 16px; height: 16px; color: var(--ui-muted); }
-.map-location-action { display: flex; align-items: flex-start; pointer-events: none; }
-.map-location-action span { max-width: 32ch; padding: 5px 8px; border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 11px; line-height: 1.4; box-shadow: var(--ui-control-shadow); }
 .map-location-status { width: fit-content; max-width: 100%; margin-top: 8px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; box-shadow: var(--ui-control-shadow); }
+.map-boundary-credit { margin: 10px 2px 2px; font-size: 11px; color: var(--ui-muted); }
 .map-location-status.is-floating { position: absolute; left: 20px; bottom: calc(var(--sheet-h, 0px) + 14px); z-index: 5; margin: 0; max-width: calc(100% - 110px); }
 .map-preview-shell:has(> .explore-list) { position: relative; top: 0; }
 .map-preview-shell.has-sheet { position: relative; top: 0; height: min(82svh, 840px); min-height: 560px; }
@@ -241,8 +240,6 @@ button.explore-quest-card { cursor: pointer; }
   .map-topline { top: 12px; left: 12px; right: 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; justify-items: start; gap: 4px 6px; }
   .map-scope { padding: 7px 9px; font-size: 12px; gap: 6px; }
   .map-scope .icon { width: 14px; height: 14px; }
-  .map-location-action { display: contents; }
-  .map-location-action span { grid-column: 1 / -1; justify-self: end; text-align: right; overflow-wrap: anywhere; font-size: 10px; }
   .map-location-status { margin: 8px 12px 0; max-width: calc(100% - 24px); padding: 7px 9px; font-size: 11px; }
   .map-location-status.is-floating { left: 12px; margin: 0; max-width: calc(100% - 84px); }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
