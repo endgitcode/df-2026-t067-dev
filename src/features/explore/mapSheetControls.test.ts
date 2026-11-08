@@ -206,3 +206,17 @@ describe('look and spacing (D-54)', () => {
     expect(css).toContain('overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column;')
   })
 })
+
+// トグル化とアニメーション（D-55）: 「場所で絞る」の開閉を高さと透明度で滑らせる。
+describe('filter motion (D-55)', () => {
+  it('animates the filter chips wrap with the shared ease-out token and respects reduced motion', () => {
+    expect(css).toContain('.map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }')
+    expect(css).toContain('.map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible;')
+    expect(css).toContain('@media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }')
+    expect(css).toContain('.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }')
+  })
+
+  it('glides the floating elements sideways when the PC sidebar collapses', () => {
+    expect(css).toContain('body.explore-fullbleed .site-header, body.explore-fullbleed .map-topline, body.explore-fullbleed .map-location-status.is-floating { transition: left 200ms var(--ease-out); }')
+  })
+})

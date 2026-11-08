@@ -79,9 +79,16 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-preview-shell.has-sheet .map-preview { position: absolute; inset: 0; height: auto; }
 .map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
 .map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; min-width: 0; }
+/* 「場所で絞る」の開閉（D-55）。チップは常時マウントし、行の高さ（grid-template-rows）と
+   透明度で開閉する。出し入れで下の一覧がガクッと押し下げられず、なめらかに場所が空く。
+   閉じている間の非表示への切り替えは、シートと同じく遷移の終わりに遅らせる。 */
+.map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }
+.map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s; }
+.map-filter-chips-inner { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }
 .map-filter-chips { display: flex; gap: 8px; max-width: 100%; overflow-x: auto; padding: 2px; pointer-events: auto; scrollbar-width: none; }
 .map-filter-chips::-webkit-scrollbar { display: none; }
-.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; }
+.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
 .filter-toggle { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; }
 .filter-chip[aria-pressed="true"] { background: var(--ui-accent); }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
@@ -469,6 +476,11 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-gap); }
   body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-gap) + 8px); }
   body.explore-fullbleed.explore-sidebar-collapsed .map-location-status.is-floating { left: calc(var(--pc-sidebar-gap) + 8px); max-width: calc(100% - var(--pc-sidebar-gap) - 118px); }
+  /* 開閉に合わせて浮動要素の左ラインも滑らせる（D-55）。パネルのフェードと同じ尺にする。 */
+  body.explore-fullbleed .site-header, body.explore-fullbleed .map-topline, body.explore-fullbleed .map-location-status.is-floating { transition: left 200ms var(--ease-out); }
+  @media (prefers-reduced-motion: reduce) {
+    body.explore-fullbleed .site-header, body.explore-fullbleed .map-topline, body.explore-fullbleed .map-location-status.is-floating { transition: none; }
+  }
   body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h) + 8px); left: var(--pc-sidebar-gap); width: 42px; height: 42px; transform: none; }
   /* 閉じる時はカードを少し左へ滑らせながら消し、非表示への切り替えは遷移の
      終わりに遅らせる（D-42）。開く時は逆向きに即座に出る。地図とヘッダーは動かさない。 */

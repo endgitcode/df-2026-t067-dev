@@ -128,4 +128,27 @@ describe('ExploreQuestList', () => {
     expect(screen.getByText('0件')).toBeVisible()
     expect(screen.getByText(/選択中の条件に合う謎はありません/)).toBeVisible()
   })
+
+  it('選択中の行の再タップは、解除の受け口があれば選択解除を呼ぶ（D-55）', async () => {
+    const user = userEvent.setup()
+    const onOpenQuest = vi.fn()
+    const onDeselectQuest = vi.fn()
+    render(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q1"
+      detailContent={<div>詳細コンテンツ</div>} onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} />)
+    expect(screen.getByText('詳細コンテンツ')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
+    expect(onDeselectQuest).toHaveBeenCalledTimes(1)
+    expect(onOpenQuest).not.toHaveBeenCalled()
+  })
+
+  it('選択中の行の再タップは、解除の受け口が無ければアコーディオンを閉じるだけにする', async () => {
+    const user = userEvent.setup()
+    const onOpenQuest = vi.fn()
+    render(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q1"
+      detailContent={<div>詳細コンテンツ</div>} onOpenQuest={onOpenQuest} />)
+    expect(screen.getByText('詳細コンテンツ')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
+    expect(screen.queryByText('詳細コンテンツ')).not.toBeInTheDocument()
+    expect(onOpenQuest).not.toHaveBeenCalled()
+  })
 })
