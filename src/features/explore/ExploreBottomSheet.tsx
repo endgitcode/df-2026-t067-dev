@@ -13,6 +13,8 @@ const SHEET_CLOSED_HEIGHT = 34
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
+// CSS places the reopen button 48px above the tab bar; taller sheets cover it.
+const REOPEN_BUTTON_BOTTOM = 48
 
 function snapHeights(stageHeight: number): Record<SheetSnap, number> {
   const half = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
@@ -32,6 +34,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
 }) {
   const sheetRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
+  const handleRef = useRef<HTMLButtonElement>(null)
   const reopenRef = useRef<HTMLButtonElement>(null)
   const focusAfterSnap = useRef<'body' | 'reopen' | null>(null)
   const [stageHeight, setStageHeight] = useState(FALLBACK_STAGE_HEIGHT)
@@ -62,8 +65,15 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
 
   const heights = snapHeights(stageHeight)
   const height = dragHeight ?? heights[snap]
+  const reopenVisible = height <= REOPEN_BUTTON_BOTTOM
 
   useEffect(() => { onHeightChange?.(height) }, [height, onHeightChange])
+
+  useEffect(() => {
+    if (!reopenVisible && document.activeElement === reopenRef.current) {
+      handleRef.current?.focus({ preventScroll: true })
+    }
+  }, [reopenVisible])
 
   useEffect(() => {
     const target = focusAfterSnap.current
@@ -119,7 +129,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
 
   return <>
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
-      <button type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
+      <button ref={handleRef} type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
         aria-label={snap === 'closed' || snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={onClick}>
         <span className="explore-sheet-grip" aria-hidden="true" />
@@ -127,6 +137,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
       <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
     </div>
     {(snap === 'closed' || snap === 'peek') && <button ref={reopenRef} type="button" className="explore-sheet-reopen"
+      inert={!reopenVisible} aria-hidden={!reopenVisible} disabled={!reopenVisible}
       aria-expanded={snap === 'closed' || !onBrowseBelowMap ? false : undefined}
       aria-controls={snap === 'closed' || !onBrowseBelowMap ? bodyId : undefined}
       onClick={onReopenClick}>問題を見る</button>}
