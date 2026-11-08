@@ -9,11 +9,24 @@ import { readConfig } from '../src/config'
 import { createDemoData } from '../src/demo-data'
 import { createDurableAnswerServer } from '../src/durable-answer-http'
 import { preparePhoto } from '../src/photo-input'
-import { answerTrialPhotoTest } from '../src/team-preview'
+import { answerTrialPhotoTest, teamTrialLocationLimits } from '../src/team-preview'
+import { evaluateLocation } from '../src/location'
 import { createVertexPhotoMatcher } from '../src/vertex-match'
 import { createFirestoreVertexTrialTransport } from '../src/vertex-trial-firestore'
 import { syntheticPng } from './photo-fixtures'
 import { listenServer } from './helpers'
+
+test('team-preview accepts accuracy up to 100m without weakening safe area containment', () => {
+  assert.equal(teamTrialLocationLimits.maxAccuracyMeters, 100)
+  const capturedAt = '2026-11-05T06:00:00Z'
+  const capture = { capturedAt, position: { latitude: 0, longitude: 0, accuracyMeters: 70, measuredAt: capturedAt } }
+  const policy = (radiusMeters: number) => ({ ...teamTrialLocationLimits, zones: [{ latitude: 0, longitude: 0, radiusMeters }] })
+  const now = Date.parse(capturedAt)
+  assert.equal(evaluateLocation(capture, policy(50), now), 'LOCATION_UNCERTAIN')
+  assert.equal(evaluateLocation(capture, policy(70), now), 'WITHIN_AREA')
+  assert.equal(evaluateLocation({ ...capture, position: { ...capture.position, accuracyMeters: 100 } }, policy(100), now), 'WITHIN_AREA')
+  assert.equal(evaluateLocation({ ...capture, position: { ...capture.position, accuracyMeters: 101 } }, policy(200), now), 'LOCATION_UNCERTAIN')
+})
 
 const teamEnv = {
   QUEST_DATA_MODE: 'team-preview', NODE_ENV: 'production', FIREBASE_PROJECT_ID: 'test-project',
