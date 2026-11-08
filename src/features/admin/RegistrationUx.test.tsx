@@ -4,15 +4,13 @@ import { createApiClient } from '../../shared/api'
 import type { ManagedQuest } from '../../shared/api'
 import QuestDraftForm from './QuestDraftForm'
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
-it('identifies the missing target locally and focuses it; evidence is optional', async () => {
+it('identifies the missing target locally and focuses it; there is no evidence field', async () => {
   render(<QuestDraftForm />)
+  expect(screen.queryByLabelText('対象にした理由（確認したこと）')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('対象名')).toHaveAttribute('aria-invalid', 'true')
-  expect(screen.getByLabelText('対象にした理由（確認したこと）')).not.toHaveAttribute('aria-invalid', 'true')
-  expect(screen.getByLabelText('対象にした理由（確認したこと）')).not.toHaveAttribute('aria-required', 'true')
   await waitFor(() => expect(screen.getByLabelText('対象名')).toHaveFocus())
   fireEvent.change(screen.getByLabelText('対象名'), { target: { value: '時計' } })
-  expect(screen.getByLabelText('対象にした理由（確認したこと）')).toHaveValue('')
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('問題タイトル')).toBeVisible()
 })
@@ -67,7 +65,6 @@ it('opens collapsed hours and focuses its error when a partial range prevents na
 it('reveals draft hints one at a time and shows the filled count', () => {
   render(<QuestDraftForm />)
   fireEvent.change(screen.getByLabelText('対象名'), { target: { value: '時計' } })
-  fireEvent.change(screen.getByLabelText('対象にした理由（確認したこと）'), { target: { value: '安全を確認' } })
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('ヒント 1')).toBeVisible()
   expect(screen.queryByLabelText('ヒント 2')).not.toBeInTheDocument()

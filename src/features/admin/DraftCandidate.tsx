@@ -16,7 +16,7 @@ function candidateFailure(cause: unknown): State {
   const code = cause instanceof ApiError ? cause.code : undefined
   if (code === 'DRAFT_CONFLICT') return { status: 'error', changed: true, message: '保存済みの版が変わりました。問題一覧から最新版を確認してください。' }
   if (code === 'SYSTEM_ERROR') return { status: 'error', message: '案を取得できませんでした。サーバー設定と試験の利用上限を確認してください。' }
-  if (code === 'INVALID_INPUT') return { status: 'error', message: '保存済みの対象名・対象にした理由・写真の利用権と合成参考写真を確認してください。' }
+  if (code === 'INVALID_INPUT') return { status: 'error', message: '保存済みの対象名・写真の利用権と合成参考写真を確認してください。' }
   return { status: 'error', message: '下書き案を取得できませんでした。通信状況を確認してください。' }
 }
 
@@ -62,7 +62,7 @@ export function DraftCandidate({ api, saved, current, omitNotes = false, onApply
         onClick={load}>{state.status === 'loading' ? '案を取得しています…' : '保存済み版の案を取得'}</button>
       {state.status === 'error' && <p role="alert">{state.message}</p>}
       {state.status === 'ready' && <>
-        <p>{state.source === 'real' ? 'Vertex AIの案です。対象にした理由を確認してから取り入れてください。' : '合成素材の固定の案です。'}</p>
+        <p>{state.source === 'real' ? 'Vertex AIの案です。内容を確認してから取り入れてください。' : '合成素材の固定の案です。'}</p>
         <h3>{state.content.title}</h3>
         <p>{state.content.question}</p>
         <ol>{state.content.hints.map((hint, index) => <li key={index}>{hint}</li>)}</ol>

@@ -39,7 +39,6 @@ function parseHours(hours: string) {
 const hourlyChoices = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
 const endHourlyChoices = [...hourlyChoices, '24:00']
 
-const evidencePhrases = ['自治体が管理していることを確認した', '安全に撮影できる場所であることを確認した', '所有者・管理者の許可を得ている', '立ち入りが禁止されていないことを確認した'] as const
 const photoNotePhrases = ['立ち入り禁止区域では撮影しないでください', '交通量が多い場所では周囲に注意してください', '足場の安全を確認してから撮影してください', '撮影できる時間帯を守ってください', '私有地では許可を得てから撮影してください'] as const
 
 /** Builds a starter sentence for the access text from means + minutes; the textarea stays the source of truth. */
@@ -70,7 +69,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const focused = connection?.taskFocused === true
   const initial = connection?.initial?.draft
   const [name, setName] = useState(initial?.materials.name ?? '')
-  const [evidence, setEvidence] = useState(initial?.materials.evidence ?? '')
+  // 対象理由の入力欄は廃止済み。保存済みの値は互換のため編集せずそのまま引き継ぐ。
+  const evidence = initial?.materials.evidence ?? ''
   const [requiresBoat, setRequiresBoat] = useState(initial?.materials.requiresBoat ?? false)
   const [requiresPaidFacility, setRequiresPaidFacility] = useState(initial?.materials.requiresPaidFacility ?? false)
   const [photo, setPhoto] = useState<Photo | null>(null)
@@ -110,9 +110,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const a03HeadingRef = useRef<HTMLHeadingElement>(null)
   const a04HeadingRef = useRef<HTMLHeadingElement>(null)
   const a05HeadingRef = useRef<HTMLHeadingElement>(null)
-  const errorFieldRef = useRef<'name' | 'evidence'>('name')
   const nameRef = useRef<HTMLInputElement>(null)
-  const evidenceRef = useRef<HTMLTextAreaElement>(null)
   const [afterClearOpen, setAfterClearOpen] = useState(false)
   const hoursErrorRef = useRef<HTMLParagraphElement>(null)
   const { record, state: saveState, save } = useLocalDraftSave(connection)
@@ -136,9 +134,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
 
   useEffect(() => {
     if (step === 'A03' && draftEntryError) {
-      const field = errorFieldRef.current === 'name' ? nameRef.current : evidenceRef.current
-      field?.focus()
-      field?.scrollIntoView?.({ block: 'center' })
+      nameRef.current?.focus()
+      nameRef.current?.scrollIntoView?.({ block: 'center' })
     }
   }, [draftEntryError, step])
 
@@ -174,7 +171,6 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   function validateMaterials() {
     const missingName = !name.trim()
     if (missingName) {
-      errorFieldRef.current = 'name'
       setShowSummary(false)
       setDraftEntryError('対象名を確認してください。未入力の欄にエラーを表示しています。')
       setStep('A03')
@@ -307,12 +303,10 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       if (validateHours() && validateMaterials()) setShowSummary(true)
     }}>
       <section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1}>1/3 素材と場所</h2>
-        <p className="helper">{focused ? '対象名・写真・権利・特徴・撮影範囲などの確認は公開までに必要です。途中でも文章編集・保存できます。対象にした理由は任意です。' : '次へ進むには対象名が必須です。対象にした理由は任意です。写真・権利・撮影範囲などの確認は公開までに必要です。下書き保存は未完成でもできます。'}</p>
-        <p className="helper">対象名と対象にした理由は非公開。問題を作るための確認材料です。</p>
+        <p className="helper">{focused ? '対象名・写真・権利・特徴・撮影範囲などの確認は公開までに必要です。途中でも文章編集・保存できます。' : '次へ進むには対象名が必須です。写真・権利・撮影範囲などの確認は公開までに必要です。下書き保存は未完成でもできます。'}</p>
+        <p className="helper">対象名は非公開。問題を作るための確認材料です。</p>
         <span className="helper">{focused ? '公開までに必須' : '必須（次へ進むとき）'}</span><label>対象名<input ref={nameRef} aria-required={!focused} aria-invalid={Boolean(draftEntryError && !name.trim())} aria-describedby={draftEntryError && !name.trim() ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {draftEntryError && !name.trim() && <p id="name-error" className="field-error">対象名を入力してください。</p>}
-        <span className="helper">任意・担当者への追加情報</span><label>対象にした理由（確認したこと）<textarea ref={evidenceRef} value={evidence} onChange={event => { setEvidence(event.target.value); markMaterialChange() }} rows={3} placeholder="例：自治体が管理し、安全に撮影できることを確認済み" /></label>
-        {connection && <PhraseChips label="よくある確認（押すと文章に追加、もう一度押すと削除）" phrases={evidencePhrases} value={evidence} onChange={value => { setEvidence(value); markMaterialChange() }} />}
         <span className="helper">任意（後で登録可・非公開の照合用）</span><label className="file-label">参考写真（公開ヒントには自動流用しません）<input className="reference-photo-input" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
         <p id="photo-help" className="helper">{connection ? 'JPEG / PNG / WebP、送信上限4 MiB。合成素材を使ってください。'
           : 'JPEG / PNG / WebP、選択上限5 MB。参考写真の選択・プレビューのみです。'}</p>
@@ -366,10 +360,10 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         <label>地域のおすすめコメント<textarea value={promoComment} onChange={event => { setPromoComment(event.target.value); markMaterialChange() }} rows={2} placeholder="例：地域で大切に受け継いできた風景です。" /></label>
         <label>解説<textarea value={explanation} onChange={event => { setExplanation(event.target.value); markMaterialChange() }} rows={3} placeholder="例：この建物が建てられた背景や、地域との関わり" /></label>
       </details>
-      {draftEntryError && (!name.trim() || !evidence.trim()) && <p tabIndex={-1} role="alert" className="field-error">{draftEntryError}</p>}
+      {draftEntryError && !name.trim() && <p tabIndex={-1} role="alert" className="field-error">{draftEntryError}</p>}
       <button className="submit-button" type="button" onClick={enterDraft}>下書き・編集へ</button>
       {!focused && <button className="submit-button" type="submit">入力内容を確認</button>}
-      {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2><p>{connection ? 'これは現在の入力の確認表示です。' : 'これは画面内の確認表示です。送信・保存はしていません。'}</p><dl><dt>架空自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市（架空）・青葉みらい市の行政区域（架空）'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>対象にした理由（確認したこと）</dt><dd>{evidence || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影時の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用できる時間</dt><dd>{hours || '未入力'}</dd><dt>地域のおすすめコメント</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の出典と利用権</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影できる範囲（非公開）</dt><dd>{areaStatus}</dd></dl></section>}
+      {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2><p>{connection ? 'これは現在の入力の確認表示です。' : 'これは画面内の確認表示です。送信・保存はしていません。'}</p><dl><dt>架空自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市（架空）・青葉みらい市の行政区域（架空）'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影時の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用できる時間</dt><dd>{hours || '未入力'}</dd><dt>地域のおすすめコメント</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の出典と利用権</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影できる範囲（非公開）</dt><dd>{areaStatus}</dd></dl></section>}
     </form> : step === 'A04' ? <>
       <DraftEditor draft={draft} setDraft={editDraft} materialChanged={materialChanged} sampleConfirm={sampleConfirm}
         setSampleConfirm={setSampleConfirm} onBack={() => setStep('A03')} onPreview={enterPreview} headingRef={a04HeadingRef} omitMemo={focused} allowSample={!connection} />
