@@ -254,7 +254,8 @@ button.explore-quest-card { cursor: pointer; }
   .map-zoom button { width: 44px; height: 44px; }
   .map-preview-shell.has-sheet { height: max(480px, calc(100svh - 224px)); min-height: 480px; }
   .map-filter-overlay { top: 112px; left: 12px; right: 12px; }
-  .explore-sheet { left: 0; right: 0; bottom: 0; width: auto; border-left: 0; border-right: 0; border-bottom: 0; border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: none; }
+  .explore-sheet { left: 0; right: 0; bottom: 0; z-index: 7; width: auto; border-left: 0; border-right: 0; border-bottom: 0; border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: none; }
+  .explore-sheet[data-snap="closed"]:not(.is-dragging) { z-index: 5; }
   .explore-quest-list { max-height: 300px; }
   .map-bottomline { left: 12px; right: 12px; bottom: 11px; font-size: 12px; gap: 6px; }
   .map-credit { font-size: 12px; }

@@ -18,6 +18,18 @@ describe('map controls placement with the bottom sheet', () => {
   it('keeps the wide-layout controls at their fixed bottom position', () => {
     expect(css).toContain('.map-controls { position: absolute; right: 17px; bottom: 52px;')
   })
+
+  it('puts controls above the closed mobile handle and the sheet above controls while open or dragging', () => {
+    const mobileAt = css.indexOf('@media (max-width: 640px)')
+    const desktopSheetRule = '.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4;'
+    const mobileSheetRule = '.explore-sheet { left: 0; right: 0; bottom: 0; z-index: 7;'
+    expect(css).toContain(desktopSheetRule)
+    expect(css.indexOf(mobileSheetRule)).toBeGreaterThan(mobileAt)
+    expect(css).toContain('.map-controls { position: absolute; right: 17px; bottom: 52px; z-index: 6;')
+    const closedRule = '.explore-sheet[data-snap="closed"]:not(.is-dragging) { z-index: 5; }'
+    expect(css.indexOf(closedRule)).toBeGreaterThan(mobileAt)
+    expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }')
+  })
 })
 
 // スマホ幅（981px未満）では主要ナビを画面下のタブバーに置く（D-32）。
