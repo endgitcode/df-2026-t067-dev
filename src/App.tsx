@@ -16,6 +16,7 @@ import { CameraPreview } from './features/capture/CameraPreview'
 import { ChallengeCapture } from './features/capture/ChallengeCapture'
 import { OwnerDiscoveries } from './features/discoveries/OwnerDiscoveries'
 import { readDataSource, useAdminMembership, useQuestConnection, useServerIdentity } from './features/explore/useQuestConnection'
+import { useWideViewport } from './features/quests/useWideViewport'
 import { AuthError, createFirebaseAuthClient } from './features/auth/firebaseAuth'
 import './App.css'
 
@@ -117,6 +118,10 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const getHint = providedGetHint ?? (source === 'preview' && !apiMode && !externalQuest && !catalogFallback ? getPreviewHint : undefined)
   const localApiMode = apiMode || source === 'local-api'
   const durableLocal = apiMode && apiDataMode === 'durable-local'
+  const wideViewport = useWideViewport()
+  // PC幅では、地図の下に通常フローで出ていたレール（問題の選択・詳細・注意書き）を左サイドバーの
+  // パネル内へ寄せ、探索画面を「サイドバー＋地図」だけで完結させる（D-34 の集約の仕上げ）。
+  const panelArrangement = wideViewport && (teamPreview || durableLocal)
   const showRecords = localApiMode && recordsOpen
   const api = useMemo(() => providedApi ?? createApiClient({ getIdToken: () => authClient.getIdToken(),
     expectedDataMode: localApiMode ? apiDataMode : undefined }), [providedApi, authClient, localApiMode, apiDataMode])
@@ -285,6 +290,54 @@ export default function App({ authClient: providedClient, apiClient: providedApi
     setRecordsOpen(open)
   }
 
+  const exploreFeedback = !isQuestOpen && feedback
+    ? <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p> : null
+  const railContent = (
+    <>
+              {railFallback ?? questPicker}
+              {!railFallback && <div ref={questCard}>
+                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
+                  getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
+                  onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
+                  onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
+                  hideStartAction={(teamPreview && !teamAnswerTrial) || (!onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && visiblePending === null)}
+                  disabled={questStale || visiblePending !== null || (auth.status !== 'signed-out' && auth.status !== 'signed-in') || (auth.status === 'signed-in' && (onStartChallenge ? false : !canUseCamera || cameraVisible))}
+                  buttonLabel={visiblePending === 'sign-in' ? '処理中…' : auth.status === 'signed-in' ? (onStartChallenge ? '挑戦を開始する' : cameraVisible ? '撮影中' : serverIdentity.result?.status === 'loading' ? 'ログインの確認中…' : serverIdentity.result?.status === 'error' ? 'ログインの確認待ち' : '撮影を始める') : 'Googleログインして挑戦する'}
+                  note={questStale ? '問題の版を確認できていません。最新版を読み直すまで挑戦できません。'
+                    : auth.status === 'signed-in' && !onStartChallenge ? serverIdentity.result?.status === 'ready' ? 'ログインを確認しました。写真はこの画面で確認するだけです。' : serverIdentity.result?.status === 'loading' ? 'ログインを確認しています…' : '問題の閲覧は続けられます。ログイン確認後に撮影できます。'
+                    : auth.status === 'signed-in' ? 'ログイン済みです。挑戦開始先へ選んだ問題を渡します。'
+                      : auth.status === 'signed-out' ? 'Googleのログイン画面を開きます。キャンセルしてもこの問題に戻れます。'
+                        : auth.status === 'checking' ? 'ログイン状態の確認後に操作できます。'
+                          : 'ログイン機能は準備中です。問題はそのまま閲覧できます。'}
+                  feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) closeCamera(); setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
+                    {!questStale && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
+                      key={JSON.stringify([uid, quest.questId, quest.version, captureRevision])} api={api} quest={quest} dataMode={apiDataMode}
+                      autoStart={durableLocal && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
+                      canAutoStart={() => startIntent !== null && startIntent.generation === selectionGeneration.current && startIntent.expires > Date.now() && openRef.current && authClient.getSnapshot() === startIntent.auth}
+                      onAutoStartConsumed={() => setStartIntent(null)}
+                      onOpenDiscovery={durableLocal ? (id) => { setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
+                      onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
+                    {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
+                    {cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} />}
+                    {localApiMode && !teamPreview && <QuestReport key={questKey} api={api} questId={quest.questId} dataMode={apiDataMode}
+                      ownerUid={canUseCamera && visiblePending === null ? uid : null} canSignIn={auth.status === 'signed-out'}
+                      signInPending={visiblePending !== null} onSignIn={() => void login()} />}
+                  </QuestDetails>
+                  : apiMode ? null : connection.result.status === 'loading' ? <p role="status" aria-label="問題の読み込み">問題を読み込んでいます…</p> : <div role="alert">{source === 'invalid' ? '表示設定を確認してください。' : '問題を読み込めませんでした。'}<button type="button" className="retry-button" onClick={connection.retry}>問題を再読み込み</button></div>}
+              </div>}
+              <p className="browse-note">問題の閲覧にログインは必要ありません。</p>
+              <div className="demo-note"><span className="demo-note-dot" /><p>{teamAnswerTrial ? '自治体画面で公開した架空の問題を確認できます。招待された4人は撮影と回答も試せます。' : teamPreview ? '自治体画面で公開した架空の問題を確認できます。' : durableLocal ? '永続APIの確認用です。回答の送信には合成画像と架空の座標を使ってください。' : apiMode ? '公開APIが返す架空のデモデータです。実際に訪問できる場所ではありません。' : '今はデザイン確認用の架空の1問を表示しています。実際に訪問できる場所ではありません。'}</p></div>
+    </>
+  )
+  // サイドバー内では、ページ下部のフッターの文言もパネルの末尾に寄せる（フッター自体は CSS で隠す）。
+  const panelContent = (
+    <div className="side-panel-rail">
+      {railContent}
+      {exploreFeedback}
+      <p className="side-panel-footer-note">場所・問題は架空の開発用デモです。</p>
+    </div>
+  )
+
   return (
     <>
       <a className="skip-link" href="#main">本文へ移動</a>
@@ -358,46 +411,12 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} />
 
-            <aside className="quest-rail" aria-label="選べる謎">
-              {railFallback ?? questPicker}
-              {!railFallback && <div ref={questCard}>
-                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={teamPreview ? '共有検証用の問題' : apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
-                  getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
-                  onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
-                  onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
-                  hideStartAction={(teamPreview && !teamAnswerTrial) || (!onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && visiblePending === null)}
-                  disabled={questStale || visiblePending !== null || (auth.status !== 'signed-out' && auth.status !== 'signed-in') || (auth.status === 'signed-in' && (onStartChallenge ? false : !canUseCamera || cameraVisible))}
-                  buttonLabel={visiblePending === 'sign-in' ? '処理中…' : auth.status === 'signed-in' ? (onStartChallenge ? '挑戦を開始する' : cameraVisible ? '撮影中' : serverIdentity.result?.status === 'loading' ? 'ログインの確認中…' : serverIdentity.result?.status === 'error' ? 'ログインの確認待ち' : '撮影を始める') : 'Googleログインして挑戦する'}
-                  note={questStale ? '問題の版を確認できていません。最新版を読み直すまで挑戦できません。'
-                    : auth.status === 'signed-in' && !onStartChallenge ? serverIdentity.result?.status === 'ready' ? 'ログインを確認しました。写真はこの画面で確認するだけです。' : serverIdentity.result?.status === 'loading' ? 'ログインを確認しています…' : '問題の閲覧は続けられます。ログイン確認後に撮影できます。'
-                    : auth.status === 'signed-in' ? 'ログイン済みです。挑戦開始先へ選んだ問題を渡します。'
-                      : auth.status === 'signed-out' ? 'Googleのログイン画面を開きます。キャンセルしてもこの問題に戻れます。'
-                        : auth.status === 'checking' ? 'ログイン状態の確認後に操作できます。'
-                          : 'ログイン機能は準備中です。問題はそのまま閲覧できます。'}
-                  feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) closeCamera(); setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
-                    {!questStale && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
-                      key={JSON.stringify([uid, quest.questId, quest.version, captureRevision])} api={api} quest={quest} dataMode={apiDataMode}
-                      autoStart={durableLocal && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
-                      canAutoStart={() => startIntent !== null && startIntent.generation === selectionGeneration.current && startIntent.expires > Date.now() && openRef.current && authClient.getSnapshot() === startIntent.auth}
-                      onAutoStartConsumed={() => setStartIntent(null)}
-                      onOpenDiscovery={durableLocal ? (id) => { setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
-                      onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
-                    {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
-                    {cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} />}
-                    {localApiMode && !teamPreview && <QuestReport key={questKey} api={api} questId={quest.questId} dataMode={apiDataMode}
-                      ownerUid={canUseCamera && visiblePending === null ? uid : null} canSignIn={auth.status === 'signed-out'}
-                      signInPending={visiblePending !== null} onSignIn={() => void login()} />}
-                  </QuestDetails>
-                  : apiMode ? null : connection.result.status === 'loading' ? <p role="status" aria-label="問題の読み込み">問題を読み込んでいます…</p> : <div role="alert">{source === 'invalid' ? '表示設定を確認してください。' : '問題を読み込めませんでした。'}<button type="button" className="retry-button" onClick={connection.retry}>問題を再読み込み</button></div>}
-              </div>}
-              <p className="browse-note">問題の閲覧にログインは必要ありません。</p>
-              <div className="demo-note"><span className="demo-note-dot" /><p>{teamAnswerTrial ? '自治体画面で公開した架空の問題を確認できます。招待された4人は撮影と回答も試せます。' : teamPreview ? '自治体画面で公開した架空の問題を確認できます。' : durableLocal ? '永続APIの確認用です。回答の送信には合成画像と架空の座標を使ってください。' : apiMode ? '公開APIが返す架空のデモデータです。実際に訪問できる場所ではありません。' : '今はデザイン確認用の架空の1問を表示しています。実際に訪問できる場所ではありません。'}</p></div>
-            </aside>
+{!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>
         </section>
-        {!isQuestOpen && feedback && <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
+        {!panelArrangement && exploreFeedback}
         </>}
       </main>
       <footer className="site-footer"><span>場所・問題は架空の開発用デモです。</span></footer>
