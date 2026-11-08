@@ -25,6 +25,7 @@ export interface MapInstance {
 
 export interface MarkerInstance {
   setMap(map: MapInstance | null): void
+  setIcon?(icon: { url: string }): void
   addListener(name: string, callback: () => void): { remove(): void }
 }
 

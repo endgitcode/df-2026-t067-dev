@@ -18,11 +18,13 @@ const LOCATION_ZOOM = 14
 const LOCATION_DEADLINE_MS = 10_000
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
 
-function pinIcon(color: string, count: number): { url: string } {
+function pinIcon(color: string, count: number, emphasized = false): { url: string } {
   const center = count >= 2
     ? `<circle cx="18" cy="17" r="9.5" fill="#ffffff"/><text x="18" y="21.5" text-anchor="middle" font-family="sans-serif" font-size="${count >= 10 ? 10 : 12}" font-weight="700" fill="${PIN_STROKE}">${count}</text>`
     : '<circle cx="18" cy="17" r="7" fill="#ffffff"/>'
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${color}" stroke="${PIN_STROKE}" stroke-width="2"/>${center}</svg>`
+  // ホバー中（emphasized）は一回り大きくし、通常色のピンは白抜きにして選択中（黄色）とも通常（水色）とも区別する。
+  const fill = emphasized && color === PIN_COLOR ? '#ffffff' : color
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="0 0 36 44"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
@@ -42,6 +44,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const map = useRef<MapInstance | null>(null)
   const dataLayer = useRef<DataLayer | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
+  // ホバー可能なポインタ（マウス等）がある環境か。タッチ主体の環境ではピンのホバー切替を付けない。
+  const [hoverCapable] = useState(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    && window.matchMedia('(hover: hover) and (pointer: fine)').matches)
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
   const [locationStatus, setLocationStatus] = useState('')
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -251,6 +256,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           position, map: instance,
           title: `${area.label}の探索エリア（${area.publishedCount}問）`,
           icon: pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount),
+          cursor: 'pointer',
           zIndex: selected ? 2 : 1,
         })
         listeners.push(marker.addListener('click', () => {
@@ -259,6 +265,15 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           setPinAreaId((current) => (current === area.areaId ? null : area.areaId))
           onSelectArea?.(area.areaId)
         }))
+        // ホバーできる環境（マウス等）でのみ、ピンの見た目を切り替える。タッチには付けない。
+        if (hoverCapable && marker.setIcon) {
+          listeners.push(marker.addListener('mouseover', () => {
+            if (active) marker.setIcon?.(pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount, true))
+          }))
+          listeners.push(marker.addListener('mouseout', () => {
+            if (active) marker.setIcon?.(pinIcon(selected ? PIN_SELECTED_COLOR : PIN_COLOR, area.publishedCount))
+          }))
+        }
         created.push(marker)
       }
     } catch { /* ピンは補助表示のため、失敗しても地図本体は使える状態を保つ。 */ }
@@ -267,7 +282,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, hoverCapable])
 
   useEffect(() => {
     const instance = map.current
