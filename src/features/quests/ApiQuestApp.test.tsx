@@ -319,8 +319,9 @@ describe('APIから問題を表示', () => {
     await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
     await screen.findByRole('heading', { name: second.title })
     expect(window.location.search).toBe('?keep=yes&view=list&area=area-b&quest=quest-b')
-    await user.click(screen.getByRole('button', { name: 'すべての公開問題を見る' }))
-    await screen.findByRole('heading', { name: first.title })
+    await user.selectOptions(screen.getByRole('combobox', { name: '地方' }), '関東')
+    expect(await screen.findByText('この条件に公開問題はありません。')).toBeVisible()
+    expect(screen.queryByText('森エリアのピン')).not.toBeInTheDocument()
     expect(window.location.search).toBe('?keep=yes&view=list&quest=quest-a')
 
     await act(async () => {
@@ -331,6 +332,8 @@ describe('APIから問題を表示', () => {
     })
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
     expect(new URLSearchParams(window.location.search).get('area') ?? '').toBe('area-b')
+    expect(screen.getByRole('combobox', { name: '地方' })).toHaveValue('')
+    expect(screen.getByText('森エリアのピン')).toBeVisible()
     await act(async () => {
       await new Promise<void>((resolve) => {
         window.addEventListener('popstate', () => resolve(), { once: true })
