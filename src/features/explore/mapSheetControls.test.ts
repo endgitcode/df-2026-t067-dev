@@ -61,3 +61,18 @@ describe('PC left sidebar (D-34)', () => {
     expect(css).toContain('body.explore-fullbleed .explore-side-panel { position: fixed; top: var(--pc-sidebar-nav-h); bottom: 0; left: 0;')
   })
 })
+
+describe('rounded corner scale (D-35)', () => {
+  const themeCss = readFileSync(resolve(process.cwd(), 'src/theme.css'), 'utf8')
+
+  it('defines a three-step radius scale and keeps --ui-radius as the middle alias', () => {
+    expect(themeCss).toContain('--radius-s: 10px;')
+    expect(themeCss).toContain('--radius-m: 16px;')
+    expect(themeCss).toContain('--radius-l: 24px;')
+    expect(themeCss).toContain('--ui-radius: var(--radius-m);')
+  })
+
+  it('gives the bottom sheet the large radius on its top corners', () => {
+    expect(css).toContain('border-radius: var(--radius-l) var(--radius-l) 0 0;')
+  })
+})
