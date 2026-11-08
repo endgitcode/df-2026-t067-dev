@@ -687,6 +687,36 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('notifies the sheet mode for selection display switching and resets it on unmount', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSheetModeChange = vi.fn()
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} onSheetModeChange={onSheetModeChange} />)
+    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    // 地図が使える間はシート表示であることを知らせ、呼び出し側がピッカーを隠せるようにする（D-43）。
+    await waitFor(() => expect(onSheetModeChange).toHaveBeenCalledWith(true))
+    unmount()
+    // アンマウント時は「使えない」側へ戻し、地図が無い画面でピッカーが消えたままにならないようにする。
+    expect(onSheetModeChange).toHaveBeenLastCalledWith(false)
+    delete window.google
+  })
+
+  it('reports no sheet mode when the map is unavailable', () => {
+    const onSheetModeChange = vi.fn()
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    render(<MapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} onSheetModeChange={onSheetModeChange} />)
+    expect(onSheetModeChange).toHaveBeenCalledWith(false)
+    expect(onSheetModeChange).not.toHaveBeenCalledWith(true)
+  })
+
   it('keeps the sheet and full-bleed layout with a filter-empty message when filtering leaves no quests', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
