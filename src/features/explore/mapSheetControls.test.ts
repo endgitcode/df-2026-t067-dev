@@ -129,7 +129,7 @@ describe('PC sidebar layout integrity', () => {
     // D-53 以降、畳むのはパネルだけで、タブ（主要ナビ）は単独カードとして残す。
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { opacity: 0; visibility: hidden;')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { opacity: 0;')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); box-shadow: var(--ui-shadow); }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace')
     expect(css).toContain('body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-w));')
@@ -177,5 +177,32 @@ describe('mobile fullbleed finish', () => {
     expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }')
     expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
     expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
+  })
+})
+
+// 見た目と余白（D-54）: 区切り線と影を絞り、チップの左ラインとパネル下部を整える。
+describe('look and spacing (D-54)', () => {
+  it('drops the half-length divider under the quest details and the offset shadows on rows, tabs and the account icon', () => {
+    expect(css).not.toContain('.quest-details { border-top')
+    expect(css).toContain('.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; }')
+    expect(css).not.toContain('body.explore-fullbleed .account-icon-button { box-shadow')
+    expect(css).not.toContain('box-shadow: 6px 0 0 var(--ui-line)')
+    // 影はフローティングパネル本体には残す。
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel { position: fixed;')
+    expect(css).toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow);')
+  })
+
+  it('aligns the floating title chip line with the panel side, open and collapsed', () => {
+    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 25; grid-template-columns: 1fr auto; padding-left: 8px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-gap); }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-gap) + 8px); }')
+  })
+
+  it('stretches the panel list to the bottom with a faded lower edge and stable scrollbar gutters', () => {
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 1 1 auto; min-height: 0;')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: 1 1 auto; min-height: 0; max-height: none; padding-bottom: 18px; }')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list::after')
+    expect(css).toContain('.explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }')
+    expect(css).toContain('overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column;')
   })
 })

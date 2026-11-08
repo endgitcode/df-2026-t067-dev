@@ -7,13 +7,16 @@ import type { PublicArea, PublicQuest } from '../../shared/api/types'
 // 行はタイトルだけの簡素な形にし、選んだ行の直下に詳細（QuestDetails）を開く
 // アコーディオンにする（D-46）。詳細を別枠で下に置くと、タイトルが一覧と詳細で
 // 二重に出てパネル／シートが煩雑になるため。
-export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, scrollToHighlight = true, detailContent, detailRef }: {
+export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, scrollToHighlight = true, detailContent, detailRef, loading = false }: {
   areas: PublicArea[]
   quests: PublicQuest[]
   highlightArea?: PublicArea
   selectedQuestId?: string
   clearedQuestIds?: ReadonlySet<string>
   onOpenQuest?: (questId: string) => void
+  /** 読み込み中は件数と「謎はありません」を出さず、行の場所だけを確保する。
+      一瞬だけ「0件／空です」が見えるチラつきと、読み込み前後の大きさの変化を防ぐ。 */
+  loading?: boolean
   /** ハイライトされた地域の先頭カードへリスト内スクロールするか。地図下の一覧（#70）では
       ページ側のスクロールと競合するため切る。 */
   scrollToHighlight?: boolean
@@ -52,9 +55,13 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   return (
     <section className="explore-list" aria-label="選べる謎の一覧">
       <div className="explore-list-head">
-        <span>{quests.length}件</span>
+        <span>{loading ? '読み込み中' : `${quests.length}件`}</span>
       </div>
-      {quests.length === 0
+      {quests.length === 0 && loading
+        ? <ul className="explore-quest-list" aria-hidden="true">
+          {[0, 1, 2, 3, 4].map((index) => <li key={index}><div className="explore-quest-card explore-quest-skeleton" /></li>)}
+        </ul>
+        : quests.length === 0
         ? <p className="explore-list-empty">選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。</p>
         : <ul ref={listRef} className="explore-quest-list">
           {orderedQuests.map((quest) => {
