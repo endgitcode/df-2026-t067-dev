@@ -62,8 +62,11 @@ describe('PC left sidebar (D-34)', () => {
   it('offsets the full-bleed map stage by the sidebar width on wide viewports', () => {
     const mediaAt = css.indexOf('@media (min-width: 981px)')
     expect(mediaAt).toBeGreaterThan(-1)
-    const rule = 'body.explore-fullbleed .map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }'
+    // オフセットはワークスペースの padding-left のみ。シェルへの inset は相対配置と
+    // 重なって二重に効くため置かない（2026-11-08 の実機報告で修正）。
+    const rule = 'body.explore-fullbleed .explore-workspace { padding-left: var(--pc-sidebar-w); }'
     expect(css).toContain(rule)
+    expect(css).not.toContain('.map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }')
     expect(css.indexOf(rule)).toBeGreaterThan(mediaAt)
   })
 
@@ -85,6 +88,18 @@ describe('rounded corner scale (D-35)', () => {
 
   it('gives the bottom sheet the large radius on its top corners', () => {
     expect(css).toContain('border-radius: var(--radius-l) var(--radius-l) 0 0;')
+  })
+})
+
+describe('PC sidebar layout integrity', () => {
+  it('offsets the stage only via the workspace padding, never via the shell inset', () => {
+    // シェルは position: relative のため、inset を重ねると相対オフセットとして二重に効く。
+    expect(css).not.toContain('.map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }')
+    expect(css).toContain('body.explore-fullbleed .explore-workspace { padding-left: var(--pc-sidebar-w); }')
+  })
+
+  it('keeps the floating brand a compact chip instead of a stretched bar', () => {
+    expect(css).toContain('body.explore-fullbleed .brand { justify-self: start;')
   })
 })
 

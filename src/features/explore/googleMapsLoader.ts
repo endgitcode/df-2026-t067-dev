@@ -4,7 +4,7 @@ export interface GoogleMapsApi {
   Circle?: new (options: Record<string, unknown>) => { setMap(map: MapInstance | null): void }
   Data: new () => DataLayer
   LatLngBounds: new () => Bounds
-  event: { addListener(target: unknown, name: string, callback: (event?: { latLng?: { lat(): number; lng(): number } }) => void): { remove(): void } }
+  event: { addListener(target: unknown, name: string, callback: (event?: { latLng?: { lat(): number; lng(): number } }) => void): { remove(): void }; trigger?(target: unknown, name: string): void }
 }
 
 export interface Bounds { extend(point: { lat: number; lng: number }): void }

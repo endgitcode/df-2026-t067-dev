@@ -68,6 +68,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const locationRequest = useRef(0)
   const locationTimer = useRef<number | undefined>(undefined)
   const [attempt, setAttempt] = useState(0)
+  const [fitRequest, setFitRequest] = useState(0)
 
   useEffect(() => {
     const instance = map.current
@@ -300,7 +301,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, hoverCapable, wideViewport])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport])
 
   useEffect(() => {
     const instance = map.current
@@ -355,7 +356,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       } else instance.fitBounds(bounds)
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
     } catch { failArea() }
-  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport])
+  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
@@ -435,6 +436,27 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     document.body.classList.add('explore-fullbleed')
     return () => { document.body.classList.remove('explore-fullbleed') }
   }, [sheetMode])
+
+  // レイアウトが確定する遷移（全画面化・サイドバー方式への切替）では地図コンテナの
+  // 大きさが変わる。コンテナ確定前に走ったフィットは実サイズに合わず、選択中なのに
+  // 初期表示のまま残ることがある（2026-11-08 の実機報告）。確定後にサイズの再認識を
+  // 促し、未フィットの選択があればフィットをやり直す。
+  const settledLayout = useRef('')
+  useEffect(() => {
+    if (!sheetMode) return
+    const instance = map.current
+    if (!instance) return
+    const signature = `${sheetMode}:${panelMode}`
+    if (settledLayout.current !== signature) {
+      settledLayout.current = signature
+      try { window.google?.maps?.event.trigger?.(instance, 'resize') } catch { /* サイズ再認識は補助であり、失敗しても地図は使える。 */ }
+    }
+    const alreadyFitted = lastViewportSelection.current?.map === instance && lastViewportSelection.current.areaId === selectedAreaId
+    if (selectedAreaId && !alreadyFitted) {
+      lastViewportSelection.current = null
+      setFitRequest((value) => value + 1)
+    }
+  }, [sheetMode, panelMode, selectedAreaId])
 
   return (
     <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
