@@ -13,9 +13,7 @@ describe('ExploreBottomSheet', () => {
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect((sheet as HTMLElement).style.height).toBe('128px')
     expect(screen.getByRole('button', { name: '謎リストを広げる' })).toHaveAttribute('aria-expanded', 'false')
-    const reopen = container.querySelector('.explore-sheet-reopen') as HTMLButtonElement
-    expect(reopen).toHaveAttribute('inert')
-    expect(reopen).toBeDisabled()
+    expect(container.querySelector('.explore-sheet-reopen')).toBeNull()
     expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
     expect(screen.getByText('リスト本文')).toBeVisible()
     expect(onHeightChange).toHaveBeenLastCalledWith(128)
@@ -119,7 +117,7 @@ describe('ExploreBottomSheet', () => {
     expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
   })
 
-  it('keeps the closed-sheet button available to reopen the list', async () => {
+  it('uses the closed-sheet button to browse below the map when a callback is provided', async () => {
     const user = userEvent.setup()
     const onBrowseBelowMap = vi.fn()
     const { container } = render(<ExploreBottomSheet onBrowseBelowMap={onBrowseBelowMap}><p>リスト本文</p></ExploreBottomSheet>)
@@ -131,8 +129,15 @@ describe('ExploreBottomSheet', () => {
     expect(sheet).toHaveAttribute('data-snap', 'closed')
 
     await user.click(screen.getByRole('button', { name: '問題を見る' }))
-    expect(onBrowseBelowMap).not.toHaveBeenCalled()
-    expect(sheet).toHaveAttribute('data-snap', 'half')
+    expect(onBrowseBelowMap).toHaveBeenCalledTimes(1)
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+  })
+
+  it('only exposes 問題を見る while fully closed', async () => {
+    const user = userEvent.setup()
+    render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>)
+    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
   })
 
   it('opens to half when a new area is signalled, and stays where the user left it for the same signal', async () => {

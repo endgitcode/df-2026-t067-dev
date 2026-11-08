@@ -943,19 +943,20 @@ describe('Google map panel', () => {
     expect(scroll).toHaveBeenCalledWith({ block: 'start' })
     expect(container.querySelector('.explore-sheet')).toBe(sheet)
     expect(sheet).toHaveAttribute('data-snap', 'half')
-    // The real browse callback is wired above. Once the sheet is fully closed,
-    // the same button must reopen it instead of navigating to the below-map list.
+    // Once the sheet is closed, 問題を見る navigates to the below-map list.
     const handle = screen.getByRole('button', { name: '謎リストを縮める' })
     fireEvent.pointerDown(handle, { pointerId: 30, pointerType: 'touch', clientY: 200 })
     fireEvent.pointerMove(handle, { pointerId: 30, pointerType: 'touch', clientY: 600 })
     fireEvent.pointerUp(handle, { pointerId: 30, pointerType: 'touch', clientY: 600 })
     expect(sheet).toHaveAttribute('data-snap', 'closed')
     const reopen = screen.getByRole('button', { name: '問題を見る' })
-    expect(reopen).toHaveAttribute('aria-expanded', 'false')
-    expect(reopen.getAttribute('aria-controls')).toBeTruthy()
+    expect(reopen).not.toHaveAttribute('aria-expanded')
+    expect(reopen).not.toHaveAttribute('aria-controls')
     await user.click(reopen)
-    expect(sheet).toHaveAttribute('data-snap', 'half')
-    expect(document.activeElement).toBe(sheet.querySelector('.explore-sheet-body'))
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+    expect(container.querySelector('.below-map-quests')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    expect(sheet).toHaveAttribute('data-snap', 'peek')
     HTMLElement.prototype.scrollIntoView = originalScrollIntoView
     unmount()
     delete window.google
