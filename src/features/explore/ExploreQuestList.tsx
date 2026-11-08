@@ -2,23 +2,21 @@ import { useEffect, useRef } from 'react'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { questThumbnail } from './viewportQuests'
 
-// 地図の表示範囲と連動する謎カードのリスト。地図が使えない場合は全地域分をそのまま並べる。
-export function ExploreQuestList({ areas, quests, variant, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onClearHighlight, emptyText, scrollToHighlight = true }: {
+// 選択状態に連動する謎カードのリスト。並ぶのは呼び出し側が選択（地域・地方の絞り込み）で
+// 絞った問題だけであり、地図の表示範囲では変わらない（D-45）。地図が使えない場合も同じ。
+export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, scrollToHighlight = true }: {
   areas: PublicArea[]
   quests: PublicQuest[]
-  variant: 'viewport' | 'fallback'
   highlightArea?: PublicArea
   selectedQuestId?: string
   clearedQuestIds?: ReadonlySet<string>
   onOpenQuest?: (questId: string) => void
-  onClearHighlight?: () => void
-  /** 空表示の文言。絞り込みの結果が全体で0件の場合など、範囲外が理由でない時に呼び出し側が差し替える。 */
-  emptyText?: string
+  /** ハイライトされた地域の先頭カードへリスト内スクロールするか。地図下の一覧（#70）では
+      ページ側のスクロールと競合するため切る。 */
   scrollToHighlight?: boolean
 }) {
   const listRef = useRef<HTMLUListElement>(null)
   const areaLabel = (areaId: string) => areas.find((area) => area.areaId === areaId)?.label ?? ''
-  const highlightCount = highlightArea ? quests.filter((quest) => quest.areaId === highlightArea.areaId).length : 0
   // ピンで選ばれた地域の問題は先頭に寄せ、シートを開いた時にスクロールなしで先頭に出るようにする。
   const orderedQuests = highlightArea
     ? [...quests.filter((quest) => quest.areaId === highlightArea.areaId), ...quests.filter((quest) => quest.areaId !== highlightArea.areaId)]
@@ -34,16 +32,12 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
   }, [highlightArea, scrollToHighlight])
 
   return (
-    <section className="explore-list" aria-label={variant === 'viewport' ? '表示範囲の謎' : '選べる謎の一覧'}>
+    <section className="explore-list" aria-label="選べる謎の一覧">
       <div className="explore-list-head">
         <span>{quests.length}件</span>
       </div>
-      {highlightArea && <div className="explore-list-focus">
-        <strong>{highlightArea.label}</strong><span>{highlightCount}問</span>
-        <button type="button" onClick={onClearHighlight}>閉じる</button>
-      </div>}
       {quests.length === 0
-        ? <p className="explore-list-empty">{emptyText ?? 'この範囲に謎はありません。地図を移動すると、別の地域の謎が表示されます。'}</p>
+        ? <p className="explore-list-empty">選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。</p>
         : <ul ref={listRef} className="explore-quest-list">
           {orderedQuests.map((quest) => {
             const thumbnail = questThumbnail(quest)

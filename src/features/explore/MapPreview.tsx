@@ -10,7 +10,7 @@ import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance, type PolygonInstance } from './googleMapsLoader'
 import { buildJapanVeilPaths } from './japanVeil'
 import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
-import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
+import { areaPinPosition } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
 // 日本国内専用の見た目（D-27／D-41）は、国外を薄く落とすベールと最小ズームで維持する。
@@ -152,8 +152,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 再フィットすると地図の中心が動いてしまうため（D-38）、フィット側の effect の
   // 依存には開閉状態を入れず、ref 経由で現在の値だけを読む。
   const sidebarCollapsedRef = useRef(false)
-  const [viewport, setViewport] = useState<ViewportBounds | null>(null)
-  const viewportRef = useRef<ViewportBounds | null>(null)
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   // 地域を選ぶ直前のカメラ（中心・ズーム）。選択を解除したら、初期表示ではなくこの状態へ戻す。
   const preSelectionCamera = useRef<{ map: MapInstance; center: { lat: number; lng: number }; zoom: number } | null>(null)
@@ -224,9 +222,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     let active = true
     let authFailed = false
     let zoomListener: { remove(): void } | undefined
-    let idleListener: { remove(): void } | undefined
-    viewportRef.current = null
-    setViewport(null)
     const unsubscribeAuth = subscribeMapsAuthFailure(() => {
       authFailed = true
       if (active) { cancelLocationRequest(); map.current = null; setStatus('auth-error') }
@@ -261,22 +256,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           layer.setMap(instance)
           dataLayer.current = layer
         } catch { failArea() }
-        idleListener = instance.addListener('idle', () => {
-          if (!active) return
-          try {
-            const bounds = instance.getBounds?.()
-            if (!bounds) return
-            const northEast = bounds.getNorthEast()
-            const southWest = bounds.getSouthWest()
-            const next = { north: northEast.lat(), south: southWest.lat(), east: northEast.lng(), west: southWest.lng() }
-            if (![next.north, next.south, next.east, next.west].every(Number.isFinite)) return
-            const previous = viewportRef.current
-            if (previous && Math.abs(previous.north - next.north) < 1e-9 && Math.abs(previous.south - next.south) < 1e-9
-              && Math.abs(previous.east - next.east) < 1e-9 && Math.abs(previous.west - next.west) < 1e-9) return
-            viewportRef.current = next
-            setViewport(next)
-          } catch { /* 表示範囲が読めない間は全件表示を維持する。 */ }
-        })
         zoomListener = instance.addListener('zoom_changed', () => {
           if (active) setZoom(instance.getZoom() ?? 5)
         })
@@ -292,7 +271,6 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       window.clearTimeout(areaFailureTimer.current)
       unsubscribeAuth()
       try { zoomListener?.remove() } catch { /* SDK teardown is best effort. */ }
-      try { idleListener?.remove() } catch { /* SDK teardown is best effort. */ }
       try { veil.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
       veil.current = null
       try { dataLayer.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
@@ -516,7 +494,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
   // 地図上に小さく浮かせる地域名チップの対象。ピンのフォーカスを優先し、無ければ選択中の地域。
   const focusArea = highlightArea ?? areas.find((area) => area.areaId === selectedAreaId)
-  const visibleQuests = status === 'ready' ? questsInViewport(areas, quests, viewport) : quests
+  // 一覧は選択（地域・地方の絞り込み）だけに連動し、地図の表示範囲では変わらない（D-45）。
+  // 絞り込みは呼び出し側が済ませた quests をそのまま並べる。
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
   // シート表示は問題の件数に依存させない。絞り込みで0件になってもシートと全画面を維持し、空表示を出す。
   const sheetMode = status === 'ready' && showPublicAreas
@@ -561,11 +540,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     updateMapScrollPosition()
   }
 
-  const renderQuestList = (scrollToHighlight = true) => showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={visibleQuests} variant={sheetMode ? 'viewport' : 'fallback'}
+  const renderQuestList = (scrollToHighlight = true) => showPublicAreas && (sheetMode || quests.length > 0) ? <ExploreQuestList areas={areas} quests={quests}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     scrollToHighlight={scrollToHighlight}
-    onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)}
-    emptyText={sheetMode && quests.length === 0 ? '選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。' : undefined} /> : null
+    onOpenQuest={onOpenQuest} /> : null
   // 境界データの出典表記（N03 の利用条件）。シート内・フォールバックのリスト末尾に小さく出す。
   const boundaryCredit = showBoundaryCredit && showPublicAreas
     ? <p className="map-boundary-credit">境界データ：国土数値情報（行政区域データ）N03（国土交通省）をもとに作成</p>

@@ -86,10 +86,6 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .explore-list { margin-top: 14px; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
 .explore-list-head { display: flex; align-items: baseline; gap: 10px; }
 .explore-list-head span { font-size: 12px; color: var(--ui-muted); }
-.explore-list-focus { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-soft); }
-.explore-list-focus strong { font-size: 13px; }
-.explore-list-focus span { font-size: 12px; color: var(--ui-muted); }
-.explore-list-focus button { margin-left: auto; flex: none; min-height: 36px; padding: 4px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); }
 .explore-list-empty { margin: 10px 0 0; font-size: 13px; color: var(--ui-muted); line-height: 1.7; }
 .explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; }
 .explore-quest-card { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font: inherit; text-align: left; }
