@@ -280,6 +280,31 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('fills only the selected area when fillSelectedAreaOnly is on, and keeps the legacy fill otherwise', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const setStyle = vi.fn()
+    class Data { setMap() {} addGeoJson() {} setStyle = setStyle; addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    type StyleFn = (feature: { getProperty: (name: string) => unknown }) => Record<string, unknown>
+    const feature = (id: string) => ({ getProperty: (_name: string) => id })
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" fillSelectedAreaOnly />)
+    expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeVisible()
+    await waitFor(() => expect(setStyle).toHaveBeenCalled())
+    let styleFn = setStyle.mock.calls.at(-1)?.[0] as unknown as StyleFn
+    // 選択中の地域は従来どおり黄色く塗り、未選択の地域は塗りも枠線も出さない（D-29）。
+    expect(styleFn(feature('area-a'))).toMatchObject({ fillOpacity: 0.55, strokeOpacity: 0.9 })
+    expect(styleFn(feature('area-b'))).toMatchObject({ fillOpacity: 0, strokeOpacity: 0, strokeWeight: 0, clickable: false })
+    // モードが無効な既存表示（durable-local 等）では、未選択でも従来の薄い塗りを維持する。
+    rerender(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" />)
+    await waitFor(() => expect(setStyle.mock.calls.length).toBeGreaterThan(1))
+    styleFn = setStyle.mock.calls.at(-1)?.[0] as unknown as StyleFn
+    expect(styleFn(feature('area-b'))).toMatchObject({ fillOpacity: 0.25, clickable: true })
+    unmount()
+    delete window.google
+  })
+
   it('cancels a pending location request when the selected region changes without a usable boundary', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
