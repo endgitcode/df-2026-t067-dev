@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MAP_STYLES } from '../explore/mapStyles'
 
 const maps = vi.hoisted(() => ({
   loadGoogleMaps: vi.fn(),
@@ -37,6 +38,7 @@ describe('capture location map', () => {
     await waitFor(() => expect(Marker).toHaveBeenCalledOnce())
     const [, options] = Map.mock.calls[0]
     expect(options).toMatchObject({ center: { lat: 35.6812, lng: 139.7671 }, zoom: 17 })
+    expect(options).toMatchObject({ styles: MAP_STYLES })
     expect(Marker).toHaveBeenCalledWith({ map: expect.objectContaining(mapInstance), position: { lat: 35.6812, lng: 139.7671 }, title: '撮影地' })
     expect(await screen.findByLabelText('撮影地の地図')).toBeInTheDocument()
     expect(screen.queryByText('地図を読み込んでいます…')).not.toBeInTheDocument()
