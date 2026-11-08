@@ -396,6 +396,53 @@ describe('Google map panel', () => {
     unmount()
     delete window.google
   })
+
+  it('marks the page as full-bleed while the sheet is shown and clears the mark on unmount', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    expect(document.body).toHaveClass('explore-fullbleed')
+    unmount()
+    expect(document.body).not.toHaveClass('explore-fullbleed')
+    delete window.google
+  })
+
+  it('does not mark the page as full-bleed when the map is unavailable', () => {
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    render(<MapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'すべての地域の謎' })).toBeVisible()
+    expect(document.body).not.toHaveClass('explore-fullbleed')
+  })
+
+  it('shows the selected area as a small chip on the map and hides it without a selection', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const map = { ...mapInstance, fitBounds: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'この範囲の謎' })).toBeVisible()
+    const chip = container.querySelector('.map-area-chip')
+    expect(chip).not.toBeNull()
+    expect(chip).toHaveTextContent('A')
+    rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="" onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
+    expect(container.querySelector('.map-area-chip')).not.toBeInTheDocument()
+    unmount()
+    delete window.google
+  })
 })
 
 const mapInstance = { setZoom() {}, getZoom: () => 5, setCenter() {}, addListener: () => ({ remove() {} }) }
