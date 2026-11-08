@@ -1,4 +1,4 @@
-import { ContractError, parseAfterClearContent, parseShootingConditions } from './validation'
+import { ContractError, isQuestNumber, parseAfterClearContent, parseShootingConditions } from './validation'
 import type { AfterClearContent, ShootingConditions } from './types'
 
 export type { AfterClearContent, ShootingConditions } from './types'
@@ -40,6 +40,7 @@ export interface ManagedQuest {
   questId: string; orgId: string; areaId: string; draftRevision: number
   publishedVersion: number | null; status: 'draft' | 'review_pending' | 'published' | 'paused'; shootingAreaStatus: 'unconfigured' | 'configured' | 'needs-review'
   draft: ManagedQuestDraft; source: 'real' | 'mock'
+  questNumber?: string
 }
 export function shootingAreaStatus(zones: readonly CaptureZone[]): ManagedQuest['shootingAreaStatus'] {
   if (!zones.length) return 'unconfigured'
@@ -251,13 +252,15 @@ export function parsePauseManagedQuest(input: unknown): PauseManagedQuest {
   return { expectedPublishedVersion: revision(d.expectedPublishedVersion), reason }
 }
 export function parseManagedQuest(input: unknown): ManagedQuest {
-  const d = fields(input, ['questId', 'orgId', 'areaId', 'draftRevision', 'publishedVersion', 'status', 'shootingAreaStatus', 'draft', 'source'], 'ManagedQuest')
+  const d = fields(input, ['questId', 'orgId', 'areaId', 'draftRevision', 'publishedVersion', 'status', 'shootingAreaStatus', 'draft', 'source', 'questNumber'], 'ManagedQuest')
   const publishedVersion = d.publishedVersion === null ? null : revision(d.publishedVersion)
   if ((d.status !== 'draft' && d.status !== 'review_pending' && d.status !== 'published' && d.status !== 'paused') ||
     (d.status === 'published' && publishedVersion === null) || (d.status === 'paused' && publishedVersion !== null) ||
     (d.shootingAreaStatus !== 'unconfigured' && d.shootingAreaStatus !== 'configured' && d.shootingAreaStatus !== 'needs-review') ||
     (d.source !== 'mock' && d.source !== 'real')) throw new ContractError('ManagedQuest.state')
+  if (d.questNumber !== undefined && !isQuestNumber(d.questNumber)) throw new ContractError('ManagedQuest.questNumber')
   return { questId: identifier(d.questId, 'questId'), orgId: identifier(d.orgId, 'orgId'), areaId: identifier(d.areaId, 'areaId'),
     draftRevision: revision(d.draftRevision), publishedVersion, status: d.status, shootingAreaStatus: d.shootingAreaStatus,
-    draft: parseManagedQuestDraft(d.draft), source: d.source }
+    draft: parseManagedQuestDraft(d.draft), source: d.source,
+    ...(d.questNumber !== undefined ? { questNumber: d.questNumber } : {}) }
 }

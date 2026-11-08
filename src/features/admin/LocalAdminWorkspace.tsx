@@ -74,7 +74,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
     {result.status === 'ready' && (result.value.items.length === 0 ? <p>{section === 'quests' ? '問題はまだありません。' : '報告はまだありません。'}</p>
       : <ul className="admin-read-list">{result.value.items.map((item) => 'draft' in item
         ? <li key={item.questId}><strong>{item.draft.content.title || '無題の下書き'}</strong>
-          <p>{statusLabels[item.status]}</p>
+          <p>{statusLabels[item.status]}{item.questNumber && <> ・ No. {item.questNumber}</>}</p>
           <details><summary>詳細</summary>
             <p>問題 {item.questId}・下書き版 {item.draftRevision}{item.publishedVersion !== null && '・公開版 ' + item.publishedVersion}</p>
           </details>

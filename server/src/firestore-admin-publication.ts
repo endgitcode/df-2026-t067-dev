@@ -12,6 +12,7 @@ import { requirePublisher } from './firestore-org-memberships'
 import { draftPhotoFeatures } from './photo-match'
 import { maximumCatalogEntries } from './public-catalog-http'
 import { readMunicipalArea } from './municipal-areas'
+import { formatQuestNumber, isPrefectureCode } from '../../src/shared/api/validation'
 
 export type PublicationPhotos = Pick<AnswerPhotoStorage, 'readReference' | 'readHint'>
 
@@ -46,6 +47,10 @@ export class FirestoreManagedPublication {
       const area = await tx.get(this.db.collection('areas').doc(quest.areaId))
       const exploration = readMunicipalArea({ id: area.id, data: area.data() }, member)
       if (!exploration) throw new HttpError(409, 'REVIEW_REQUIRED', '所属自治体と下書きの探索エリアの対応を確認してください。')
+      // 問題番号（D-31）: 初回公開時に、その都道府県コードを持つ地域の問題としての連番を
+      // カウンタドキュメントで採番し、問題ドキュメントへ保存する。以後の版更新・休止・再公開では
+      // 保存値をそのまま使うため、番号は動かない。都道府県コードの無い地域の問題には付けない。
+      const questNumber = await ensureQuestNumber(tx, this.db, quest, area.get('prefectureCode'))
       const catalog = this.db.collection('questPublic')
       if (quest.publishedVersion === null && (await tx.get(catalog.limit(maximumCatalogEntries))).size >= maximumCatalogEntries) {
         throw new HttpError(429, 'RATE_LIMITED', '開発用の公開問題の上限に達しました。')
@@ -62,9 +67,10 @@ export class FirestoreManagedPublication {
         answerMaterial: { orgId, referenceAssetId: reference.assetId, referenceGeneration: reference.generation, features, zones },
         ...(hint ? { publicHintImage: { orgId, ...hint } } : {}),
         ...(hintAssets.some(Boolean) ? { publicHintImages: hintAssets.map((asset) => asset ? { orgId, ...asset } : null) } : {}) })
-      tx.set(catalog.doc(questId), projectManagedQuest(quest, version))
-      tx.update(ref, { publishedVersion: version, latestPublishedVersion: version, status: 'published', pauseReason: null })
-      return { ...quest, publishedVersion: version, status: 'published' }
+      tx.set(catalog.doc(questId), projectManagedQuest(quest, version, questNumber))
+      tx.update(ref, { publishedVersion: version, latestPublishedVersion: version, status: 'published', pauseReason: null,
+        ...(questNumber ? { questNumber } : {}) })
+      return { ...quest, publishedVersion: version, status: 'published', ...(questNumber ? { questNumber } : {}) }
     })
   }
 
@@ -113,6 +119,19 @@ export class FirestoreManagedPublication {
     const asset = readOrgAssetRecord(await tx.get(this.db.collection('orgAssets').doc(assetId)), orgId)
     return asset?.generation && asset.asset.purpose === purpose ? { assetId, generation: asset.generation } : null
   }
+}
+
+export async function ensureQuestNumber(tx: Transaction, db: Firestore, quest: ManagedQuest, prefectureCode: unknown): Promise<string | undefined> {
+  if (quest.questNumber) return quest.questNumber
+  if (!isPrefectureCode(prefectureCode)) return undefined
+  const counterRef = db.collection('questNumberCounters').doc(prefectureCode)
+  const counter = await tx.get(counterRef)
+  const lastSerial = counter.get('lastSerial')
+  const serial = (typeof lastSerial === 'number' && Number.isSafeInteger(lastSerial) && lastSerial >= 0 ? lastSerial : 0) + 1
+  if (!Number.isSafeInteger(serial)) throw draftConflict()
+  const questNumber = formatQuestNumber(prefectureCode, serial)
+  tx.set(counterRef, { lastSerial: serial })
+  return questNumber
 }
 
 function evidenceDigest(snapshot: DocumentSnapshot, quest: ManagedQuest, reference: AssetVersion, decision: PhotoDecision): string | undefined {

@@ -9,7 +9,7 @@ export function publicHintImagesPath(questId: string, index: number, version: nu
   return '/api/v1/quests/' + questId + '/hint-images/' + index + '?expectedVersion=' + version
 }
 
-export function projectManagedQuest(quest: ManagedQuest, version: number) {
+export function projectManagedQuest(quest: ManagedQuest, version: number, questNumber?: string) {
   const { questId, areaId, draft } = quest
   const { materials, content, hintAssetId } = draft
   const hintAssetIds = (draft.hintAssetIds ?? [null, null, null]).map((assetId, index) =>
@@ -20,6 +20,7 @@ export function projectManagedQuest(quest: ManagedQuest, version: number) {
   if (materials.price.trim()) conditions.push('料金 ' + materials.price.trim())
   if (materials.photoNote.trim()) conditions.push('撮影時の注意 ' + materials.photoNote.trim())
   const visible = parsePublicQuest({ questId, version, title: content.title.trim(), clue: content.question.trim(), areaId,
+    ...(questNumber !== undefined ? { questNumber } : {}),
     visitConditions: conditions.join('\n'), hintCount: content.hints.length,
     shootingConditions: { requiresBoat: materials.requiresBoat, requiresPaidFacility: materials.requiresPaidFacility },
     ...(hintAssetId && hintAssetIds[0] !== hintAssetId ? { optionalHintImage: publicHintImagePath(questId, version) } : {}),

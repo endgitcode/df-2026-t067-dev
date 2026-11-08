@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { area, capture, challenge, correct, discovery, processing, quest } from './testFixtures'
 import {
-  ContractError, parseAttemptResult, parseCaptureMetadata, parseChallenge,
+  ContractError, formatQuestNumber, parseAttemptResult, parseCaptureMetadata, parseChallenge,
   parseDiscovery, parsePage, parsePublicArea, parsePublicQuest,
 } from './validation'
 
@@ -42,6 +42,15 @@ describe('public data boundary', () => {
     for (const prefectureCode of ['1', '00', '48', 'ab', 13, null]) {
       expect(() => parsePublicArea({ ...area, prefectureCode })).toThrow(ContractError)
     }
+  })
+  it('keeps a valid quest number and rejects invalid ones', () => {
+    expect(parsePublicQuest({ ...quest, questNumber: '40-01' })).toEqual({ ...quest, questNumber: '40-01' })
+    expect(parsePublicQuest(quest)).not.toHaveProperty('questNumber')
+    for (const questNumber of ['40-1', '4-01', '4001', '40-00', '99-01', 4001, null]) {
+      expect(() => parsePublicQuest({ ...quest, questNumber })).toThrow(ContractError)
+    }
+    expect(formatQuestNumber('07', 3)).toBe('07-03')
+    expect(formatQuestNumber('40', 12)).toBe('40-12')
   })
   it('keeps a valid municipality code and rejects invalid ones', () => {
     expect(parsePublicArea({ ...area, municipalityCode: '07203' })).toEqual({ ...area, municipalityCode: '07203' })

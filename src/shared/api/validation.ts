@@ -134,12 +134,27 @@ export function parseShootingConditions(input: unknown): ShootingConditions {
   return { requiresBoat, requiresPaidFacility }
 }
 
+export function isQuestNumber(input: unknown): input is string {
+  if (typeof input !== 'string') return false
+  const match = /^([0-9]{2})-([0-9]{2,})$/u.exec(input)
+  return match !== null && isPrefectureCode(match[1]) && Number(match[2]) >= 1
+}
+
+export function formatQuestNumber(prefectureCode: string, serial: number): string {
+  if (!isPrefectureCode(prefectureCode) || !Number.isSafeInteger(serial) || serial < 1) throw new ContractError('questNumber')
+  return `${prefectureCode}-${String(serial).padStart(2, '0')}`
+}
+
 export function parsePublicQuest(input: unknown): PublicQuest {
-  const d = object(input, ['questId', 'version', 'title', 'clue', 'areaId', 'optionalHintImage', 'hintImages', 'visitConditions', 'hintCount', 'shootingConditions'], 'PublicQuest')
+  const d = object(input, ['questId', 'version', 'title', 'clue', 'areaId', 'questNumber', 'optionalHintImage', 'hintImages', 'visitConditions', 'hintCount', 'shootingConditions'], 'PublicQuest')
   const result: PublicQuest = {
     questId: text(d.questId, 'questId'), version: integer(d.version, 'version', 1),
     title: text(d.title, 'title'), clue: text(d.clue, 'clue'), areaId: text(d.areaId, 'areaId'),
     visitConditions: text(d.visitConditions, 'visitConditions'), hintCount: integer(d.hintCount, 'hintCount'),
+  }
+  if (d.questNumber !== undefined) {
+    if (!isQuestNumber(d.questNumber)) throw new ContractError('PublicQuest.questNumber')
+    result.questNumber = d.questNumber
   }
   if (d.optionalHintImage !== undefined) result.optionalHintImage = imageUrl(d.optionalHintImage, 'optionalHintImage')
   if (d.hintImages !== undefined) {

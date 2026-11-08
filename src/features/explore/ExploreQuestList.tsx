@@ -49,7 +49,7 @@ export function ExploreQuestList({ areas, quests, variant, highlightArea, select
               {thumbnail && <img src={thumbnail} alt="" />}
               <span className="explore-quest-main">
                 <span className="explore-quest-title">{quest.title}</span>
-                <span className="explore-quest-area">{areaLabel(quest.areaId)}</span>
+                <span className="explore-quest-area">{areaLabel(quest.areaId)}{quest.questNumber && <span className="explore-quest-number">No. {quest.questNumber}</span>}</span>
                 <span className="explore-quest-clue">{quest.clue}</span>
               </span>
               {cleared && <span className="explore-quest-cleared">クリア済み</span>}

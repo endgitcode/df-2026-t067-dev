@@ -20,6 +20,7 @@ export interface PublicQuest {
   title: string
   clue: string
   areaId: string
+  questNumber?: string
   optionalHintImage?: string
   hintImages?: (string | null)[]
   shootingConditions?: ShootingConditions
