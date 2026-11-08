@@ -68,6 +68,10 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const refreshButton = useRef<HTMLButtonElement>(null)
   const restoreRefreshFocus = useRef(false)
   const [staleQuest, setStaleQuest] = useState<{ questId: string; version: number } | null>(null)
+  // 地図が使える表示（シート／パネル表示）かどうかは MapPreview から受け取る。使える間は
+  // 問題の選択を地図連動のカード一覧とピンに一本化し、全件ピッカーと「公開情報を更新」は
+  // 地図が使えないフォールバック表示でのみ出す（D-43）。再取得の仕組み自体は変えない。
+  const [mapSheetMode, setMapSheetMode] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const catalog = useRef<{ api: Api; choices: Map<string, PublicQuest[]>; areas?: PublicArea[] } | null>(null)
   const clearRefreshNotice = () => {
@@ -289,12 +293,12 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
         ? 'この問題は公開されていないか、見つかりません。別の問題を選べます。'
         : 'サーバーとの通信を確認して、もう一度お試しください。'}</p>}
       {state !== 'loading' && <button type="button" onClick={(event) => reload(event)} disabled={refreshing}>再試行</button>}
-      {refreshControl}
-      {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode !== 'team-preview' && filterControls}{picker}</>}
+      {!mapSheetMode && refreshControl}
+      {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode !== 'team-preview' && filterControls}{!mapSheetMode && picker}</>}
     </section> : undefined
   return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={regionAreas} mapQuests={visibleChoices} onOpenQuest={openQuestFromMap} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
     areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
-    questPicker={<>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
+    questPicker={mapSheetMode ? undefined : <>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} onMapSheetModeChange={setMapSheetMode} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}
     onHintVersionStale={() => { if (quest) setStaleQuest({ questId: quest.questId, version: quest.version }) }}
     onReloadQuest={(event) => reload(event)} />

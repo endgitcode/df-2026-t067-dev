@@ -43,9 +43,13 @@ function pinIcon(color: string, count: number, emphasized = false): { url: strin
 
 const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
+  /** シート表示（地図が使えてカード一覧が出ている状態）かどうかを呼び出し側へ知らせる。
+      問題の選択手段の出し分け（地図が使える間はカード一覧に一本化し、全件ピッカーは
+      地図が使えないフォールバック専用にする、D-43）に使う。 */
+  onSheetModeChange?: (sheetMode: boolean) => void
   /** PC幅で地図の下に出ていた内容（問題の選択・詳細・注意書き）をサイドバーのパネル内へ寄せるための追加コンテンツ。
       パネル表示ではサイドバー内、地図が使えない時は通常フローのリスト末尾に出す。シート表示（スマホ幅）では出さない。 */
   panelExtra?: ReactNode
@@ -474,6 +478,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     document.body.classList.add('explore-fullbleed')
     return () => { document.body.classList.remove('explore-fullbleed') }
   }, [sheetMode])
+
+  // シート表示かどうかを呼び出し側へ知らせる（D-43）。コールバックの同一性に依存しないよう
+  // ref 経由で最新のものを呼び、アンマウント時は「地図は使えない」側へ戻す。地図が無い画面
+  // （記録画面や、フォールバックが本文になる永続側）でピッカーが消えたままにならないため。
+  const sheetModeChangeRef = useRef(onSheetModeChange)
+  useEffect(() => { sheetModeChangeRef.current = onSheetModeChange }, [onSheetModeChange])
+  useEffect(() => { sheetModeChangeRef.current?.(sheetMode) }, [sheetMode])
+  useEffect(() => () => { sheetModeChangeRef.current?.(false) }, [])
 
   // レイアウトが確定する遷移（全画面化・サイドバー方式への切替）では地図コンテナの
   // 大きさが変わる。コンテナ確定前に走ったフィットは実サイズに合わず、選択中なのに
