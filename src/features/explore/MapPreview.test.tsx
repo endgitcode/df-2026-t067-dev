@@ -146,6 +146,8 @@ describe('Google map panel', () => {
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeEnabled()
     expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 3, maxZoom: 20 })
     expect(mapOptions?.styles).toEqual(MAP_STYLES)
+    // 日本国内専用（D-27）：移動範囲は日本周辺に緩く制限する。
+    expect(mapOptions?.restriction).toEqual({ latLngBounds: { north: 50, south: 20, east: 158, west: 118 }, strictBounds: false })
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeEnabled()
     for (let zoom = 6; zoom <= 12; zoom++) await user.click(screen.getByRole('button', { name: '地図を拡大' }))
     expect(currentZoom).toBe(12)
