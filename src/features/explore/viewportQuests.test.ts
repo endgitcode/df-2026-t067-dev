@@ -16,6 +16,26 @@ describe('areaPinPosition', () => {
   })
 })
 
+const areaMulti: PublicArea = { areaId: 'area-multi', label: 'M', publishedCount: 1, marker: { latitude: 35.68, longitude: 139.72 },
+  publicGeometry: { type: 'MultiPolygon', coordinates: [
+    [[[139.70, 35.65], [139.74, 35.65], [139.74, 35.70], [139.70, 35.70], [139.70, 35.65]]],
+    [[[139.56, 35.53], [139.60, 35.53], [139.60, 35.58], [139.56, 35.58], [139.56, 35.53]]],
+    [[[139.88, 35.78], [139.92, 35.78], [139.92, 35.82], [139.88, 35.82], [139.88, 35.78]]],
+  ] } }
+
+describe('MultiPolygon areas (like the Tokyo demo area)', () => {
+  it('places the pin at the first polygon centroid, which lies inside the overall bounds', () => {
+    const position = areaPinPosition(areaMulti)
+    expect(position).toEqual({ lat: 35.675, lng: 139.72 })
+    const extent: ViewportBounds = { north: 35.82, south: 35.53, east: 139.92, west: 139.56 }
+    expect(pointInViewport(position!.lat, position!.lng, extent)).toBe(true)
+  })
+  it('keeps the area quest listed when the viewport is the full MultiPolygon extent', () => {
+    const extent: ViewportBounds = { north: 35.82, south: 35.53, east: 139.92, west: 139.56 }
+    expect(questsInViewport([areaMulti], [quest('q-m1', 'area-multi')], extent).map((item) => item.questId)).toEqual(['q-m1'])
+  })
+})
+
 describe('pointInViewport', () => {
   const bounds: ViewportBounds = { north: 36, south: 35, east: 140, west: 139 }
   it('accepts points inside and rejects points outside', () => {
