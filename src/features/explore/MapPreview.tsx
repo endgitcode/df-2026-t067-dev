@@ -74,9 +74,9 @@ function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | 
   return points
 }
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, onDeselectQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
-  quests?: PublicQuest[]; questsLoading?: boolean; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
+  quests?: PublicQuest[]; questsLoading?: boolean; onOpenQuest?: (questId: string) => void; onDeselectQuest?: () => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
   /** 探索画面が前面にあるか。記録画面の表示中は探索側を隠したまま常駐させるため、
       その間は全画面化のシェル（body クラス）を外し、シート表示の通知も止める。
       地図インスタンスやフィット記録は保持し、戻った時にそのまま続きから使える。 */
@@ -600,7 +600,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     scrollToHighlight={scrollToHighlight}
     detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget}
-    onOpenQuest={onOpenQuest} /> : null
+    onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} /> : null
   // 境界データの出典表記（N03 の利用条件）。短い文言で、パネル／シートの一番下に小さく出す（D-46）。
   const boundaryCredit = showBoundaryCredit && showPublicAreas
     ? <p className="map-boundary-credit">境界データ：国土数値情報N03（国土交通省）</p>

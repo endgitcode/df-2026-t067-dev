@@ -7,13 +7,16 @@ import type { PublicArea, PublicQuest } from '../../shared/api/types'
 // 行はタイトルだけの簡素な形にし、選んだ行の直下に詳細（QuestDetails）を開く
 // アコーディオンにする（D-46）。詳細を別枠で下に置くと、タイトルが一覧と詳細で
 // 二重に出てパネル／シートが煩雑になるため。
-export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, scrollToHighlight = true, detailContent, detailRef, loading = false }: {
+export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false }: {
   areas: PublicArea[]
   quests: PublicQuest[]
   highlightArea?: PublicArea
   selectedQuestId?: string
   clearedQuestIds?: ReadonlySet<string>
   onOpenQuest?: (questId: string) => void
+  /** 選択中の行をもう一度押した時の選択解除（D-55）。ピンの再タップ（D-44）と
+      揃え、行・カードでも再タップで選択を外せるようにする。 */
+  onDeselectQuest?: () => void
   /** 読み込み中は件数と「謎はありません」を出さず、行の場所だけを確保する。
       一瞬だけ「0件／空です」が見えるチラつきと、読み込み前後の大きさの変化を防ぐ。 */
   loading?: boolean
@@ -26,7 +29,8 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   detailRef?: RefObject<HTMLDivElement | null>
 }) {
   const listRef = useRef<HTMLUListElement>(null)
-  // アコーディオンを閉じた問題。選択自体は変えず、詳細の表示だけを畳む。
+  // アコーディオンを閉じた問題。選択解除の受け口が無い使われ方でのみ使い、
+  // 選択自体は変えず、詳細の表示だけを畳む（受け口がある場合は再タップ＝選択解除）。
   const [closedQuestId, setClosedQuestId] = useState('')
   // ピンで選ばれた地域の問題は先頭に寄せ、シートを開いた時にスクロールなしで先頭に出るようにする。
   const orderedQuests = highlightArea
@@ -44,10 +48,19 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   }, [highlightArea, scrollToHighlight])
 
   const handleRowClick = (questId: string) => {
-    // 選択中の行をもう一度押したら、選択はそのままにアコーディオンを開閉する。
-    if (detailContent && questId === selectedQuestId) {
-      setClosedQuestId((current) => (current === questId ? '' : questId))
-      return
+    if (questId === selectedQuestId) {
+      // 選択中の行の再タップは選択解除に統一する（D-55、ピンの再タップ D-44 と同じ）。
+      // 解除すると詳細も閉じ、地図は未選択の表示へ戻る。解除の受け口が無い使われ方
+      // では、従来どおりアコーディオンの開閉だけを行う。
+      if (onDeselectQuest) {
+        setClosedQuestId('')
+        onDeselectQuest()
+        return
+      }
+      if (detailContent) {
+        setClosedQuestId((current) => (current === questId ? '' : questId))
+        return
+      }
     }
     onOpenQuest?.(questId)
   }

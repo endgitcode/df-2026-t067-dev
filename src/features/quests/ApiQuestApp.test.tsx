@@ -683,7 +683,7 @@ describe('APIから問題を表示', () => {
     expect(screen.getByText('森エリアのピン')).toBeVisible()
   })
 
-  it('「場所で絞る」は開閉でき、選ぶと閉じて、「全国」でリセットできる（D-48）', async () => {
+  it('「場所で絞る」は開閉でき、選ぶと閉じて、選択中の地方の再タップで解除できる（D-48/D-55）', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
     const tokyo = { ...areas[0], prefectureCode: '13' }
@@ -698,15 +698,54 @@ describe('APIから問題を表示', () => {
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: '関東' })).toBeVisible()
+    // 「全国」チップは置かない。何も選んでいない状態が全国（D-55）。
+    expect(screen.queryByRole('button', { name: '全国' })).not.toBeInTheDocument()
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: '関東' })).not.toBeInTheDocument()
     await clickFilterChip(user, '関東')
     expect(screen.getByRole('button', { name: '場所で絞る：関東' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('森エリアのピン')).not.toBeInTheDocument()
-    await clickFilterChip(user, '全国')
+    // 選択中の地方をもう一度押すと解除され、全国の表示に戻る。
+    await clickFilterChip(user, '関東')
     expect(screen.getByRole('button', { name: '場所で絞る' })).toBeVisible()
     expect(screen.getByText('森エリアのピン')).toBeVisible()
+  })
+
+  it('都道府県チップも再タップで解除でき、「地方内すべて」チップは置かない（D-55）', async () => {
+    const user = userEvent.setup()
+    const api = apiFixture()
+    const tokyo = { ...areas[0], prefectureCode: '13' }
+    const osaka = { ...areas[1], prefectureCode: '27' }
+    api.listAreas.mockResolvedValue(page([tokyo, osaka]))
+    api.listQuests.mockResolvedValue(page([first, second]))
+    render(<ApiQuestApp api={api} dataMode="team-preview" />)
+    await screen.findByRole('heading', { name: first.title })
+    await clickFilterChip(user, '関東')
+    await openFilterPanel(user)
+    expect(screen.queryByRole('button', { name: '地方内すべて' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '東京都' }))
+    expect(screen.getByRole('button', { name: '場所で絞る：関東・東京都' })).toBeVisible()
+    // 選択中の都道府県をもう一度押すと都道府県の指定だけが外れ、地方は残る。
+    await clickFilterChip(user, '東京都')
+    expect(screen.getByRole('button', { name: '場所で絞る：関東' })).toBeVisible()
+    expect(screen.getByText('川辺エリアのピン')).toBeVisible()
+  })
+
+  it('選択中の問題をもう一度選ぶと選択が解除され、全件表示に戻る（D-55）', async () => {
+    const user = userEvent.setup()
+    const api = apiFixture()
+    api.listQuests.mockImplementation(async (query?: { areaId?: string }) => query?.areaId === 'area-b' ? page([second]) : page([first, second]))
+    render(<ApiQuestApp api={api} />)
+    await screen.findByRole('heading', { name: first.title })
+    await user.click(screen.getByRole('button', { name: `${second.title}を開く` }))
+    expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-b')
+    // 地域まで含めて選択済みの問題をもう一度選ぶと、ピンの再タップと同じく選択が外れる。
+    await user.click(screen.getByRole('button', { name: `${second.title}を開く` }))
+    expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
+    expect(new URLSearchParams(window.location.search).get('quest') ?? '').toBe(first.questId)
   })
 
   it('地図のピンをもう一度押すと地域選択が解除され、全件表示に戻る', async () => {
@@ -732,8 +771,8 @@ describe('APIから問題を表示', () => {
     expect(screen.queryByRole('button', { name: '関東' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '全国' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '場所で絞る' }))
-    // 「全国」は展開内のリセットとして置く。fixture の地域はどちらも都道府県コードを持たない（未分類）だが、絞り込みチップとしては出さない。
-    expect(screen.getByRole('button', { name: '全国' })).toHaveAttribute('aria-pressed', 'true')
+    // 「全国」チップは置かない（D-55）。fixture の地域はどちらも都道府県コードを持たない（未分類）だが、絞り込みチップとしては出さない。
+    expect(screen.queryByRole('button', { name: '全国' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '未分類' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '一覧表示用タイトルを開く' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '森の謎を開く' })).toBeInTheDocument()
