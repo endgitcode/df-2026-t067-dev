@@ -177,6 +177,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 記録し直す。選択中の地域をもう一度押した時、カメラがこの位置から動いていれば「解除」
   // ではなく「もう一度寄せる」を優先するための判定材料（利用者は移行を期待して押している）。
   const fittedCamera = useRef<{ map: MapInstance; areaId: string; center: { lat: number; lng: number }; zoom: number } | null>(null)
+  // フィット完了の記録待ちリスナー（idle／dragstart）。次のフィット開始時に打ち切る。
+  const pendingFitListeners = useRef<Array<{ remove(): void }>>([])
   // 地域の範囲へ地図をフィットさせる共通処理。選択時フィットと、再タップ時の再フィットで使う。
   // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
   // 実際に見えている領域の中央に来るようにする。
@@ -188,17 +190,36 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     const bounds = new google.LatLngBounds()
     points.forEach((point) => bounds.extend(point))
     fittedCamera.current = null
+    for (const pending of pendingFitListeners.current) { try { pending.remove() } catch { /* SDK teardown is best effort. */ } }
+    pendingFitListeners.current = []
     if (showPublicAreas) {
       instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
     } else instance.fitBounds(bounds)
     try {
-      const listener = instance.addListener('idle', () => {
-        try { listener.remove() } catch { /* SDK teardown is best effort. */ }
+      // フィット完了（idle）前に利用者が地図を掴んだら、その回の完了位置は記録しない
+      // （PR #65 への taitai のレビュー指摘 [P2]）。ドラッグで止まった位置をフィット完了位置と
+      // して記録すると、再タップ時に「フィット位置にいる」と誤認し、寄せ直さず選択を解除してしまう。
+      // リスナーの削除だけに頼らず、割り込みフラグでも記録を止める（idle が後から届いても無効）。
+      let interrupted = false
+      let settled = false
+      const myListeners: Array<{ remove(): void }> = []
+      const settle = () => {
+        if (settled) return
+        settled = true
+        for (const pending of myListeners) { try { pending.remove() } catch { /* SDK teardown is best effort. */ } }
+        if (pendingFitListeners.current === myListeners) pendingFitListeners.current = []
+      }
+      const idleListener = instance.addListener('idle', () => {
+        settle()
+        if (interrupted) return
         try {
           const center = instance.getCenter?.()
           if (center) fittedCamera.current = { map: instance, areaId: area.areaId, center: { lat: center.lat(), lng: center.lng() }, zoom: instance.getZoom() ?? INITIAL_ZOOM }
         } catch { /* カメラが読めなければ記録なし（再タップ時は再フィット優先のまま）。 */ }
       })
+      const dragListener = instance.addListener('dragstart', () => { interrupted = true; settle() })
+      myListeners.push(idleListener, dragListener)
+      pendingFitListeners.current = myListeners
     } catch { /* リスナーを付けられない環境では記録を諦める。 */ }
     return true
   }, [showPublicAreas, wideViewport])

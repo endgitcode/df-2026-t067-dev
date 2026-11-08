@@ -394,6 +394,49 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('does not record the fit position when a drag interrupts the fit, so a re-tap refits instead of deselecting', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let center = { lat: 36.2048, lng: 138.2529 }
+    let zoom = 5
+    const idleCallbacks: Array<() => void> = []
+    const dragCallbacks: Array<() => void> = []
+    const fitBounds = vi.fn(() => { center = { lat: 35.5, lng: 139.5 }; zoom = 11 })
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn(), setZoom: vi.fn(),
+      getCenter: () => ({ lat: () => center.lat, lng: () => center.lng }), getZoom: () => zoom,
+      addListener: (name: string, callback: () => void) => {
+        if (name === 'idle') idleCallbacks.push(callback)
+        if (name === 'dragstart') dragCallbacks.push(callback)
+        return { remove() {} }
+      } }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const instances: Marker[] = []
+    class Marker {
+      setMap() {}
+      click?: () => void
+      constructor() { instances.push(this) }
+      addListener(name: string, callback: () => void) { if (name === 'click') this.click = callback; return { remove() {} } }
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSelectArea = vi.fn()
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" onSelectArea={onSelectArea} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(instances).toHaveLength(1))
+    // フィット完了（idle）の前に利用者が地図を掴み、別の場所で止めた状態を再現する（PR #65 指摘のケース）。
+    act(() => { dragCallbacks.splice(0).forEach((callback) => callback()) })
+    center = { lat: 34.0, lng: 135.0 }; zoom = 9
+    // ドラッグ後に静止しても、その位置はフィット完了位置として記録されない。
+    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
+    fitBounds.mockClear()
+    act(() => instances[0].click?.())
+    // ドラッグ先にいるカメラを「フィット位置」と誤認せず、解除ではなく寄せ直しに倒れる。
+    expect(onSelectArea).not.toHaveBeenCalled()
+    expect(fitBounds).toHaveBeenCalledTimes(1)
+    unmount()
+    delete window.google
+  })
+
   it('selects the area from its pin even when a quest is already selected without an area', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
