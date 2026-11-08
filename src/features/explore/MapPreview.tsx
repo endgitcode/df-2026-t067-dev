@@ -717,7 +717,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>
     {sheetMode && !panelMode && (pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
-      className="explore-sheet-reopen map-browse-shortcut"
+      className={'explore-sheet-reopen map-browse-shortcut' + (pastMap ? ' is-return-to-map' : '')}
+      inert={!pastMap && sheetHeight > 48} aria-hidden={!pastMap && sheetHeight > 48} disabled={!pastMap && sheetHeight > 48}
       onClick={pastMap ? returnToMap : browseQuests}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
     {belowMap && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
       {renderQuestList(false, true)}
