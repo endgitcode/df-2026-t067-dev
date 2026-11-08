@@ -6,14 +6,26 @@ import { useWideViewport } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
-import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
+import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance, type PolygonInstance } from './googleMapsLoader'
+import { JAPAN_OUTLINE_RINGS } from './japanOutline'
 import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
 import { areaPinPosition, questsInViewport, type ViewportBounds } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
-// 日本国内専用（D-27）：地図の移動範囲を日本周辺に緩く制限する。strictBounds は使わず、端では柔らかく止める。
-const JAPAN_BOUNDS = { north: 50, south: 20, east: 158, west: 118 }
-const MIN_ZOOM = 3
+// 日本国内専用（D-27／D-41）：地図の移動範囲を日本の周辺に制限する。strictBounds は使わず、端では柔らかく止める。
+// 境界は日本の領土（北端の宗谷岬45.5度・南端の波照間島24.1度・西端の与那国島123.0度・東端の納沙布岬145.8度）が
+// すべて収まり、10のデモ地域と郡山の代表点からも緯度3度・経度5度以上の余裕がある範囲に絞った（D-41）。
+const JAPAN_BOUNDS = { north: 46.5, south: 23, east: 147, west: 122 }
+// これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
+// 初期表示の日本全体フィットは小さい画面でも 4.5 を下回らないため、その下限に合わせる。
+const MIN_ZOOM = 4.5
+// 日本の外側を薄く落とすベール（D-41）。世界全体を覆う矩形から日本の輪郭（japanOutline）をくり抜いた
+// ポリゴンを、ベースタイルより上・地域の塗りとピンより下に重ねる。消すのではなく沈める濃さにする。
+const OUTSIDE_JAPAN_VEIL_COLOR = '#3f4a56'
+const OUTSIDE_JAPAN_VEIL_OPACITY = 0.38
+const WORLD_RING: ReadonlyArray<{ lat: number; lng: number }> = [
+  { lat: -85, lng: -180 }, { lat: -85, lng: 180 }, { lat: 85, lng: 180 }, { lat: 85, lng: -180 }, { lat: -85, lng: -180 },
+]
 const INITIAL_ZOOM = 5
 const MAX_ZOOM = 20
 const LOCATION_ZOOM = 14
@@ -47,6 +59,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
 }) {
   const target = useRef<HTMLDivElement>(null)
   const map = useRef<MapInstance | null>(null)
+  const veil = useRef<PolygonInstance | null>(null)
   const dataLayer = useRef<DataLayer | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
   // PC幅（981px以上）ではボトムシートを使わず、左サイドバーのパネルに一覧を出す（D-34）。
@@ -151,6 +164,19 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         }) as MapInstance
         if (authFailed) return
         map.current = instance
+        // 日本の外側を薄く落とすベールは、地域レイヤーより先に地図へ載せて下に置く（D-41）。
+        // 装飾のため、作れなくても地図本体は使える状態を保つ。
+        try {
+          if (google.Polygon) {
+            const japanVeil = new google.Polygon({
+              paths: [WORLD_RING, ...JAPAN_OUTLINE_RINGS.map((ring) => ring.map(([lng, lat]) => ({ lat, lng })))],
+              fillColor: OUTSIDE_JAPAN_VEIL_COLOR, fillOpacity: OUTSIDE_JAPAN_VEIL_OPACITY,
+              strokeWeight: 0, clickable: false,
+            })
+            japanVeil.setMap(instance)
+            veil.current = japanVeil
+          }
+        } catch { /* ベールが表示できなくても地図は利用できる。 */ }
         try {
           const layer = new google.Data()
           layer.setMap(instance)
@@ -188,6 +214,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       unsubscribeAuth()
       try { zoomListener?.remove() } catch { /* SDK teardown is best effort. */ }
       try { idleListener?.remove() } catch { /* SDK teardown is best effort. */ }
+      try { veil.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
+      veil.current = null
       try { dataLayer.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
       dataLayer.current = null
       map.current = null

@@ -128,7 +128,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('starts at zoom 5 and allows zooming through 12 up to the max of 20, then stops and respects min 3', async () => {
+  it('starts at zoom 5 and allows zooming through 12 up to the max of 20, then stops and respects min 4.5', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     let currentZoom = 5
@@ -144,10 +144,10 @@ describe('Google map panel', () => {
     const user = userEvent.setup()
     render(<ConfiguredMapPreview />)
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeEnabled()
-    expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 3, maxZoom: 20 })
+    expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 4.5, maxZoom: 20 })
     expect(mapOptions?.styles).toEqual(MAP_STYLES)
-    // 日本国内専用（D-27）：移動範囲は日本周辺に緩く制限する。
-    expect(mapOptions?.restriction).toEqual({ latLngBounds: { north: 50, south: 20, east: 158, west: 118 }, strictBounds: false })
+    // 日本国内専用（D-27／D-41）：移動範囲は日本の領土とデモ地域が余裕を持って収まる範囲に制限する。
+    expect(mapOptions?.restriction).toEqual({ latLngBounds: { north: 46.5, south: 23, east: 147, west: 122 }, strictBounds: false })
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeEnabled()
     for (let zoom = 6; zoom <= 12; zoom++) await user.click(screen.getByRole('button', { name: '地図を拡大' }))
     expect(currentZoom).toBe(12)
@@ -157,10 +157,43 @@ describe('Google map panel', () => {
     expect(screen.getByRole('button', { name: '地図を拡大' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: '地図を縮小' }))
     expect(currentZoom).toBe(19)
-    for (let zoom = 18; zoom >= 3; zoom--) await user.click(screen.getByRole('button', { name: '地図を縮小' }))
-    expect(currentZoom).toBe(3)
+    for (let zoom = 18; zoom >= 5; zoom--) await user.click(screen.getByRole('button', { name: '地図を縮小' }))
+    expect(currentZoom).toBe(5)
+    // 最小ズーム 4.5（D-41）で止まり、それ以上は引けない。
+    await user.click(screen.getByRole('button', { name: '地図を縮小' }))
+    expect(currentZoom).toBe(4.5)
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeDisabled()
-    expect(setZoom).toHaveBeenLastCalledWith(3)
+    expect(setZoom).toHaveBeenLastCalledWith(4.5)
+    delete window.google
+  })
+
+  it('dims everything outside Japan with a click-through veil placed under the area layer', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const order: string[] = []
+    let veilOptions: Record<string, unknown> | undefined
+    const veilSetMap = vi.fn()
+    class Polygon { constructor(options: Record<string, unknown>) { veilOptions = options; order.push('veil') } setMap = veilSetMap }
+    class Data { setMap() { order.push('data:setMap') } addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const map = { ...mapInstance }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Polygon, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { JAPAN_OUTLINE_RINGS } = await import('./japanOutline')
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} />)
+    expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeVisible()
+    await waitFor(() => expect(veilOptions).toBeDefined())
+    // ベールは地図操作を妨げず（clickable: false）、枠線も引かない（D-41）。
+    expect(veilOptions).toMatchObject({ clickable: false, strokeWeight: 0, fillOpacity: 0.38 })
+    const paths = veilOptions?.paths as Array<Array<{ lat: number; lng: number }>>
+    expect(paths).toHaveLength(JAPAN_OUTLINE_RINGS.length + 1)
+    // 先頭は世界全体の矩形で、以降は日本の輪郭（[経度, 緯度] から {lat, lng} へ変換済み）。
+    expect(paths[0]).toHaveLength(5)
+    expect(paths[1][0]).toEqual({ lat: JAPAN_OUTLINE_RINGS[0][0][1], lng: JAPAN_OUTLINE_RINGS[0][0][0] })
+    expect(veilSetMap).toHaveBeenCalledWith(map)
+    // ベールは地域レイヤーより先に地図へ載る（重なり順で下になる）。
+    expect(order.indexOf('veil')).toBeLessThan(order.indexOf('data:setMap'))
+    unmount()
+    expect(veilSetMap).toHaveBeenLastCalledWith(null)
     delete window.google
   })
 
