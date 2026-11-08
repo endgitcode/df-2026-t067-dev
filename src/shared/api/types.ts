@@ -10,6 +10,7 @@ export interface PublicArea {
   publicGeometry: PublicGeometry
   marker: Position
   publishedCount: number
+  prefectureCode?: string
 }
 export interface ShootingConditions { requiresBoat: boolean; requiresPaidFacility: boolean }
 export interface PublicQuest {
