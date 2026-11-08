@@ -120,6 +120,33 @@ describe('探索画面の縁なし（全画面）表示', () => {
     narrow.unmount()
   })
 
+  it('PC幅では地図の下に出ていた選択・注意書き類もサイドバー内に入り、スマホ幅では従来どおり地図の下に出る', async () => {
+    vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
+    stubViewport(true)
+    const wide = render(<TeamPreview authClient={auth} />)
+    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    const panel = wide.container.querySelector('.explore-side-panel')
+    expect(panel).not.toBeNull()
+    // 問題の選択（更新ボタン）・閲覧の案内・共有検証の注記・フッターの文言がサイドバー内にある。
+    expect(panel?.querySelector('.api-quest-picker')).not.toBeNull()
+    expect(within(panel as HTMLElement).getByRole('button', { name: '公開情報を更新' })).toBeVisible()
+    expect(panel?.querySelector('.browse-note')).not.toBeNull()
+    expect(panel?.querySelector('.demo-note')).not.toBeNull()
+    expect(panel?.querySelector('.side-panel-footer-note')?.textContent).toContain('場所・問題は架空の開発用デモです')
+    // 地図の下のレールは出さない。
+    expect(wide.container.querySelector('.quest-rail')).toBeNull()
+    wide.unmount()
+    // スマホ幅では従来どおり、注意書き類は地図の下のレールに出る。
+    stubViewport(false)
+    const narrow = render(<TeamPreview authClient={auth} />)
+    expect(await screen.findByRole('region', { name: '表示範囲の謎' })).toBeVisible()
+    const rail = narrow.container.querySelector('.quest-rail')
+    expect(rail).not.toBeNull()
+    expect(rail?.querySelector('.demo-note')).not.toBeNull()
+    expect(narrow.container.querySelector('.explore-side-panel')).toBeNull()
+    narrow.unmount()
+  })
+
   it('スマホ幅（981px未満）でもシート表示の間は全画面化され、浮動化した導線に到達できる', async () => {
     await runScenario(false)
   })
