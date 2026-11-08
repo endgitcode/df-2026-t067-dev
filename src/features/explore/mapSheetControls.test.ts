@@ -58,8 +58,16 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
     expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); z-index: 3; }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
-    expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute;')
-    expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 44px;')
+    const reopenRule = 'body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px;'
+    expect(css).toContain(reopenRule)
+    expect(css).toContain('body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-browse-shortcut.is-return-to-map { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }')
+    expect(css).toContain('body.explore-fullbleed .map-browse-shortcut[inert] { visibility: hidden; pointer-events: none; }')
+    expect(css).not.toContain('bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6;')
+    // 同じ固定位置のまま、通常時・ドラッグ中ともシート（z-index 7）の背面に残す。
+    expect(css).toContain('.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4;')
+    expect(css).toContain('.explore-sheet { left: 0; right: 0; bottom: 0; z-index: 7;')
+    expect(css).not.toContain('.explore-sheet.is-dragging { z-index:')
   })
 
   it('stacks the area chip after the filter flow so one and two filter rows cannot overlap it', () => {
@@ -221,7 +229,7 @@ describe('filter motion (D-55)', () => {
     expect(css).toContain('.map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }')
     expect(css).toContain('.map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible;')
     expect(css).toContain('@media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }')
-    expect(css).toContain('.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }')
+    expect(css).toContain('.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }')
   })
 
   it('glides the floating elements sideways when the PC sidebar collapses', () => {

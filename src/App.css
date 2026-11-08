@@ -88,8 +88,8 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 @media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }
 .map-filter-chips { display: flex; gap: 8px; max-width: 100%; overflow-x: auto; padding: 2px; pointer-events: auto; scrollbar-width: none; }
 .map-filter-chips::-webkit-scrollbar { display: none; }
-.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
-.filter-toggle { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; }
+.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
+.filter-toggle { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; }
 .filter-chip[aria-pressed="true"] { background: var(--ui-accent); }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .api-load-state .map-filter-panel { margin-top: 18px; }
@@ -497,8 +497,10 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
   body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); }
   body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); z-index: 3; }
-  body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6; display: block; min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
-  body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }
+  body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
+  body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; }
+  body.explore-fullbleed .map-browse-shortcut.is-return-to-map { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }
+  body.explore-fullbleed .map-browse-shortcut[inert] { visibility: hidden; pointer-events: none; }
   body.explore-fullbleed .map-preview-shell:has(.explore-sheet.is-dragging) + .map-browse-shortcut { display: none; }
   body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
   /* フッター廃止（D-39）に伴い、レールの末尾の下部余白はレール側で確保する。 */

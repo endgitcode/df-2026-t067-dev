@@ -7,23 +7,72 @@
     <title>全国観光謎アプリ</title>
     <style>
       /* React が起動するまでの初期表示（D-50）。アプリ側の CSS はまだ読まれていないため、
-         テーマの色味だけをここに直接書く。本体が描画されると #root の中身ごと置き換わる。 */
+         テーマの色味と枠の寸法だけをここに直接書く。本体が描画されると #root の中身ごと置き換わる。
+         枠はアプリ本体の探索画面と同じ形にする（D-50 追記）：PC は左カラム
+         （theme.css/App.css の --pc-sidebar-w: 380px、ナビ 68px、余白 16px）と地図エリア、
+         スマホは全画面の地図＋下部シート＋タブバー。寸法を変える時は App.css 側と合わせること。 */
       body { margin: 0; }
-      .boot-splash { min-height: 100dvh; display: grid; place-items: center; background: #fffdf5; color: #1d1d1b; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; }
-      .boot-card { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 28px 34px; border: 2px solid #1d1d1b; border-radius: 16px; background: #ffffff; box-shadow: 6px 6px 0 #ffe66b; }
-      .boot-brand { font-size: 20px; font-weight: 700; letter-spacing: .02em; }
+      .boot-shell { position: fixed; inset: 0; background: #c5e8f5; color: #1d1d1b; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; }
       .boot-status { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; }
-      .boot-dot { width: 10px; height: 10px; border: 2px solid #1d1d1b; border-radius: 50%; background: #ffe66b; animation: boot-pulse 900ms ease-in-out infinite alternate; }
+      .boot-dot { flex: none; width: 10px; height: 10px; border: 2px solid #1d1d1b; border-radius: 50%; background: #ffe66b; animation: boot-pulse 900ms ease-in-out infinite alternate; }
+      /* 一覧の仮の行（App.css の .explore-quest-skeleton と同じ色・明滅、D-54） */
+      .boot-skeleton { background: #c7ed93; animation: boot-skeleton-pulse 1200ms ease-in-out infinite alternate; }
       @keyframes boot-pulse { from { transform: scale(.7); opacity: .5; } to { transform: scale(1); opacity: 1; } }
-      @media (prefers-reduced-motion: reduce) { .boot-dot { animation: none; } }
+      @keyframes boot-skeleton-pulse { from { opacity: .45; } to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { .boot-dot, .boot-skeleton { animation: none; } }
+
+      /* スマホ：全画面の地図に、ブランドチップ・下部シート・タブバーの枠を置く */
+      .boot-frame-pc { display: none; }
+      .boot-brand-chip { position: absolute; top: 12px; left: 12px; padding: 7px 12px; border: 2px solid #1d1d1b; border-radius: 16px; background: #ffffff; box-shadow: 3px 3px 0 #1d1d1b; font-size: 13px; font-weight: 700; }
+      .boot-sheet { position: absolute; left: 0; right: 0; bottom: 70px; height: 196px; box-sizing: border-box; padding: 12px 16px; background: #ffffff; border-top: 2px solid #1d1d1b; border-radius: 24px 24px 0 0; }
+      .boot-handle { width: 44px; height: 5px; margin: 0 auto 14px; border-radius: 999px; background: #1d1d1b; opacity: .25; }
+      .boot-row { height: 44px; margin-top: 10px; }
+      .boot-tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 70px; box-sizing: border-box; display: flex; gap: 8px; padding: 8px 12px; background: #ffffff; border-top: 2px solid #1d1d1b; }
+      .boot-tab { flex: 1; border-radius: 16px; }
+
+      /* PC（App.css のサイドバー適用幅 981px 以上）：左カラム＋地図エリア */
+      @media (min-width: 981px) {
+        .boot-frame-mobile { display: none; }
+        .boot-frame-pc { display: block; }
+        .boot-nav { position: absolute; top: 16px; left: 16px; width: 380px; height: 68px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #ffffff; border-radius: 24px 24px 0 0; }
+        .boot-nav span { flex: 1; text-align: center; font-size: 13px; }
+        .boot-nav .is-active { font-weight: 700; }
+        .boot-chip { position: absolute; top: 16px; left: 420px; padding: 5px 11px; border: 2px solid #1d1d1b; border-radius: 16px; background: #ffffff; box-shadow: 3px 3px 0 #1d1d1b; font-size: 12px; font-weight: 700; }
+        .boot-panel { position: absolute; top: 84px; left: 16px; bottom: 16px; width: 380px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 20px; background: #ffffff; border: 2px solid #1d1d1b; border-top: 0; border-radius: 0 0 24px 24px; box-shadow: 6px 6px 0 #1d1d1b; }
+        .boot-pill { flex: none; width: 132px; height: 36px; border-radius: 999px; }
+        .boot-panel .boot-row { flex: none; margin-top: 0; }
+      }
     </style>
   </head>
   <body>
     <div id="root">
-      <div class="boot-splash" role="status" aria-label="アプリを読み込み中">
-        <div class="boot-card">
-          <span class="boot-brand">全国観光謎アプリ</span>
-          <p class="boot-status"><span class="boot-dot" aria-hidden="true"></span>読み込み中…</p>
+      <div class="boot-shell" role="status" aria-label="アプリを読み込み中">
+        <div class="boot-frame-mobile" aria-hidden="true">
+          <span class="boot-brand-chip">全国観光謎アプリ</span>
+          <div class="boot-sheet">
+            <div class="boot-handle"></div>
+            <p class="boot-status"><span class="boot-dot"></span>読み込み中…</p>
+            <div class="boot-row boot-skeleton"></div>
+            <div class="boot-row boot-skeleton"></div>
+          </div>
+          <div class="boot-tabbar">
+            <div class="boot-tab boot-skeleton"></div>
+            <div class="boot-tab boot-skeleton"></div>
+          </div>
+        </div>
+        <div class="boot-frame-pc" aria-hidden="true">
+          <div class="boot-nav"><span class="is-active">謎を探す</span><span>自分の記録</span></div>
+          <span class="boot-chip">全国観光謎アプリ</span>
+          <div class="boot-panel">
+            <p class="boot-status"><span class="boot-dot"></span>読み込み中…</p>
+            <div class="boot-pill boot-skeleton"></div>
+            <div class="boot-row boot-skeleton"></div>
+            <div class="boot-row boot-skeleton"></div>
+            <div class="boot-row boot-skeleton"></div>
+            <div class="boot-row boot-skeleton"></div>
+            <div class="boot-row boot-skeleton"></div>
+            <div class="boot-row boot-skeleton"></div>
+          </div>
         </div>
       </div>
     </div>

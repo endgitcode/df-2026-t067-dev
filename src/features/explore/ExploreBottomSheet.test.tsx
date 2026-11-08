@@ -13,6 +13,10 @@ describe('ExploreBottomSheet', () => {
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect((sheet as HTMLElement).style.height).toBe('128px')
     expect(screen.getByRole('button', { name: '謎リストを広げる' })).toHaveAttribute('aria-expanded', 'false')
+    const reopen = container.querySelector('.explore-sheet-reopen') as HTMLButtonElement
+    expect(reopen).toHaveAttribute('inert')
+    expect(reopen).toBeDisabled()
+    expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
     expect(screen.getByText('リスト本文')).toBeVisible()
     expect(onHeightChange).toHaveBeenLastCalledWith(128)
   })
@@ -21,7 +25,7 @@ describe('ExploreBottomSheet', () => {
     const user = userEvent.setup()
     const { container } = render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>)
     const sheet = container.querySelector('.explore-sheet')
-    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
     expect(sheet).toHaveAttribute('data-snap', 'half')
     expect((sheet as HTMLElement).style.height).toBe('352px')
     expect(screen.getByRole('button', { name: '謎リストを縮める' })).toHaveAttribute('aria-expanded', 'true')
@@ -91,6 +95,43 @@ describe('ExploreBottomSheet', () => {
     fireEvent.pointerDown(openHandle, { pointerId: 5, pointerType: 'touch', clientY: 400 })
     fireEvent.pointerMove(openHandle, { pointerId: 5, pointerType: 'touch', clientY: 200 })
     fireEvent.pointerUp(openHandle, { pointerId: 5, pointerType: 'touch', clientY: 200 })
+    expect(sheet).toHaveAttribute('data-snap', 'half')
+  })
+
+  it('removes the reopen button from focus when a drag makes the sheet cover it', () => {
+    const { container } = render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>)
+    const sheet = container.querySelector('.explore-sheet') as HTMLElement
+    const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+    fireEvent.pointerDown(handle, { pointerId: 10, pointerType: 'touch', clientY: 300 })
+    fireEvent.pointerMove(handle, { pointerId: 10, pointerType: 'touch', clientY: 400 })
+    fireEvent.pointerUp(handle, { pointerId: 10, pointerType: 'touch', clientY: 400 })
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+
+    const reopen = container.querySelector('.explore-sheet-reopen') as HTMLButtonElement
+    reopen.focus()
+    fireEvent.pointerDown(handle, { pointerId: 11, pointerType: 'touch', clientY: 400 })
+    fireEvent.pointerMove(handle, { pointerId: 11, pointerType: 'touch', clientY: 350 })
+    expect(reopen).toHaveAttribute('inert')
+    expect(reopen).toBeDisabled()
+    expect(document.activeElement).toBe(handle)
+    fireEvent.pointerUp(handle, { pointerId: 11, pointerType: 'touch', clientY: 350 })
+    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the closed-sheet button available to reopen the list', async () => {
+    const user = userEvent.setup()
+    const onBrowseBelowMap = vi.fn()
+    const { container } = render(<ExploreBottomSheet onBrowseBelowMap={onBrowseBelowMap}><p>リスト本文</p></ExploreBottomSheet>)
+    const sheet = container.querySelector('.explore-sheet')
+
+    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    expect(sheet).toHaveAttribute('data-snap', 'half')
+    await user.click(screen.getByRole('button', { name: '謎リストを縮める' }))
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    expect(onBrowseBelowMap).not.toHaveBeenCalled()
     expect(sheet).toHaveAttribute('data-snap', 'half')
   })
 

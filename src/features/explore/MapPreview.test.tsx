@@ -919,29 +919,36 @@ describe('Google map panel', () => {
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     expect(sheet.style.height).toBe(`${SHEET_PEEK_HEIGHT}px`)
     expect(SHEET_PEEK_HEIGHT).toBe(128)
-    expect(screen.getByRole('button', { name: '問題を見る' })).not.toHaveAttribute('aria-expanded')
+    expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
     // 呼び出し側が選択を切り替えると、詳細は新しい選択行の直下へ移る。
     rerender(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q1" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('港の時計台')} />)
+    const mapShell = container.querySelector('.map-preview-shell') as HTMLElement
+    vi.spyOn(mapShell, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ x: 0, y: 0, width: 400, height: 0 }))
+    fireEvent.scroll(window)
     const scroll = vi.fn()
     const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
     HTMLElement.prototype.scrollIntoView = scroll
-    await user.click(screen.getByRole('button', { name: '問題を見る' }))
-    // 「問題を見る」の着地は、地図下の一覧へ移った詳細のタイトル（#70、D-46）。
-    const belowMap = screen.getByRole('region', { name: '地図の下の問題一覧' })
+    // シートが伸びても「地図に戻る」は固定位置で前面に残る。
+    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    const browseShortcut = container.querySelector('.map-browse-shortcut') as HTMLButtonElement
+    expect(browseShortcut).toHaveClass('is-return-to-map')
+    expect(browseShortcut).not.toHaveAttribute('inert')
+    expect(browseShortcut).toBeEnabled()
+    expect(screen.getByRole('button', { name: '地図に戻る' })).toBe(browseShortcut)
     const title = screen.getByRole('heading', { name: '港の時計台' })
-    expect(belowMap).toContainElement(title)
-    expect(title).toHaveFocus()
+    expect(sheet).toContainElement(title)
+    await user.click(browseShortcut)
     expect(scroll).toHaveBeenCalledWith({ block: 'start' })
     expect(container.querySelector('.explore-sheet')).toBe(sheet)
-    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    expect(sheet).toHaveAttribute('data-snap', 'half')
     // The real browse callback is wired above. Once the sheet is fully closed,
     // the same button must reopen it instead of navigating to the below-map list.
-    const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+    const handle = screen.getByRole('button', { name: '謎リストを縮める' })
     fireEvent.pointerDown(handle, { pointerId: 30, pointerType: 'touch', clientY: 200 })
-    fireEvent.pointerMove(handle, { pointerId: 30, pointerType: 'touch', clientY: 300 })
-    fireEvent.pointerUp(handle, { pointerId: 30, pointerType: 'touch', clientY: 300 })
+    fireEvent.pointerMove(handle, { pointerId: 30, pointerType: 'touch', clientY: 600 })
+    fireEvent.pointerUp(handle, { pointerId: 30, pointerType: 'touch', clientY: 600 })
     expect(sheet).toHaveAttribute('data-snap', 'closed')
     const reopen = screen.getByRole('button', { name: '問題を見る' })
     expect(reopen).toHaveAttribute('aria-expanded', 'false')
