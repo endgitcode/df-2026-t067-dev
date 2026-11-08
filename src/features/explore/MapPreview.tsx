@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
@@ -42,6 +42,24 @@ function pinIcon(color: string, count: number, emphasized = false): { url: strin
 }
 
 const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
+
+// 地域の公開ジオメトリから、フィットに使える全頂点を {lat, lng} で返す。閉じていない・
+// 範囲外の座標を含むリングは丸ごと除く（従来のフィットと同じ検証）。使える輪郭が無ければ null。
+function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | null {
+  const geometry = area.publicGeometry
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
+  const validPolygons = polygons.filter((polygon) => polygon.length > 0 && polygon.every((ring) => {
+    if (ring.length < 4) return false
+    const validPoints = ring.every(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lng) <= 180 && Math.abs(lat) <= 90)
+    const [firstLng, firstLat] = ring[0]
+    const [lastLng, lastLat] = ring[ring.length - 1]
+    return validPoints && firstLng === lastLng && firstLat === lastLat
+  }))
+  if (!validPolygons.length) return null
+  const points: Array<{ lat: number; lng: number }> = []
+  validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => points.push({ lat, lng }))))
+  return points
+}
 
 export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
@@ -141,6 +159,54 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     window.clearTimeout(areaFailureTimer.current)
     areaFailureTimer.current = window.setTimeout(() => { areaFailureTimer.current = undefined; setAreaFailed(true) }, 0)
   }
+  // 選択中地域へのフィットが完了した時点のカメラ（中心・ズーム）。フィット完了（idle）ごとに
+  // 記録し直す。選択中の地域をもう一度押した時、カメラがこの位置から動いていれば「解除」
+  // ではなく「もう一度寄せる」を優先するための判定材料（利用者は移行を期待して押している）。
+  const fittedCamera = useRef<{ map: MapInstance; areaId: string; center: { lat: number; lng: number }; zoom: number } | null>(null)
+  // 地域の範囲へ地図をフィットさせる共通処理。選択時フィットと、再タップ時の再フィットで使う。
+  // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
+  // 実際に見えている領域の中央に来るようにする。
+  const fitToArea = useCallback((instance: MapInstance, area: PublicArea): boolean => {
+    const google = window.google?.maps
+    if (!google?.LatLngBounds) return false
+    const points = areaFitPoints(area)
+    if (!points) return false
+    const bounds = new google.LatLngBounds()
+    points.forEach((point) => bounds.extend(point))
+    fittedCamera.current = null
+    if (showPublicAreas) {
+      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+    } else instance.fitBounds(bounds)
+    try {
+      const listener = instance.addListener('idle', () => {
+        try { listener.remove() } catch { /* SDK teardown is best effort. */ }
+        try {
+          const center = instance.getCenter?.()
+          if (center) fittedCamera.current = { map: instance, areaId: area.areaId, center: { lat: center.lat(), lng: center.lng() }, zoom: instance.getZoom() ?? INITIAL_ZOOM }
+        } catch { /* カメラが読めなければ記録なし（再タップ時は再フィット優先のまま）。 */ }
+      })
+    } catch { /* リスナーを付けられない環境では記録を諦める。 */ }
+    return true
+  }, [showPublicAreas, wideViewport])
+  // カメラが、その地域へのフィット完了位置に（実質）留まっているか。
+  const cameraAtFit = useCallback((instance: MapInstance, areaId: string): boolean => {
+    const snapshot = fittedCamera.current
+    if (!snapshot || snapshot.map !== instance || snapshot.areaId !== areaId) return false
+    try {
+      const center = instance.getCenter?.()
+      if (!center) return false
+      return Math.abs(center.lat() - snapshot.center.lat) < 1e-6 && Math.abs(center.lng() - snapshot.center.lng) < 1e-6
+        && Math.abs((instance.getZoom() ?? INITIAL_ZOOM) - snapshot.zoom) < 1e-6
+    } catch { return false }
+  }, [])
+  // 選択中の地域がもう一度押された（ピン／地域レイヤー）時の共通の扱い。カメラがフィット
+  // 位置から動いていれば、選択は解除せずその地域へ寄せ直して true を返す。フィット位置に
+  // いる時（と、選択中でない時）は false を返し、呼び出し側の従来動作（選択／解除）に委ねる。
+  const refitIfCameraMoved = useCallback((instance: MapInstance, area: PublicArea): boolean => {
+    if (area.areaId !== selectedAreaId) return false
+    if (cameraAtFit(instance, area.areaId)) return false
+    return fitToArea(instance, area)
+  }, [selectedAreaId, cameraAtFit, fitToArea])
 
   useEffect(() => {
     if (!API_KEY || !target.current) return
@@ -272,7 +338,13 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       })
       listener = layer.addListener('click', (event) => {
         const areaId = event.feature.getProperty('areaId')
-        if (active && typeof areaId === 'string' && areas.some((area) => area.areaId === areaId)) { setPinAreaId(null); onSelectArea?.(areaId) }
+        if (!active || typeof areaId !== 'string') return
+        const area = areas.find((candidate) => candidate.areaId === areaId)
+        if (!area) return
+        // 選択中の地域を、地図を動かした後にもう一度押したら、解除せずその地域へ寄せ直す。
+        const instance = map.current
+        if (instance && refitIfCameraMoved(instance, area)) return
+        setPinAreaId(null); onSelectArea?.(areaId)
       })
     } catch {
       active = false
@@ -280,7 +352,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       failArea()
     }
     return () => { active = false; window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; try { listener?.remove(); layer.setMap(null) } catch { /* SDK teardown is best effort. */ } }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly, refitIfCameraMoved])
 
   useEffect(() => {
     const instance = map.current
@@ -306,7 +378,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         })
         listeners.push(marker.addListener('click', () => {
           if (!active) return
-          // 選択中のピンをもう一度押したらハイライトを外す。選択自体の解除は呼び出し側が同じ地域の再選択として扱う。
+          // 選択中のピンをもう一度押した時、カメラがフィット位置から動いていれば解除せず
+          // その地域へ寄せ直す（押したのに移行しない、への対応）。フィット位置にいる時だけ
+          // 従来どおり選択解除として扱う（ハイライトを外し、解除は呼び出し側が担う）。
+          if (selected && refitIfCameraMoved(instance, area)) return
           setPinAreaId((current) => (current === area.areaId ? null : area.areaId))
           onSelectArea?.(area.areaId)
         }))
@@ -343,7 +418,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport])
+  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved])
 
   useEffect(() => {
     const instance = map.current
@@ -363,6 +438,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       } else {
         instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM)
       }
+      fittedCamera.current = null
       lastViewportSelection.current = { map: instance, areaId: '' }
       return
     }
@@ -378,27 +454,11 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     try {
       const area = areas.find((candidate) => candidate.areaId === selectedAreaId)
       if (!area) return
-      const geometry = area.publicGeometry
-      const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
-      const validPolygons = polygons.filter((polygon) => polygon.length > 0 && polygon.every((ring) => {
-        if (ring.length < 4) return false
-        const validPoints = ring.every(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat) && Math.abs(lng) <= 180 && Math.abs(lat) <= 90)
-        const [firstLng, firstLat] = ring[0]
-        const [lastLng, lastLat] = ring[ring.length - 1]
-        return validPoints && firstLng === lastLng && firstLat === lastLat
-      }))
-      if (!validPolygons.length) return
-      const bounds = new google.LatLngBounds()
-      validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => bounds.extend({ lat, lng }))))
-      // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
-      // 実際に見えている領域の中央に来るようにする。
-      if (showPublicAreas) {
-        instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
-        initialFitDone.current = instance
-      } else instance.fitBounds(bounds)
+      if (!fitToArea(instance, area)) return
+      initialFitDone.current = instance
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
     } catch { failArea() }
-  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest])
+  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest, fitToArea])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }

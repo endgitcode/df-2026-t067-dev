@@ -364,6 +364,74 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('refits instead of deselecting when the selected area pin is tapped after the camera moved, and deselects at the fitted position', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let center = { lat: 36.2048, lng: 138.2529 }
+    let zoom = 5
+    const idleCallbacks: Array<() => void> = []
+    const fitBounds = vi.fn(() => { center = { lat: 35.5, lng: 139.5 }; zoom = 11 })
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn(), setZoom: vi.fn(),
+      getCenter: () => ({ lat: () => center.lat, lng: () => center.lng }), getZoom: () => zoom,
+      addListener: (name: string, callback: () => void) => { if (name === 'idle') idleCallbacks.push(callback); return { remove() {} } } }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const instances: Marker[] = []
+    class Marker {
+      setMap() {}
+      click?: () => void
+      constructor() { instances.push(this) }
+      addListener(name: string, callback: () => void) { if (name === 'click') this.click = callback; return { remove() {} } }
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSelectArea = vi.fn()
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" onSelectArea={onSelectArea} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(instances).toHaveLength(1))
+    // フィット完了（idle）時点のカメラを記録させる。
+    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
+    // 利用者が地図を動かした状態で、選択中のピンをもう一度押す。
+    center = { lat: 34.0, lng: 135.0 }; zoom = 9
+    fitBounds.mockClear()
+    act(() => instances[0].click?.())
+    // 解除はされず、その地域へ寄せ直すだけ（「押したのに移行しない」への対応）。
+    expect(onSelectArea).not.toHaveBeenCalled()
+    expect(fitBounds).toHaveBeenCalledTimes(1)
+    // 再フィットの完了を記録し、カメラがフィット位置にある状態でもう一度押す。
+    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
+    fitBounds.mockClear()
+    act(() => instances[0].click?.())
+    // フィット位置にいるので、従来どおり選択解除として呼び出し側へ渡る。
+    expect(onSelectArea).toHaveBeenCalledWith('area-a')
+    expect(fitBounds).not.toHaveBeenCalled()
+    unmount()
+    delete window.google
+  })
+
+  it('selects the area from its pin even when a quest is already selected without an area', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const instances: Marker[] = []
+    class Marker {
+      setMap() {}
+      click?: () => void
+      constructor() { instances.push(this) }
+      addListener(name: string, callback: () => void) { if (name === 'click') this.click = callback; return { remove() {} } }
+    }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const map = { ...mapInstance, fitBounds: vi.fn() }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSelectArea = vi.fn()
+    // クエストだけがリンク等で選択済みで、地域は未選択の状態（D-44 の追随前の見え方）。
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="" selectedQuestId="q1" onSelectArea={onSelectArea} />)
+    await waitFor(() => expect(instances).toHaveLength(1))
+    act(() => instances[0].click?.())
+    expect(onSelectArea).toHaveBeenCalledWith('area-a')
+    unmount()
+    delete window.google
+  })
+
   it('requests location only on click and zooms to a valid location without changing region selection', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
