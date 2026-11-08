@@ -75,7 +75,7 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
     }).catch((cause: unknown) => {
       if (own !== generation.current) return
       const name = cause instanceof DOMException || cause instanceof Error ? cause.name : ''
-      fail(name === 'NotAllowedError' ? 'カメラの使用が許可されませんでした。「カメラを再試行」を押すともう一度確認します。確認が表示されない場合は、ブラウザのサイト設定でカメラを許可してから再試行してください。'
+      fail(name === 'NotAllowedError' ? 'カメラの使用が許可されませんでした。アドレスバーのサイト情報からカメラの「確認」または「許可」に変更して、もう一度お試しください。'
         : 'カメラを起動できませんでした。利用できる環境か確認して再試行してください。')
     })
     const leave = () => { dispose(); onClose() }

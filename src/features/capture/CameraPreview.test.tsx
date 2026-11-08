@@ -93,13 +93,13 @@ describe('local camera preview', () => {
     expect(media.onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('requests camera access again after a persistent permission denial and explains site settings', async () => {
+  it('explains how to change a persistent camera permission denial in the address bar site info', async () => {
     const media = setup()
     media.getUserMedia.mockRejectedValue(new DOMException('private-device-details', 'NotAllowedError'))
     render(<CameraPreview onClose={media.onClose} />)
-    expect(await screen.findByRole('alert')).toHaveTextContent('もう一度確認します')
+    expect(await screen.findByRole('alert')).toHaveTextContent('アドレスバーのサイト情報からカメラの「確認」または「許可」に変更して、もう一度お試しください。')
     await media.user.click(screen.getByRole('button', { name: 'カメラを再試行' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('ブラウザのサイト設定でカメラを許可')
+    expect(await screen.findByRole('alert')).toHaveTextContent('アドレスバーのサイト情報からカメラの「確認」または「許可」に変更して、もう一度お試しください。')
     expect(media.getUserMedia).toHaveBeenCalledTimes(2)
     expect(document.body).not.toHaveTextContent('private-device-details')
   })
