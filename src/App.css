@@ -31,9 +31,16 @@ p { overflow-wrap: anywhere; }
 .desktop-nav button { color: var(--ui-muted); }
 .desktop-nav button span { font-size: 12px; }
 .desktop-nav .icon { width: 17px; height: 17px; }
-.account-area { display: flex; align-items: center; justify-content: end; flex-wrap: wrap; gap: 9px; }
-.account-action-button { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 7px 10px; color: var(--ui-muted); background: var(--ui-surface); font-size: 12px; min-height: 44px; }
-.account-action-button:disabled { opacity: .5; }
+.account-area { position: relative; display: flex; align-items: center; justify-content: end; flex-wrap: wrap; gap: 9px; }
+.account-menu-wrap { position: relative; }
+.account-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%; color: var(--ui-ink); background: var(--ui-surface); }
+.account-icon-button:disabled { opacity: .5; }
+.account-icon-button img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.account-icon-button .icon { width: 22px; height: 22px; }
+.account-initial { font-size: 17px; font-weight: var(--ui-weight-strong); line-height: 1; }
+.account-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; display: flex; flex-direction: column; gap: 8px; min-width: 200px; padding: 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
+.account-menu-name { margin: 0; font-size: 13px; font-weight: var(--ui-weight-strong); overflow-wrap: anywhere; }
+.account-menu [role="menuitem"] { min-height: 40px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; }
 .page, .site-footer { width: min(100% - 64px, 1440px); margin-inline: auto; }
 .page { padding-block: 36px 26px; }
 .api-quest-picker { display: grid; gap: 7px; margin: 18px 0; padding: 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); }
@@ -98,14 +105,14 @@ button.explore-quest-card { cursor: pointer; }
 .quest-number-label { color: var(--ui-muted); border-left: var(--ui-border-width) solid var(--ui-line); padding-left: 8px; font-size: 12px; font-weight: var(--ui-weight-strong); }
 .explore-quest-clue { font-size: 12px; color: var(--ui-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .explore-quest-cleared { flex: none; padding: 3px 8px; font-size: 11px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
-.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 260ms ease; }
+.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 260ms ease; }
 .explore-sheet.is-dragging { transition: none; }
 .explore-sheet-handle { flex: none; display: grid; place-items: center; height: 34px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; }
 .explore-sheet-handle:active { cursor: grabbing; }
 .explore-sheet-grip { width: 46px; height: 6px; border-radius: 999px; background: var(--ui-line); opacity: .45; }
 .explore-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; }
-.explore-sheet[data-snap="closed"] .explore-sheet-body { visibility: hidden; }
+.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; }
 .explore-sheet .explore-list { margin: 0; border: 0; box-shadow: none; padding-top: 2px; }
 .explore-sheet .explore-quest-list { max-height: none; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .explore-sheet { transition: none; } }
@@ -225,7 +232,6 @@ button.explore-quest-card { cursor: pointer; }
   .brand-mark .icon { width: 22px; height: 22px; }
   .brand-copy { font-size: 13px; }
   .account-area { max-width: 122px; gap: 4px; }
-  .account-action-button { min-height: 44px; font-size: 12px; padding: 4px 8px; }
   .page, .site-footer { width: calc(100% - 32px); }
   .page { padding-top: 25px; padding-bottom: 24px; }
   .explore-heading { margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
@@ -244,7 +250,7 @@ button.explore-quest-card { cursor: pointer; }
   .map-zoom button { width: 44px; height: 44px; }
   .map-preview-shell.has-sheet { height: max(480px, calc(100svh - 224px)); min-height: 480px; }
   .map-filter-overlay { top: 112px; left: 12px; right: 12px; }
-  .explore-sheet { left: 0; right: 0; bottom: 0; width: auto; border-left: 0; border-right: 0; border-bottom: 0; border-radius: var(--ui-radius) var(--ui-radius) 0 0; box-shadow: none; }
+  .explore-sheet { left: 0; right: 0; bottom: 0; width: auto; border-left: 0; border-right: 0; border-bottom: 0; border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: none; }
   .explore-quest-list { max-height: 300px; }
   .map-bottomline { left: 12px; right: 12px; bottom: 11px; font-size: 12px; gap: 6px; }
   .map-credit { font-size: 12px; }
@@ -267,7 +273,6 @@ button.explore-quest-card { cursor: pointer; }
 .brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
 .desktop-nav .nav-active { color: var(--ui-ink); box-shadow: 0 3px 0 var(--ui-ink); }
 .desktop-nav button { color: var(--ui-muted); }
-.account-action-button { color: var(--ui-ink); }
 .explore-heading h1 { font-size: clamp(1.75rem, 3.2vw, 2.65rem); font-weight: var(--ui-weight-display); letter-spacing: -.04em; }
 .eyebrow { color: var(--ui-muted); }
 .preview-label { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-soft); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
@@ -300,7 +305,7 @@ button.explore-quest-card { cursor: pointer; }
 .quest-toggle:hover:not(:disabled), .primary-button:hover:not(:disabled), .api-load-state > button:hover:not(:disabled) { background: var(--ui-accent-hover); color: var(--ui-accent-ink); }
 .quest-toggle.is-open { background: var(--ui-tint); color: var(--ui-ink); }
 .quest-toggle.is-open:hover { background: var(--ui-tint); color: var(--ui-ink); }
-.retry-button, .account-action-button, .camera-actions .secondary-button { color: var(--ui-ink); background: var(--ui-surface); }
+.retry-button, .camera-actions .secondary-button { color: var(--ui-ink); background: var(--ui-surface); }
 .retry-button:hover { background: var(--ui-tint); }
 .sample-note, .api-quest-picker { color: var(--ui-muted); background: var(--ui-soft); }
 .api-quest-picker li button { color: var(--ui-ink); background: var(--ui-surface); }
@@ -373,7 +378,7 @@ body.explore-fullbleed .brand, body.explore-fullbleed .desktop-nav, body.explore
 body.explore-fullbleed .brand { width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .desktop-nav { align-self: center; gap: 18px; padding: 4px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .account-area { flex-wrap: nowrap; max-width: none; }
-body.explore-fullbleed .account-action-button { box-shadow: var(--ui-control-shadow); }
+body.explore-fullbleed .account-icon-button { box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 88px); }
 body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 136px); }
 body.explore-fullbleed .quest-rail { max-width: 760px; margin-inline: auto; padding: 24px 20px 0; }

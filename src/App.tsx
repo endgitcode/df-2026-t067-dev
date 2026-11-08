@@ -157,6 +157,23 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const [captureRevision, setCaptureRevision] = useState(0)
   const closeCamera = useCallback(() => { setCameraOwner(null); setCaptureRevision((value) => value + 1) }, [])
   const cameraVisible = !questStale && canUseCamera && cameraOwner !== null && cameraOwner.auth === auth && cameraOwner.confirmation === serverIdentity.result && cameraOwner.questId === quest?.questId && cameraOwner.version === quest.version
+  // アカウントメニューを開いた時点の uid を持ち、ログイン状態が変われば開いていないものとして扱う（派生）。
+  const [accountMenuAnchor, setAccountMenuAnchor] = useState<string | null>(null)
+  const accountMenuOpen = accountMenuAnchor !== null && auth.status === 'signed-in' && accountMenuAnchor === auth.user.uid
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!accountMenuOpen) return
+    const closeOnOutside = (event: PointerEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) setAccountMenuAnchor(null)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setAccountMenuAnchor(null) }
+    document.addEventListener('pointerdown', closeOnOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [accountMenuOpen])
   const [pending, setPending] = useState<{ client: AuthClient; kind: 'sign-in' | 'sign-out' } | null>(null)
   const pendingRef = useRef(false)
   const lifecycle = useRef(0)
@@ -287,15 +304,30 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
         </nav>
         <div className="account-area">
-          {/* ログイン状態の常時表示は置かず、ログイン／ログアウトのボタンだけを同じスロットに出す。 */}
-          {auth.status === 'signed-in' && (
-            <button type="button" className="account-action-button" disabled={visiblePending !== null} onClick={logout}>
-              {visiblePending === 'sign-out' ? 'ログアウト中…' : 'ログアウト'}
-            </button>
-          )}
-          {auth.status === 'signed-out' && (
-            <button type="button" className="account-action-button" disabled={visiblePending !== null} onClick={() => void login()}>
-              {visiblePending === 'sign-in' ? 'ログイン中…' : 'ログイン'}
+          {/* 右上の固定スロットはアイコン型にする（#36 の固定スロットと、#42 の「状態表示を置かない」を維持）。
+              ログイン中はタップで小さなメニューを開き、アカウント名とログアウトはその中だけに出す。 */}
+          {auth.status === 'signed-in' ? (
+            <div className="account-menu-wrap" ref={accountMenuRef}>
+              <button type="button" className="account-icon-button" aria-label="アカウントメニュー" aria-haspopup="menu"
+                aria-expanded={accountMenuOpen} disabled={visiblePending !== null}
+                onClick={() => setAccountMenuAnchor((anchor) => (anchor === auth.user.uid ? null : auth.user.uid))}>
+                {auth.user.photoURL
+                  ? <img src={auth.user.photoURL} alt="" />
+                  : auth.user.displayName
+                    ? <span className="account-initial" aria-hidden="true">{auth.user.displayName.slice(0, 1)}</span>
+                    : <Icon name="user" />}
+              </button>
+              {accountMenuOpen && (
+                <div className="account-menu" role="menu">
+                  <p className="account-menu-name">{auth.user.displayName ?? 'ログイン中のアカウント'}</p>
+                  <button type="button" role="menuitem" onClick={() => { setAccountMenuAnchor(null); void logout() }}>ログアウト</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button type="button" className="account-icon-button" aria-label="ログイン"
+              disabled={visiblePending !== null || auth.status !== 'signed-out'} onClick={() => void login()}>
+              <Icon name="user" />
             </button>
           )}
         </div>

@@ -3,17 +3,16 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
-const PLAIN_FOLLOW = '.map-preview-shell.has-sheet .map-controls { bottom: calc(var(--sheet-h, 0px) + 14px); }'
+const PLAIN_FIXED = '.map-preview-shell.has-sheet .map-controls { bottom: 72px; }'
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
-// 右下の地図操作系がシートの高さに追随するのは、シートが横幅いっぱいに広がる幅だけに限る。
-// 広い幅ではシートは左下の浮きカードであり、右側の操作系は通常位置に固定する。
+// 右下の地図操作系はシートの高さに追随せず、同じ場所に固定する。
 describe('map controls placement with the bottom sheet', () => {
-  it('follows the sheet height only in the full-width sheet range', () => {
-    expect(css.split(PLAIN_FOLLOW).length - 1).toBe(1)
+  it('keeps controls fixed in the full-width sheet range', () => {
+    expect(css.split(PLAIN_FIXED).length - 1).toBe(1)
     const mediaAt = css.indexOf('@media (max-width: 640px)')
     expect(mediaAt).toBeGreaterThan(-1)
-    expect(css.indexOf(PLAIN_FOLLOW)).toBeGreaterThan(mediaAt)
+    expect(css.indexOf(PLAIN_FIXED)).toBeGreaterThan(mediaAt)
   })
 
   it('keeps the wide-layout controls at their fixed bottom position', () => {
@@ -36,7 +35,7 @@ describe('mobile bottom tab bar (D-32)', () => {
 
   it('lifts the sheet and floating elements above the tab bar in full-bleed', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
   })
 
@@ -59,5 +58,20 @@ describe('PC left sidebar (D-34)', () => {
   it('fixes the primary nav and the side panel into the left column', () => {
     expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: 0; left: 0;')
     expect(css).toContain('body.explore-fullbleed .explore-side-panel { position: fixed; top: var(--pc-sidebar-nav-h); bottom: 0; left: 0;')
+  })
+})
+
+describe('rounded corner scale (D-35)', () => {
+  const themeCss = readFileSync(resolve(process.cwd(), 'src/theme.css'), 'utf8')
+
+  it('defines a three-step radius scale and keeps --ui-radius as the middle alias', () => {
+    expect(themeCss).toContain('--radius-s: 10px;')
+    expect(themeCss).toContain('--radius-m: 16px;')
+    expect(themeCss).toContain('--radius-l: 24px;')
+    expect(themeCss).toContain('--ui-radius: var(--radius-m);')
+  })
+
+  it('gives the bottom sheet the large radius on its top corners', () => {
+    expect(css).toContain('border-radius: var(--radius-l) var(--radius-l) 0 0;')
   })
 })

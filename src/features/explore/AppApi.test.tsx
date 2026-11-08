@@ -246,7 +246,8 @@ describe('explicit local API integration', () => {
     const { user } = mount(fetcher, true)
     const details = await openQuest(user)
     expect(screen.getByText('ログインを確認しています…')).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'ログアウト' }))
+    await user.click(screen.getByRole('button', { name: 'アカウントメニュー' }))
+    await user.click(screen.getByRole('menuitem', { name: 'ログアウト' }))
     await act(async () => resolve(json({ uid: 'test-user' })))
     expect(within(details).getByRole('button', { name: 'Googleログインして挑戦する' })).toBeEnabled()
     expect(screen.queryByText('ログインを確認しました。デモの回答受付を試せます。')).not.toBeInTheDocument()
@@ -340,7 +341,10 @@ describe('explicit local API integration', () => {
     await user.click(await screen.findByRole('button', { name: '挑戦を始める' }))
     const post = fetcher.mock.calls.find(([, init]) => init?.method === 'POST')!
     if (leave === 'close') await user.click(screen.getByRole('button', { name: '問題を閉じる' }))
-    else if (leave === 'logout') await user.click(screen.getByRole('button', { name: 'ログアウト' }))
+    else if (leave === 'logout') {
+      await user.click(screen.getByRole('button', { name: 'アカウントメニュー' }))
+      await user.click(screen.getByRole('menuitem', { name: 'ログアウト' }))
+    }
     else if (leave === 'map') await user.click(screen.getAllByRole('link', { name: '謎を探す' })[0])
     else act(() => auth.emit({ status: 'signed-in', user: { uid: 'next-user', displayName: null } }))
     expect(post[1]?.signal?.aborted).toBe(true)
