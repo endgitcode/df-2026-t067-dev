@@ -272,3 +272,49 @@ it('publishes and pauses through durable session, membership and common HTTP con
     for (const [, init] of fetcher.mock.calls) expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer publisher-token')
   } finally { vi.unstubAllGlobals() }
 })
+
+it('shows remaining work and enables the shooting-area map on the shared preview', async () => {
+  const user = userEvent.setup()
+  const snapshot: AuthSnapshot = { status: 'signed-in', user: { uid: 'preview-manager', displayName: null } }
+  const authClient: AuthClient = {
+    getSnapshot: () => snapshot, subscribe: () => () => {},
+    signInWithGoogle: async () => {}, signOut: async () => {}, getIdToken: async () => 'preview-token',
+  }
+  const shared = { ...quest, source: 'real' } as ManagedQuest
+  const areas = { orgId: quest.orgId, questId: quest.questId, draftRevision: quest.draftRevision, source: 'real', zones: [] }
+  const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+    const path = String(input)
+    let body: unknown
+    if (path === '/api/v1/session') body = { uid: snapshot.user.uid }
+    else if (path.startsWith('/api/v1/me/memberships?')) body = { items: [{
+      orgId: quest.orgId, areaId: quest.areaId, label: '共有検証の架空自治体', role: 'publisher',
+    }], nextCursor: null }
+    else if (path.endsWith('/shooting-areas')) body = init?.method === 'PUT'
+      ? { ...areas, draftRevision: 3, zones: JSON.parse(String(init.body)).zones } : areas
+    else if (path.startsWith('/api/v1/orgs/' + quest.orgId + '/quests?')) body = { items: [shared], nextCursor: null }
+    else throw new Error('Unexpected preview request: ' + path)
+    return new Response(JSON.stringify(body), { headers: {
+      'Content-Type': 'application/json', 'X-Quest-Data-Mode': 'team-preview',
+    } })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  try {
+    render(<LocalAdminWorkspace authClient={authClient} dataMode="team-preview" />)
+    await user.click(await screen.findByRole('button', { name: /共有検証の架空自治体/ }))
+    expect(await screen.findByText(quest.draft.content.title)).toBeVisible()
+    expect(screen.getByText('残りの作業')).toBeVisible()
+    for (const work of ['対象名', '写真の利用権', '参考写真', '問題文', '3本のヒント', '現地で確かめた見た目の特徴', '公開担当の確認と公開'])
+      expect(screen.getByText(work, { selector: 'li' })).toBeVisible()
+    expect(screen.getByText(/この一覧では実施状況を確認できません/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '撮影範囲を設定' }))
+    expect(await screen.findByLabelText('地図で編集する範囲')).toBeVisible()
+    expect(screen.getByText(/地図の設定がないため、下の数値入力で設定できます/)).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '範囲を追加' }))
+    await user.type(screen.getByLabelText('緯度'), '35')
+    await user.type(screen.getByLabelText('経度'), '135')
+    await user.clear(screen.getByLabelText('半径（m）'))
+    await user.type(screen.getByLabelText('半径（m）'), '100')
+    await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
+    expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
+  } finally { vi.unstubAllGlobals() }
+})

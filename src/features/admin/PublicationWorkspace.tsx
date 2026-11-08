@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { ApiError, parsePublishManagedQuest } from '../../shared/api'
 import type { ApiClient, ManagedQuest, OrgMembership, PhotoDecision, PublishManagedQuest, ReviewField } from '../../shared/api'
 import { PhotoRightsInput } from './PhotoRightsInput'
+import { fixturePngUrl, matchFixturePngBase64, otherFixturePngBase64 } from './photoTestFixtures'
 import { useRequestAction } from '../../shared/useRequestAction'
 
 const reviewLabels: Record<ReviewField, string> = {
@@ -31,7 +32,7 @@ function publicationFailure(cause: unknown): Failure {
     case 'REVIEW_REQUIRED': return { message: 'この版の確認依頼と確認項目を見直してください。' }
     case 'INVALID_INPUT': return { message: '試験写真・利用権と保存済みの参考素材を確認してください。' }
     case 'RATE_LIMITED': return { message: '試験の受付上限に達しました。時間をおいて再試行してください。' }
-    case 'SYSTEM_ERROR': return { message: '開発用APIの設定と通信状況を確認してください。' }
+    case 'SYSTEM_ERROR': return { message: '試験を処理できませんでした。この検証環境では合成写真でのみ記録されるため、実写真では結果が残りません。' }
     default: return { message: '結果を確認できませんでした。通信状況を確認して再試行してください。' }
   }
 }
@@ -121,6 +122,11 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
     <form onSubmit={trial}>
       <fieldset disabled={disabled}>
         <legend>写真試験</legend>
+        <p>この検証環境の写真試験は、次の合成写真でのみ結果を記録します。実写真では記録されません。参考写真には一致用を登録してください。</p>
+        <ul>
+          <li><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真（match.png）をダウンロード</a></li>
+          <li><a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真（other-target.png）をダウンロード</a></li>
+        </ul>
         <label>試験写真<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
           const next = event.target.files?.[0] ?? null
           if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
@@ -144,7 +150,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
       {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
       {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{reviewLabels[item]}</li>)}</ul></>}
     </fieldset>
-    {member.role === 'publisher' && <fieldset disabled={disabled || !reviewed}>
+    {member.role === 'publisher' ? <fieldset disabled={disabled || !reviewed}>
       <legend>公開担当者の確認</legend>
       {confirmationLabels.map(([item, label]) => <label key={item} className="check-option">
         <input type="checkbox" checked={checked.includes(item)} onChange={(event) => {
@@ -152,6 +158,14 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
         }} />{label}
       </label>)}
       <button type="button" disabled={!ready} onClick={publish}>この版を公開</button>
+    </fieldset> : <fieldset disabled>
+      <legend>公開担当者の確認</legend>
+      <p>公開の確認と実行は公開担当が行います。編集担当は確認依頼までを行ってください。</p>
+      <p>写真試験の結果はこの画面を開いている間だけ保持されるため、公開担当が自分の画面で写真試験を再度実施してから公開します。</p>
+      {confirmationLabels.map(([, label]) => <label key={label} className="check-option">
+        <input type="checkbox" checked={false} readOnly />{label}
+      </label>)}
+      <button type="button" disabled>この版を公開</button>
     </fieldset>}
   </section>
 }
