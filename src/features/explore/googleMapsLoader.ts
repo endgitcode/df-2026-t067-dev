@@ -17,6 +17,7 @@ export interface MapInstance {
   setZoom(value: number): void
   getZoom(): number | undefined
   setCenter(value: { lat: number; lng: number }): void
+  getCenter?(): MapLatLng | undefined
   fitBounds(bounds: Bounds, padding?: number | { top?: number; right?: number; bottom?: number; left?: number }): void
   getBounds?(): MapBounds | undefined
   addListener(name: string, callback: () => void): { remove(): void }

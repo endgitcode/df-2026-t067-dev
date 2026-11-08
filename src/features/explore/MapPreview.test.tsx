@@ -202,6 +202,40 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('restores the camera from before the selection when the selection is cleared, even across area switches', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let center = { lat: 36.2048, lng: 138.2529 }
+    let zoom = 5
+    const setCenter = vi.fn((next: { lat: number; lng: number }) => { center = next })
+    const setZoom = vi.fn((next: number) => { zoom = next })
+    const fitBounds = vi.fn(() => { center = { lat: 35.5, lng: 139.5 }; zoom = 11 })
+    const map = { ...mapInstance, setCenter, setZoom, fitBounds,
+      getCenter: () => ({ lat: () => center.lat, lng: () => center.lng }), getZoom: () => zoom }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const areaB: PublicArea = { areaId: 'area-b', label: 'B', publishedCount: 1, marker: { latitude: 34.5, longitude: 135.5 },
+      publicGeometry: { type: 'Polygon', coordinates: [[[135, 34], [136, 34], [136, 35], [135, 35], [135, 34]]] } }
+    const twoAreas = [...areas, areaB]
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="" />)
+    await waitFor(() => expect(setZoom).toHaveBeenCalledWith(5))
+    // 利用者が選択前に地図を動かした状態を再現する。
+    setCenter({ lat: 34.6937, lng: 135.5023 })
+    setZoom(9)
+    setCenter.mockClear(); setZoom.mockClear(); fitBounds.mockClear()
+    rerender(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="area-a" />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    rerender(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="area-b" />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(2))
+    rerender(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="" />)
+    // 解除時は初期表示ではなく、最初に選ぶ直前のカメラ（大阪・ズーム9）へ戻る。
+    expect(setCenter).toHaveBeenLastCalledWith({ lat: 34.6937, lng: 135.5023 })
+    expect(setZoom).toHaveBeenLastCalledWith(9)
+    unmount()
+    delete window.google
+  })
+
   it('requests location only on click and zooms to a valid location without changing region selection', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
