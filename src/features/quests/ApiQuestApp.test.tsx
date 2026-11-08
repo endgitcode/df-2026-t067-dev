@@ -494,12 +494,13 @@ describe('APIから問題を表示', () => {
     expect(new URLSearchParams(window.location.search).get('area') ?? '').toBe('area-a')
   })
 
-  it('地方と都道府県で地図のピンを絞り、問題がない県も選べる', async () => {
+  it('地方と都道府県でピンと公開問題を絞り、一覧から問題を選べる', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
     const tokyo = { ...areas[0], prefectureCode: '13' }
     const osaka = { ...areas[1], prefectureCode: '27' }
     api.listAreas.mockResolvedValue(page([tokyo, osaka]))
+    api.listQuests.mockResolvedValue(page([first, second]))
     render(<ApiQuestApp api={api} dataMode="team-preview" />)
     await screen.findByRole('heading', { name: first.title })
     expect(screen.queryByRole('combobox', { name: '地域を選択' })).not.toBeInTheDocument()
@@ -512,7 +513,15 @@ describe('APIから問題を表示', () => {
     expect(screen.queryByText('川辺エリアのピン')).not.toBeInTheDocument()
     await user.selectOptions(prefecture, '東京都')
     expect(screen.getByText('川辺エリアのピン')).toBeVisible()
-    await user.selectOptions(region, '')
+    const picker = screen.getByRole('combobox', { name: '公開APIの問題を選択' })
+    expect(screen.queryByRole('option', { name: second.title })).not.toBeInTheDocument()
+    await user.selectOptions(region, '近畿')
+    expect(screen.queryByRole('option', { name: first.title })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: first.title })).not.toBeInTheDocument()
+    await user.selectOptions(picker, second.questId)
+    expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
+    await user.selectOptions(screen.getByRole('combobox', { name: '地方' }), '')
+    expect(screen.getByRole('option', { name: first.title })).toBeInTheDocument()
     expect(screen.getByText('森エリアのピン')).toBeVisible()
   })
 
