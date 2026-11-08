@@ -529,6 +529,8 @@ describe('APIから問題を表示', () => {
     expect(screen.queryByRole('heading', { name: first.title })).not.toBeInTheDocument()
     await user.selectOptions(picker, second.questId)
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', second.areaId)
+    expect(api.listQuests).toHaveBeenCalledWith({ areaId: second.areaId, limit: 100, cursor: undefined }, expect.anything())
     await user.click(screen.getByRole('button', { name: '全国' }))
     expect(screen.getByRole('option', { name: first.title })).toBeInTheDocument()
     expect(screen.getByText('森エリアのピン')).toBeVisible()
