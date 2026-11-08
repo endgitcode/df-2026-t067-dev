@@ -181,6 +181,25 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('fits the selected area above the bottom sheet when quests are shown in a sheet', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { SHEET_PEEK_HEIGHT } = await import('./ExploreBottomSheet')
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" onOpenQuest={vi.fn()} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    expect(fitBounds).toHaveBeenCalledWith(expect.anything(), { bottom: SHEET_PEEK_HEIGHT })
+    unmount()
+    delete window.google
+  })
+
   it('requests location only on click and zooms to a valid location without changing region selection', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()

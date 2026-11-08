@@ -268,10 +268,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       if (!validPolygons.length) return
       const bounds = new google.LatLngBounds()
       validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => bounds.extend({ lat, lng }))))
-      instance.fitBounds(bounds)
+      // ボトムシートが地図に重なる構成では、覗き見分の下パディングを取り、選んだ地域の下端がシート裏に隠れないようにする。
+      if (showPublicAreas && quests.length > 0) instance.fitBounds(bounds, { bottom: SHEET_PEEK_HEIGHT })
+      else instance.fitBounds(bounds)
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
     } catch { failArea() }
-  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt])
+  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, quests.length])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
