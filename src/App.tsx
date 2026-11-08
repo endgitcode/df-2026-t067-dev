@@ -119,9 +119,9 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const showRecords = localApiMode && recordsOpen
   const api = useMemo(() => providedApi ?? createApiClient({ getIdToken: () => authClient.getIdToken(),
     expectedDataMode: localApiMode ? apiDataMode : undefined }), [providedApi, authClient, localApiMode, apiDataMode])
-  const connection = useQuestConnection(externalQuest || catalogFallback ? 'preview' : source, api)
+  const connection = useQuestConnection(apiMode || externalQuest || catalogFallback ? 'preview' : source, api)
   const content = connection.result.status === 'ready' ? connection.result.value : null
-  const quest = externalQuest ?? (!catalogFallback && content ? (({ areaLabel: _area, ...dto }) => dto)(content) : null)
+  const quest = externalQuest ?? (!apiMode && !catalogFallback && content ? (({ areaLabel: _area, ...dto }) => dto)(content) : null)
   const areaLabel = externalAreaLabel ?? content?.areaLabel ?? demoAreaLabel
   const questKey = quest ? `${quest.questId}:${quest.version}` : ''
   const [localStaleQuestKey, setLocalStaleQuestKey] = useState('')
