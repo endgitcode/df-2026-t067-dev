@@ -20,9 +20,13 @@
 
 ## 対象スポットを登録する
 
-A03の共有URL欄は、許可したGoogle MapsのHTTPS URLから明示座標やPlace IDを候補として読む。`@緯度,経度` は地図中心なので対象位置に使わない。リンク先へアクセスせず、短縮URLの展開や任意の転送先への通信は行わない。短縮リンクはGoogle Mapsで開いた後のURLを貼るか、管理地図・数値入力で位置を指定する。
+A03の「リンクから場所を取得」は、許可したGoogle MapsのHTTPS施設URL、検索URL、明示座標、Place IDを画面内で解析する。`@緯度,経度` は地図中心なので対象位置に使わない。URL内の名称やPlace IDは確認用に表示する。別のURLを読み取ると前の名称・住所・座標との対応を解除し、Place IDだけのリンクに以前の座標を引き継がない。
+
+`maps.app.goo.gl` と旧 `goo.gl/maps` の短縮リンクには、Google Mapsで開いて長いURLを貼り直す導線を表示する。自動展開や外部APIへの通信は行わない。座標を取得できない場合は管理地図または数値入力を使える。URLから抽出したPlace IDは、独自に入力した座標との対応が未検証なので保存しない。
 
 スポット名と住所は自治体自身が資料や現地で確認した情報を入力する。位置・名称・住所の確認を選択すると保存できる。編集すると再確認が必要になる。Google Mapsの表示には既存のキーを使い、未設定時も数値入力で続行できる。[Maps URL仕様](https://developers.google.com/maps/documentation/urls/get-started)・[Places APIの保存条件](https://developers.google.com/maps/documentation/places/web-service/policies)を参照する。Places・逆ジオコーディングは未接続。住所等のAPIレスポンスの永続保存は行わず、導入時に利用条件、保存期間、キー、課金を確認する。
+
+短縮URLのサーバー展開とPlacesによる名称・住所・位置・Place IDの照会はA担当の接続事項。許可ホスト・DNSと転送先の検証、所属確認、専用キーと利用枠、候補の出典表示、保存可能な情報との分離を契約レビューで確認する。
 
 ## A・B・Cへの受け渡し
 
