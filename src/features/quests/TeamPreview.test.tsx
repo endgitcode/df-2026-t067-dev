@@ -62,6 +62,7 @@ it('answer trial build lets an invited traveler open the capture flow and record
       expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer team-token')
       return Response.json({ uid: 'traveler-a' }, { headers })
     }
+    if (path.startsWith('/api/v1/me/memberships?')) return Response.json({ items: [], nextCursor: null }, { headers })
     throw new Error('Unexpected request: ' + path)
   })
   vi.stubGlobal('fetch', fetcher)
@@ -177,4 +178,56 @@ it('recovers a public hint image after revision and removes it after publication
     expect(fetcher).toHaveBeenCalledWith(imagePath(1), expect.anything())
     expect(fetcher).toHaveBeenCalledWith(imagePath(2), expect.anything())
   } finally { vi.unstubAllGlobals() }
+})
+
+function adminGateFetcher(memberships: unknown[]) {
+  return vi.fn<typeof fetch>(async (input) => {
+    const path = String(input)
+    if (path.startsWith('/api/v1/areas?')) return Response.json({ items: [area], nextCursor: null }, { headers })
+    if (path.startsWith('/api/v1/quests?')) return Response.json({ items: [quest], nextCursor: null }, { headers })
+    if (path === '/api/v1/quests/' + quest.questId) return Response.json(quest, { headers })
+    if (path.startsWith('/api/v1/me/memberships?')) return Response.json({ items: memberships, nextCursor: null }, { headers })
+    throw new Error('Unexpected request: ' + path)
+  })
+}
+
+it('does not render the admin entrance while signed out and never asks for memberships', async () => {
+  const auth: AuthClient = {
+    getSnapshot: () => signedOut, subscribe: () => () => {},
+    signInWithGoogle: vi.fn(), signOut: vi.fn(), getIdToken: vi.fn(async () => null),
+  }
+  const fetcher = adminGateFetcher([])
+  vi.stubGlobal('fetch', fetcher)
+  render(<TeamPreview authClient={auth} />)
+  expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
+  expect(screen.queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
+  expect(fetcher.mock.calls.some(([path]) => String(path).startsWith('/api/v1/me/memberships'))).toBe(false)
+})
+
+it('does not render the admin entrance for a signed-in traveler without a membership', async () => {
+  const signedIn = { status: 'signed-in', user: { uid: 'traveler-b', displayName: null } } as const
+  const auth: AuthClient = {
+    getSnapshot: () => signedIn, subscribe: () => () => {},
+    signInWithGoogle: vi.fn(), signOut: vi.fn(), getIdToken: vi.fn(async () => 'team-token'),
+  }
+  vi.stubGlobal('fetch', adminGateFetcher([]))
+  render(<TeamPreview authClient={auth} />)
+  expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
+  // 所属の確認が終わっても入口は出ない（DOMに存在しない）。
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect(screen.queryByRole('link', { name: '自治体画面' })).not.toBeInTheDocument()
+})
+
+it('renders the admin entrance only for a signed-in account with a membership', async () => {
+  const signedIn = { status: 'signed-in', user: { uid: 'editor-a', displayName: null } } as const
+  const auth: AuthClient = {
+    getSnapshot: () => signedIn, subscribe: () => () => {},
+    signInWithGoogle: vi.fn(), signOut: vi.fn(), getIdToken: vi.fn(async () => 'team-token'),
+  }
+  const membership = { orgId: 'demo-org', areaId: 'demo-area', label: '架空の自治体', role: 'publisher' }
+  vi.stubGlobal('fetch', adminGateFetcher([membership]))
+  render(<TeamPreview authClient={auth} />)
+  const entrances = await screen.findAllByRole('link', { name: '自治体画面' })
+  expect(entrances.length).toBeGreaterThan(0)
+  for (const entrance of entrances) expect(entrance).toHaveAttribute('href', '/admin')
 })

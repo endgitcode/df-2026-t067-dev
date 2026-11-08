@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { StrictMode } from 'react'
+import type { ReactNode } from 'react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
@@ -7,8 +8,8 @@ import type { AuthClient, AuthSnapshot } from '../auth/authTypes'
 import { ApiQuestApp } from './ApiQuestApp'
 import { ApiError } from '../../shared/api/client'
 
-vi.mock('../explore/MapPreview', () => ({ MapPreview: (props: { areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (id: string) => void }) =>
-  <div data-testid="map-state" data-area={props.selectedAreaId}>地図 {props.areas?.length ?? 0} {props.selectedAreaId}{props.areas?.map((area) => <button key={area.areaId} type="button" aria-label={area.areaId === 'area-b' ? '地図の公開地域を選択' : '地図の川辺エリアを選択'} onClick={() => props.onSelectArea?.(area.areaId)}>{area.label}のピン</button>)}</div> }))
+vi.mock('../explore/MapPreview', () => ({ MapPreview: (props: { areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (id: string) => void; topOverlay?: ReactNode }) =>
+  <div data-testid="map-state" data-area={props.selectedAreaId}>地図 {props.areas?.length ?? 0} {props.selectedAreaId}{props.areas?.map((area) => <button key={area.areaId} type="button" aria-label={area.areaId === 'area-b' ? '地図の公開地域を選択' : '地図の川辺エリアを選択'} onClick={() => props.onSelectArea?.(area.areaId)}>{area.label}のピン</button>)}{props.topOverlay}</div> }))
 
 const first: PublicQuest = { questId: 'quest-a', version: 2, title: '川辺の謎', clue: '詳細版の手がかり', areaId: 'area-a', visitConditions: '訪問条件', hintCount: 0 }
 const second: PublicQuest = { questId: 'quest-b', version: 1, title: '森の謎', clue: '森の手がかり', areaId: 'area-b', visitConditions: '訪問条件', hintCount: 0 }
@@ -319,7 +320,7 @@ describe('APIから問題を表示', () => {
     await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
     await screen.findByRole('heading', { name: second.title })
     expect(window.location.search).toBe('?keep=yes&view=list&area=area-b&quest=quest-b')
-    await user.selectOptions(screen.getByRole('combobox', { name: '地方' }), '関東')
+    await user.click(screen.getByRole('button', { name: '関東' }))
     expect(await screen.findByText('この条件に公開問題はありません。')).toBeVisible()
     expect(screen.queryByText('森エリアのピン')).not.toBeInTheDocument()
     expect(window.location.search).toBe('?keep=yes&view=list&quest=quest-a')
@@ -332,7 +333,7 @@ describe('APIから問題を表示', () => {
     })
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
     expect(new URLSearchParams(window.location.search).get('area') ?? '').toBe('area-b')
-    expect(screen.getByRole('combobox', { name: '地方' })).toHaveValue('')
+    expect(screen.getByRole('button', { name: '全国' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('森エリアのピン')).toBeVisible()
     await act(async () => {
       await new Promise<void>((resolve) => {
@@ -507,21 +508,20 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} dataMode="team-preview" />)
     await screen.findByRole('heading', { name: first.title })
     expect(screen.queryByRole('combobox', { name: '地域を選択' })).not.toBeInTheDocument()
-    const region = screen.getByRole('combobox', { name: '地方' })
-    await user.selectOptions(region, '関東')
+    await user.click(screen.getByRole('button', { name: '関東' }))
+    expect(screen.getByRole('button', { name: '関東' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('川辺エリアのピン')).toBeVisible()
     expect(screen.queryByText('森エリアのピン')).not.toBeInTheDocument()
-    const prefecture = screen.getByRole('combobox', { name: '都道府県' })
-    await user.selectOptions(prefecture, '神奈川県')
+    await user.click(screen.getByRole('button', { name: '神奈川県' }))
     expect(screen.getByText('この条件に公開問題はありません。')).toBeVisible()
     expect(screen.queryByText('問題を読み込めませんでした。')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '問題を再読み込み' })).not.toBeInTheDocument()
     expect(screen.queryByText('川辺エリアのピン')).not.toBeInTheDocument()
-    await user.selectOptions(prefecture, '東京都')
+    await user.click(screen.getByRole('button', { name: '東京都' }))
     expect(screen.getByText('川辺エリアのピン')).toBeVisible()
     const picker = screen.getByRole('combobox', { name: '公開APIの問題を選択' })
     expect(screen.queryByRole('option', { name: second.title })).not.toBeInTheDocument()
-    await user.selectOptions(region, '近畿')
+    await user.click(screen.getByRole('button', { name: '近畿' }))
     expect(screen.getByText('一覧から問題を選んでください。')).toBeVisible()
     expect(screen.queryByText('問題を読み込めませんでした。')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '問題を再読み込み' })).not.toBeInTheDocument()
@@ -529,7 +529,7 @@ describe('APIから問題を表示', () => {
     expect(screen.queryByRole('heading', { name: first.title })).not.toBeInTheDocument()
     await user.selectOptions(picker, second.questId)
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
-    await user.selectOptions(screen.getByRole('combobox', { name: '地方' }), '')
+    await user.click(screen.getByRole('button', { name: '全国' }))
     expect(screen.getByRole('option', { name: first.title })).toBeInTheDocument()
     expect(screen.getByText('森エリアのピン')).toBeVisible()
   })
@@ -980,5 +980,5 @@ it('opens a durable quest directly from its public card with a region list fallb
   fireEvent.click(await screen.findByRole('button', { name: '森の謎を開く' }))
   expect(await screen.findByRole('region', { name: 'サンプル問題の詳細' })).toBeVisible()
   expect(api.getQuest).toHaveBeenLastCalledWith(second.questId, expect.anything())
-  expect(screen.getByRole('combobox', { name: '地方' })).toBeVisible()
+  expect(screen.getByRole('button', { name: '関東' })).toBeVisible()
 })
