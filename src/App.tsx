@@ -15,7 +15,7 @@ import type { ApiClient, LocalApiDataMode } from './shared/api'
 import { CameraPreview } from './features/capture/CameraPreview'
 import { ChallengeCapture } from './features/capture/ChallengeCapture'
 import { OwnerDiscoveries } from './features/discoveries/OwnerDiscoveries'
-import { readDataSource, useQuestConnection, useServerIdentity } from './features/explore/useQuestConnection'
+import { readDataSource, useAdminMembership, useQuestConnection, useServerIdentity } from './features/explore/useQuestConnection'
 import { AuthError, createFirebaseAuthClient } from './features/auth/firebaseAuth'
 import './App.css'
 
@@ -48,6 +48,7 @@ type AppProps = {
   openQuestRequest?: { questId: string; sequence: number }
   questPicker?: ReactNode
   catalogFallback?: ReactNode
+  mapOverlay?: ReactNode
   apiMode?: boolean
   apiDataMode?: LocalApiDataMode
   teamAnswerTrial?: boolean
@@ -95,7 +96,7 @@ function waitForSignedIn(authClient: AuthClient, signal: AbortSignal): Promise<b
   })
 }
 
-export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, mapAreas = [], mapQuests = [], onOpenQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
+export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, mapAreas = [], mapQuests = [], onOpenQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
   const [openState, setOpenState] = useState<{ quest?: PublicQuest; open: boolean }>({ open: false })
   const isQuestOpen = openState.quest === externalQuest && openState.open
   const [openedRequest, setOpenedRequest] = useState<typeof openQuestRequest>()
@@ -127,6 +128,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const [localStaleQuestKey, setLocalStaleQuestKey] = useState('')
   const questStale = providedQuestStale || (questKey !== '' && localStaleQuestKey === questKey)
   const serverIdentity = useServerIdentity((!teamPreview || teamAnswerTrial) && (apiMode || source === 'local-api'), api, auth)
+  // 自治体画面への入口は、所属を持つアカウントでログインした時だけ出す（表示の制御であり、保護はサーバー側）。
+  const hasAdminMembership = useAdminMembership(teamPreview, api, auth)
   const identityErrorMessage = teamAnswerTrial && serverIdentity.result?.status === 'error' && serverIdentity.result.code === 'FORBIDDEN'
     ? 'この回答試験は招待された人だけが使えます。このアカウントは招待されていません。'
     : 'ログインを確認できませんでした。時間をおいて再試行してください。'
@@ -258,7 +261,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         <nav className="desktop-nav" aria-label="主要ナビゲーション">
           <a className={showRecords ? undefined : 'nav-active'} href="#explore-title" aria-current={showRecords ? undefined : 'page'}
             onClick={() => navigateToRecords(false)}><Icon name="map" />謎を探す</a>
-          {teamPreview && <a href="/admin">自治体画面</a>}
+          {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
           {(!teamPreview || teamAnswerTrial) && <button type="button" className={showRecords ? 'nav-active' : undefined} aria-current={showRecords ? 'page' : undefined}
             disabled={!localApiMode || visiblePending !== null} onClick={() => navigateToRecords(true)}>
             <Icon name="book" />自分の記録{!localApiMode && <span>準備中</span>}
@@ -302,7 +305,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} onOpenQuest={onOpenQuest} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} />
 
             <aside className="quest-rail" aria-label="選べる謎">
               <div className="rail-heading"><h2>選べる謎</h2>{!apiMode && <span>1件</span>}</div>
@@ -348,7 +351,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       <footer className="site-footer"><span>場所・問題は架空の開発用デモです。</span></footer>
       <nav className="mobile-nav" aria-label="スマホ用ナビゲーション">
         <a href="#explore-title" aria-current={showRecords ? undefined : 'page'} onClick={() => navigateToRecords(false)}><Icon name="map" /><span>謎を探す</span></a>
-        {teamPreview && <a href="/admin">自治体画面</a>}
+        {teamPreview && hasAdminMembership && <a href="/admin">自治体画面</a>}
         {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} disabled={!localApiMode || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{!localApiMode && <small>準備中</small>}</span></button>}
       </nav>

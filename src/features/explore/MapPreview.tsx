@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
+import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
 import { MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
@@ -24,9 +26,11 @@ function pinIcon(color: string, count: number): { url: string } {
 
 const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds }: {
+export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], onOpenQuest, selectedQuestId = '', clearedQuestIds, topOverlay }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; onOpenQuest?: (questId: string) => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
+  /** 地図の上部に浮かせて出す操作（地方・都道府県フィルタ等）。地図が使えない時は地図下の通常フローに出す。 */
+  topOverlay?: ReactNode
 }) {
   const target = useRef<HTMLDivElement>(null)
   const map = useRef<MapInstance | null>(null)
@@ -47,6 +51,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [areaAttempt, setAreaAttempt] = useState(0)
   const [areaFailed, setAreaFailed] = useState(false)
   const [pinAreaId, setPinAreaId] = useState<string | null>(null)
+  const [sheetHeight, setSheetHeight] = useState(SHEET_PEEK_HEIGHT)
   const [viewport, setViewport] = useState<ViewportBounds | null>(null)
   const viewportRef = useRef<ViewportBounds | null>(null)
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
@@ -286,11 +291,18 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const effectivePinAreaId = pinAreaId && (!selectedAreaId || selectedAreaId === pinAreaId) ? pinAreaId : null
   const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
   const visibleQuests = status === 'ready' ? questsInViewport(areas, quests, viewport) : quests
+  // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
+  const sheetMode = status === 'ready' && showPublicAreas && quests.length > 0
+  const questList = showPublicAreas && quests.length > 0 ? <ExploreQuestList areas={areas} quests={visibleQuests} variant={status === 'ready' ? 'viewport' : 'fallback'}
+    highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
+    onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)} /> : null
 
   return (
-    <div className="map-preview-shell">
+    <div className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '')}
+      style={sheetMode ? { '--sheet-h': `${sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
       <div className="map-topline"><span className="map-scope"><Icon name="map" />全国の謎</span>{status === 'ready' && <div className="map-location-action"><span>位置情報はGoogle Mapsに送信されます</span></div>}</div>
+      {status === 'ready' && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'}>
         {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。問題の閲覧は続けられます。</span></> :
@@ -300,20 +312,24 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
               : <button type="button" onClick={() => { setStatus('loading'); setAttempt((value) => value + 1) }}>地図を再試行</button>}</>}
       </div>}
       {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert"><strong>地域エリアを表示できませんでした</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
-      {status === 'ready' && <div className="map-zoom" aria-label="地図の表示操作">
-        <div className="map-zoom-group">
-        <button type="button" aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
-        <button type="button" aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
-        <button type="button" aria-label="地図の表示を戻す" onClick={reset}><Icon name="reset" /></button>
-        <button type="button" className="map-location-button" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating} onClick={locate}><Icon name="locate" /></button>
+      {status === 'ready' && <div className="map-controls">
+        <div className="map-zoom" aria-label="地図の表示操作">
+          <div className="map-zoom-group">
+          <button type="button" aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
+          <button type="button" aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
+          <button type="button" aria-label="地図の表示を戻す" onClick={reset}><Icon name="reset" /></button>
+          </div>
         </div>
+        <button type="button" className="map-locate-fab" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating} onClick={locate}><Icon name="locate" /></button>
       </div>}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
     </section>
-      {status === 'ready' && locationStatus && <div className="map-location-status" role="status">{locationStatus}</div>}
-      {showPublicAreas && quests.length > 0 && <ExploreQuestList areas={areas} quests={visibleQuests} variant={status === 'ready' ? 'viewport' : 'fallback'}
-        highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
-        onOpenQuest={onOpenQuest} onClearHighlight={() => setPinAreaId(null)} />}
+      {/* 地図が使えない時は浮かせず、地図の下に通常フローで出して絞り込み自体は失わせない。 */}
+      {status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
+      {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status">{locationStatus}</div>}
+      {sheetMode
+        ? <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}>{questList}</ExploreBottomSheet>
+        : questList}
     </div>
   )
 }

@@ -16,6 +16,16 @@ describe('Google map panel', () => {
     render(<MapPreview />)
     expect(screen.queryByRole('button', { name: /謎を地図から見る/ })).not.toBeInTheDocument()
   })
+  it('keeps the full quest list in normal flow without a sheet when the map is unavailable', () => {
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { container } = render(<MapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'すべての地域の謎' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    expect(container.querySelector('.explore-sheet')).not.toBeInTheDocument()
+    expect(container.querySelector('.map-preview-shell')).not.toHaveClass('has-sheet')
+  })
   it('keeps authentication failure visible when it occurs during map creation', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
@@ -283,7 +293,8 @@ describe('Google map panel', () => {
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
     const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
-    expect(await screen.findByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    // 地図が使えるようになるとリストはボトムシートへ移るため、移行後の要素で確認する。
+    await waitFor(() => expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible())
     act(() => listeners.get('idle')?.())
     expect(await screen.findByText('この範囲に謎はありません。地図を移動すると、別の地域の謎が表示されます。')).toBeVisible()
     expect(screen.queryByRole('button', { name: '港の時計台の詳細を見る' })).not.toBeInTheDocument()
@@ -318,7 +329,7 @@ describe('Google map panel', () => {
     const onSelectArea = vi.fn()
     const onOpenQuest = vi.fn()
     const pinAreas: PublicArea[] = [{ ...areas[0], publishedCount: 2 }]
-    const { rerender, unmount } = render(<ConfiguredMapPreview areas={pinAreas} quests={quests} onSelectArea={onSelectArea} onOpenQuest={onOpenQuest} />)
+    const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={pinAreas} quests={quests} onSelectArea={onSelectArea} onOpenQuest={onOpenQuest} />)
     await waitFor(() => expect(instances).toHaveLength(1))
     // 外周リング (139,35)-(140,36) の重心。問題の対象座標は使わない。
     expect(instances[0].options.position).toEqual({ lat: 35.5, lng: 139.5 })
@@ -331,8 +342,15 @@ describe('Google map panel', () => {
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
     expect(screen.getByRole('button', { name: '石畳の坂の詳細を見る' })).toBeVisible()
     expect(screen.getByText('ピンは地域の代表点です。問題の場所そのものではありません。')).toBeVisible()
+    // 地図が使える時は連動リストはボトムシートに入り、初期状態は覗き見（peek）。
+    const sheet = container.querySelector('.explore-sheet')
+    expect(sheet).not.toBeNull()
+    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    expect(container.querySelector('.map-preview-shell')).toHaveClass('has-sheet')
     act(() => instances[0].click?.())
     expect(onSelectArea).toHaveBeenCalledWith('area-a')
+    // ピンを選ぶと、ハイライトされたカードが見える位置までシートが開く。
+    expect(sheet).toHaveAttribute('data-snap', 'half')
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('li')).toHaveClass('is-highlighted')
     expect(screen.getByRole('button', { name: '石畳の坂の詳細を見る' }).closest('li')).toHaveClass('is-highlighted')
     await user.click(screen.getByRole('button', { name: '閉じる' }))

@@ -38,3 +38,16 @@ export function useServerIdentity(enabled: boolean, api: ApiClient, auth: AuthSn
   const remote = useRemote(enabled && uid !== null, read)
   return { ...remote, result: enabled && uid !== null ? remote.result : null }
 }
+
+// 管理画面への入口を出すかどうかだけに使う所属の有無。保護は従来どおり
+// サーバー側の所属チェックが担い、ここで読めない・所属がない場合は出さない。
+export function useAdminMembership(enabled: boolean, api: ApiClient, auth: AuthSnapshot) {
+  const uid = auth.status === 'signed-in' ? auth.user.uid : null
+  const read = useCallback(async (signal: AbortSignal) => {
+    if (uid === null) return false
+    const page = await api.listMemberships({ limit: 1 }, { signal })
+    return page.items.length > 0
+  }, [api, uid])
+  const remote = useRemote(enabled && uid !== null, read)
+  return enabled && uid !== null && remote.result.status === 'ready' ? remote.result.value : false
+}
