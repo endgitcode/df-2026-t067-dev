@@ -45,6 +45,7 @@ it('confirms deletion, checks a known receipt without resending, and refreshes t
   await user.click(screen.getByRole('button', { name: 'キャンセル' }))
   expect(deleteDiscovery).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: '記録を削除' }))
+  expect(screen.getByRole('button', { name: '記録と写真を削除する' })).toHaveClass('danger-button')
   await user.click(screen.getByRole('button', { name: '記録と写真を削除する' }))
   await user.click(await screen.findByRole('button', { name: '削除状態を再確認' }))
   expect(await screen.findByText('削除を受け付けました。')).toBeVisible()

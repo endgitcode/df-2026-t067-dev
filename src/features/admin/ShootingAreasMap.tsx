@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CaptureZone } from '../../shared/api'
 import type { GoogleMapsApi, MapInstance } from '../explore/googleMapsLoader'
 import { loadGoogleMaps, subscribeMapsAuthFailure } from '../explore/googleMapsLoader'
+import { MAP_PIN_COLOR, MAP_PIN_SELECTED_COLOR, MAP_STYLES } from '../explore/mapStyles'
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
 
@@ -32,6 +33,7 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect }: {
       const map = new google.Map(target.current, {
         center: first ? { lat: first.latitude, lng: first.longitude } : { lat: 36, lng: 138 },
         zoom: first ? 17 : 5, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, clickableIcons: false,
+        styles: MAP_STYLES,
       })
       const listener = google.event.addListener(map, 'click', (event) => {
         if (latest.current.disabled || !event?.latLng) return
@@ -50,8 +52,8 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect }: {
     const Circle = loaded.google.Circle
     const circles = zones.flatMap((zone, index) => zone ? [new Circle({
       map: loaded.map, center: { lat: zone.latitude, lng: zone.longitude }, radius: zone.radiusMeters,
-      clickable: false, strokeColor: index === selectedIndex ? '#176b46' : '#52677c',
-      fillColor: '#176b46', fillOpacity: index === selectedIndex ? 0.25 : 0.1,
+      clickable: false, strokeColor: index === selectedIndex ? MAP_PIN_SELECTED_COLOR : MAP_PIN_COLOR,
+      fillColor: MAP_PIN_COLOR, fillOpacity: index === selectedIndex ? 0.25 : 0.1,
     })] : [])
     return () => { circles.forEach((circle) => circle.setMap(null)) }
   }, [loaded, zones, selectedIndex])

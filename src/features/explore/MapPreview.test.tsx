@@ -129,11 +129,13 @@ describe('Google map panel', () => {
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
     window.google = { maps: { Map: class { constructor(_element: HTMLElement, options: Record<string, unknown>) { mapOptions = options; return map } }, Data, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { MAP_STYLES } = await import('./mapStyles')
     const { userEvent } = await import('@testing-library/user-event')
     const user = userEvent.setup()
     render(<ConfiguredMapPreview />)
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeEnabled()
     expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 3, maxZoom: 20 })
+    expect(mapOptions?.styles).toEqual(MAP_STYLES)
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeEnabled()
     for (let zoom = 6; zoom <= 12; zoom++) await user.click(screen.getByRole('button', { name: '地図を拡大' }))
     expect(currentZoom).toBe(12)

@@ -132,7 +132,7 @@ function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClie
     <div className="admin-list-actions">
       <button type="button" disabled={saving || rows.length >= 10} onClick={() => { setSelectedIndex(rows.length); setExpandedIndex(rows.length); edit([...rows, { latitude: '', longitude: '', radiusMeters: enableMap ? '50' : '' }]) }}>範囲を追加</button>
       <button type="submit" disabled={saving || !input || state === 'conflict'}>{saving ? '保存しています…' : '撮影範囲を保存'}</button>
-      {state === 'conflict' && <button type="button" onClick={onReload}>入力を破棄して最新版を確認</button>}
+      {state === 'conflict' && <button type="button" className="danger-button" onClick={onReload}>入力を破棄して最新版を確認</button>}
     </div>
   </form>
 }
