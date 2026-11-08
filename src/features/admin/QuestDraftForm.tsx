@@ -173,15 +173,13 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
 
   function validateMaterials() {
     const missingName = !name.trim()
-    const missingEvidence = !evidence.trim()
-    if (missingName || missingEvidence) {
-      errorFieldRef.current = missingName ? 'name' : 'evidence'
+    if (missingName) {
+      errorFieldRef.current = 'name'
       setShowSummary(false)
-      setDraftEntryError('対象名と対象にした理由を確認してください。未入力の欄にエラーを表示しています。')
+      setDraftEntryError('対象名を確認してください。未入力の欄にエラーを表示しています。')
       setStep('A03')
-      const field = missingName ? nameRef.current : evidenceRef.current
-      field?.focus()
-      field?.scrollIntoView?.({ block: 'center' })
+      nameRef.current?.focus()
+      nameRef.current?.scrollIntoView?.({ block: 'center' })
       return false
     }
     setDraftEntryError('')
@@ -287,7 +285,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     })
   }
 
-  const materialMissing = [!name.trim() && '対象名', !focused && !evidence.trim() && '対象にした理由（確認したこと）'].filter(Boolean) as string[]
+  const materialMissing = [!name.trim() && '対象名'].filter(Boolean) as string[]
   const contentMissing = [!draft.title.trim() && '問題タイトル', !draft.question.trim() && '問題文',
     ...draft.hints.map((hint, index) => !hint.trim() && `ヒント ${index + 1}`)].filter(Boolean) as string[]
 
@@ -309,13 +307,12 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       if (validateHours() && validateMaterials()) setShowSummary(true)
     }}>
       <section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1}>1/3 素材と場所</h2>
-        <p className="helper">{focused ? '対象名・写真・権利・特徴・撮影範囲などの確認は公開までに必要です。途中でも文章編集・保存できます。対象にした理由は任意です。' : '次へ進むには対象名と対象にした理由が必須です。写真・権利・撮影範囲などの確認は公開までに必要です。下書き保存は未完成でもできます。'}</p>
+        <p className="helper">{focused ? '対象名・写真・権利・特徴・撮影範囲などの確認は公開までに必要です。途中でも文章編集・保存できます。対象にした理由は任意です。' : '次へ進むには対象名が必須です。対象にした理由は任意です。写真・権利・撮影範囲などの確認は公開までに必要です。下書き保存は未完成でもできます。'}</p>
         <p className="helper">対象名と対象にした理由は非公開。問題を作るための確認材料です。</p>
         <span className="helper">{focused ? '公開までに必須' : '必須（次へ進むとき）'}</span><label>対象名<input ref={nameRef} aria-required={!focused} aria-invalid={Boolean(draftEntryError && !name.trim())} aria-describedby={draftEntryError && !name.trim() ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {draftEntryError && !name.trim() && <p id="name-error" className="field-error">対象名を入力してください。</p>}
-        <span className="helper">{focused ? '任意・担当者への追加情報' : '必須（次へ進むとき）'}</span><label>対象にした理由（確認したこと）<textarea ref={evidenceRef} aria-required={!focused} aria-invalid={Boolean(draftEntryError && !evidence.trim())} aria-describedby={draftEntryError && !evidence.trim() ? "evidence-error" : undefined} value={evidence} onChange={event => { setEvidence(event.target.value); markMaterialChange() }} rows={3} placeholder="例：自治体が管理し、安全に撮影できることを確認済み" /></label>
+        <span className="helper">任意・担当者への追加情報</span><label>対象にした理由（確認したこと）<textarea ref={evidenceRef} value={evidence} onChange={event => { setEvidence(event.target.value); markMaterialChange() }} rows={3} placeholder="例：自治体が管理し、安全に撮影できることを確認済み" /></label>
         {connection && <PhraseChips label="よくある確認（押すと文章に追加、もう一度押すと削除）" phrases={evidencePhrases} value={evidence} onChange={value => { setEvidence(value); markMaterialChange() }} />}
-        {draftEntryError && !evidence.trim() && <p id="evidence-error" className="field-error">対象にした理由を入力してください。</p>}
         <span className="helper">任意（後で登録可・非公開の照合用）</span><label className="file-label">参考写真（公開ヒントには自動流用しません）<input className="reference-photo-input" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
         <p id="photo-help" className="helper">{connection ? 'JPEG / PNG / WebP、送信上限4 MiB。合成素材を使ってください。'
           : 'JPEG / PNG / WebP、選択上限5 MB。参考写真の選択・プレビューのみです。'}</p>

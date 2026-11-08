@@ -4,15 +4,15 @@ import { createApiClient } from '../../shared/api'
 import type { ManagedQuest } from '../../shared/api'
 import QuestDraftForm from './QuestDraftForm'
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
-it('identifies missing fields locally and focuses the first remaining field', async () => {
+it('identifies the missing target locally and focuses it; evidence is optional', async () => {
   render(<QuestDraftForm />)
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('対象名')).toHaveAttribute('aria-invalid', 'true')
+  expect(screen.getByLabelText('対象にした理由（確認したこと）')).not.toHaveAttribute('aria-invalid', 'true')
+  expect(screen.getByLabelText('対象にした理由（確認したこと）')).not.toHaveAttribute('aria-required', 'true')
   await waitFor(() => expect(screen.getByLabelText('対象名')).toHaveFocus())
   fireEvent.change(screen.getByLabelText('対象名'), { target: { value: '時計' } })
-  fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
-  await waitFor(() => expect(screen.getByLabelText('対象にした理由（確認したこと）')).toHaveFocus())
-  fireEvent.change(screen.getByLabelText('対象にした理由（確認したこと）'), { target: { value: '安全を確認' } })
+  expect(screen.getByLabelText('対象にした理由（確認したこと）')).toHaveValue('')
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('問題タイトル')).toBeVisible()
 })
