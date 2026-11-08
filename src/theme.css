@@ -23,6 +23,12 @@
   --radius-m: 16px;
   --radius-l: 24px;
   --ui-radius: var(--radius-m);
+  /* Motion tokens (D-42): strong custom curves — the built-in easings are too
+     weak. Entering/exiting = --ease-out, on-screen movement = --ease-in-out,
+     sheets and drawers = the iOS-like --ease-drawer. UI motion stays ≤300ms. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --ui-border-width: 2px;
   --ui-shadow: 6px 6px 0 #1d1d1b;
   --ui-control-shadow: 3px 3px 0 #1d1d1b;
