@@ -32,8 +32,6 @@ p { overflow-wrap: anywhere; }
 .desktop-nav button span { font-size: 12px; }
 .desktop-nav .icon { width: 17px; height: 17px; }
 .account-area { display: flex; align-items: center; justify-content: end; flex-wrap: wrap; gap: 9px; }
-.account-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ui-muted); }
-.account-status .icon { width: 16px; height: 16px; }
 .account-action-button { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 7px 10px; color: var(--ui-muted); background: var(--ui-surface); font-size: 12px; min-height: 44px; }
 .account-action-button:disabled { opacity: .5; }
 .page, .site-footer { width: min(100% - 64px, 1440px); margin-inline: auto; }
@@ -199,7 +197,6 @@ button.explore-quest-card { cursor: pointer; }
   .site-header { padding-inline: 24px; gap: 20px; }
   .desktop-nav { gap: 16px; }
   .desktop-nav a, .desktop-nav button { font-size: 12px; }
-  .account-status { font-size: 12px; }
   .explore-workspace { grid-template-columns: minmax(0, 1fr) 334px; gap: 20px; }
   .page, .site-footer { width: calc(100% - 48px); }
   .map-preview { height: 600px; }
@@ -228,8 +225,6 @@ button.explore-quest-card { cursor: pointer; }
   .brand-mark .icon { width: 22px; height: 22px; }
   .brand-copy { font-size: 13px; }
   .account-area { max-width: 122px; gap: 4px; }
-  .account-status { font-size: 12px; gap: 4px; }
-  .account-status .icon { width: 13px; height: 13px; }
   .account-action-button { min-height: 44px; font-size: 12px; padding: 4px 8px; }
   .page, .site-footer { width: calc(100% - 32px); }
   .page { padding-top: 25px; padding-bottom: 24px; }
@@ -274,7 +269,6 @@ button.explore-quest-card { cursor: pointer; }
 /* Shared theme treatments for traveler, API, authentication and camera states. */
 .site-header { background: var(--ui-surface); }
 .brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
-.account-status { color: var(--ui-muted); }
 .desktop-nav .nav-active { color: var(--ui-ink); box-shadow: 0 3px 0 var(--ui-ink); }
 .desktop-nav button { color: var(--ui-muted); }
 .account-action-button { color: var(--ui-ink); }
@@ -332,7 +326,6 @@ button.explore-quest-card { cursor: pointer; }
 @media (max-width: 980px) { .explore-workspace { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) {
   .explore-heading h1 { font-size: 28px; }
-  .account-status { font-size: 11px; }
   .quest-card-content { padding: 20px; }
   .map-credit { font-size: 10px; }
   .demo-map-label { max-width: 175px; font-size: 10px; }
@@ -396,7 +389,6 @@ body.explore-fullbleed .brand, body.explore-fullbleed .desktop-nav, body.explore
 body.explore-fullbleed .brand { padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .desktop-nav { align-self: center; gap: 18px; padding: 4px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .account-area { flex-wrap: nowrap; max-width: none; }
-body.explore-fullbleed .account-status { padding: 6px 10px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .account-action-button { box-shadow: var(--ui-control-shadow); }
 body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 88px); }
 body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 136px); }

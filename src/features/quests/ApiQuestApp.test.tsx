@@ -137,7 +137,9 @@ describe('APIから問題を表示', () => {
     const api = apiFixture()
     render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="durable-local" />)
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
-    expect(screen.getByText('問題はログインなしで閲覧できます。', { exact: true })).toBeVisible()
+    // 未ログインはヘッダーの「ログイン」ボタンで分かり、状態表示の説明文は出ない。
+    expect(screen.getByRole('button', { name: 'ログイン' })).toBeVisible()
+    expect(screen.queryByText('問題はログインなしで閲覧できます。', { exact: true })).not.toBeInTheDocument()
     api.listQuests.mockResolvedValueOnce(page([second]))
     await userEvent.setup().click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
@@ -183,7 +185,9 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp dataMode="durable-local" authClient={authClient} />)
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
     expect(screen.getByText('永続API・ローカル')).toBeVisible()
-    expect(screen.getByText('Googleアカウントでログインしています。', { exact: true })).toBeVisible()
+    // ログイン済みはヘッダーの「ログアウト」ボタンで分かり、状態表示の説明文は出ない。
+    expect(screen.getByRole('button', { name: 'ログアウト' })).toBeVisible()
+    expect(screen.queryByText('Googleアカウントでログインしています。', { exact: true })).not.toBeInTheDocument()
     const catalogCalls = fetcher.mock.calls.filter(([path]) => String(path).includes('/api/v1/quests'))
     expect(catalogCalls).toHaveLength(2)
     expect(catalogCalls.every(([, init]) => !new Headers(init?.headers).has('Authorization'))).toBe(true)
