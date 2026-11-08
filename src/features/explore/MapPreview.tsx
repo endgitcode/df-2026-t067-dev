@@ -103,6 +103,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [sheetHeight, setSheetHeight] = useState(SHEET_PEEK_HEIGHT)
   // PC幅サイドバーの開閉（D-36）。その場の操作感を優先し、状態はメモリのみで保持する。
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // フィット時のパディングは「フィットする時点」の開閉状態で決める。開閉のたびに
+  // 再フィットすると地図の中心が動いてしまうため（D-38）、フィット側の effect の
+  // 依存には開閉状態を入れず、ref 経由で現在の値だけを読む。
+  const sidebarCollapsedRef = useRef(false)
   const [viewport, setViewport] = useState<ViewportBounds | null>(null)
   const viewportRef = useRef<ViewportBounds | null>(null)
   const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
@@ -296,7 +300,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
           fitted = true
         }
         if (fitted) {
-          instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport))
+          instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
           initialFitDone.current = instance
         }
       }
@@ -356,7 +360,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
       // 実際に見えている領域の中央に来るようにする。
       if (showPublicAreas) {
-        instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport))
+        instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
         initialFitDone.current = instance
       } else instance.fitBounds(bounds)
       lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
@@ -446,12 +450,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 大きさが変わる。コンテナ確定前に走ったフィットは実サイズに合わず、選択中なのに
   // 初期表示のまま残ることがある（2026-11-08 の実機報告）。確定後にサイズの再認識を
   // 促し、未フィットの選択があればフィットをやり直す。
+  // サイドバーの開閉はフローティング化（D-38）でコンテナの大きさが変わらなくなったため、
+  // ここでの対象に含めない（開閉では resize も再フィットもしない）。
   const settledLayout = useRef('')
   useEffect(() => {
     if (!sheetMode) return
     const instance = map.current
     if (!instance) return
-    const signature = `${sheetMode}:${panelMode}:${sidebarCollapsed}`
+    const signature = `${sheetMode}:${panelMode}`
     if (settledLayout.current !== signature) {
       settledLayout.current = signature
       try { window.google?.maps?.event.trigger?.(instance, 'resize') } catch { /* サイズ再認識は補助であり、失敗しても地図は使える。 */ }
@@ -461,12 +467,13 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       lastViewportSelection.current = null
       setFitRequest((value) => value + 1)
     }
-  }, [sheetMode, panelMode, selectedAreaId, sidebarCollapsed])
+  }, [sheetMode, panelMode, selectedAreaId])
 
-  // サイドバーの開閉はシェル側（ナビ・ヘッダー・ワークスペースの余白）にも効かせるため、
-  // body のクラスで CSS と協調する。
+  // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
+  // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。
   useEffect(() => {
     if (!panelMode) return
+    sidebarCollapsedRef.current = sidebarCollapsed
     document.body.classList.toggle('explore-sidebar-collapsed', sidebarCollapsed)
     return () => { document.body.classList.remove('explore-sidebar-collapsed') }
   }, [panelMode, sidebarCollapsed])

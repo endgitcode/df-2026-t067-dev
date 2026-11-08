@@ -57,23 +57,32 @@ describe('mobile bottom tab bar (D-32)', () => {
   })
 })
 
-// PC幅（981px以上）の縁なし表示は左サイドバー方式（D-34）: 地図はサイドバーの右側に広げ、
-// ナビとパネルを左の固定列に入れる。シート前提の規則とは幅で分ける。
-describe('PC left sidebar (D-34)', () => {
-  it('offsets the full-bleed map stage by the sidebar width on wide viewports', () => {
+// PC幅（981px以上）の縁なし表示は左サイドバー方式（D-34）。サイドバーは押し出し式ではなく、
+// 地図の上に浮くカード型（D-38）で、地図は常に画面いっぱい。シート前提の規則とは幅で分ける。
+describe('PC floating sidebar (D-38)', () => {
+  it('floats the sidebar as a card over a full-width map instead of offsetting the stage', () => {
     const mediaAt = css.indexOf('@media (min-width: 981px)')
     expect(mediaAt).toBeGreaterThan(-1)
-    // オフセットはワークスペースの padding-left のみ。シェルへの inset は相対配置と
-    // 重なって二重に効くため置かない（2026-11-08 の実機報告で修正）。
-    const rule = 'body.explore-fullbleed .explore-workspace { padding-left: var(--pc-sidebar-w); }'
-    expect(css).toContain(rule)
+    // 地図ステージはオフセットしない。ワークスペースの padding やシェルへの inset で
+    // 押し出すと、相対配置と重なって二重に効く（2026-11-08 の実機報告）。
+    expect(css).not.toContain('body.explore-fullbleed .explore-workspace { padding-left:')
     expect(css).not.toContain('.map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }')
+    const rule = 'body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap);'
+    expect(css).toContain(rule)
     expect(css.indexOf(rule)).toBeGreaterThan(mediaAt)
   })
 
-  it('fixes the primary nav and the side panel into the left column', () => {
-    expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: 0; left: 0;')
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel { position: fixed; top: var(--pc-sidebar-nav-h); bottom: 0; left: 0;')
+  it('floats the primary nav as the top piece of the same card', () => {
+    expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap);')
+    // ナビはカードの上半分（上の角だけ丸く）、パネルは下半分（下の角だけ丸く）。
+    expect(css).toContain('border-radius: var(--radius-l) var(--radius-l) 0 0;')
+    expect(css).toContain('border-radius: 0 0 var(--radius-l) var(--radius-l);')
+  })
+
+  it('keeps map-side floating UI clear of the panel zone', () => {
+    expect(css).toContain('body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset);')
+    expect(css).toContain('body.explore-fullbleed .map-topline { left: calc(var(--pc-sidebar-offset) + 8px); }')
+    expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { left: calc(var(--pc-sidebar-offset) + 8px);')
   })
 })
 
@@ -93,22 +102,24 @@ describe('rounded corner scale (D-35)', () => {
 })
 
 describe('PC sidebar layout integrity', () => {
-  it('offsets the stage only via the workspace padding, never via the shell inset', () => {
+  it('never offsets the map stage: no workspace padding, no shell inset', () => {
     // シェルは position: relative のため、inset を重ねると相対オフセットとして二重に効く。
     expect(css).not.toContain('.map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }')
-    expect(css).toContain('body.explore-fullbleed .explore-workspace { padding-left: var(--pc-sidebar-w); }')
+    expect(css).not.toContain('body.explore-fullbleed .explore-workspace { padding-left:')
   })
 
   it('keeps the floating brand a compact chip instead of a stretched bar', () => {
     expect(css).toContain('body.explore-fullbleed .brand { justify-self: start;')
   })
 
-  it('collapses the sidebar fully: workspace, nav, header and panel follow the collapsed class', () => {
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace { padding-left: 0; }')
+  it('collapses the sidebar by hiding the card only: the stage and the header do not move', () => {
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { display: none; }')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { display: none; }')
-    expect(css).toContain('body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: var(--pc-sidebar-w);')
+    expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }')
+    expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace')
+    expect(css).toContain('body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-w));')
+    // 閉じている間は左上に小さな浮動ボタンとして残る。
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap);')
   })
 })
 
