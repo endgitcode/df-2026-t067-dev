@@ -45,10 +45,11 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).not.toContain('body.explore-fullbleed .mobile-nav {')
   })
 
-  it('lifts the sheet and floating elements above the tab bar in full-bleed', () => {
+  it('keeps the mobile map controls fixed behind the sheet and the sheet above the tab bar', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 3; }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
+    expect(css).toContain('body.explore-fullbleed .explore-sheet-reopen { position: absolute;')
   })
 
   it('keeps the records screen clear of the tab bar', () => {
@@ -121,7 +122,6 @@ describe('mobile fullbleed finish', () => {
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
     expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }')
     expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
-    expect(css).toContain('body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 154px); left: 12px; right: 12px; }')
-    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
+    expect(css.indexOf('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px)')).toBeLessThan(css.indexOf('body.explore-fullbleed .map-topline { top: calc(env(safe-area-inset-top) + 154px)'))
   })
 })
