@@ -113,13 +113,42 @@ describe('PC sidebar layout integrity', () => {
   })
 
   it('collapses the sidebar by hiding the card only: the stage and the header do not move', () => {
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { display: none; }')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { display: none; }')
+    // D-42 以降、畳む時は display ではなく opacity / visibility / transform で
+    // 滑らせて消す（非表示への切り替えは遷移の終わりに遅らせる）。
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { opacity: 0; visibility: hidden;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { opacity: 0; visibility: hidden;')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace')
     expect(css).toContain('body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-w));')
     // 閉じている間は左上に小さな浮動ボタンとして残る。
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap);')
+  })
+})
+
+// UI の動き（D-42）: 入場は CSS、開閉は transition、曲線と尺はトークンで統一する。
+describe('UI motion (D-42)', () => {
+  const themeCss = readFileSync(resolve(process.cwd(), 'src/theme.css'), 'utf8')
+
+  it('defines the strong easing tokens in the theme', () => {
+    expect(themeCss).toContain('--ease-out: cubic-bezier(0.23, 1, 0.32, 1);')
+    expect(themeCss).toContain('--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);')
+    expect(themeCss).toContain('--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);')
+  })
+
+  it('glides the sheet snap with the drawer curve and delays hiding until the close finishes', () => {
+    expect(css).toContain('transition: height 300ms var(--ease-drawer), visibility 0s;')
+    expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) { transition: height 300ms var(--ease-drawer), visibility 0s linear 300ms; }')
+  })
+
+  it('animates the quest details entrance and the view swap with the shared keyframes', () => {
+    expect(css).toContain('@keyframes content-rise-in')
+    expect(css).toContain('.quest-details { animation: content-rise-in 280ms var(--ease-out); }')
+    expect(css).toContain('.view-enter { animation: view-fade-in 180ms var(--ease-out); }')
+  })
+
+  it('slides the floating sidebar card out instead of snapping it off', () => {
+    expect(css).toContain('transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s;')
+    expect(css).toContain('transform: translateX(-12px); pointer-events: none; transition-delay: 0s, 0s, 200ms;')
   })
 })
 

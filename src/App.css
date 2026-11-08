@@ -104,9 +104,12 @@ button.explore-quest-card { cursor: pointer; }
 .quest-number-label { color: var(--ui-muted); border-left: var(--ui-border-width) solid var(--ui-line); padding-left: 8px; font-size: 12px; font-weight: var(--ui-weight-strong); }
 .explore-quest-clue { font-size: 12px; color: var(--ui-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .explore-quest-cleared { flex: none; padding: 3px 8px; font-size: 11px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
-.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 260ms ease; }
+.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 300ms var(--ease-drawer), visibility 0s; }
 .explore-sheet.is-dragging { transition: none; }
 .explore-sheet[data-snap="closed"]:not(.is-dragging) { visibility: hidden; pointer-events: none; }
+/* 閉じる時は高さの滑りが見えるよう、非表示への切り替えを遷移の終わりに遅らせる（D-42）。 */
+.explore-sheet[data-snap="closed"]:not(.is-dragging) { transition: height 300ms var(--ease-drawer), visibility 0s linear 300ms; }
+.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { transition: visibility 0s linear 300ms; }
 .explore-sheet-reopen { display: none; }
 .explore-sheet-handle { flex: none; display: grid; place-items: center; height: 34px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; }
 .explore-sheet-handle:active { cursor: grabbing; }
@@ -179,6 +182,26 @@ button.explore-quest-card { cursor: pointer; }
 .quest-toggle.is-open { background: var(--ui-surface); color: var(--ui-muted); border-color: var(--ui-line); }
 .quest-toggle.is-open .icon { transform: rotate(-90deg); }
 .quest-details { border-top: var(--ui-border-width) solid var(--ui-line); margin-top: 23px; padding-top: 22px; }
+/* 入場の動き（D-42）。あらかじめ決まった入場は CSS キーフレームで付け、メイン
+   スレッドが忙しい時も滑らかに保つ。詳細は小さく沈み込むように出し、画面切替と
+   撮影パネルは控えめなフェード＋上昇にする。動かすのは transform / opacity のみ。 */
+@keyframes content-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  55% { opacity: 1; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes view-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.quest-details { animation: content-rise-in 280ms var(--ease-out); }
+.camera-panel { animation: view-fade-in 200ms var(--ease-out); }
+.view-enter { animation: view-fade-in 180ms var(--ease-out); }
+/* クリア演出（D-42）の受け皿。バッジときらめき自体の動きは Motion が担う。 */
+.clear-celebration { position: relative; display: grid; place-items: center; height: 84px; margin-top: 6px; }
+.clear-celebration-badge { position: relative; z-index: 1; display: grid; place-items: center; width: 54px; height: 54px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%; background: var(--ui-tint); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
+.clear-celebration-badge .icon { width: 28px; height: 28px; }
+.clear-celebration-spark { position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -5px 0 0 -5px; border: 2px solid var(--ui-line); border-radius: 50%; pointer-events: none; }
 .quest-details h4 { font-size: 15px; font-weight: var(--ui-weight-strong); margin-bottom: 14px; }
 .clue-text { border-left: 2px solid var(--ui-muted); padding-left: 12px; color: var(--ui-muted); font-size: 13px; line-height: 1.95; margin-bottom: 16px; }
 .sample-note { background: var(--ui-muted); padding: 10px 12px; border-radius: var(--ui-radius); color: var(--ui-muted); font-size: 12px; line-height: 1.7; margin-bottom: 18px; }
@@ -269,7 +292,7 @@ button.explore-quest-card { cursor: pointer; }
   .mobile-nav a, .mobile-nav button { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
 
 /* Shared theme treatments for traveler, API, authentication and camera states. */
@@ -398,9 +421,9 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 @media (min-width: 981px) {
   body.explore-fullbleed { --pc-sidebar-w: 380px; --pc-sidebar-nav-h: 68px; --pc-sidebar-gap: 16px; --pc-sidebar-offset: calc(var(--pc-sidebar-w) + var(--pc-sidebar-gap) * 2); }
   body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 25; grid-template-columns: 1fr auto; }
-  body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h); padding: 12px 16px; background: var(--ui-surface); border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: 6px 0 0 var(--ui-line); }
+  body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h); padding: 12px 16px; background: var(--ui-surface); border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: 6px 0 0 var(--ui-line); transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
   body.explore-fullbleed .desktop-nav a, body.explore-fullbleed .desktop-nav button { flex: 1 1 0; justify-content: center; }
-  body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; width: var(--pc-sidebar-w); overflow-y: auto; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-top: 0; border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow); padding: 0 16px 20px; }
+  body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; width: var(--pc-sidebar-w); overflow-y: auto; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-top: 0; border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow); padding: 0 16px 20px; transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
   body.explore-fullbleed .map-topline { left: calc(var(--pc-sidebar-offset) + 8px); }
   body.explore-fullbleed .map-location-status.is-floating { left: calc(var(--pc-sidebar-offset) + 8px); max-width: calc(100% - var(--pc-sidebar-offset) - 118px); }
   body.explore-fullbleed .explore-side-panel .side-panel-filters { position: sticky; top: 0; z-index: 2; margin: 0 -16px; padding: 12px 16px 10px; background: var(--ui-surface); }
@@ -417,8 +440,10 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
      寄せてあるため重ならない。地域名チップはさらに下に付く）。 */
   body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-w)); z-index: 35; display: grid; place-items: center; width: 26px; height: 56px; padding: 0; transform: translate(-50%, -50%); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-m); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 18px; line-height: 1; cursor: pointer; }
   body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); width: 42px; height: 42px; transform: none; }
-  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { display: none; }
-  body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { display: none; }
+  /* 閉じる時はカードを少し左へ滑らせながら消し、非表示への切り替えは遷移の
+     終わりに遅らせる（D-42）。開く時は逆向きに即座に出る。地図とヘッダーは動かさない。 */
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { opacity: 0; visibility: hidden; transform: translateX(-12px); pointer-events: none; transition-delay: 0s, 0s, 200ms; }
+  body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { opacity: 0; visibility: hidden; transform: translateX(-12px); pointer-events: none; transition-delay: 0s, 0s, 200ms; }
 }
 
 @media (max-width: 980px) {
