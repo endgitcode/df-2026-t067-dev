@@ -356,7 +356,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         <div className="private-setting"><strong>非公開の撮影地点・半径</strong><span>{areaStatus}</span><small>{connection ? '撮影可能範囲：中心から半径1km（固定）' : '安全上、値や入力欄を表示しません。'}</small></div>
       </section>
       {connection && <section className="form-section" aria-label="対象スポット登録">
-        <SpotEditor input={spotInput} onChange={(input) => { setSpotInput(input); setInputError(''); markMaterialChange() }} />
+        <SpotEditor input={spotInput} durable={connection.taskFocused || teamPreview}
+          onChange={(input) => { setSpotInput(input); setInputError(''); markMaterialChange() }} />
       </section>}
       <section className="form-section" aria-labelledby="conditions-heading"><h2 id="conditions-heading">挑戦前に伝える条件</h2><p className="helper">旅行者に公開されます。安全上の制約や必要な費用がある場合は必ず記載してください。</p>
         <fieldset><legend>撮影に必要な条件</legend><div className="check-grid"><label className="check-option"><input type="checkbox" checked={requiresBoat} onChange={event => { setRequiresBoat(event.target.checked); markMaterialChange() }} />船上・海上での撮影が必要</label><label className="check-option"><input type="checkbox" checked={requiresPaidFacility} onChange={event => { setRequiresPaidFacility(event.target.checked); markMaterialChange() }} />有料施設内での撮影が必要</label></div><p className="helper">陸から撮影できる場合、船上・海上の条件は選びません。</p></fieldset>
