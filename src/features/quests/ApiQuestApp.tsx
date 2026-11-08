@@ -189,9 +189,11 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     setSelectedId('')
   }
 
-  const selectedQuestId = choices.some((item) => item.questId === selectedId)
+  const visibleAreaIds = useMemo(() => new Set(regionAreas.map((area) => area.areaId)), [regionAreas])
+  const visibleChoices = activeRegion ? choices.filter((item) => visibleAreaIds.has(item.areaId)) : choices
+  const selectedQuestId = visibleChoices.some((item) => item.questId === selectedId)
     ? selectedId
-    : choices[0]?.questId ?? ''
+    : activeRegion ? '' : visibleChoices[0]?.questId ?? ''
   const picker = <div className="api-quest-picker">
     <label htmlFor="api-region-select">地方</label>
     <select id="api-region-select" value={activeRegion} onChange={(event) => { setActiveRegion(event.target.value); setActivePrefecture(''); resetAreaSelection() }}>
@@ -207,8 +209,8 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       </select>
     </>}
     {selectedAreaId && <button type="button" onClick={resetAreaSelection}>すべての公開問題を見る</button>}
-    {activeRegion && !regionAreas.length && <p>この条件に公開探索地域はありません。</p>}
-    {dataMode === 'durable-local' ? <ul aria-label="公開問題">{choices.map(item => <li key={item.questId}>
+    {activeRegion && state !== 'loading' && state !== 'error' && !visibleChoices.length && <p role="status">この条件に公開問題はありません。</p>}
+    {dataMode === 'durable-local' ? <ul aria-label="公開問題">{visibleChoices.map(item => <li key={item.questId}>
       <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => {
         clearRefreshNotice()
         if (syncUrl) writeSelectionToUrl(selectedAreaId, item.questId, 'push')
@@ -217,15 +219,15 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       }}>{item.title}</button>
     </li>)}</ul> : <><label htmlFor="api-quest-select">公開APIの問題を選択</label>
     <select id="api-quest-select" aria-label="公開APIの問題を選択" value={selectedQuestId}
-      disabled={!choices.length}
+      disabled={!visibleChoices.length}
       onChange={(event) => {
         const questId = event.target.value
         clearRefreshNotice()
         if (syncUrl) writeSelectionToUrl(selectedAreaId, questId, 'push')
         setSelectedId(questId)
       }}>
-      {!choices.length && <option value="">{state === 'loading' ? '問題を読み込み中' : '選べる問題がありません'}</option>}
-      {choices.map((item) => <option key={item.questId} value={item.questId}>{item.title}</option>)}
+      {!selectedQuestId && <option value="" disabled>{state === 'loading' ? '問題を読み込み中' : visibleChoices.length ? '問題を選択してください' : '選べる問題がありません'}</option>}
+      {visibleChoices.map((item) => <option key={item.questId} value={item.questId}>{item.title}</option>)}
     </select></>}
     <p>問題と地域名は公開APIから取得しています。架空の問題の位置は地図に表示しません。</p>
   </div>
@@ -285,7 +287,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       {refreshControl}
       {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && picker}
     </section> : undefined
-  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest} mapAreas={regionAreas} mapQuests={choices} onOpenQuest={openQuestFromMap} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
+  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={regionAreas} mapQuests={visibleChoices} onOpenQuest={openQuestFromMap} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
     areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
     questPicker={<>{picker}{refreshControl}</>} catalogFallback={fallback} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}
