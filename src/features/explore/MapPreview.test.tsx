@@ -271,6 +271,27 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('lets the initial fit own the camera on load without writing the Japan center (D-72)', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const setCenter = vi.fn()
+    const setZoom = vi.fn()
+    const map = { ...mapInstance, fitBounds, setCenter, setZoom }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    // 初期マウントでは選択側の effect が日本中心＋初期ズームを書かない。書くと
+    // 初期フィットと競合して初期表示が崩れた（実地報告：朝鮮半島中心に一部のピンだけ）。
+    expect(setCenter).not.toHaveBeenCalled()
+    expect(setZoom).not.toHaveBeenCalled()
+    unmount()
+    delete window.google
+  })
+
   it('refits when the filtered area set changes and returns to all areas when cleared', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
@@ -465,7 +486,9 @@ describe('Google map panel', () => {
       publicGeometry: { type: 'Polygon', coordinates: [[[135, 34], [136, 34], [136, 35], [135, 35], [135, 34]]] } }
     const twoAreas = [...areas, areaB]
     const { rerender, unmount } = render(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="" />)
-    await waitFor(() => expect(setZoom).toHaveBeenCalledWith(5))
+    // このテストのモックには Marker が無く、初期フィットは走らない。初期マウントで
+    // 日本中心＋初期ズームを書く旧挙動（初期フィットとの競合、D-72）も廃止したため、
+    // 初期化の目印は置かず、選択後のフィットで待つ（未ready の選択は ready 後に処理される）。
     // 利用者が選択前に地図を動かした状態を再現する。
     setCenter({ lat: 34.6937, lng: 135.5023 })
     setZoom(9)
