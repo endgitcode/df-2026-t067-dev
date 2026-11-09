@@ -56,8 +56,25 @@ test('allows explicitly tagged fixtures only for memberships without municipalit
   const fixture = record({ boundarySource: 'fixture', municipalityCode: undefined, boundaryYear: undefined })
   assert.deepEqual(readMunicipalArea(fixture, { areaId: 'municipality-13101' })?.boundary, { source: 'fixture' })
   assert.equal(readMunicipalArea(fixture, { areaId: 'municipality-13101', municipalityCode: '13101' }), null)
-  assert.equal(readMunicipalArea(record({ boundarySource: 'fixture' }), { areaId: 'municipality-13101' }), null)
   assert.equal(readMunicipalArea(record({ municipalityCode: undefined }), { areaId: 'municipality-13101' }), null)
+})
+
+test('fixture areas keep resolving when the area carries a D-30 public municipality code (D-68)', () => {
+  // 共有環境の郡山（demo-area-koriyama）の実データ形：境界は fixture、地域側にだけ
+  // D-30 の公開用コード 07203 があり、所属にはコードが無い。これで下書き作成が
+  // 503 になっていた回帰を固定する。所属側にコードがある場合は従来どおり弾く。
+  const koriyama = {
+    id: 'demo-area-koriyama',
+    data: {
+      label: '郡山', marker: { latitude: 37.4003, longitude: 140.3599 },
+      publicGeometryJson: JSON.stringify({ type: 'Polygon', coordinates: [outer] }),
+      boundarySource: 'fixture', municipalityCode: '07203', prefectureCode: '07',
+    },
+  }
+  assert.deepEqual(readMunicipalArea(koriyama, { areaId: 'demo-area-koriyama' })?.boundary, { source: 'fixture' })
+  assert.equal(readMunicipalArea(koriyama, { areaId: 'demo-area-koriyama', municipalityCode: '07203' }), null)
+  // 既存の千代田形（地域側コード＋年度が残っている fixture）でも所属が無コードなら解決する。
+  assert.deepEqual(readMunicipalArea(record({ boundarySource: 'fixture' }), { areaId: 'municipality-13101' })?.boundary, { source: 'fixture' })
 })
 
 test('prepares only the selected code and keeps every polygon and hole', () => {
