@@ -168,6 +168,35 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('suppresses a swipe-generated map-control click while preserving touch taps and keyboard clicks', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const setZoom = vi.fn()
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return { ...mapInstance, getZoom: () => 5, setZoom } } }, Data, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    render(<ConfiguredMapPreview />)
+    const zoomIn = await screen.findByRole('button', { name: '地図を拡大' })
+    setZoom.mockClear()
+
+    fireEvent.pointerDown(zoomIn, { pointerId: 31, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.pointerMove(zoomIn, { pointerId: 31, pointerType: 'touch', clientX: 22, clientY: 36 })
+    fireEvent.pointerUp(zoomIn, { pointerId: 31, pointerType: 'touch', clientX: 22, clientY: 36 })
+    fireEvent.click(zoomIn, { detail: 1 })
+    expect(setZoom).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(zoomIn, { pointerId: 32, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.pointerUp(zoomIn, { pointerId: 32, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.click(zoomIn, { detail: 1 })
+    expect(setZoom).toHaveBeenCalledTimes(1)
+    expect(setZoom).toHaveBeenLastCalledWith(6)
+
+    fireEvent.click(zoomIn, { detail: 0 })
+    expect(setZoom).toHaveBeenCalledTimes(2)
+    expect(setZoom).toHaveBeenLastCalledWith(6)
+    delete window.google
+  })
+
   it('does not draw any veil polygon over the map', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()

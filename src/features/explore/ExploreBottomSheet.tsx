@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 
 export type SheetSnap = 'closed' | 'peek' | 'half' | 'full'
 
@@ -42,6 +42,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const drag = useRef<{ pointerId: number; startY: number; startHeight: number; distance: number } | null>(null)
   const suppressClick = useRef(false)
+  const reopenGesture = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
   const lastOpenSignal = useRef<string | null>(null)
   const bodyId = useId()
 
@@ -126,6 +127,26 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
     if (snap === 'closed' && onBrowseBelowMap) onBrowseBelowMap()
     else reopen()
   }
+  const reopenGestureProps = {
+    onPointerDownCapture: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      reopenGesture.current = event.pointerType === 'touch'
+        ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false }
+        : null
+    },
+    onPointerMoveCapture: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      const gesture = reopenGesture.current
+      if (gesture?.pointerId === event.pointerId && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 8) gesture.moved = true
+    },
+    onPointerCancelCapture: () => { reopenGesture.current = null },
+    onClickCapture: (event: ReactMouseEvent<HTMLButtonElement>) => {
+      const gesture = reopenGesture.current
+      reopenGesture.current = null
+      if (gesture?.moved && event.detail !== 0) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    },
+  }
 
   return <>
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
@@ -136,7 +157,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
       </button>
       <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
     </div>
-    {snap === 'closed' && <button ref={reopenRef} type="button" className="explore-sheet-reopen"
+    {snap === 'closed' && <button ref={reopenRef} type="button" className="explore-sheet-reopen" {...reopenGestureProps}
       inert={!reopenVisible} aria-hidden={!reopenVisible} disabled={!reopenVisible}
       {...(!onBrowseBelowMap ? { 'aria-expanded': false, 'aria-controls': bodyId } : {})}
       onClick={onReopenClick}>問題を見る</button>}
