@@ -1,13 +1,18 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createModuleLoadGuard } from './moduleLoadGuard'
+import { prepareRouteBoot } from './routeBoot'
 
-// Build-time React HTML remains visible until this root commits the real app.
+// Explorer boot HTML stays visible until commit; admin routes clear it first.
 // Deliberate replacement: URL, auth and viewport are browser-owned initial state.
-const root = createRoot(document.getElementById('root')!)
+const host = document.getElementById('root')!
+prepareRouteBoot(window.location.pathname, document.body, host)
+const root = createRoot(host)
 const { load } = createModuleLoadGuard(root)
 
-if (import.meta.env.VITE_QUEST_DATA_SOURCE === 'team-preview') {
+if (window.location.pathname === '/admin-demo') {
+  void load(import('./features/admin-demo/AdminDemo'), ({ default: AdminDemo }) => <StrictMode><AdminDemo /></StrictMode>)
+} else if (import.meta.env.VITE_QUEST_DATA_SOURCE === 'team-preview') {
   if (window.location.pathname === '/admin') {
     void load(import('./features/admin/LocalAdminWorkspace'), ({ LocalAdminWorkspace }) => <StrictMode><LocalAdminWorkspace dataMode="team-preview" /></StrictMode>)
   } else {
@@ -15,8 +20,6 @@ if (import.meta.env.VITE_QUEST_DATA_SOURCE === 'team-preview') {
   }
 } else if (import.meta.env.DEV && window.location.pathname === '/admin-local') {
   void load(import('./features/admin/LocalAdminWorkspace'), ({ LocalAdminWorkspace }) => <StrictMode><LocalAdminWorkspace dataMode={import.meta.env.VITE_QUEST_DATA_SOURCE === 'durable-local' ? 'durable-local' : 'demo'} /></StrictMode>)
-} else if (window.location.pathname === '/admin-demo') {
-  void load(import('./features/admin-demo/AdminDemo'), ({ default: AdminDemo }) => <StrictMode><AdminDemo /></StrictMode>)
 } else if (import.meta.env.DEV) {
   const dataMode = import.meta.env.VITE_QUEST_DATA_SOURCE === 'durable-local' ? 'durable-local' : 'demo'
   void load(import('./features/quests/ApiQuestApp'), ({ ApiQuestApp: App }) => <StrictMode><App dataMode={dataMode} /></StrictMode>)
