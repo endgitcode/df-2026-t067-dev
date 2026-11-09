@@ -1,3 +1,4 @@
+import { questHandoffUrl } from './features/quests/questHandoffUrl'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import type { MouseEvent } from 'react'
@@ -185,11 +186,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const handoffUrl = useMemo(() => {
     if (!quest) return undefined
     try {
-      const url = new URL(window.location.href)
-      url.searchParams.set('area', quest.areaId)
-      url.searchParams.set('quest', quest.questId)
-      url.hash = ''
-      return url.toString()
+      return questHandoffUrl(quest)
     } catch { return undefined }
   }, [quest])
   // ディープリンク（?quest=）で開かれた場合は、その問題の詳細を最初から開く。
@@ -424,13 +421,13 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
                   onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
-                  hideStartAction={(teamPreview && !teamAnswerTrial) || (!onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && visiblePending === null)}
+                  hideStartAction={(teamPreview && !teamAnswerTrial) || (!wideViewport && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && visiblePending === null)}
                   disabled={questStale || visiblePending !== null || (auth.status !== 'signed-out' && auth.status !== 'signed-in') || (auth.status === 'signed-in' && (onStartChallenge ? false : !canUseCamera || cameraVisible))}
                   buttonLabel={visiblePending === 'sign-in' ? '処理中…' : auth.status === 'signed-in' ? (onStartChallenge ? '挑戦を開始する' : cameraVisible ? '撮影中' : serverIdentity.result?.status === 'loading' ? 'ログインの確認中…' : serverIdentity.result?.status === 'error' ? 'ログインの確認待ち' : '撮影を始める') : 'Googleログインして挑戦する'}
                   note={questStale ? '問題の版を確認できていません。最新版を読み直すまで挑戦できません。' : undefined}
                   clearedDiscoveryId={clearedDiscoveryId} onOpenDiscovery={(id) => { setRecordDestination({ auth, id }); navigateToRecords(true) }}
                   feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) closeCamera(); /* 開閉ボタンはレールに置く使い方（選択の受け口が無い場合）だけに出る（D-65）。一覧の中の詳細ではボタン自体を出さず、閉じる操作は行の再タップによる選択解除（D-55）に一本化したため、ここで選択解除まで連動させる配線は不要になった（旧 D-60 の配線は廃止）。 */ setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
-                    {!questStale && !clearedDiscoveryId && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
+                    {!wideViewport && !questStale && !clearedDiscoveryId && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
                       key={JSON.stringify([uid, quest.questId, quest.version, captureRevision])} api={api} quest={quest} dataMode={apiDataMode}
                       autoStart={(durableLocal || teamAnswerTrial) && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
                       canAutoStart={() => startIntent !== null && startIntent.generation === selectionGeneration.current && startIntent.expires > Date.now() && openRef.current && authClient.getSnapshot() === startIntent.auth}
@@ -439,7 +436,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       onReturnToMap={(discoveryId) => { if (discoveryId) noteCleared(quest.questId, discoveryId) }}
                       onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
                     {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
-                    {cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} />}
+                    {!wideViewport && cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} handoffUrl={handoffUrl} />}
                     {localApiMode && !teamPreview && <QuestReport key={questKey} api={api} questId={quest.questId} dataMode={apiDataMode}
                       ownerUid={canUseCamera && visiblePending === null ? uid : null} canSignIn={auth.status === 'signed-out'}
                       signInPending={visiblePending !== null} onSignIn={() => void login()} />}

@@ -530,20 +530,17 @@ describe('広い画面でのスマホ受け渡し', () => {
   }
   afterEach(() => { vi.unstubAllGlobals() })
 
-  it('主導線はこの場の挑戦（primary）で、「スマホで挑戦する」はQRの副次導線として残る（D-74）', async () => {
+  it('PCではQRだけを表示し、挑戦開始を呼ばない', async () => {
     stubViewport(true)
     const user = userEvent.setup()
     const onStart = vi.fn()
     render(<QuestDetails quest={demoQuest} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" note="注記" onToggle={vi.fn()} onStart={onStart} handoffUrl={handoffUrl} />)
     const handoffButton = screen.getByRole('button', { name: 'スマホで挑戦する' })
     expect(handoffButton).toHaveAttribute('aria-expanded', 'true')
-    expect(handoffButton).toHaveClass('quest-handoff-toggle')
-    expect(handoffButton).not.toHaveClass('primary-button')
+    expect(handoffButton).toHaveClass('primary-button')
     expect(screen.getByRole('img', { name: /QRコード/ })).toBeVisible()
-    const direct = screen.getByRole('button', { name: '挑戦する' })
-    expect(direct).toHaveClass('primary-button')
-    await user.click(direct)
-    expect(onStart).toHaveBeenCalledWith({ questId: demoQuest.questId, expectedVersion: demoQuest.version })
+    expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
+    expect(onStart).not.toHaveBeenCalled()
     await user.click(handoffButton)
     expect(handoffButton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('img', { name: /QRコード/ })).not.toBeInTheDocument()

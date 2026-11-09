@@ -63,14 +63,32 @@ describe('local camera preview', () => {
     expect(container).not.toContainElement(camera)
   })
 
-  it('keeps the desktop camera inside its existing panel', () => {
+  it('PCの撮影状態への直接表示ではQRを出し、カメラ・写真入力・位置取得を使わない', async () => {
     const media = setup()
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
-    const { container } = render(<CameraPreview onClose={media.onClose} />)
-    const camera = screen.getByRole('region', { name: '写真撮影と確認' })
-    expect(camera).toHaveClass('camera-panel')
-    expect(camera).not.toHaveClass('camera-overlay')
-    expect(container).toContainElement(camera)
+    const { container } = render(<CameraPreview onClose={media.onClose} handoffUrl="https://example.test/?quest=test" />)
+    expect(screen.getByRole('img', { name: /QRコード/ })).toBeVisible()
+    await act(async () => {})
+    expect(media.getUserMedia).not.toHaveBeenCalled()
+    expect(media.getCurrentPosition).not.toHaveBeenCalled()
+    expect(container.querySelector('input[type="file"], video')).toBeNull()
+    expect(screen.queryByRole('button', { name: '解答を送信する' })).not.toBeInTheDocument()
+  })
+
+  it('スマホ撮影中にPC幅へ変わるとカメラを停止してQRへ切り替える', async () => {
+    const media = setup()
+    let wide = false
+    const listeners = new Set<() => void>()
+    vi.stubGlobal('matchMedia', () => ({ matches: wide,
+      addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+    }))
+    render(<CameraPreview onClose={media.onClose} />)
+    await loadFrame(media.stream)
+    act(() => { wide = true; listeners.forEach(listener => listener()) })
+    expect(media.stop).toHaveBeenCalled()
+    expect(screen.getByRole('img', { name: /QRコード/ })).toBeVisible()
+    expect(screen.queryByLabelText('カメラ映像')).not.toBeInTheDocument()
   })
 
   it('shows a disabled preparation submit action in the normal photo flow', async () => {

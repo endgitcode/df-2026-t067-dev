@@ -456,9 +456,7 @@ describe('button widths and records alignment (D-74)', () => {
     expect(css).toContain('.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 52px;')
   })
 
-  it('keeps the PC handoff emphasis on the direct start and widens the records body column', () => {
-    expect(css).toContain('.quest-handoff-toggle { width: 100%; min-height: 44px;')
-    expect(css).not.toContain('.quest-handoff-direct')
+  it('widens the records body column', () => {
     const recordsRule = css.match(/^\.owner-records\s*\{([^}]+)\}/m)?.[1] ?? ''
     expect(recordsRule).toMatch(/\bdisplay:\s*grid\s*;/)
     expect(recordsRule).toMatch(/\bgap:\s*16px\s*;/)

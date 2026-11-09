@@ -40,6 +40,19 @@ function takePhoto() {
 }
 
 describe('challenge before camera', () => {
+  it('PC幅では開始状態を直接表示してもQRだけを出し、開始APIもカメラも呼ばない', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const f = fixture('durable-local')
+    f.rerender(<ChallengeCapture api={{ ...createApiClient(), createChallenge: f.createChallenge }} quest={quest}
+      onReloadQuest={f.reload} autoStart canAutoStart={() => true} />)
+    expect(screen.getByRole('img', { name: /QRコード/ })).toBeVisible()
+    await act(async () => {})
+    expect(f.createChallenge).not.toHaveBeenCalled()
+    expect(f.getUserMedia).not.toHaveBeenCalled()
+    expect(f.container.querySelector('input[type="file"], video')).toBeNull()
+    expect(screen.queryByRole('button', { name: '挑戦を始める' })).not.toBeInTheDocument()
+  })
+
   it('shows a durable receipt and its completed result without submitting twice', async () => {
     const f = fixture('durable-local')
     const receipt = { attemptId: 'durable-receipt', state: 'RECEIVED', outcome: null, nextAction: 'WAIT', source: 'real' }
