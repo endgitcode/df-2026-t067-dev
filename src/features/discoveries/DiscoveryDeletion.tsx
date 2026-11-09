@@ -4,15 +4,22 @@ import { useRequestAction } from '../../shared/useRequestAction'
 
 type State = 'idle' | 'confirm' | 'working' | 'pending' | 'send-error' | 'check-error' | 'failed'
 
-export function DiscoveryDeletion({ api, id, onDeleted }: { api: ApiClient; id: string; onDeleted: () => void }) {
+export function DiscoveryDeletion({ api, id, onDeleted, onStateChange }: {
+  api: ApiClient; id: string; onDeleted: () => void; onStateChange: (state: State) => void
+}) {
   const [state, setState] = useState<State>('idle')
   const receipt = useRef<string | null>(null)
   const begin = useRequestAction()
 
+  function updateState(next: State) {
+    setState(next)
+    onStateChange(next)
+  }
+
   async function check() {
-    const operation = begin(() => setState(receipt.current ? 'check-error' : 'send-error'))
+    const operation = begin(() => updateState(receipt.current ? 'check-error' : 'send-error'))
     if (!operation) return
-    setState('working')
+    updateState('working')
     try {
       const call = { signal: operation.signal }
       if (receipt.current === null) {
@@ -23,10 +30,10 @@ export function DiscoveryDeletion({ api, id, onDeleted }: { api: ApiClient; id: 
       const result = await api.getDeletion(receipt.current, call)
       if (!operation.isCurrent()) return
       if (result.state === 'completed') onDeleted()
-      else if (result.state === 'pending') setState('pending')
-      else setState(result.retryable ? 'check-error' : 'failed')
+      else if (result.state === 'pending') updateState('pending')
+      else updateState(result.retryable ? 'check-error' : 'failed')
     } catch {
-      if (operation.isCurrent()) setState(receipt.current ? 'check-error' : 'send-error')
+      if (operation.isCurrent()) updateState(receipt.current ? 'check-error' : 'send-error')
     } finally { operation.finish() }
   }
 

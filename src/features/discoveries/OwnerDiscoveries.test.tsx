@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { createApiClient } from '../../shared/api'
@@ -102,6 +102,10 @@ it('confirms deletion, checks a known receipt without resending, and refreshes t
   await user.click(screen.getByRole('button', { name: '記録と写真を削除する' }))
   await user.click(await screen.findByRole('button', { name: '削除状態を再確認' }))
   expect(await screen.findByText('削除を受け付けました。')).toBeVisible()
+  expect(screen.getByRole('button', { name: '閉じる' })).toBeDisabled()
+  const dialog = screen.getByRole('dialog', { name: '記録詳細' })
+  expect(fireEvent(dialog, new Event('cancel', { cancelable: true }))).toBe(false)
+  expect(dialog).toBeVisible()
   expect(screen.queryByText('記録と写真の削除が完了しました。')).not.toBeInTheDocument()
   expect(deleteDiscovery).toHaveBeenCalledExactlyOnceWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
   await user.click(screen.getByRole('button', { name: '削除状態を確認' }))
@@ -158,7 +162,7 @@ it('keeps thumbnails behind the dialog and releases the detail photo on close', 
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:record-thumb')
 })
 
-it('shows records in a photo, spot name, and date table and opens details in a native dialog', async () => {
+it.each([0, 1])('shows record details and validates the published title (version offset %i)', async (versionOffset) => {
   const user = userEvent.setup()
   vi.stubGlobal('URL', class extends URL {
     static createObjectURL = () => 'blob:record-thumb'
@@ -171,7 +175,7 @@ it('shows records in a photo, spot name, and date table and opens details in a n
     listDiscoveries: vi.fn().mockResolvedValue({ items: [record], nextCursor: null }),
     getDiscovery: vi.fn().mockResolvedValue(record),
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
-    getQuest: vi.fn().mockResolvedValue({ title: '時計台を見つけよう' }),
+    getQuest: vi.fn().mockResolvedValue({ title: '時計台を見つけよう', version: discovery.questVersion + versionOffset }),
   }
   render(<OwnerDiscoveries api={api} />)
 
@@ -188,7 +192,9 @@ it('shows records in a photo, spot name, and date table and opens details in a n
   expect(within(dialog).getByRole('img', { name: '本人の記録写真' })).toBeVisible()
   expect(within(dialog).getByText(discovery.descriptionSnapshot)).toBeVisible()
   expect(within(dialog).getByText('駅から徒歩5分')).toBeVisible()
-  expect(await within(dialog).findByText('時計台を見つけよう')).toBeVisible()
+  const title = versionOffset === 0 ? '時計台を見つけよう' : 'クリア時の問題名を取得できません'
+  expect(await within(dialog).findByText(title)).toBeVisible()
+  if (versionOffset !== 0) expect(within(dialog).queryByText('時計台を見つけよう')).not.toBeInTheDocument()
   expect(within(dialog).getByText('架空の灯台')).toBeVisible()
   expect(within(dialog).getByText('架空県架空市1-1')).toBeVisible()
   expect(within(dialog).getByRole('button', { name: '記録を削除' })).toBeVisible()

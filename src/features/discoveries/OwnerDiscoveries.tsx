@@ -99,13 +99,14 @@ function RecordGuidance({ record }: { record: Discovery }) {
 }
 
 function RecordMetadata({ api, record }: { api: ApiClient; record: Discovery }) {
-  const readTitle = useCallback(async (signal: AbortSignal) => (
-    await api.getQuest(record.questId, { signal })
-  ).title, [api, record.questId])
+  const readTitle = useCallback(async (signal: AbortSignal) => {
+    const quest = await api.getQuest(record.questId, { signal })
+    return quest.version === record.questVersion ? quest.title : null
+  }, [api, record.questId, record.questVersion])
   const { result } = useRemote(true, readTitle)
   const spot = record.afterClear?.spot
-  const title = result.status === 'ready' ? result.value
-    : result.status === 'loading' ? '読み込み中…' : '問題名を取得できません'
+  const title = result.status === 'loading' ? '読み込み中…'
+    : (result.status === 'ready' && result.value) || 'クリア時の問題名を取得できません'
   return <dl className="record-guidance">
     <div><dt>スポット名</dt><dd>{spot?.name ?? record.placeName}</dd></div>
     <div><dt>日付</dt><dd><RecordDate date={record.firstClearedAt} /></dd></div>
@@ -114,9 +115,14 @@ function RecordMetadata({ api, record }: { api: ApiClient; record: Discovery }) 
   </dl>
 }
 
-function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: string; onBack: () => void; onDeleted: () => void }) {
+function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: string; onBack: (refresh: boolean) => void; onDeleted: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const headingId = useId()
+  const [deletionState, setDeletionState] = useState('idle')
+  const deletionUnresolved = deletionState === 'working' || deletionState === 'pending' || deletionState === 'check-error'
+  function close() {
+    if (!deletionUnresolved) onBack(deletionState === 'send-error' || deletionState === 'failed')
+  }
   useEffect(() => {
     const element = dialog.current
     if (!element) return
@@ -132,11 +138,11 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
   }, [api, id])
   const { result, retry } = useRemote(true, read)
   return <dialog ref={dialog} aria-labelledby={headingId} className="record-dialog"
-    onCancel={(event) => { event.preventDefault(); onBack() }}>
+    onCancel={(event) => { event.preventDefault(); close() }}>
     <div className="record-detail">
       <header className="record-dialog-heading">
         <h2 id={headingId}>記録詳細</h2>
-        <button type="button" className="secondary-button" onClick={onBack}>閉じる</button>
+        <button type="button" className="secondary-button" disabled={deletionUnresolved} onClick={close}>閉じる</button>
       </header>
       {result.status === 'loading' && <p role="status">記録を読み込んでいます…</p>}
       {result.status === 'error' && <ReadFailure code={result.code} retry={retry} />}
@@ -144,7 +150,7 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
         <RecordPhoto blob={result.value.photo} />
         <RecordMetadata api={api} record={result.value.record} />
         <RecordGuidance record={result.value.record} />
-        <DiscoveryDeletion api={api} id={id} onDeleted={onDeleted} />
+        <DiscoveryDeletion api={api} id={id} onDeleted={onDeleted} onStateChange={setDeletionState} />
       </>}
     </div>
   </dialog>
@@ -174,7 +180,10 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true }: {
     mountedVisit.current = visit
     retry()
   }, [visit, retry])
-  const detail = active && selected !== null && <DiscoveryDetail key={selected} api={api} id={selected} onBack={() => setSelected(null)}
+  const detail = active && selected !== null && <DiscoveryDetail key={selected} api={api} id={selected} onBack={(refresh) => {
+    setSelected(null)
+    if (refresh) retry()
+  }}
     onDeleted={() => { setDeleted(true); setSelected(null); setCursor(undefined); retry() }} />
   const confirmation = deleted && <p role="status">記録と写真の削除が完了しました。</p>
   if (result.status === 'loading') return <>{detail}{confirmation}<p role="status">記録を読み込んでいます…</p></>
