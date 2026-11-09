@@ -316,3 +316,32 @@
 .admin-demo > .admin-header { padding-top: 64px; }
 .admin-demo .admin-traveler-link:hover { background: var(--ui-soft); }
 .admin-demo input::file-selector-button:focus-visible { outline: 3px solid var(--ui-focus); }
+
+.admin-managed .traveler-card { box-shadow: none; }
+.admin-managed button[aria-pressed="true"] { background: var(--ui-accent); color: var(--ui-ink); }
+.unsaved-dialog { border: 2px solid var(--ui-line); border-radius: 16px; padding: 16px; background: white; }
+.unsaved-dialog button + button { margin-left: 8px; }
+.required-mark { display: inline-block; margin-inline-start: 8px; font-size: 12px; }
+.admin-demo label:has(input[type="radio"]),
+.admin-demo label:has(input[type="checkbox"]),
+.admin-demo summary { min-height: 44px; align-content: center; }
+.admin-demo .phrase-chip { min-height: 44px; }
+@media (max-width: 600px) {
+  .admin-workflow { padding-bottom: 176px; }
+  .admin-save-bar { position: fixed; z-index: 30; bottom: 0; left: 0; right: 0; padding: 16px; margin: 0; background: white; border-top: 2px solid var(--ui-line); box-shadow: none; }
+}
+
+/* Keep the card 24px below the fixed 44px exit button at every width. */
+.admin-demo.admin-managed { margin-top: 84px; min-height: calc(100vh - 84px); }
+.admin-managed > .admin-header { padding-top: 0; }
+.admin-account-panel:not([hidden]) { box-shadow: none; }
+.admin-demo input::file-selector-button { background: white; border: 2px solid var(--ui-line); }
+.admin-read-list > li > .danger-button { margin-block-start: 12px; }
+.admin-operation-notice, .publication-confirm { padding: 16px; margin-block: 16px; border: 2px solid var(--ui-line); border-radius: 16px; background: white; }
+.admin-operation-notice button { margin-inline-start: 12px; }
+.admin-read-list > li:focus { outline: 3px solid var(--ui-focus); outline-offset: 4px; }
+.workflow-heading h2 { margin-inline-end: auto; }
+
+.admin-demo .admin-traveler-link { height: 44px; line-height: 24px; white-space: nowrap; }
+.admin-read-list > li > .danger-button,
+.admin-read-list > li > button + button { margin-inline-start: 12px; }

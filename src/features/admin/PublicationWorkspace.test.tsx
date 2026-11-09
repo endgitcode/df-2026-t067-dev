@@ -47,6 +47,13 @@ it('publishes only after both saved-version photo tests, review, and explicit co
   for (const field of screen.getAllByRole('checkbox')) await user.click(field)
   expect(publishManagedQuest).not.toHaveBeenCalled()
   await user.click(publish)
+  expect(publishManagedQuest).not.toHaveBeenCalled()
+  expect(screen.getByRole('dialog', { name: '公開の確認' })).toHaveTextContent('旅行者が見られる')
+  expect(screen.getByRole('button', { name: 'やめる' })).toHaveFocus()
+  await user.click(screen.getByRole('button', { name: 'やめる' }))
+  expect(publish).toHaveFocus()
+  await user.click(publish)
+  await user.click(screen.getByRole('button', { name: '公開する' }))
   expect(publishManagedQuest).toHaveBeenCalledExactlyOnceWith(org.orgId, initial.questId, {
     expectedDraftRevision: 4, matchTestId: 'match-test', mismatchTestId: 'other-test',
     confirmations: { fictionalData: true, visitConditions: true, photoRights: true, shootingArea: true, testCases: true },

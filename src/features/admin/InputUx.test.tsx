@@ -118,7 +118,7 @@ it('requires explicit rights reuse when replacing an existing reference photo', 
   expect(save).not.toHaveBeenCalled()
   expect(screen.getByRole('alert')).toHaveTextContent('差し替えた写真')
   expect(screen.getByLabelText('写真の出典と利用権')).toHaveValue('既存権利')
-  fireEvent.click(screen.getByLabelText('差し替えた写真を非公開照合に使う権利を確認し、入力済みの権利文を適用する'))
+  fireEvent.click(screen.getByLabelText('差し替えた写真を正解対象の確認に使う権利を確認し、入力済みの権利文を適用する'))
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   await screen.findByText('下書きを保存しました。')
   expect(save.mock.calls[0][2].draft.materials.photoRights).toBe('既存権利')

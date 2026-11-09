@@ -1,5 +1,5 @@
 import { PHOTO_UPLOAD_MAX_BYTES, PHOTO_UPLOAD_MIME_TYPES, PHOTO_UPLOAD_ACCEPT } from '../../shared/mediaLimits'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ApiClient, ManagedQuest, OrgMembership } from '../../shared/api'
 import { PhotoRightsInput } from './PhotoRightsInput'
@@ -21,6 +21,13 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
     PHOTO_UPLOAD_MIME_TYPES.includes(file.type) && activeSlots.includes(slot)
   const blocked = state.status === 'saving' || (state.status === 'error' && state.reload === true)
 
+  const statusRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => { if (state.status === 'saved') statusRef.current?.focus() }, [state.status])
+  useEffect(() => {
+    const listener = () => input.current?.form?.requestSubmit()
+    document.addEventListener('admin-save-draft', listener)
+    return () => document.removeEventListener('admin-save-draft', listener)
+  }, [])
   function clearSelection() {
     setFile(null)
     onDirty?.(false)
@@ -48,7 +55,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
 
   return <section className="form-section" aria-labelledby="hint-asset-title">
     <h2 id="hint-asset-title">ヒント画像</h2>
-    <p>{current.draft.content.title || '無題の下書き'}・下書き版 {current.draftRevision}</p>
+    <p>{current.draft.content.title || '無題の下書き'}</p>
     <p>{onContinue ? '任意。各ヒントに公開してよい画像を1枚設定できます。' : '各ヒントに公開用画像を1枚設定できます。'}</p>
     <button type="button" disabled={state.status === 'saving'} onClick={onBack}>{backLabel}</button>
     {current.draft.content.hints.map((hint, index) => {
@@ -66,7 +73,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
         <label>設定するヒント<select value={slot} onChange={(event) => setSlot(Number(event.target.value))}>
           {activeSlots.map((number) => <option value={number} key={number}>ヒント {number}</option>)}
         </select></label>
-        <label>ヒント画像<input id="workflow-hint-image" ref={input} type="file" accept={PHOTO_UPLOAD_ACCEPT}
+        <label>ヒント画像<input id="workflow-hint-image" ref={input} aria-invalid={Boolean(file && !valid)} aria-describedby={file && !valid ? "hint-photo-error" : undefined} type="file" accept={PHOTO_UPLOAD_ACCEPT}
           onChange={(event) => {
             const next = event.target.files?.[0] ?? null
             if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
@@ -76,16 +83,18 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
           }} /></label>
         {!onContinue && (rightsAssist ? <PhotoRightsInput key={file ? `${slot}:${file.name}:${file.lastModified}` : `empty:${slot}`} purpose="public_hint" label="画像の出典と利用権" value={rights} onChange={value => { setRights(value); setReuseNeeded(false) }} /> : <label>画像の出典と利用権<textarea value={rights} onChange={event => setRights(event.target.value)} /></label>)}
         {!onContinue && reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替えた写真を公開ヒントに使う権利を確認し、入力済みの権利文を適用する</label>}
-        {file && !valid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
+        {file && !valid && <p id="hint-photo-error" role="alert" className="field-error">4MBまでのJPEG・PNG・WebPを選んでください。</p>}
         {activeSlots.length === 0 && <p role="note">画像を設定できるヒント文がありません。</p>}
+        <div className={onContinue && file ? "admin-list-actions admin-save-bar" : undefined}>
         <button type="submit" disabled={!valid || (!onContinue && (!rights.trim() || reuseNeeded)) || activeSlots.length === 0}>ヒント画像を保存</button>
         {onContinue && file && <button type="submit" value="next" className="workflow-primary" disabled={!valid}>保存して次へ</button>}
+        </div>
       </fieldset>
     </form>
-    {onContinue && !file && <button type="button" className="workflow-primary" disabled={blocked} onClick={() => onContinue(current)}>写真試験と公開へ</button>}
+    {onContinue && !file && <div className="admin-list-actions admin-save-bar"><button type="button" className="workflow-primary" disabled={blocked} onClick={() => onContinue(current)}>写真試験と公開へ</button></div>}
     {onContinue && file && <button type="button" disabled={blocked} onClick={clearSelection}>選択した画像を取り消す</button>}
     {state.status === 'saving' && <p role="status">保存しています…</p>}
-    {state.status === 'saved' && <p role="status">ヒント画像の設定を保存しました。</p>}
+    {state.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}>ヒント画像の設定を保存しました。</p>}
     {state.status === 'error' && <p role="alert">{state.message}</p>}
   </section>
 }

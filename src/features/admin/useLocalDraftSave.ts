@@ -85,5 +85,5 @@ export function useLocalDraftSave(connection?: LocalDraftConnection) {
     }
   }
 
-  return { record, state, save }
+  return { record, state, save, reset: () => setState({ status: 'idle' }) }
 }

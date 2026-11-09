@@ -95,7 +95,7 @@ it('focuses the photo rights field before saving a newly selected connected phot
   const uploadOrgAsset = vi.fn()
   render(<QuestDraftForm connection={{ api: { ...createApiClient(), createManagedQuest, uploadOrgAsset }, initial: null,
     member: { orgId: 'org', areaId: 'area', label: '架空自治体', role: 'editor' }, onBack: vi.fn() }} />)
-  fireEvent.change(screen.getByLabelText('参考写真（公開ヒントには自動流用しません）'), { target: { files: [new File(['fixture'], 'fixture.png', { type: 'image/png' })] } })
+  fireEvent.change(screen.getByLabelText('参考写真（旅行者には見せません）'), { target: { files: [new File(['fixture'], 'fixture.png', { type: 'image/png' })] } })
   fireEvent.click(screen.getByRole('button', { name: /3\/3/ }))
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   await waitFor(() => expect(screen.getByLabelText('写真の出典と利用権')).toHaveFocus())

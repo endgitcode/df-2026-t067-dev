@@ -31,3 +31,12 @@ it('requires a detail when the category is other, and sends detail-only reasons 
   await user.click(screen.getByRole('button', { name: 'この公開版を休止する' }))
   expect(pauseManagedQuest.mock.calls[0][2].reason).toBe('その他：個別の事情')
 })
+
+it('focuses the category on open and returns to the pause trigger on cancel', async () => {
+  const user = userEvent.setup()
+  render(<PausePublication api={createApiClient()} orgId="org" questId="q" version={1} onPaused={vi.fn()} onReload={vi.fn()} />)
+  await user.click(screen.getByRole('button', { name: '公開を休止' }))
+  expect(screen.getByLabelText('休止の種類')).toHaveFocus()
+  await user.click(screen.getByRole('button', { name: 'キャンセル' }))
+  expect(screen.getByRole('button', { name: '公開を休止' })).toHaveFocus()
+})
