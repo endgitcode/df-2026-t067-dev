@@ -896,9 +896,9 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       {status === 'ready' && panelMode && focusArea && <div className="map-topline is-sidebar"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className={'map-state' + (sheetMode && status === 'loading' ? ' is-boot-quiet' : '')} role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'} {...mapControlGestureProps}>
-        {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。問題の閲覧は続けられます。</span></> :
+        {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。</span></> :
           status === 'loading' ? <span className={sheetMode ? 'sr-only' : undefined}>地図を読み込んでいます…</span> :
-            <><strong>地図を読み込めませんでした</strong><span>問題の閲覧は続けられます。</span>{status === 'auth-error'
+            <><strong>地図を読み込めませんでした</strong>{status === 'auth-error'
               ? <><span>地図の設定を確認して、このページを再読み込みしてください。</span><button type="button" onClick={() => window.location.reload()}>ページを再読み込み</button></>
               : <button type="button" onClick={() => { setStatus('loading'); setAttempt((value) => value + 1) }}>地図を再試行</button>}</>}
       </div>}
