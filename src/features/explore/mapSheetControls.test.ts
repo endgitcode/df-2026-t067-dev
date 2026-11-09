@@ -365,7 +365,7 @@ describe('records view tab position (D-60 addendum)', () => {
     expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav,\n  body.explore-fullbleed .desktop-nav {')
     expect(css).toContain('flex-direction: column;')
     expect(css).toContain('body:has(.owner-records:not([hidden])) .owner-records {')
-    expect(css).toContain('margin-left: var(--pc-sidebar-w);')
+    expect(css).toContain('margin: 32px 32px 32px calc(var(--pc-sidebar-w) + 32px);')
     expect(mapPreview).toContain('{createPortal(<button type="button" className="sidebar-toggle"')
     expect(mapPreview).toContain("</button>, typeof document === 'undefined' ? null : document.body)}")
     expect(mapPreview).toContain('[panelMode, sidebarCollapsed])')
@@ -502,11 +502,12 @@ describe('PC sidebar stacking', () => {
 })
 
 describe('records body and mobile return clearance', () => {
-  it('aligns the records card after the sidebar (D-82)', () => {
+  it('spaces the records card from the sidebar and viewport edges (D-84)', () => {
     const recordsRule = css.slice(css.indexOf('body:has(.owner-records:not([hidden])) .owner-records {')).split('}')[0]
     expect(recordsRule).not.toContain('border-left:')
-    expect(recordsRule).toContain('margin-left: var(--pc-sidebar-w);')
-    expect(recordsRule).toContain('max-width: 720px;')
+    expect(recordsRule).toContain('margin: 32px 32px 32px calc(var(--pc-sidebar-w) + 32px);')
+    expect(recordsRule).toContain('width: calc(100% - var(--pc-sidebar-w) - 64px);')
+    expect(recordsRule).toContain('max-width: 1080px;')
     expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h, 70px) + 120px);')
   })
 })

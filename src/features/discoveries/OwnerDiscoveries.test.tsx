@@ -17,7 +17,7 @@ it('keeps the earlier explanation and omits blank guidance fields', async () => 
     getDiscovery: vi.fn().mockResolvedValue({ ...discovery, afterClear: { access: 'バス停から徒歩5分', hours: ' ', promoComment: '', explanation: '' } }),
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
   }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await user.click(await screen.findByRole('button', { name: discovery.placeName }))
   expect(await screen.findByText('バス停から徒歩5分')).toBeVisible()
   expect(screen.getByText(discovery.descriptionSnapshot)).toBeVisible()
@@ -38,7 +38,7 @@ it('shows the confirmed spot guidance with a fixed Google Maps search link', asy
     getDiscovery: vi.fn().mockResolvedValue({ ...discovery, afterClear: { access: '', hours: '', promoComment: '', explanation: '', spot } }),
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
   }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await user.click(await screen.findByRole('button', { name: discovery.placeName }))
   expect(await screen.findByText('架空の灯台')).toBeVisible()
   expect(screen.getByText('架空県架空市1-1')).toBeVisible()
@@ -59,7 +59,7 @@ it('links to the spot position without a place id, and omits the link when no sp
     getDiscovery: vi.fn().mockResolvedValue({ ...discovery, afterClear: { access: '', hours: '', promoComment: '', explanation: '', spot } }),
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
   }
-  const first = render(<OwnerDiscoveries api={withSpot} />)
+  const first = render(<OwnerDiscoveries onExplore={vi.fn()} api={withSpot} />)
   await user.click(await screen.findByRole('button', { name: discovery.placeName }))
   expect(await screen.findByRole('link', { name: 'Google マップを開く' })).toHaveAttribute('href',
     'https://www.google.com/maps/search/?api=1&query=35.5,139.5')
@@ -71,7 +71,7 @@ it('links to the spot position without a place id, and omits the link when no sp
     getDiscovery: vi.fn().mockResolvedValue({ ...discovery, afterClear: { access: '徒歩5分', hours: '', promoComment: '', explanation: '' } }),
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
   }
-  render(<OwnerDiscoveries api={withoutSpot} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={withoutSpot} />)
   await user.click(await screen.findByRole('button', { name: discovery.placeName }))
   expect(await screen.findByText('徒歩5分')).toBeVisible()
   expect(screen.queryByRole('link', { name: 'Google マップを開く' })).not.toBeInTheDocument()
@@ -91,7 +91,7 @@ it('confirms deletion, checks a known receipt without resending, and refreshes t
     .mockResolvedValueOnce({ deletionId: 'demo-deletion', state: 'completed', retryable: false })
   const api = { ...createApiClient(), getQuest: vi.fn().mockResolvedValue({ title: "テスト問題" }), listDiscoveries, deleteDiscovery, getDeletion,
     getDiscovery: vi.fn().mockResolvedValue(discovery), getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])) }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await user.click(await screen.findByRole('button', { name: discovery.placeName }))
   expect(await screen.findByText(discovery.descriptionSnapshot)).toBeVisible()
   await user.click(await screen.findByRole('button', { name: '記録を削除' }))
@@ -108,7 +108,7 @@ it('confirms deletion, checks a known receipt without resending, and refreshes t
   expect(deleteDiscovery).toHaveBeenCalledExactlyOnceWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
   await user.click(screen.getByRole('button', { name: '削除状態を確認' }))
   expect(await screen.findByText('記録と写真の削除が完了しました。')).toBeVisible()
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
   expect(getDeletion).toHaveBeenCalledTimes(3)
   expect(deleteDiscovery).toHaveBeenCalledTimes(1)
   expect(listDiscoveries).toHaveBeenCalledTimes(2)
@@ -130,7 +130,7 @@ it.each(['button', 'escape'])('refreshes records after closing a failed deletion
     getDiscovery: vi.fn().mockResolvedValue(discovery),
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
   }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await user.click(await screen.findByRole('button', { name: discovery.placeName }))
   await user.click(await screen.findByRole('button', { name: '記録を削除' }))
   await user.click(screen.getByRole('button', { name: '記録と写真を削除する' }))
@@ -138,7 +138,7 @@ it.each(['button', 'escape'])('refreshes records after closing a failed deletion
   const dialog = screen.getByRole('dialog', { name: '記録詳細' })
   if (method === 'button') await user.click(within(dialog).getByRole('button', { name: '閉じる' }))
   else fireEvent(dialog, new Event('cancel', { cancelable: true }))
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
   expect(dialog).not.toBeInTheDocument()
   expect(screen.queryByText('記録と写真の削除が完了しました。')).not.toBeInTheDocument()
   expect(deleteDiscovery).toHaveBeenCalledTimes(1)
@@ -150,16 +150,16 @@ it('refetches the list when the records view is entered again', async () => {
     .mockResolvedValueOnce({ items: [], nextCursor: null })
     .mockResolvedValue({ items: [discovery], nextCursor: null })
   const api = { ...createApiClient(), getQuest: vi.fn().mockResolvedValue({ title: "テスト問題" }), listDiscoveries }
-  const { rerender } = render(<OwnerDiscoveries api={api} visit={1} />)
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  const { rerender } = render(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={1} />)
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
   expect(listDiscoveries).toHaveBeenCalledTimes(1)
   // 画面は常駐したままなので、入り直しの合図（visit の増加）で取り直されること。
   // 初回の空表示が居座らず、その間に増えた記録が出る。
-  rerender(<OwnerDiscoveries api={api} visit={2} />)
+  rerender(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={2} />)
   expect(await screen.findByRole('button', { name: discovery.placeName })).toBeVisible()
   expect(listDiscoveries).toHaveBeenCalledTimes(2)
   // 合図が変わらなければ余分な再取得はしない。
-  rerender(<OwnerDiscoveries api={api} visit={2} />)
+  rerender(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={2} />)
   expect(listDiscoveries).toHaveBeenCalledTimes(2)
 })
 
@@ -176,7 +176,7 @@ it('keeps thumbnails behind the dialog and releases the detail photo on close', 
     getDiscovery: vi.fn().mockResolvedValue(discovery),
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['thumb'])),
   }
-  const { container } = render(<OwnerDiscoveries api={api} />)
+  const { container } = render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   const openRecord = await screen.findByRole('button', { name: discovery.placeName })
   await waitFor(() => expect(container.querySelector('.record-thumbnail')).toHaveAttribute('src', 'blob:record-thumb'))
   expect(openRecord).toBeEnabled()
@@ -204,7 +204,7 @@ it.each([0, 1])('shows record details and validates the published title (version
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
     getQuest: vi.fn().mockResolvedValue({ title: '時計台を見つけよう', version: discovery.questVersion + versionOffset }),
   }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
 
   const table = await screen.findByRole('table')
   expect(within(table).getByRole('columnheader', { name: '写真' })).toBeVisible()
@@ -237,7 +237,7 @@ it('keeps record navigation available when a thumbnail cannot be loaded', async 
     getDiscovery: vi.fn().mockResolvedValue(discovery),
     getDiscoveryPhoto: vi.fn().mockRejectedValueOnce(new Error('photo unavailable')).mockResolvedValue(new Blob(['detail photo'])),
   }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   const openRecord = await screen.findByRole('button', { name: discovery.placeName })
   expect(await screen.findByText('写真なし')).toBeVisible()
   expect(openRecord).toBeEnabled()
@@ -258,10 +258,10 @@ it('aborts thumbnail requests when changing pages', async () => {
       return new Promise<Blob>(() => {})
     }),
   }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await screen.findByRole('button', { name: discovery.placeName })
   await user.click(screen.getByRole('button', { name: '次の記録' }))
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
   expect(firstSignal?.aborted).toBe(true)
 })
 
@@ -291,14 +291,14 @@ it('loads only thumbnails near the viewport and cancels observed requests on pag
       return new Promise<Blob>(() => {})
     }),
   }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await screen.findByRole('button', { name: discovery.placeName })
   expect(api.getDiscoveryPhoto).not.toHaveBeenCalled()
   expect(observers).toHaveLength(2)
   observers[0].callback([{ isIntersecting: true, intersectionRatio: 1, target: observers[0].target! } as IntersectionObserverEntry], {} as IntersectionObserver)
   expect(api.getDiscoveryPhoto).toHaveBeenCalledExactlyOnceWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
   await user.click(screen.getByRole('button', { name: '次の記録' }))
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
   expect(photoSignal?.aborted).toBe(true)
   expect(observers.every(({ disconnect }) => disconnect.mock.calls.length > 0)).toBe(true)
 })
@@ -327,7 +327,7 @@ it('reads and deletes durable owner records through the authenticated common HTT
     return new Response(JSON.stringify(body), { status: init?.method === 'DELETE' ? 202 : 200, headers })
   })
   const api = createApiClient({ fetch: fetcher, expectedDataMode: 'durable-local', getIdToken: async () => 'owner-token' })
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await user.click(await screen.findByRole('button', { name: discovery.placeName }))
   expect(await screen.findByRole('img', { name: '本人の記録写真' })).toHaveAttribute('src', 'blob:durable-record')
   expect(screen.getByText(discovery.descriptionSnapshot)).toBeVisible()
@@ -335,7 +335,7 @@ it('reads and deletes durable owner records through the authenticated common HTT
   expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'DELETE')).toHaveLength(0)
   await user.click(screen.getByRole('button', { name: '記録と写真を削除する' }))
   expect(await screen.findByText('記録と写真の削除が完了しました。')).toBeVisible()
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
   expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'DELETE')).toHaveLength(1)
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:durable-record')
   for (const [, init] of fetcher.mock.calls.filter(([path]) => String(path).startsWith('/api/v1/me/'))) expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer owner-token')
@@ -353,15 +353,15 @@ it('opens changed destinations and reopens the same destination on a new visit',
     getDiscovery: vi.fn(async (id: string) => ({ ...discovery, discoveryId: id, placeName: id })),
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
   }
-  const { rerender } = render(<OwnerDiscoveries api={api} visit={1} />)
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
-  rerender(<OwnerDiscoveries api={api} visit={2} initialId="record-a" />)
+  const { rerender } = render(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={1} />)
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
+  rerender(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={2} initialId="record-a" />)
   expect(await screen.findByText('record-a')).toBeVisible()
-  rerender(<OwnerDiscoveries api={api} visit={3} initialId="record-b" />)
+  rerender(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={3} initialId="record-b" />)
   expect(await screen.findByText('record-b')).toBeVisible()
   await user.click(screen.getByRole('button', { name: '閉じる' }))
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
-  rerender(<OwnerDiscoveries api={api} visit={4} initialId="record-b" />)
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
+  rerender(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={4} initialId="record-b" />)
   expect(await screen.findByText('record-b')).toBeVisible()
 })
 
@@ -383,7 +383,7 @@ it.each(['', '   '])('omits blank address and duplicate quest name in the detail
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
     getQuest: vi.fn().mockResolvedValue({ title: name, version: record.questVersion }),
   }
-  render(<OwnerDiscoveries api={api} />)
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await user.click(await screen.findByRole('button', { name }))
   const dialog = within(await screen.findByRole('dialog'))
   await waitFor(() => expect(dialog.queryByText('読み込み中…')).not.toBeInTheDocument())
