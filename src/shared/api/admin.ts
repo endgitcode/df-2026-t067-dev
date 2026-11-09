@@ -1,3 +1,4 @@
+import { NORMALIZED_PHOTO_MAX_BYTES, NORMALIZED_PHOTO_MAX_EDGE_PX } from '../mediaLimits'
 import { ContractError, isPrefectureCode, isQuestNumber, parseAfterClearContent, parseShootingConditions } from './validation'
 import type { AfterClearContent, ShootingConditions } from './types'
 
@@ -170,7 +171,7 @@ export function parseUploadedOrgAsset(input: unknown): UploadedOrgAsset {
   const asset = parseManagedAsset({ assetId: d.assetId, orgId: d.orgId, purpose: d.purpose })
   const metadata = parseOrgAssetMetadata({ purpose: d.purpose, photoRights: d.photoRights }, d.source === 'real')
   const width = revision(d.width), height = revision(d.height), byteLength = revision(d.byteLength)
-  if (width > 1600 || height > 1600 || byteLength > 2 * 1024 * 1024 || d.contentType !== 'image/jpeg' ||
+  if (width > NORMALIZED_PHOTO_MAX_EDGE_PX || height > NORMALIZED_PHOTO_MAX_EDGE_PX || byteLength > NORMALIZED_PHOTO_MAX_BYTES || d.contentType !== 'image/jpeg' ||
     (d.source !== 'real' && d.source !== 'mock')) throw new ContractError('UploadedOrgAsset.media')
   return { ...asset, ...metadata, contentType: 'image/jpeg', width, height, byteLength, source: d.source }
 }

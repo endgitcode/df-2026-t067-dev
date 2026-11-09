@@ -1,3 +1,4 @@
+import { PHOTO_UPLOAD_MAX_BYTES, PHOTO_UPLOAD_MIME_TYPES, PHOTO_METADATA_MAX_BYTES } from '../mediaLimits'
 import { parseDraftRevisionRequest, parseDraftSuggestion, parseManagedQuest, parseManagedQuestDraft, parseManagedShootingAreas, parseOrgAssetMetadata, parseOrgMembership, parsePauseManagedQuest, parsePhotoTestMetadata, parsePhotoTestResult, parsePublishManagedQuest, parsePublicationReadiness, parseReviewSubmission, parseSubmitReview, parseUpdateManagedQuest, parseUpdateShootingAreas, parseUploadedOrgAsset } from './admin'
 import type { AssetPurpose, ManagedQuestDraft, PauseManagedQuest, PhotoTestMetadata, PublishManagedQuest, UpdateManagedQuest, UpdateShootingAreas } from './admin'
 import { parseSpotAddressInput, parseSpotAddressLookup, type SpotAddressInput } from './admin-spot-address'
@@ -268,11 +269,11 @@ export function createApiClient(options: ApiClientOptions = {}) {
       const org = id(orgId)
       const metadata = adminInput((value) => parseOrgAssetMetadata(value, input.photoRights === undefined), { purpose: input.purpose, photoRights: input.photoRights })
       if (!(input.photo instanceof Blob) || input.photo.size === 0 ||
-        !['image/jpeg', 'image/png', 'image/webp'].includes(input.photo.type) ||
+        !PHOTO_UPLOAD_MIME_TYPES.includes(input.photo.type) ||
         typeof input.idempotencyKey !== 'string' || !/^[\x21-\x7e]{1,128}$/.test(input.idempotencyKey)) throw new ApiError('INVALID_INPUT')
-      if (input.photo.size > 4 * 1024 * 1024) throw new ApiError('MEDIA_TOO_LARGE')
+      if (input.photo.size > PHOTO_UPLOAD_MAX_BYTES) throw new ApiError('MEDIA_TOO_LARGE')
       const encoded = JSON.stringify(input.photoRights === undefined ? { purpose: metadata.purpose } : metadata)
-      if (new TextEncoder().encode(encoded).byteLength > 4096) throw new ApiError('MEDIA_TOO_LARGE')
+      if (new TextEncoder().encode(encoded).byteLength > PHOTO_METADATA_MAX_BYTES) throw new ApiError('MEDIA_TOO_LARGE')
       const body = new FormData()
       body.append('photo', input.photo, 'asset')
       body.append('metadata', encoded)
@@ -318,10 +319,10 @@ export function createApiClient(options: ApiClientOptions = {}) {
     async testManagedQuest(orgId: string, questId: string, input: Omit<PhotoTestMetadata, 'photoRights'> & { photoRights?: string; photo: Blob; idempotencyKey: string }, call: CallOptions = {}) {
       const path = '/orgs/' + id(orgId) + '/quests/' + id(questId) + '/test'
       const metadata = adminInput((value) => parsePhotoTestMetadata(value, input.photoRights === undefined), { expectedDraftRevision: input.expectedDraftRevision, photoRights: input.photoRights })
-      if (!(input.photo instanceof Blob) || !input.photo.size || !['image/jpeg', 'image/png', 'image/webp'].includes(input.photo.type) ||
+      if (!(input.photo instanceof Blob) || !input.photo.size || !PHOTO_UPLOAD_MIME_TYPES.includes(input.photo.type) ||
         typeof input.idempotencyKey !== 'string' || !/^[\x21-\x7e]{1,128}$/.test(input.idempotencyKey)) throw new ApiError('INVALID_INPUT')
       const encoded = JSON.stringify(input.photoRights === undefined ? { expectedDraftRevision: metadata.expectedDraftRevision } : metadata)
-      if (input.photo.size > 4 * 1024 * 1024 || new TextEncoder().encode(encoded).byteLength > 4096) throw new ApiError('MEDIA_TOO_LARGE')
+      if (input.photo.size > PHOTO_UPLOAD_MAX_BYTES || new TextEncoder().encode(encoded).byteLength > PHOTO_METADATA_MAX_BYTES) throw new ApiError('MEDIA_TOO_LARGE')
       const body = new FormData()
       body.append('photo', input.photo, 'test-photo')
       body.append('metadata', encoded)

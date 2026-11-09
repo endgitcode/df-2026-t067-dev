@@ -1,3 +1,4 @@
+import { PHOTO_UPLOAD_MAX_BYTES, PHOTO_UPLOAD_MIME_TYPES, PHOTO_UPLOAD_ACCEPT } from '../../shared/mediaLimits'
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError, parsePublishManagedQuest } from '../../shared/api'
@@ -46,14 +47,14 @@ function PhotoTrial({ expected, disabled, feedback, onTest, onSelection }:   {
   const [file, setFile] = useState<File | null>(null)
   const key = useRef<string | null>(null)
   const label = expected === 'MATCH' ? '一致写真' : '別対象写真'
-  const valid = file && file.size > 0 && file.size <= 4 * 1024 * 1024 && ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+  const valid = file && file.size > 0 && file.size <= PHOTO_UPLOAD_MAX_BYTES && PHOTO_UPLOAD_MIME_TYPES.includes(file.type)
   return <form onSubmit={(event) => {
     event.preventDefault()
     if (valid && !disabled) onTest(file, key.current ??= crypto.randomUUID(), expected)
   }}>
     <fieldset disabled={disabled}>
       <legend>{label}</legend>
-      <label>{label}を選択<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+      <label>{label}を選択<input type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
         setFile(event.target.files?.[0] ?? null)
         key.current = null
         onSelection(expected)
@@ -85,8 +86,8 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   const begin = useRequestAction()
   const { orgId, questId, draftRevision } = quest
   const disabled = busy || !!failure?.stale
-  const photoValid = photo !== null && photo.size > 0 && photo.size <= 4 * 1024 * 1024 &&
-    ['image/jpeg', 'image/png', 'image/webp'].includes(photo.type)
+  const photoValid = photo !== null && photo.size > 0 && photo.size <= PHOTO_UPLOAD_MAX_BYTES &&
+    PHOTO_UPLOAD_MIME_TYPES.includes(photo.type)
   const missing = approvedAssets ? readiness?.missing ?? [] : reviewMissing
   const checkReason = areaUnclassified ? '地域の分類が完了するまで公開できません。'
     : approvedAssets && !readiness ? '最新版の公開準備状況を確認してください。'
@@ -214,7 +215,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
               <li><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真（match.png）をダウンロード</a></li>
               <li><a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真（other-target.png）をダウンロード</a></li>
             </ul></>}
-        <label>試験写真<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+        <label>試験写真<input type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
           const next = event.target.files?.[0] ?? null
           if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
           if (next) previousPhoto.current = next

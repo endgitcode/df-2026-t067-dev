@@ -1,3 +1,4 @@
+import { PHOTO_UPLOAD_MAX_BYTES, PHOTO_UPLOAD_MIME_TYPES, PHOTO_UPLOAD_ACCEPT } from '../../shared/mediaLimits'
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ApiClient, ManagedQuest, OrgMembership } from '../../shared/api'
@@ -16,8 +17,8 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
   const current = record ?? initial
   const assets = current.draft.hintAssetIds ?? [null, null, null]
   const activeSlots = current.draft.content.hints.flatMap((hint, index) => hint.trim() ? [index + 1] : [])
-  const valid = file !== null && file.size > 0 && file.size <= 4 * 1024 * 1024 &&
-    ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) && activeSlots.includes(slot)
+  const valid = file !== null && file.size > 0 && file.size <= PHOTO_UPLOAD_MAX_BYTES &&
+    PHOTO_UPLOAD_MIME_TYPES.includes(file.type) && activeSlots.includes(slot)
   const blocked = state.status === 'saving' || (state.status === 'error' && state.reload === true)
 
   function clearSelection() {
@@ -65,7 +66,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
         <label>設定するヒント<select value={slot} onChange={(event) => setSlot(Number(event.target.value))}>
           {activeSlots.map((number) => <option value={number} key={number}>ヒント {number}</option>)}
         </select></label>
-        <label>ヒント画像<input id="workflow-hint-image" ref={input} type="file" accept="image/jpeg,image/png,image/webp"
+        <label>ヒント画像<input id="workflow-hint-image" ref={input} type="file" accept={PHOTO_UPLOAD_ACCEPT}
           onChange={(event) => {
             const next = event.target.files?.[0] ?? null
             if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)

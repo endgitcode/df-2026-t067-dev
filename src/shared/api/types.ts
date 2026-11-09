@@ -1,3 +1,4 @@
+import { NORMALIZED_PHOTO_MAX_BYTES } from '../mediaLimits'
 export type LngLat = [longitude: number, latitude: number]
 export type PublicGeometry =
   | { type: 'Polygon'; coordinates: LngLat[][] }
@@ -87,7 +88,7 @@ export type Decoder<T> = (input: unknown) => T
 
 export interface QuestHint { questId: string; version: number; index: number; text: string }
 
-export const DISCOVERY_PHOTO_MAX_BYTES = 2 * 1024 * 1024
+export const DISCOVERY_PHOTO_MAX_BYTES = NORMALIZED_PHOTO_MAX_BYTES
 export interface DeletionReceipt { deletionId: string }
 export interface DeletionStatus extends DeletionReceipt {
   state: 'pending' | 'completed' | 'failed'
