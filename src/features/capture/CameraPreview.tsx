@@ -240,7 +240,7 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
       {phase === 'capturing' && <p role="status" className="camera-status">写真を作成しています…</p>}
       {locating && <p role="status" className="camera-status">撮影地を取得しています…</p>}
       {rotating && <p role="status" className="camera-status">写真を回転しています…</p>}
-      {photoUrl && metadata && !submissionStarted && <p className="camera-status" role="status">撮影地を紐づけました（精度 約{Math.round(metadata.position.accuracyMeters)}m）。</p>}
+      {/* 撮影地の紐づけ自体は metadata で行い、精度の一行表示は出さない（表示のみ削除）。 */}
       {showCaptureLocationMapDebug && photoUrl && metadata && <div className="camera-map-reference">
         <button type="button" className="secondary-button" aria-expanded={showLocationMap}
           onClick={() => setShowLocationMap((visible) => !visible)}>{showLocationMap ? '地図を閉じる' : '撮影地を見る'}</button>
