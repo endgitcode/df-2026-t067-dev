@@ -113,7 +113,6 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
     <h4>段階ヒント</h4>
     {Array.from({ length: Math.min(quest.hintCount, unlockedThrough) }, (_, offset) => offset + 1).map(index =>
       <HintItem key={`${quest.questId}:${quest.version}:${index}`} quest={quest} index={index} getHint={getHint} getHintPhoto={getHintPhoto} onVersionChanged={() => { setChanged(true); onVersionChanged() }} onReloadNeeded={onReloadNeeded} onReady={(readyIndex) => setUnlockedThrough(current => Math.max(current, readyIndex + 1))} />)}
-    <p className="hints-note">ヒントは順番に開けます。最終案内は含みません。</p>
   </div>
 }
 

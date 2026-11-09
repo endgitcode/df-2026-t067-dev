@@ -447,7 +447,7 @@ button.explore-quest-card { cursor: pointer; }
 @media (max-width: 640px) { .quest-card-heading { padding: 20px; } }
 
 .optional-hint { margin: 0 0 18px; }
-.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 44px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); padding: 9px 14px; font: inherit; cursor: pointer; }
+.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 52px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); padding: 12px 18px; font: inherit; font-weight: 600; cursor: pointer; }
 .optional-hint-content { margin-top: 12px; color: var(--ui-muted); font-size: 13px; line-height: 1.7; }
 /* ヒント画像の開閉も高さで滑らせる（D-59 追記）。行アコーディオンと同じ
    grid-template-rows 方式で、閉じる時は visibility の切り替えを遷移の終わりに遅らせる。 */
@@ -463,8 +463,9 @@ button.explore-quest-card { cursor: pointer; }
 .quest-hints h4 { margin: 0; }
 .hint-item, .hint-version-changed { padding: 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
 /* ヒントを開くボタンは枠いっぱいに広げ、主ボタンと同じ幅の尺に揃える（D-74）。
-   中身の幅だけだと左に小さく寄り、右側が余って見えた（実地目視、PC・スマホ共通）。 */
-.hint-item > button, .hint-item [role="alert"] button, .hint-version-changed button { width: 100%; min-height: 44px; padding: 9px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; cursor: pointer; }
+   中身の幅だけだと左に小さく寄り、右側が余って見えた（実地目視、PC・スマホ共通）。
+   さらに押せる高さを 52px にして、細字の順序注記を外したあとも主操作として目立つようにする。 */
+.hint-item > button, .hint-item [role="alert"] button, .hint-version-changed button { width: 100%; min-height: 52px; padding: 12px 18px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-weight: 600; cursor: pointer; }
 .hint-item p, .hint-version-changed p, .hints-note { margin: 8px 0 0; color: var(--ui-muted); font-size: 13px; line-height: 1.7; }
 .hint-item [role="alert"] { color: var(--ui-error); }
 .hint-item [role="alert"] .hint-retry, .optional-hint-content .optional-hint-retry, .quest-reload-subtle { min-height: 44px; padding: 8px 10px; border: 1px solid transparent; border-radius: var(--ui-radius); background: transparent; color: var(--ui-muted); font: inherit; font-size: 12px; font-weight: 400; cursor: pointer; }
