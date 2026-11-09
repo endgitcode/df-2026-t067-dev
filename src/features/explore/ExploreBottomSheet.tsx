@@ -46,14 +46,29 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
   const bodyId = useId()
 
   const measure = useCallback(() => {
-    const height = sheetRef.current?.parentElement?.clientHeight ?? 0
-    setStageHeight(height >= 320 ? height : FALLBACK_STAGE_HEIGHT)
+    const sheet = sheetRef.current
+    const parentHeight = sheet?.parentElement?.clientHeight ?? 0
+    // 縁なしスマホでは sheet の bottom がタブバー高（--mobile-tabbar-h）になる。
+    // 親いっぱいをステージにすると full がタブバー領域まで食い込み、中間高さでは
+    // 「シート下端とタブバー／画面下のあいだ」に地図が覗く隙間になる。
+    const bottomRaw = sheet ? Number.parseFloat(getComputedStyle(sheet).bottom) : 0
+    const bottomOffset = Number.isFinite(bottomRaw) ? Math.max(0, bottomRaw) : 0
+    const usable = Math.max(0, parentHeight - bottomOffset)
+    setStageHeight(usable >= 320 ? usable : FALLBACK_STAGE_HEIGHT)
   }, [])
 
   useEffect(() => {
     measure()
     window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
+    // モバイルのアドレスバー伸縮は resize だけでは足りないことがある。
+    const viewport = window.visualViewport
+    viewport?.addEventListener('resize', measure)
+    viewport?.addEventListener('scroll', measure)
+    return () => {
+      window.removeEventListener('resize', measure)
+      viewport?.removeEventListener('resize', measure)
+      viewport?.removeEventListener('scroll', measure)
+    }
   }, [measure])
 
   useEffect(() => {
