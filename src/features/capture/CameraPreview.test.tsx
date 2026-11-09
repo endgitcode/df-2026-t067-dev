@@ -280,6 +280,7 @@ describe('local camera preview', () => {
     await media.user.click(screen.getByRole('button', { name: '送る' }))
     // 判定待ち中は待ち面だけ。撮り直し・回転・結果確認は出さない。
     expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toBeVisible()
+    expect(screen.getAllByRole('button').filter(button => button.classList.contains('primary-button'))).toHaveLength(0)
     expect(screen.queryByRole('button', { name: '撮り直す' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '右に回す' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '判定を確認' })).not.toBeInTheDocument()
@@ -322,6 +323,7 @@ describe('local camera preview', () => {
     await media.user.click(screen.getByRole('button', { name: '送る' }))
     if (failure === 'cancel') {
       expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toBeVisible()
+    expect(screen.getAllByRole('button').filter(button => button.classList.contains('primary-button'))).toHaveLength(0)
       await media.user.click(screen.getByRole('button', { name: 'キャンセル' }))
     }
     expect(await screen.findByRole('alert')).toBeVisible()
@@ -331,6 +333,7 @@ describe('local camera preview', () => {
     await media.user.click(screen.getByRole('button', { name: '再送する' }))
     // 再送成功後はまた判定待ち。結果確認ボタンは出さない。
     expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toBeVisible()
+    expect(screen.getAllByRole('button').filter(button => button.classList.contains('primary-button'))).toHaveLength(0)
     expect(screen.queryByRole('button', { name: '判定を確認' })).not.toBeInTheDocument()
     expect(submitAnswer.mock.calls[1][0]).toEqual(submitAnswer.mock.calls[0][0])
     expect(screen.queryByRole('button', { name: '撮り直す' })).not.toBeInTheDocument()
@@ -402,6 +405,7 @@ describe('local camera preview', () => {
     await media.user.click(screen.getByRole('button', { name: '送る' }))
     // 判定・受付待ち中は待ち面だけ。撮り直しや終了、結果確認ボタンは出さない。
     expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toBeVisible()
+    expect(screen.getAllByRole('button').filter(button => button.classList.contains('primary-button'))).toHaveLength(0)
     expect(screen.queryByRole('button', { name: '判定を確認' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '撮り直す' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '撮影を終了' })).not.toBeInTheDocument()
@@ -746,13 +750,14 @@ it('カメラ拒否時は撮影ボタンを隠して黄色の再試行を出す'
   expect(screen.queryByRole('button', { name: '撮影' })).not.toBeInTheDocument()
 })
 
-it.each(['WRONG_TARGET', 'OUTSIDE_AREA', 'SYSTEM_ERROR'])('%sの後は撮り直すが主ボタンになる', async outcome => {
+it.each(['WRONG_TARGET', 'OUTSIDE_AREA', 'LOCATION_UNCERTAIN', 'IMAGE_UNCERTAIN', 'SYSTEM_ERROR'])('%sの後は撮り直すが主ボタンになる', async outcome => {
   const media = setup()
   render(<CameraPreview onClose={media.onClose} answer={{ api: { submitAnswer: vi.fn().mockResolvedValue({ attemptId: 'a', state: 'COMPLETED', outcome, source: 'real', nextAction: 'RETAKE' }), getAttempt: vi.fn() }, challengeId: 'c', dataMode: 'team-preview', questTitle: '窓の謎', onReloadQuest: vi.fn() }} />)
   await loadFrame(media.stream)
   await media.user.click(screen.getByRole('button', { name: '撮影' }))
   await media.user.click(await screen.findByRole('button', { name: '送る' }))
   expect(screen.getByRole('button', { name: '撮り直す' })).toHaveClass('primary-button')
+  expect(screen.getAllByRole('button').filter(button => button.classList.contains('primary-button'))).toEqual([screen.getByRole('button', { name: '撮り直す' })])
   if (outcome === 'OUTSIDE_AREA') expect(screen.getByText('窓の謎：範囲内で撮り直す')).toBeVisible()
   if (outcome === 'SYSTEM_ERROR') expect(screen.getByRole('button', { name: '同じ写真で再送' })).toBeEnabled()
 })

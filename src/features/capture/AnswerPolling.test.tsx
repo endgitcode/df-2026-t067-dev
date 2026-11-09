@@ -122,7 +122,9 @@ it('clear screen returns to the map only through its button', async () => {
   const onOpenDiscovery = vi.fn()
   render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt: vi.fn() }, challengeId: 'challenge', onReloadQuest: vi.fn(), onOpenDiscovery, onReturnToMap, dataMode: 'team-preview' }} photo={new Blob(['photo'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '送信する' })))
-  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(screen.getByRole('dialog').querySelectorAll('.primary-button')).toHaveLength(1)
+  expect(screen.getByRole('button', { name: '記録を見る' })).toHaveClass('primary-button')
+  expect(screen.getByRole('button', { name: '地図に戻る' })).toHaveClass('secondary-button')
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '地図に戻る' })))
   expect(onReturnToMap).toHaveBeenCalledTimes(1)
   expect(onOpenDiscovery).not.toHaveBeenCalled()
@@ -143,6 +145,7 @@ it('team-preview still rejects a mock receipt as an invalid response', async () 
   render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt: vi.fn() }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'team-preview' }} photo={new Blob(['photo'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '送信する' })))
   expect(screen.getByRole('alert')).toHaveTextContent('送信・判定未確認')
+  expect(screen.getAllByRole('button').filter(button => button.classList.contains('primary-button'))).toEqual([screen.getByRole('button', { name: '再送する' })])
 })
 
 it('keeps the waiting card between automatic reads and lets cancellation stop polling', async () => {
@@ -192,6 +195,7 @@ it('does not show judgment-waiting and result-check controls at the same time', 
   for (let i = 0; i < 10; i++) await act(async () => vi.advanceTimersByTimeAsync(16000))
   expect(screen.queryByRole('status', { name: '写真の判定待ち' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: '判定を確認' })).toBeVisible()
+  expect(screen.getAllByRole('button').filter(button => button.classList.contains('primary-button'))).toEqual([screen.getByRole('button', { name: '判定を確認' })])
 })
 
 it('shows real waiting stages without fake percent and keeps the progress node across polls', async () => {

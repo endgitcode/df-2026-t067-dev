@@ -13,9 +13,9 @@ it('探索と記録が共通行を使い、写真行だけ高さを広げる', (
   expect(css).not.toMatch(/explore-side-panel \.explore-quest-card \{/)
 })
 
-it('行の間隔、2行省略、右端メタデータ、キーボードフォーカスをそろえる', () => {
+it('一覧の間隔、2行省略、メタデータ、キーボードフォーカスを保つ', () => {
   expect(css).toMatch(/\.explore-quest-list \{[^}]*gap: 4px;/)
-  expect(css).toMatch(/\.record-table tbody \{[^}]*gap: 4px;/)
+  expect(css).toMatch(/\.record-list \{[^}]*gap: 8px;/)
   expect(css).toMatch(/\.traveler-row-title \{[^}]*-webkit-line-clamp: 2;/)
   expect(css).toMatch(/\.traveler-row-meta \{[^}]*text-align: right;[^}]*white-space: nowrap;/)
   expect(css).toMatch(/\.traveler-list-row:focus-within \{[^}]*background: var\(--ui-soft\);/)

@@ -170,7 +170,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 button.traveler-list-row { cursor: pointer; }
 .traveler-list-row:focus-within { background: var(--ui-soft); outline: 2px solid var(--ui-line); outline-offset: -4px; }
 @media (hover: hover) and (pointer: fine) {
-  button.traveler-list-row:hover, .record-table .traveler-list-row:hover { background: var(--ui-soft); }
+  button.traveler-list-row:hover { background: var(--ui-soft); }
 }
 .explore-quest-list li.is-highlighted .traveler-list-row { background: var(--ui-surface); }
 .explore-quest-list .traveler-list-row.is-selected { background: var(--ui-surface); }
@@ -485,20 +485,15 @@ button.traveler-list-row { cursor: pointer; }
 .owner-records > h1 { font-size: 24px; line-height: 1.4; font-weight: var(--ui-weight-strong); }
 .owner-records > button { justify-self: start; }
 .owner-records, .record-dialog { --ui-hover-shift: 0px; --ui-press: 0px; }
-.record-table { display: block; width: 100%; text-align: start; }
-.record-table thead, .record-table tbody { display: grid; }
-.record-table tbody { gap: 4px; }
-.record-table thead tr, .record-table .traveler-list-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) 80px; gap: 8px; align-items: center; }
-.record-table thead tr { padding: 0 14px 4px; }
-.record-table th { color: var(--ui-muted); font-size: 12px; font-weight: 400; text-align: start; }
-.record-table th:last-child { text-align: right; }
-.record-table td { min-width: 0; padding: 0; border: 0; }
+.record-list { display: grid; gap: 8px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.record-list li { min-width: 0; }
+.record-summary { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.record-summary .traveler-row-meta { margin-left: 0; text-align: left; }
 .traveler-list-row-photo { min-height: 64px; cursor: pointer; }
-.record-table time, .record-guidance time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.record-list time, .record-guidance time { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .record-photo { display: block; max-width: 100%; max-height: 62vh; margin-inline: auto; object-fit: contain; border-radius: var(--ui-radius); }
 .record-dialog .secondary-button { padding: 9px 12px; font-weight: var(--ui-weight-control); }
 .record-detail > .record-delete { justify-self: start; color: var(--ui-error); border-color: var(--ui-error); background: var(--ui-surface); }
-.record-table .record-open { display: block; width: 100%; min-height: 44px; border: 0; border-radius: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: start; box-shadow: none; transform: none; cursor: pointer; }
 .record-thumbnail, .record-thumbnail-placeholder { display: grid; width: 56px; height: 56px; flex: 0 0 56px; place-items: center; border-radius: var(--radius-s); object-fit: cover; background: var(--ui-disabled); color: var(--ui-muted); }
 .record-thumbnail-placeholder { font-size: 10px; }
 .record-detail { display: grid; gap: 16px; overflow-wrap: anywhere; }

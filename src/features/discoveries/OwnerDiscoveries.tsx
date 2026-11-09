@@ -237,24 +237,21 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
     {items.length === 0 ? <>
       <p>記録なし</p>
       <button type="button" className="primary-button" onClick={onExplore}>謎を探す</button>
-    </> : <table className="record-table" aria-label="自分の記録一覧">
-      <thead><tr><th scope="col">写真</th><th scope="col">スポット名</th><th scope="col">日付</th></tr></thead>
-      <tbody>{items.map((record) => {
-        const open = () => { setDeleted(false); setSelected(record.discoveryId) }
-        return <tr className="traveler-list-row traveler-list-row-photo" key={record.discoveryId} onClick={(event) => {
-          event.currentTarget.querySelector('button')?.focus()
-          open()
-        }}>
-          <td><RecordThumbnail key={`${record.discoveryId}:${active}`} api={api} id={record.discoveryId} active={active} /></td>
-          <td><button type="button" className="record-open" aria-haspopup="dialog" onClick={(event) => { event.stopPropagation(); open() }}>
+    </> : <ul className="record-list" aria-label="自分の記録一覧">
+      {items.map((record) => <li key={record.discoveryId}>
+        <button type="button" className="traveler-list-row traveler-list-row-photo record-open"
+          aria-label={record.afterClear?.spot?.name ?? record.placeName} aria-haspopup="dialog"
+          onClick={() => { setDeleted(false); setSelected(record.discoveryId) }}>
+          <RecordThumbnail key={`${record.discoveryId}:${active}`} api={api} id={record.discoveryId} active={active} />
+          <span className="record-summary">
             <span className="traveler-row-title">{record.afterClear?.spot?.name ?? record.placeName}</span>
+            <span className="traveler-row-meta"><RecordDate date={record.firstClearedAt} /></span>
             {deletions[record.discoveryId]?.receipt && <span role="status">{deletions[record.discoveryId].state === 'failed' ? '削除未完了' : '削除中'}</span>}
             {deletions[record.discoveryId]?.state === 'send-error' && <span role="status">削除結果未確認</span>}
-          </button></td>
-          <td className="traveler-row-meta"><RecordDate date={record.firstClearedAt} /></td>
-        </tr>
-      })}</tbody>
-    </table>}
+          </span>
+        </button>
+      </li>)}
+    </ul>}
     {(firstPage || nextCursor) && <div className="camera-actions">
       {firstPage}
       {nextCursor && <button type="button" className="secondary-button" onClick={() => setCursor(nextCursor)}>次の記録</button>}

@@ -210,17 +210,15 @@ it.each([0, 1])('shows record details and validates the published title (version
   }
   render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
 
-  const table = await screen.findByRole('table')
-  expect(within(table).getByRole('columnheader', { name: '写真' })).toBeVisible()
-  expect(within(table).getByRole('columnheader', { name: 'スポット名' })).toBeVisible()
-  expect(within(table).getByRole('columnheader', { name: '日付' })).toBeVisible()
-  const row = within(table).getByRole('row', { name: new RegExp(spot.name) })
-  expect(await within(row).findByAltText('')).toBeInTheDocument()
-  expect(row).toHaveClass('traveler-list-row', 'traveler-list-row-photo')
-  expect(within(row).getByText(spot.name)).toHaveClass('traveler-row-title')
-  expect(within(row).getByText('2026/11/5').closest('td')).toHaveClass('traveler-row-meta')
+  const list = await screen.findByRole('list', { name: '自分の記録一覧' })
+  expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  const card = within(list).getByRole('listitem')
+  expect(await within(card).findByAltText('')).toBeInTheDocument()
+  expect(within(card).getByRole('button', { name: spot.name })).toHaveAttribute('aria-haspopup', 'dialog')
+  expect(within(card).getByText(spot.name)).toBeVisible()
+  expect(within(card).getByText('2026/11/5')).toBeVisible()
 
-  await user.click(within(row).getByText('2026/11/5'))
+  await user.click(within(card).getByText('2026/11/5'))
   const dialog = await screen.findByRole('dialog', { name: '記録詳細' })
   expect(within(dialog).getByRole('img', { name: '本人の記録写真' })).toBeVisible()
   expect(within(dialog).getByText(discovery.descriptionSnapshot)).toBeVisible()
@@ -411,5 +409,31 @@ it('記録詳細は履歴を1つ積み、戻ると詳細だけ閉じる', async 
   expect(window.history.state.recordDetail).toBe(discovery.discoveryId)
   window.history.back()
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(screen.getByRole('table', { name: '自分の記録一覧' })).toBeVisible()
+  expect(screen.getByRole('list', { name: '自分の記録一覧' })).toBeVisible()
+})
+
+it.each(['写真', 'カード', 'Enter', 'Space'])('%sから記録詳細を開ける', async (target) => {
+  const user = userEvent.setup()
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = () => 'blob:record'
+    static revokeObjectURL = vi.fn()
+  })
+  const api = {
+    ...createApiClient(),
+    listDiscoveries: vi.fn().mockResolvedValue({ items: [discovery], nextCursor: null }),
+    getDiscovery: vi.fn().mockResolvedValue(discovery),
+    getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
+    getQuest: vi.fn().mockResolvedValue({ title: 'テスト問題', version: discovery.questVersion }),
+  }
+  render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
+  const card = await screen.findByRole('button', { name: discovery.placeName })
+  if (target === '写真') await user.click(await within(card).findByAltText(''))
+  else if (target === 'カード') await user.click(card)
+  else {
+    await user.tab()
+    expect(card).toHaveFocus()
+    await user.keyboard(target === 'Enter' ? '{Enter}' : ' ')
+  }
+  expect(await screen.findByRole('dialog', { name: '記録詳細' })).toBeVisible()
+  expect(api.getDiscovery).toHaveBeenCalledWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
 })
