@@ -32,6 +32,45 @@ function RecordPhoto({ blob }: { blob: Blob }) {
   return <img ref={image} className="photo-preview" alt="本人の記録写真" />
 }
 
+function RecordThumbnail({ api, id }: { api: ApiClient; id: string }) {
+  const placeholder = useRef<HTMLSpanElement>(null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    const controller = new AbortController()
+    let objectUrl: string | null = null
+    let observer: IntersectionObserver | undefined
+    const load = () => {
+      void api.getDiscoveryPhoto(id, { signal: controller.signal }).then((blob) => {
+        if (controller.signal.aborted) return
+        objectUrl = URL.createObjectURL(blob)
+        setPhotoUrl(objectUrl)
+      }).catch(() => {
+        if (!controller.signal.aborted) setFailed(true)
+      })
+    }
+    const target = placeholder.current
+    if (target && typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting || entry.intersectionRatio > 0)) return
+        observer?.disconnect()
+        load()
+      }, { rootMargin: '160px' })
+      observer.observe(target)
+    } else {
+      // Older browsers still get thumbnails; they simply load immediately.
+      load()
+    }
+    return () => {
+      observer?.disconnect()
+      controller.abort()
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [api, id])
+  if (photoUrl) return <img className="record-thumbnail" src={photoUrl} alt="" />
+  return <span ref={placeholder} className="record-thumbnail-placeholder" aria-hidden="true">{failed ? '写真なし' : '写真を読み込み中'}</span>
+}
+
 function RecordGuidance({ record }: { record: Discovery }) {
   const { afterClear, descriptionSnapshot } = record
   const spot = afterClear?.spot
@@ -118,7 +157,10 @@ export function OwnerDiscoveries({ api, initialId, visit = 0 }: { api: ApiClient
     {confirmation}
     {items.length === 0 ? <p>自分の記録はまだありません。</p> : <ul className="record-list">
       {items.map((record) => <li key={record.discoveryId}>
-        <button type="button" className="secondary-button" onClick={() => { setDeleted(false); setSelected(record.discoveryId) }}>{record.placeName}</button>
+        <button type="button" className="record-list-item secondary-button" onClick={() => { setDeleted(false); setSelected(record.discoveryId) }}>
+          <RecordThumbnail api={api} id={record.discoveryId} />
+          <span>{record.placeName}</span>
+        </button>
         <RecordDate date={record.firstClearedAt} />
       </li>)}
     </ul>}
