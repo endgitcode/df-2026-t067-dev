@@ -511,3 +511,23 @@ describe('records body and mobile return clearance', () => {
     expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h, 70px) + 120px);')
   })
 })
+
+describe('traveler navigation selection (D-85)', () => {
+  it('uses yellow, black 2px borders and no shadow on mobile and PC', () => {
+    const theme = readCss('src/theme.css')
+    expect(theme).toContain('--ui-accent: #ffe66b;')
+    expect(theme).toContain('--ui-line: #1d1d1b;')
+    expect(theme).toContain('--ui-border-width: 2px;')
+    const mobile = css.match(/\.mobile-nav \[aria-current="page"\] \{([^}]+)\}/)?.[1]
+    const desktop = css.match(/body\.explore-fullbleed \.desktop-nav \.nav-active \{([^}]+)\}/)?.[1]
+    for (const rule of [mobile, desktop]) {
+      expect(rule).toContain('background: var(--ui-accent);')
+      expect(rule).toContain('border: var(--ui-border-width) solid var(--ui-line);')
+      expect(rule).toContain('box-shadow: none;')
+    }
+    expect(css).toContain('gap: 4px; width: var(--pc-sidebar-w);')
+    expect(css).toContain('height: 40px; padding: 8px 10px; border-radius: 12px;')
+    expect(css).not.toMatch(/box-shadow: var\(--ui-(?:control-|hover-)?shadow/)
+    expect(css).not.toContain('box-shadow: -3px 3px')
+  })
+})
