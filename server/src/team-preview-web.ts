@@ -13,13 +13,14 @@ const assetTypes: Readonly<Record<string, string>> = {
 export async function serveTeamPreviewWeb(directory: string, request: IncomingMessage, response: ServerResponse, path: string) {
   const shell = path === '/' || path === '/admin'
   const asset = /^\/assets\/([A-Za-z0-9][A-Za-z0-9._-]*)$/.exec(path)?.[1]
-  const contentType = shell ? 'text/html; charset=utf-8' : asset && assetTypes[extname(asset)]
+  const favicon = path === '/favicon.svg'
+  const contentType = favicon ? assetTypes['.svg'] : shell ? 'text/html; charset=utf-8' : asset && assetTypes[extname(asset)]
   if (!contentType) return false
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     response.setHeader('Allow', 'GET, HEAD')
     throw new HttpError(405, 'HTTP_ERROR', 'このメソッドは利用できません。')
   }
-  const filename = shell ? join(directory, 'index.html') : join(directory, 'assets', asset!)
+  const filename = favicon ? join(directory, 'favicon.svg') : shell ? join(directory, 'index.html') : join(directory, 'assets', asset!)
   let bytes: Buffer
   try { bytes = await readFile(filename) }
   catch (error) {
