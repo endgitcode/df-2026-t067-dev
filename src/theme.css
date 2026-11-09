@@ -7,6 +7,13 @@
   --ui-control-line: #1d1d1b;
   --ui-line: #1d1d1b;
   --ui-accent: #ffe66b;
+  --role-primary: var(--ui-accent);
+  --role-done: #c7ed93;
+  --role-selected: #c5e8f5;
+  --role-selected-soft: #edf8fc;
+  --role-error-bg: #f7b6b3;
+  --role-off: #e9e8e2;
+  --role-hover: #f4f4f1;
   --ui-accent-ink: #1d1d1b;
   --ui-accent-hover: #ffde3d;
   --ui-tint: #c7ed93;

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { QuestDetails } from '../quests/QuestDetails'
 import { ExploreQuestList } from './ExploreQuestList'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 
@@ -246,4 +247,20 @@ it.each(['explore-side-panel', 'explore-sheet-body'])('aligns a scrolled row wit
   vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ y: 500 }))
   rerender(<div className={className}><div className="side-panel-filters">場所</div><ExploreQuestList areas={areas} quests={quests} selectedQuestId="q2" onOpenQuest={vi.fn()} detailContent={<h3>説明</h3>} /></div>)
   expect(scrollTo).toHaveBeenCalledWith({ top: className === 'explore-side-panel' ? 432 : 496, behavior: 'smooth' })
+})
+
+it('開いたクリア済み行はバッジ1つと記録への導線を保つ', async () => {
+  const onOpenDiscovery = vi.fn()
+  const onStart = vi.fn()
+  const { container } = render(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q1"
+    clearedQuestIds={new Set(['q1'])} onOpenQuest={vi.fn()}
+    detailContent={<QuestDetails quest={quests[0]} areaLabel="横浜" open hideToggle disabled={false}
+      buttonLabel="挑戦する" onToggle={vi.fn()} onStart={onStart}
+      clearedDiscoveryId="record-1" onOpenDiscovery={onOpenDiscovery} />} />)
+  expect(screen.getAllByText('クリア済み')).toHaveLength(1)
+  expect(container.querySelector('.explore-quest-cleared svg')).toHaveAttribute('aria-hidden', 'true')
+  expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
+  await userEvent.setup().click(screen.getByRole('button', { name: '記録を見る' }))
+  expect(onOpenDiscovery).toHaveBeenCalledExactlyOnceWith('record-1')
+  expect(onStart).not.toHaveBeenCalled()
 })

@@ -92,7 +92,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
     {!embedded && onContinue && !file && <div className="admin-list-actions admin-save-bar"><button type="button" className="workflow-primary" disabled={blocked} onClick={() => onContinue(current)}>試験・公開へ</button></div>}
     {onContinue && file && <button type="button" disabled={blocked} onClick={clearSelection}>選択を取り消す</button>}
     {state.status === 'saving' && <p role="status">保存中</p>}
-    {state.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}>保存済み</p>}
+    {state.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}><span className="save-success">保存済み</span></p>}
     {state.status === 'error' && <p role="alert">{state.message}</p>}
   </section>
 }

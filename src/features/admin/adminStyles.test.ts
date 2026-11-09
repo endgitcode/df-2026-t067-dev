@@ -11,7 +11,7 @@ describe('管理画面の見た目の規則', () => {
     expect(css.replace(/\.admin-demo \.google-continue \{[^}]+\}/g, '')).not.toMatch(/border(?:-top)?: 1px|border-width: 1px|#e2e5e9/)
   })
   it('主操作は黄色、48px、副操作は44px以上・角丸12', () => {
-    expect(css).toContain('.admin-managed .workflow-primary { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: var(--ui-line); }')
+    expect(css).toContain('.admin-managed .workflow-primary { background: var(--role-primary); color: var(--ui-accent-ink); border-color: var(--ui-line); }')
     expect(css).toMatch(/\.admin-demo \.workflow-primary \{ min-height: 48px; \}/)
     expect(css).toMatch(/\.admin-demo button,\s*\.admin-demo input::file-selector-button \{ min-height: 44px; border-radius: 12px; \}/)
   })

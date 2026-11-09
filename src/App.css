@@ -72,7 +72,7 @@ p { overflow-wrap: anywhere; }
 
 .page { width: min(100% - 64px, 1440px); margin-inline: auto; }
 .page { padding-block: 36px 26px; }
-.api-quest-picker { display: grid; gap: 7px; margin: 18px 0; padding: 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); }
+.api-quest-picker { display: grid; gap: 7px; margin: 18px 0; padding: 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }
 .api-quest-picker ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
 .api-quest-picker li button { width: 100%; min-height: 44px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .api-quest-picker li button[aria-pressed="true"] { background: var(--ui-surface); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
@@ -139,7 +139,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .filter-accordion-chevron.is-open { transform: rotate(180deg); }
 .filter-accordion-body { display: flex; flex-direction: column; gap: 2px; padding: 2px 4px 8px 8px; }
 .filter-prefecture { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
-.filter-prefecture:hover, .filter-prefecture:focus-visible { background: var(--ui-soft); }
+.filter-prefecture:hover, .filter-prefecture:focus-visible { background: var(--ui-surface); }
 .filter-prefecture[aria-pressed="true"] { background: var(--ui-surface); font-weight: var(--ui-weight-strong); }
 @media (prefers-reduced-motion: reduce) { .filter-accordion-chevron { transition: none; } }
 .filter-chip[aria-pressed="true"] { background: var(--ui-surface); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
@@ -168,13 +168,14 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 /* 探索・本人記録の共通行。枠は行に一重だけ持たせる。 */
 .traveler-list-row { display: flex; box-sizing: border-box; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; border: 2px solid var(--ui-line); border-radius: 12px; background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; box-shadow: none; transition: background-color 150ms var(--ease-out); }
 button.traveler-list-row { cursor: pointer; }
-.traveler-list-row:focus-within { background: var(--ui-soft); outline: 2px solid var(--ui-line); outline-offset: -4px; }
+.traveler-list-row:focus-within { background: var(--role-hover); outline: 2px solid var(--ui-line); outline-offset: -4px; }
 @media (hover: hover) and (pointer: fine) {
-  button.traveler-list-row:hover { background: var(--ui-soft); }
+  button.traveler-list-row:hover { background: var(--role-hover); }
 }
 .explore-quest-list li.is-highlighted .traveler-list-row { background: var(--ui-surface); }
-.explore-quest-list .traveler-list-row.is-selected { background: var(--ui-surface); }
-.traveler-list-row.is-selected { background: var(--ui-surface); }
+.explore-quest-list li.is-highlighted .traveler-list-row.is-selected,
+.explore-quest-list .traveler-list-row.is-selected { background: var(--role-selected); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.traveler-list-row.is-selected { background: var(--role-selected); box-shadow: inset 0 0 0 1px var(--ui-line); }
 .traveler-list-row.is-selected .traveler-row-title { color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
 .traveler-row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; min-width: 0; font-size: 14px; line-height: 20px; font-weight: 500; }
 .explore-quest-title { flex: 1; }
@@ -229,7 +230,7 @@ button.traveler-list-row { cursor: pointer; }
 .map-controls { pointer-events: none; }
 .map-controls button { pointer-events: auto; }
 .map-locate-fab { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%; background: var(--ui-surface); color: var(--ui-ink); box-shadow: none; cursor: pointer; }
-.map-locate-fab:hover:not(:disabled) { background: var(--ui-tint); }
+.map-locate-fab:hover:not(:disabled) { background: var(--role-hover); }
 .map-locate-fab:disabled:not([inert]) { color: var(--ui-muted); background: var(--ui-disabled); cursor: not-allowed; }
 .map-locate-fab .icon { width: 20px; height: 20px; }
 .map-zoom-group { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); pointer-events: none; }
@@ -306,7 +307,7 @@ button.traveler-list-row { cursor: pointer; }
 .clear-celebration-large .clear-celebration-spark { width: 12px; height: 12px; margin: -6px 0 0 -6px; }
 /* 初回クリア時の全画面クリア画面（D-63）。テーマ色の地に、面のカードを浮かせる。 */
 /* クリア画面はスクロールなしで1画面に収める（t159u）。写真は残り高さへ伸縮。 */
-.clear-screen { position: fixed; inset: 0; z-index: 80; display: grid; place-items: safe center; overflow: hidden; overscroll-behavior: none; touch-action: none; height: 100dvh; max-height: 100dvh; padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); background: var(--ui-accent); animation: view-fade-in 200ms var(--ease-out); box-sizing: border-box; }
+.clear-screen { position: fixed; inset: 0; z-index: 80; display: grid; place-items: safe center; overflow: hidden; overscroll-behavior: none; touch-action: none; height: 100dvh; max-height: 100dvh; padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); background: var(--role-done); animation: view-fade-in 200ms var(--ease-out); box-sizing: border-box; }
 .clear-screen-card { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(420px, 100%); max-height: 100%; min-height: 0; padding: 18px 18px 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); box-shadow: none; text-align: center; animation: content-rise-in 280ms var(--ease-out); box-sizing: border-box; overflow: hidden; }
 .clear-screen-title { margin: 0; font-size: clamp(26px, 7vw, 34px); font-weight: var(--ui-weight-display); letter-spacing: -.02em; line-height: 1.15; flex: 0 0 auto; }
 .clear-screen-title:focus { outline: none; }
@@ -323,7 +324,7 @@ button.traveler-list-row { cursor: pointer; }
 .unavailable-note { font-size: 12px; color: var(--ui-muted); line-height: 1.8; margin-top: 9px; }
 /* クリア済み表示（D-64）：開始導線の代わりに置く。一覧バッジと同じ淡緑で揃える。 */
 .quest-cleared-action { display: grid; gap: 10px; justify-items: start; }
-.quest-cleared-label { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 13px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
+.explore-quest-cleared, .quest-cleared-label { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 13px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
 .quest-cleared-action .unavailable-note { margin-top: 0; }
 .quest-handoff { display: grid; gap: 10px; }
 .quest-handoff-panel { display: grid; justify-items: center; gap: 8px; }
@@ -422,11 +423,11 @@ button.traveler-list-row { cursor: pointer; }
 .desktop-nav button { color: var(--ui-muted); }
 .explore-heading h1 { font-size: clamp(1.75rem, 3.2vw, 2.65rem); font-weight: var(--ui-weight-display); letter-spacing: -.04em; }
 .eyebrow { color: var(--ui-muted); }
-.preview-label { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-soft); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
+.preview-label { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-surface); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
 .status-dot, .demo-note-dot { background: var(--ui-ink); border-radius: 50%; }
 .explore-workspace { grid-template-columns: minmax(0, 1fr) 400px; }
 .map-preview { background: var(--ui-blue); box-shadow: none; }
-.demo-map-label { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-soft); color: var(--ui-ink); }
+.demo-map-label { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-surface); color: var(--ui-ink); }
 .map-bottomline { color: var(--ui-ink); flex-wrap: wrap; background: var(--ui-surface); padding: 6px 8px; border-radius: var(--ui-radius); }
 .pin-halo { border: 0; background: transparent; border-radius: 50%; }
 /* ピンの色は Google Maps 側（features/explore/mapStyles.ts の MAP_PIN_COLOR）と同値に揃える。 */
@@ -436,7 +437,7 @@ button.traveler-list-row { cursor: pointer; }
 .map-zoom-group { background: var(--ui-surface); box-shadow: none; }
 .map-locate-fab .icon { fill: currentColor; stroke: none; }
 .map-zoom button { width: 44px; height: 44px; color: var(--ui-ink); background: transparent; }
-.map-zoom button:hover:not(:disabled) { background: var(--ui-tint); }
+.map-zoom button:hover:not(:disabled) { background: var(--role-hover); }
 .map-zoom button:disabled:not([inert]) { color: var(--ui-muted); background: var(--ui-disabled); }
 .map-zoom button:first-child { border-radius: var(--ui-radius) var(--ui-radius) 0 0; }
 .map-zoom button:last-child { border-radius: 0 0 var(--ui-radius) var(--ui-radius); }
@@ -448,15 +449,15 @@ button.traveler-list-row { cursor: pointer; }
 .area-label { color: var(--ui-muted); }
 .quest-card h3 { font-size: 22px; font-weight: var(--ui-weight-display); }
 .clue-text, .camera-status, .unavailable-note, .auth-feedback { color: var(--ui-muted); }
-.quest-toggle, .primary-button, .api-load-state > button { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: var(--ui-line); font-weight: var(--ui-weight-control); font-size: 14px; }
-.quest-toggle:hover:not(:disabled), .primary-button:hover:not(:disabled), .api-load-state > button:hover:not(:disabled) { background: var(--ui-accent-hover); color: var(--ui-accent-ink); }
-.quest-toggle.is-open { background: var(--ui-tint); color: var(--ui-ink); }
-.quest-toggle.is-open:hover { background: var(--ui-tint); color: var(--ui-ink); }
+.quest-toggle, .primary-button, .api-load-state > button { background: var(--ui-surface); color: var(--ui-accent-ink); border-color: var(--ui-line); font-weight: var(--ui-weight-control); font-size: 14px; }
+.quest-toggle:hover:not(:disabled), .primary-button:hover:not(:disabled), .api-load-state > button:hover:not(:disabled) { background: var(--ui-surface); color: var(--ui-accent-ink); }
+.quest-toggle.is-open { background: var(--ui-surface); color: var(--ui-ink); }
+.quest-toggle.is-open:hover { background: var(--ui-surface); color: var(--ui-ink); }
 .retry-button, .camera-actions .secondary-button { color: var(--ui-ink); background: var(--ui-surface); }
-.retry-button:hover { background: var(--ui-tint); }
-.sample-note, .api-quest-picker { color: var(--ui-muted); background: var(--ui-soft); }
+.retry-button:hover { background: var(--role-hover); }
+.sample-note, .api-quest-picker { color: var(--ui-muted); background: var(--ui-surface); }
 .api-quest-picker li button { color: var(--ui-ink); background: var(--ui-surface); }
-.camera-panel { padding: 16px; background: var(--ui-soft); }
+.camera-panel { padding: 16px; background: var(--ui-surface); }
 .camera-video, .photo-preview { background: #1d1d1b; border: var(--ui-border-width) solid var(--ui-line); }
 .camera-panel .photo-preview { height: auto; }
 .auth-feedback[role="alert"], .camera-error, .connection-message [role="alert"] { color: var(--ui-error); }
@@ -477,7 +478,7 @@ button.traveler-list-row { cursor: pointer; }
 .quest-title-row h3 { min-width: 0; overflow-wrap: anywhere; }
 /* 記録画面の列は中央に寄せず、探索画面と同じ左のラインに揃える（D-60）。幅の上限は読みやすさのために残す。 */
 /* D-82/D-84: 白いカードに収め、PC幅の外側余白と幅は下の規則で指定する。 */
-.owner-records { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; max-width: 720px; padding: 20px; align-content: start; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); box-shadow: none; }
+.owner-records { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; max-width: 720px; padding: 0; align-content: start; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
 /* 記録画面と探索画面は hidden で切り替える（アンマウントしない）。display を
    指定している要素では hidden が負けるため、明示的に打ち消す。 */
 .owner-records[hidden], .explore-view[hidden] { display: none; }
@@ -853,7 +854,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* 地図操作は描画中のシート上端に合わせ、収まらない場合は非表示にする。 */
   body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); z-index: 3; }
   body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); z-index: 3; }
-  body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: none; font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
+  body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-accent-ink); box-shadow: none; font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
   body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; }
   body.explore-fullbleed .map-browse-shortcut.is-return-to-map { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }
   body.explore-fullbleed .map-browse-shortcut[inert] { visibility: hidden; pointer-events: none; }
@@ -886,7 +887,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 .answer-waiting p { margin: 0 0 10px; color: var(--ui-ink, #1d1d1b); font-weight: var(--ui-weight-strong, 700); }
 /* 不定バー: % や時間の偽進捗は出さない。トラックとバーは白カード上でも暗い写真上でも見えるコントラスト（WCAG AA目安）。 */
 .answer-waiting-progress { position: relative; overflow: hidden; height: 10px; margin: 0 auto 14px; max-width: 240px; border-radius: 999px; border: 2px solid var(--ui-ink, #1d1d1b); background: var(--ui-disabled, #e9e8e2); box-sizing: border-box; }
-.answer-waiting-progress-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: inherit; background: var(--ui-accent, #ffe66b); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-ink, #1d1d1b) 35%, transparent); animation: answer-waiting-indeterminate 1.25s ease-in-out infinite; }
+.answer-waiting-progress-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: inherit; background: var(--ui-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-ink, #1d1d1b) 35%, transparent); animation: answer-waiting-indeterminate 1.25s ease-in-out infinite; }
 @keyframes answer-waiting-indeterminate {
   0% { transform: translateX(-120%); }
   100% { transform: translateX(280%); }
@@ -1055,7 +1056,7 @@ body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; 
 .filter-accordion { width: 100%; padding: 8px; }
 .filter-accordion-row { border: 0; border-radius: 10px; }
 .filter-nationwide { width: 100%; min-height: 44px; padding: 8px 12px; border: 0; background: transparent; color: var(--ui-ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
-.filter-nationwide:hover, .filter-accordion-row:hover { background: var(--ui-soft); }
+.filter-nationwide:hover, .filter-accordion-row:hover { background: var(--ui-surface); }
 @media (max-width: 980px) {
   .map-filter-panel:has(.map-filter-chips-wrap) { position: relative; z-index: 12; }
   .map-filter-chips-wrap.is-open { position: fixed; inset: auto 0 var(--mobile-tabbar-h, 0px); width: 100%; z-index: 12; }
@@ -1112,3 +1113,23 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 /* 判定確認が残る回復状態では撮り直しを副操作にする。 */
 .camera-actions:has(.primary-button) ~ .camera-actions > .primary-button,
 .camera-actions:has(.primary-button) ~ .camera-actions > .primary-button:hover:not(:disabled) { background: var(--ui-surface); color: var(--ui-ink); }
+
+/* 作業13: 色だけでなく、既存の文字・選択表示と一緒に状態を示す。 */
+.explore-quest-cleared { background: var(--role-done); color: var(--ui-ink); }
+.quest-cleared-label, .clear-screen-card { background: var(--role-done); color: var(--ui-ink); }
+.filter-prefecture[aria-pressed="true"] { background: var(--role-selected); box-shadow: inset 0 0 0 2px var(--ui-line); }
+.filter-chip[aria-pressed="true"], .map-area-chip, .map-filter-selection .filter-chip { background: var(--role-selected); border: 2px solid var(--ui-line); }
+.filter-accordion-body { background: var(--role-selected-soft); }
+.camera-panel .answer-waiting { background: var(--role-off); }
+.answer-result { padding: 8px 12px; border-radius: var(--radius-s); background: var(--role-error-bg); color: var(--ui-ink); }
+.answer-result:not([data-outcome]) { background: var(--role-off); }
+.answer-result[data-outcome="CORRECT"], .answer-result[data-outcome="ALREADY_CLEARED"] { background: var(--role-done); }
+.camera-actions > .answer-result[role="alert"] { background: transparent; color: var(--ui-error); }
+@media (min-width: 981px) {
+  body:has(.traveler-shell) .desktop-nav .nav-active,
+  body.explore-fullbleed .traveler-shell .desktop-nav .nav-active { background: var(--role-selected); color: var(--ui-ink); border-color: var(--ui-line); }
+}
+
+.primary-button, .api-load-state > button,
+.primary-button:hover:not(:disabled), .api-load-state > button:hover:not(:disabled) { background: var(--role-primary); }
+.filter-toggle[data-selected="true"] { background: var(--role-selected); border: 2px solid var(--ui-line); }

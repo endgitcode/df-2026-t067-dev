@@ -12,7 +12,7 @@ it('replaces the start action with a cleared notice and a record link for a clea
   render(<QuestDetails quest={demoQuest} areaLabel="架空エリア" open disabled={false} buttonLabel="挑戦する" note="架空の問題です。" onToggle={vi.fn()} onStart={onStart} clearedDiscoveryId="record-1" onOpenDiscovery={onOpenDiscovery} />)
 
   expect(screen.getByText('クリア済み')).toBeVisible()
-  expect(screen.getByText(/クリア済み/)).toBeVisible()
+  expect(screen.getAllByText('クリア済み')).toHaveLength(1)
   expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
 
@@ -574,4 +574,17 @@ it('hides amounts in previously published free price conditions', () => {
   render(<QuestDetails quest={{ ...demoQuest, visitConditions: '料金 無料：500\n注意：足元に注意' }} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" onToggle={vi.fn()} onStart={vi.fn()} />)
   expect(screen.getByText(/料金 無料/)).not.toHaveTextContent('500')
   expect(screen.getByText(/料金 無料/)).toHaveTextContent('注意：足元に注意')
+})
+
+it('ヒント見出しを重ねず、ヒントなしでは領域ごと表示しない', () => {
+  const props = { areaLabel: '地域', open: true, disabled: false, buttonLabel: '挑戦する',
+    onToggle: vi.fn(), onStart: vi.fn(), getHint: vi.fn() }
+  const { container, rerender } = render(<QuestDetails {...props} quest={{ ...demoQuest, hintCount: 1 }} />)
+  expect(screen.getByRole('button', { name: 'ヒントを見る' })).toBeVisible()
+  expect(screen.queryByRole('heading', { name: 'ヒント' })).not.toBeInTheDocument()
+  expect(container.querySelector('.quest-hints')).toHaveAttribute('aria-label', 'ヒント')
+  rerender(<QuestDetails {...props} quest={{ ...demoQuest, hintCount: 0 }} />)
+  expect(container.querySelector('.quest-hints')).not.toBeInTheDocument()
+  expect(screen.queryByText('ヒントなし')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'ヒントを見る' })).not.toBeInTheDocument()
 })

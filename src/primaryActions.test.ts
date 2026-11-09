@@ -83,6 +83,10 @@ describe('主ボタンの形と配置', () => {
     expect(last(rules, 'body.explore-fullbleed .explore-sheet', 'bottom')).toBe('var(--mobile-tabbar-h)')
     expect(traveler).toContain('--mobile-tabbar-h: calc(64px + env(safe-area-inset-bottom, 0px))')
   })
+  it('主ボタンに黄色の役割を使う', () => {
+    expect(last(travelerRules, '.primary-button', 'background')).toBe('var(--role-primary)')
+    expect(last(adminRules, '.admin-managed .workflow-primary', 'background')).toBe('var(--role-primary)')
+  })
   it('ナビ・一覧操作・工程の副操作を黄色にしない', () => {
     for (const selector of ['.traveler-shell .quest-toggle', 'body.explore-fullbleed .explore-sheet-reopen', '.quest-details:has(.camera-panel) > .primary-button', '.camera-actions:has(.primary-button) ~ .camera-actions > .primary-button']) {
       expect(last(travelerRules, selector, 'background')).toBe('var(--ui-surface)')

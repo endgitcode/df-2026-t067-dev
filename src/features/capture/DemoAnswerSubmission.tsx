@@ -252,10 +252,10 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, initi
   return <div className="camera-actions" aria-label="回答受付">
     {receipt?.cleared && <ClearCelebration />}
     {receipt?.discoveryId && !photo && <button type="button" className="primary-button" onClick={viewRecord}>記録を見る</button>}
-    {receipt && !failure && <p role="status">{receipt.message}</p>}
+    {receipt && !failure && <p className="answer-result" data-outcome={receipt.outcome} role="status">{receipt.message}</p>}
     {(receipt?.outcome === 'OUTSIDE_AREA' || receipt?.outcome === 'LOCATION_UNCERTAIN') && <p role="status">{context.placeName ?? context.questTitle ?? 'この問題の場所'}：範囲内で撮り直す</p>}
     {receipt?.outcome === 'SYSTEM_ERROR' && photo && metadata && <button type="button" className="secondary-button" onClick={() => void exchange(false, true)}>同じ写真で再送</button>}
-    {failure && <p role="alert">{failure.message}{!failure.retake && !failure.reload && " 判定待ち"}</p>}
+    {failure && <p className="answer-result" role="alert">{failure.message}{!failure.retake && !failure.reload && " 判定待ち"}</p>}
     {pollLimit && <p role="status">判定中</p>}
     {(failure?.reload || receipt?.reload) && <button type="button" className="retry-button" onClick={context.onReloadQuest}>問題を再読込</button>}
     {!failure?.reload && !failure?.retake && (!receipt || receipt.canCheck) &&

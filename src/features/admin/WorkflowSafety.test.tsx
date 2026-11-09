@@ -58,7 +58,7 @@ it('blocks reversed hours and negative or fractional prices, then resets success
   }
   fireEvent.change(screen.getByLabelText('料金・円'), { target: { value: '0' } })
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
-  expect(await screen.findByText('保存済み')).toHaveFocus()
+  expect((await screen.findByText('保存済み')).closest('[role="status"]')).toHaveFocus()
   client.updateManagedQuest.mockRejectedValue(new Error('offline'))
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect(screen.queryByText('保存済み')).toBeNull()

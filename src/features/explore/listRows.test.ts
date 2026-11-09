@@ -18,10 +18,10 @@ it('一覧の間隔、2行省略、メタデータ、キーボードフォーカ
   expect(css).toMatch(/\.record-list \{[^}]*gap: 8px;/)
   expect(css).toMatch(/\.traveler-row-title \{[^}]*-webkit-line-clamp: 2;/)
   expect(css).toMatch(/\.traveler-row-meta \{[^}]*text-align: right;[^}]*white-space: nowrap;/)
-  expect(css).toMatch(/\.traveler-list-row:focus-within \{[^}]*background: var\(--ui-soft\);/)
+  expect(css).toMatch(/\.traveler-list-row:focus-within \{[^}]*background: var\(--role-hover\);/)
   expect(css).toMatch(/\.traveler-list-row:focus-within \{[^}]*outline: 2px solid var\(--ui-line\);/)
-  // 黄色は主ボタン専用。選択中の行は白地のまま文字の太さで示す。
-  expect(css).toMatch(/\.traveler-list-row\.is-selected \{[^}]*background: var\(--ui-surface\);/)
+  // 選択中は水色、既存の太字も保つ。
+  expect(css).toMatch(/\.traveler-list-row\.is-selected \{[^}]*background: var\(--role-selected\);/)
   expect(css).toMatch(/\.traveler-list-row\.is-selected \.traveler-row-title \{[^}]*font-weight: var\(--ui-weight-strong\);/)
 })
 

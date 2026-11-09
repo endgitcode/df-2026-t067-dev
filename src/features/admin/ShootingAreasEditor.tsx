@@ -131,7 +131,7 @@ function ShootingAreasForm({ api, initial, onReload, enableMap, onContinue }: { 
       </details>
     })}
     {!input && <p>緯度は±90、経度は±180、撮影範囲の半径は1,000m固定です。旧半径の範囲は、1,000mへの変更を選んでから保存してください。</p>}
-    {state === 'saved' && <p role="status">保存済み</p>}
+    {state === 'saved' && <p role="status"><span className="save-success">保存済み</span></p>}
     {state === 'error' && <p role="alert">保存結果未確認・通信を確認・再試行</p>}
     {state === 'conflict' && <p role="alert">下書きの版が変わりました。入力を控えてから最新版を確認してください。</p>}
     <div className="admin-list-actions">

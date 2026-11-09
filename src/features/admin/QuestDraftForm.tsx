@@ -478,7 +478,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     </div>
     {(part === 1 || onePage) && exploration?.source === 'N03' && <footer className="helper">出典：国土交通省 国土数値情報「行政区域」{exploration.year}年版を加工</footer>}
     {connection && <section className="form-section" aria-label="下書きの保存">
-      {saveState.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}>保存済み</p>}
+      {saveState.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}><span className="save-success">保存済み</span></p>}
       {saveState.status === 'error' && <p role="alert">{saveState.message}</p>}
       {inputError && <p role="alert">{inputError}</p>}
       <div className="admin-list-actions admin-save-bar">

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
+import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 
 // 選択状態に連動する謎リスト。並ぶのは呼び出し側が選択（地域の選択・地方／都道府県の
@@ -159,7 +160,7 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
               <span className="explore-quest-title traveler-row-title">{quest.title}</span>
               <span className="traveler-row-secondary">
                 <span className="traveler-row-meta">{[areas.find((area) => area.areaId === quest.areaId)?.label, quest.questNumber && `No. ${quest.questNumber}`].filter(Boolean).join(' · ')}</span>
-                {cleared && <span className="explore-quest-cleared">クリア済み</span>}
+                {cleared && <span className="explore-quest-cleared"><Icon name="check" />クリア済み</span>}
               </span>
             </>
             return <li key={quest.questId} data-area-id={quest.areaId} className={highlightArea?.areaId === quest.areaId ? 'is-highlighted' : undefined}>
