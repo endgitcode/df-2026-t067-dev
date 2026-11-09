@@ -212,6 +212,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const pendingRef = useRef(false)
   const lifecycle = useRef(0)
   const selectionGeneration = useRef(0)
+  const mobileNavGesture = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
   const waitController = useRef<AbortController | null>(null)
   const [feedback, setFeedback] = useState<{ error: boolean; text: string } | null>(null)
   const [startIntent, setStartIntent] = useState<{ auth: AuthSnapshot; selection: ChallengeSelection; generation: number; expires: number } | null>(null)
@@ -368,9 +369,12 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   // 探索へ戻る導線はタブに一本化する（記録画面の本文に重複した戻りボタンは置かない）。
   // 通常フロー表示では、従来の #explore-title アンカーと同じく見出しの位置へ戻す。
   function navigateToExplore() {
+    // 選択中の「謎を探す」を押しただけでスクロールを起こさない。
+    // スワイプ中にクリックが合成される端末でも、現在の探索画面が動かないようにする。
+    const returningFromRecords = showRecords
     navigateToRecords(false)
-    requestAnimationFrame(() => {
-      try { document.getElementById('explore-title')?.scrollIntoView({ block: 'start' }) } catch { /* スクロールは補助であり、失敗しても画面遷移は完了している。 */ }
+    if (returningFromRecords) requestAnimationFrame(() => {
+      try { document.getElementById('explore-title')?.scrollIntoView({ block: 'start' }) } catch { /* スクロールは補助であり、画面遷移は完了している。 */ }
     })
   }
 
@@ -518,7 +522,26 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         </>}
         </div>
       </main>
-      <nav className="mobile-nav" aria-label="スマホ用ナビゲーション">
+      <nav className="mobile-nav" aria-label="スマホ用ナビゲーション"
+        onPointerDownCapture={(event) => {
+          mobileNavGesture.current = event.pointerType === 'touch'
+            ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false }
+            : null
+        }}
+        onPointerMoveCapture={(event) => {
+          const gesture = mobileNavGesture.current
+          if (gesture?.pointerId === event.pointerId && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 8) gesture.moved = true
+        }}
+        onPointerCancelCapture={() => { mobileNavGesture.current = null }}
+        onClickCapture={(event) => {
+          const gesture = mobileNavGesture.current
+          mobileNavGesture.current = null
+          // PointerEvent由来のスワイプ後クリックだけを捨て、Enter/Space の click(detail=0) は通す。
+          if (gesture?.moved && event.detail !== 0) {
+            event.preventDefault()
+            event.stopPropagation()
+          }
+        }}>
         <button type="button" aria-current={showRecords ? undefined : 'page'} onClick={navigateToExplore}><Icon name="map" /><span>謎を探す</span></button>
         {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} disabled={!localApiMode || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{!localApiMode && <small>準備中</small>}</span></button>}

@@ -48,7 +48,9 @@ describe('mobile bottom tab bar (D-32)', () => {
   it('pins the mobile nav to the bottom as a tab bar with a shared height token', () => {
     expect(css).toContain(':root { --mobile-tabbar-h: calc(70px + env(safe-area-inset-bottom, 0px)); }')
     expect(css).toContain('.mobile-nav { position: fixed; bottom: 0; left: 0; right: 0;')
-    expect(css).toContain('background: var(--ui-surface); touch-action: pan-x; }')
+    // タブバー上で始まった縦ジェスチャーはページスクロールへ渡さない。
+    // タップは通常の click として残り、地図シートのスクロール領域には適用しない。
+    expect(css).toContain('background: var(--ui-surface); touch-action: none; overscroll-behavior: none; }')
     expect(css).toContain('.mobile-nav [aria-current="page"] { background: var(--ui-accent);')
   })
 
@@ -205,9 +207,10 @@ describe('look and spacing (D-54)', () => {
     expect(css).toContain('.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; transition: background-color 150ms var(--ease-out); }')
     expect(css).not.toContain('body.explore-fullbleed .account-icon-button { box-shadow')
     expect(css).not.toContain('box-shadow: 6px 0 0 var(--ui-line)')
-    // 影はフローティングパネル本体には残す。
+    // パネル本体の影は D-66 で外した（右端は枠線2pxだけになる）。
     expect(css).toContain('body.explore-fullbleed .explore-side-panel { position: fixed;')
-    expect(css).toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow);')
+    expect(css).not.toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow);')
+    expect(css).toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); padding: 0 16px 20px;')
   })
 
   it('aligns the floating title chip line with the panel side, open and collapsed', () => {
@@ -248,9 +251,41 @@ describe('records view tab position (D-60 addendum)', () => {
     expect(mediaAt).toBeGreaterThan(-1)
     expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav { position: fixed; top: 16px; left: 16px; z-index: 30; display: flex; align-items: center; gap: 8px; width: 380px; height: 68px; padding: 12px 16px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }')
     expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav a, body:has(.owner-records:not([hidden])) .desktop-nav button { flex: 1 1 0; justify-content: center; }')
-    // ブランドはカードの右へ逃がし、重ならないようにする。
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { padding-left: calc(16px + 380px + 24px); }')
+    // ブランドはカードの右へ逃がし、重ならないようにする。ヘッダーの列構成と
+    // 余白は D-66 で探索画面に揃えた（タイトル／アイコンの固定は下の D-66 側）。
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { min-height: 0; grid-template-columns: 1fr auto; padding: 10px 20px 16px calc(16px + 380px + 24px); }')
     // 探索画面のナビカード（fullbleed）と同じ寸法であること。
     expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h);')
+  })
+})
+
+// 見た目の統一（D-66）: 中身とパネル本体のオフセットシャドウを全廃し、タイトルと
+// アカウントアイコンを画面間で同位置・同形に固定する。実測はライブの画素測定
+// （2026-11-09、revision 00097）に基づく。CSS の実測は jsdom ではできないため、
+// 規則の置き場所と文字列で担保する。
+describe('chrome consistency (D-66)', () => {
+  const themeCss = readCss('src/theme.css')
+
+  it('drops the offset shadow from the shared control rule (detail and hint buttons, account icon), including hover', () => {
+    expect(themeCss).not.toContain('box-shadow: var(--ui-control-shadow)')
+    expect(themeCss).not.toContain('box-shadow: var(--ui-hover-shadow)')
+    // 共通規則は枠線だけで示し、押下時と同じく影なしに揃える。
+    expect(themeCss).toContain('border-radius: var(--ui-radius);\n  box-shadow: none;')
+  })
+
+  it('drops the offset shadow from the title pill, the brand mark, the side panel and the sheet', () => {
+    expect(css).toContain('body.explore-fullbleed .brand { justify-self: start; width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
+    expect(css).toContain('.brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); }')
+    expect(css).not.toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow);')
+    expect(css).toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); padding: 0 16px 20px;')
+    expect(css).not.toContain('background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 300ms var(--ease-drawer), visibility 0s; }')
+  })
+
+  it('shows the same title pill on the records view and keeps the account icon at the viewport right edge', () => {
+    // ピルの形（寸法・枠線・角丸・面）は探索画面のピルと同一文字列で揃える。
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
+    expect(css).toContain('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand { padding: 4px 10px 4px 4px; }')
+    // アカウント側の列はビューポート右端基準（1fr auto＋右余白20px）にする。
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { min-height: 0; grid-template-columns: 1fr auto; padding: 10px 20px 16px calc(16px + 380px + 24px); }')
   })
 })

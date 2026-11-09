@@ -21,8 +21,10 @@ const JAPAN = { lat: 36.2048, lng: 138.2529 }
 // 国外を薄く落とすベールも、相方だった restriction の撤去で飾りだけが残り、見た目も
 // しっくり来なかったため撤去した（D-41 追記）。移動範囲は制限しない。
 // これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
-// 初期表示の日本全体フィットは小さい画面でも 4.5 を下回らないため、その下限に合わせる。
-const MIN_ZOOM = 4.5
+// 当初は初期表示の日本全体フィットの下限に合わせて 4.5（小数）だったが、Mac のトラックパッドで
+// 最小ズームからさらに縮小ピンチをすると画面がちらつく報告があり、整数の 5 に変更した（D-67）。
+// 実測でも実効の下限は 5 で、初期フィットは Maps 側で 5 にクランプされても破綻しない。
+const MIN_ZOOM = 5
 const INITIAL_ZOOM = 5
 const MAX_ZOOM = 20
 // フィットで寄せる倍率の上限（D-60 追記）。対象が実質1点だと fitBounds が最大倍率まで
@@ -686,7 +688,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget}
     onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} /> : null
   // 境界データの出典表記（N03 の利用条件）。短い文言で、パネル／シートの一番下に小さく出す（D-46）。
-  // 登録年度が公開応答に載っている地域があれば、その年度を出典に含める（D-69）。
+  // 登録年度が公開応答に載っている地域があれば、その年度を出典に含める（D-70）。
   const boundaryYears = [...new Set(areas.flatMap((area) => area.boundary?.source === 'N03' ? [area.boundary.year] : []))].sort((a, b) => a - b)
   const boundaryCreditText = boundaryYears.length === 1
     ? `境界データ：国土数値情報N03-${boundaryYears[0]}（国土交通省）`

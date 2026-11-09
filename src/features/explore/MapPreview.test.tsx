@@ -128,7 +128,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('starts at zoom 5 and allows zooming through 12 up to the max of 20, then stops and respects min 4.5', async () => {
+  it('starts at zoom 5 and allows zooming through 12 up to the max of 20, then stops and respects min 5', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     let currentZoom = 5
@@ -144,12 +144,13 @@ describe('Google map panel', () => {
     const user = userEvent.setup()
     render(<ConfiguredMapPreview />)
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeEnabled()
-    expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 4.5, maxZoom: 20 })
+    expect(mapOptions).toMatchObject({ zoom: 5, minZoom: 5, maxZoom: 20 })
     expect(mapOptions?.styles).toEqual(MAP_STYLES)
     // restriction は付けない（D-41 追記）：表示範囲が restriction の幅より広いズームではライブラリが
     // setCenter を restriction 中心へ固定し、fitBounds の中心が差し替わる不具合があったため撤去した。
     expect(mapOptions?.restriction).toBeUndefined()
-    expect(screen.getByRole('button', { name: '地図を縮小' })).toBeEnabled()
+    // 初期ズーム 5 が最小ズーム 5（D-67）と一致するため、縮小ボタンは初期状態で無効。
+    expect(screen.getByRole('button', { name: '地図を縮小' })).toBeDisabled()
     for (let zoom = 6; zoom <= 12; zoom++) await user.click(screen.getByRole('button', { name: '地図を拡大' }))
     expect(currentZoom).toBe(12)
     expect(screen.getByRole('button', { name: '地図を拡大' })).toBeEnabled()
@@ -160,11 +161,10 @@ describe('Google map panel', () => {
     expect(currentZoom).toBe(19)
     for (let zoom = 18; zoom >= 5; zoom--) await user.click(screen.getByRole('button', { name: '地図を縮小' }))
     expect(currentZoom).toBe(5)
-    // 最小ズーム 4.5（D-41）で止まり、それ以上は引けない。
-    await user.click(screen.getByRole('button', { name: '地図を縮小' }))
-    expect(currentZoom).toBe(4.5)
+    // 最小ズーム 5（D-67）で止まり、縮小ボタンは無効になるためそれ以上は引けない。
+    expect(currentZoom).toBe(5)
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeDisabled()
-    expect(setZoom).toHaveBeenLastCalledWith(4.5)
+    expect(setZoom).toHaveBeenLastCalledWith(5)
     delete window.google
   })
 
@@ -684,7 +684,7 @@ describe('Google map panel', () => {
     const withYear: PublicArea[] = [{ ...areas[0], boundary: { source: 'N03', year: 2025 } }]
     const { unmount } = render(<ConfiguredMapPreview areas={withYear} quests={[]} showBoundaryCredit />)
     expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
-    // 登録年度が分かる地域がある場合は、出典に年度まで含める（D-69）。
+    // 登録年度が分かる地域がある場合は、出典に年度まで含める（D-70）。
     expect(screen.getByText('境界データ：国土数値情報N03-2025（国土交通省）')).toBeInTheDocument()
     unmount()
     delete window.google

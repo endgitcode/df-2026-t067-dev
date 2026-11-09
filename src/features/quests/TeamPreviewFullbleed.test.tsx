@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { area, quest } from '../../shared/api/testFixtures'
@@ -102,6 +102,57 @@ describe('探索画面の縁なし（全画面）表示', () => {
 
   it('PC幅（981px以上）でも全画面化され、浮動化した導線に到達できる', async () => {
     await runScenario(true)
+  })
+
+  it('選択中の探索タブではスクロールせず、記録画面から戻るタップでは見出しへ戻る', async () => {
+    vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
+    stubViewport(false)
+    const scrollIntoView = vi.fn()
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView')
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scrollIntoView })
+    const user = userEvent.setup()
+    render(<TeamPreview authClient={auth} />)
+    const nav = await screen.findByRole('navigation', { name: 'スマホ用ナビゲーション' })
+    await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
+
+    await user.click(within(nav).getByRole('button', { name: '謎を探す' }))
+    expect(scrollIntoView).not.toHaveBeenCalled()
+
+    await user.click(within(nav).getByRole('button', { name: /自分の記録/ }))
+    await screen.findByRole('heading', { name: '自分の記録' })
+    await user.click(within(nav).getByRole('button', { name: '謎を探す' }))
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' }))
+    if (original) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', original)
+    else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
+  })
+
+  it('両タブともタッチスワイプ後のクリックを抑え、キーボード操作は通す', async () => {
+    vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
+    stubViewport(false)
+    const user = userEvent.setup()
+    render(<TeamPreview authClient={auth} />)
+    const nav = await screen.findByRole('navigation', { name: 'スマホ用ナビゲーション' })
+    await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
+    const explore = within(nav).getByRole('button', { name: '謎を探す' })
+    const records = within(nav).getByRole('button', { name: /自分の記録/ })
+    const swipeAndClick = (target: HTMLElement) => {
+      fireEvent.pointerDown(target, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 20 })
+      fireEvent.pointerMove(target, { pointerId: 1, pointerType: 'touch', clientX: 21, clientY: 50 })
+      fireEvent.pointerUp(target, { pointerId: 1, pointerType: 'touch', clientX: 21, clientY: 50 })
+      fireEvent.click(target, { detail: 1 })
+    }
+
+    swipeAndClick(records)
+    expect(screen.queryByRole('heading', { name: '自分の記録' })).not.toBeInTheDocument()
+    records.focus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('heading', { name: '自分の記録' })).toBeVisible()
+
+    swipeAndClick(explore)
+    expect(screen.getByRole('heading', { name: '自分の記録' })).toBeVisible()
+    explore.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
   })
 
   it('PC幅ではボトムシートではなく左パネルに一覧が出て、スマホ幅ではシートになる', async () => {
