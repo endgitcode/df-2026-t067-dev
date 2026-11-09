@@ -788,6 +788,14 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* フッター廃止（D-39）に伴い、レールの末尾の下部余白はレール側で確保する。 */
   body.explore-fullbleed .map-preview-shell:has(> .explore-sheet-reopen, + .map-browse-shortcut) .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 62px); }
   body.explore-fullbleed .quest-rail { padding: 22px 16px calc(var(--mobile-tabbar-h) + 25px); }
+  /* 「地図に戻る」は tabbar+10 に高さ約44pxで浮く。既存の rail 余白 tabbar+25 では
+     詳細末尾の「問題を報告」に重なる（実地目視）。浮きボタン表示中だけ余白を足す。 */
+  body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .quest-rail {
+    padding-bottom: calc(var(--mobile-tabbar-h) + 80px);
+  }
+  body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .below-map-quests {
+    padding-bottom: calc(var(--mobile-tabbar-h, 70px) + 80px);
+  }
   /* レールが空（共有検証のスマホ幅では中身が無い）なら、余白だけの帯を残さない（D-73）。 */
   body.explore-fullbleed .quest-rail:empty { display: none; }
   body.explore-fullbleed .is-browsing-below-map ~ .quest-rail { min-height: 100svh; }
