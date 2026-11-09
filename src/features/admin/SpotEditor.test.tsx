@@ -1,10 +1,19 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
+import { useState } from 'react'
+import type { ComponentProps } from 'react'
 import { createApiClient } from '../../shared/api'
 import type { ManagedQuest, OrgMembership } from '../../shared/api'
 import { parseDurableMapsLink, parseMapsSpotLink } from './mapsSpotLink'
 import QuestDraftForm from './QuestDraftForm'
+import { SpotEditor } from './SpotEditor'
+import { initialSpotInput } from './mapsSpotLink'
+
+function ControlledSpotEditor(props: Omit<ComponentProps<typeof SpotEditor>, 'input' | 'onChange'> & { initial?: ReturnType<typeof initialSpotInput> }) {
+  const [input, setInput] = useState(props.initial ?? initialSpotInput())
+  return <SpotEditor {...props} input={input} onChange={setInput} />
+}
 
 const member: OrgMembership = { orgId: 'test-org', areaId: 'n03-00001-2025', label: 'テスト自治体', role: 'editor',
   municipalityCode: '00001', exploration: { source: 'N03', name: '区域テスト', municipalityCode: '00001', year: 2025 } }
@@ -87,4 +96,72 @@ it('does not infer a spot from the viewport, an arbitrary host, or a directions 
   }
   expect(parseMapsSpotLink('https://www.google.com/maps/search/?api=1&query=35,139&query_place_id=ChIJ_example'))
     .toMatchObject({ position: { latitude: 35, longitude: 139 }, googlePlaceId: 'ChIJ_example' })
+})
+
+it('shows a Google Maps address candidate separately from the confirmed address field', async () => {
+  const lookupSpotAddress = vi.fn(async () => ({ orgId: 'test-org', status: 'candidate' as const, source: 'nearby' as const, address: '候補住所' }))
+  const input = initialSpotInput()
+  const user = userEvent.setup()
+  render(<ControlledSpotEditor initial={input} durable orgId="test-org" canLookupSpotAddress lookupSpotAddress={lookupSpotAddress} />)
+  await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://www.google.com/maps/?q=35,139')
+  await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
+  expect(await screen.findByText('座標周辺の住所候補：候補住所')).toBeVisible()
+  expect(screen.getByText('Google Maps')).toHaveAttribute('translate', 'no')
+  expect(screen.getByLabelText('確認済み住所')).toHaveValue('')
+  await user.type(screen.getByLabelText('確認済み住所'), '本人確認済み')
+  expect(screen.getByLabelText('確認済み住所')).toHaveValue('本人確認済み')
+  expect(screen.getByText('座標周辺の住所候補：候補住所')).toBeVisible()
+  expect(lookupSpotAddress).toHaveBeenCalledWith('test-org', { position: { latitude: 35, longitude: 139 } }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
+})
+
+it('ignores a stale address result after the Maps URL changes', async () => {
+  let resolveLookup!: (result: { orgId: string; status: 'candidate'; source: 'place'; address: string }) => void
+  const lookupSpotAddress = vi.fn(() => new Promise<{ orgId: string; status: 'candidate'; source: 'place'; address: string }>(resolve => { resolveLookup = resolve }))
+  const user = userEvent.setup()
+  render(<ControlledSpotEditor durable orgId="test-org" canLookupSpotAddress lookupSpotAddress={lookupSpotAddress} />)
+  const url = screen.getByLabelText('Google Maps共有URL')
+  await user.type(url, 'https://www.google.com/maps/search/?query_place_id=ChIJfixture')
+  await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
+  await waitFor(() => expect(lookupSpotAddress).toHaveBeenCalledOnce())
+  await user.clear(url)
+  await user.type(url, 'https://www.google.com/maps/?q=35,139')
+  await act(async () => { resolveLookup({ orgId: 'test-org', status: 'candidate', source: 'place', address: '古い住所' }) })
+  expect(screen.queryByText(/古い住所/)).not.toBeInTheDocument()
+  expect(screen.queryByText('施設名・住所・位置は、地図や自治体の資料で確認して入力してください。')).not.toBeInTheDocument()
+})
+
+it('ignores a pending address result after the coordinates change', async () => {
+  let resolveLookup!: (result: { orgId: string; status: 'candidate'; source: 'place'; address: string }) => void
+  const lookupSpotAddress = vi.fn(() => new Promise<{ orgId: string; status: 'candidate'; source: 'place'; address: string }>(resolve => { resolveLookup = resolve }))
+  const user = userEvent.setup()
+  render(<ControlledSpotEditor durable orgId="test-org" canLookupSpotAddress lookupSpotAddress={lookupSpotAddress} />)
+  await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://www.google.com/maps/search/?query_place_id=ChIJfixture')
+  await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
+  await waitFor(() => expect(lookupSpotAddress).toHaveBeenCalledOnce())
+  await user.type(screen.getByLabelText('スポットの緯度'), '36')
+  await act(async () => { resolveLookup({ orgId: 'test-org', status: 'candidate', source: 'place', address: '古い場所の住所' }) })
+  expect(screen.queryByText(/古い場所の住所/)).not.toBeInTheDocument()
+})
+
+it('keeps the matching address candidate visible when adopting the same link coordinates', async () => {
+  const lookupSpotAddress = vi.fn(async () => ({ orgId: 'test-org', status: 'candidate' as const, source: 'place' as const, address: '候補住所' }))
+  const user = userEvent.setup()
+  render(<ControlledSpotEditor durable orgId="test-org" canLookupSpotAddress lookupSpotAddress={lookupSpotAddress} />)
+  await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://www.google.com/maps/search/?query=35,139&query_place_id=ChIJfixture')
+  await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
+  expect(await screen.findByText('Place IDの住所候補：候補住所')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'リンクの座標候補を使う（Place IDは保存しない）' }))
+  expect(screen.getByLabelText('スポットの緯度')).toHaveValue('35')
+  expect(screen.getByLabelText('確認済み住所')).toHaveValue('')
+  expect(screen.getByText('Place IDの住所候補：候補住所')).toBeVisible()
+})
+
+it('shows lookup failures without changing the manual address', async () => {
+  const user = userEvent.setup()
+  render(<ControlledSpotEditor durable orgId="test-org" canLookupSpotAddress lookupSpotAddress={vi.fn().mockRejectedValue(new Error('offline'))} />)
+  await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://www.google.com/maps/?q=35,139')
+  await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
+  expect(await screen.findByText('住所候補を取得できませんでした。確認済み住所を手入力してください。')).toBeVisible()
+  await user.type(screen.getByLabelText('確認済み住所'), '確認済み住所')
+  expect(screen.getByLabelText('確認済み住所')).toHaveValue('確認済み住所')
 })

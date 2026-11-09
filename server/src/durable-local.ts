@@ -88,7 +88,7 @@ export async function createDurableLocalRuntime(config: DurableLocalConfig) {
     const uploadLimiter = new DemoAnswerStore()
     const policy = { maximum: 10, windowMs: 60_000 }
     const runtime = createDurableAnswerRuntime({
-      db, photos, verifier, dataMode: config.mode,
+      db, photos, verifier, dataMode: config.mode, spotGeocodingApiKey: config.spotGeocodingApiKey,
       assets: new FirestoreOrgAssetStore(db, photos), drafts: new FirestoreManagedDraftStore(db),
       suggestDraft,
       photoTest: { matcher, source: ledger ? 'real' : 'mock', timeoutMs: ledger ? 30_000 : undefined },

@@ -6,7 +6,7 @@ import { useRequestAction } from '../../shared/useRequestAction'
 
 export interface LocalDraftConnection {
   taskFocused?: boolean
-  api: Pick<ApiClient, 'uploadOrgAsset' | 'createManagedQuest' | 'updateManagedQuest' | 'generateManagedQuestDraft'>
+  api: Pick<ApiClient, 'uploadOrgAsset' | 'createManagedQuest' | 'updateManagedQuest' | 'generateManagedQuestDraft' | 'canLookupSpotAddress' | 'lookupSpotAddress'>
   initial: ManagedQuest | null
   member: OrgMembership
   onContinue?: (record: ManagedQuest, destination: 'areas' | 'publication' | 1 | 2 | 3) => void
