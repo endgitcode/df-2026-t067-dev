@@ -6,6 +6,7 @@ const readCss = (path: string) => readFileSync(resolve(process.cwd(), path), 'ut
 const css = readCss('src/App.css')
 const PLAIN_FIXED = '.map-preview-shell.has-sheet .map-controls { bottom: 72px; }'
 const mapPreview = readFileSync(resolve(process.cwd(), 'src/features/explore/MapPreview.tsx'), 'utf8')
+const bottomSheet = readFileSync(resolve(process.cwd(), 'src/features/explore/ExploreBottomSheet.tsx'), 'utf8')
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
 // 右下の地図操作系はシートの高さに追随せず、同じ場所に固定する。
@@ -32,6 +33,27 @@ describe('map controls placement with the bottom sheet', () => {
     expect(css.indexOf(closedRule)).toBeGreaterThan(mobileAt)
     expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; transition: visibility 0s linear 300ms; }')
     expect(css).not.toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) { visibility: hidden; pointer-events: none; }')
+  })
+})
+
+describe('mobile map control swipe handling', () => {
+  it('prevents page scrolling from map controls throughout the mobile-width range while leaving the sheet and lists scrollable', () => {
+    const touchRule = '.map-controls, .explore-sheet-reopen, .map-state button { touch-action: none; overscroll-behavior: none; }'
+    const mobileWidthAt = css.indexOf('@media (max-width: 980px)')
+    const phoneWidthAt = css.indexOf('@media (max-width: 640px)')
+    expect(mobileWidthAt).toBeGreaterThan(-1)
+    expect(phoneWidthAt).toBeGreaterThan(mobileWidthAt)
+    expect(css.indexOf(touchRule)).toBeGreaterThan(mobileWidthAt)
+    expect(css.indexOf(touchRule)).toBeLessThan(phoneWidthAt)
+    expect(css).not.toContain('.explore-sheet { touch-action: none;')
+    expect(css).not.toContain('.explore-quest-list { touch-action: none;')
+    expect(mapPreview).toContain('const mapControlGestureProps = {')
+    expect(mapPreview).toContain('onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => {')
+    expect(mapPreview).toContain('if (gesture?.moved && event.detail !== 0) {')
+    expect(mapPreview).toContain('<div className="map-controls" {...mapControlGestureProps}>')
+    expect(mapPreview).toContain('<button type="button" {...mapControlGestureProps}')
+    expect(bottomSheet).toContain('className="explore-sheet-reopen" {...reopenGestureProps}')
+    expect(bottomSheet).toContain('if (gesture?.moved && event.detail !== 0) {')
   })
 })
 

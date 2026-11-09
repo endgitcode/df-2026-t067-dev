@@ -133,6 +133,23 @@ describe('ExploreBottomSheet', () => {
     expect(sheet).toHaveAttribute('data-snap', 'closed')
   })
 
+  it('ignores a swipe-generated click on the closed-sheet button but keeps keyboard activation', () => {
+    const onBrowseBelowMap = vi.fn()
+    const { container } = render(<ExploreBottomSheet onBrowseBelowMap={onBrowseBelowMap}><p>リスト本文</p></ExploreBottomSheet>)
+    const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+    fireEvent.click(handle)
+    fireEvent.click(screen.getByRole('button', { name: '謎リストを縮める' }))
+    const reopen = screen.getByRole('button', { name: '問題を見る' })
+    fireEvent.pointerDown(reopen, { pointerId: 20, pointerType: 'touch', clientX: 40, clientY: 240 })
+    fireEvent.pointerMove(reopen, { pointerId: 20, pointerType: 'touch', clientX: 42, clientY: 220 })
+    fireEvent.click(reopen, { detail: 1 })
+    expect(onBrowseBelowMap).not.toHaveBeenCalled()
+    expect(container.querySelector('.explore-sheet')).toHaveAttribute('data-snap', 'closed')
+
+    fireEvent.click(reopen, { detail: 0 })
+    expect(onBrowseBelowMap).toHaveBeenCalledTimes(1)
+  })
+
   it('only exposes 問題を見る while fully closed', async () => {
     const user = userEvent.setup()
     render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>)
