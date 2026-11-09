@@ -757,6 +757,13 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }
   body.explore-fullbleed .brand-mark .icon { width: 19px; height: 19px; }
   body.explore-fullbleed .brand-copy { font-size: 13px; }
+  /* 問題詳細を開いてシートをスクロールすると、浮きのロゴ／アカウントが
+     問題タイトルに重なる（実地目視）。詳細表示中は両者を隠し、閉じたら戻す。 */
+  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,
+  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area {
+    visibility: hidden;
+    pointer-events: none;
+  }
   /* スマホ幅では縁なし表示でもナビは下部タブバーのまま（D-32）。浮動ピルにはしない。
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
   body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }
