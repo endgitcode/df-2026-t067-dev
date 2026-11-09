@@ -247,7 +247,7 @@ describe('mobile fullbleed finish', () => {
   })
 
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
-    expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }')
+    expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; border-radius: 12px; }')
     expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
     expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
   })
@@ -336,7 +336,7 @@ describe('chrome consistency (D-66)', () => {
 
   it('drops the offset shadow from the title pill, the brand mark, the side panel and the sheet', () => {
     // スマホ幅フルブリードのタイトルピル（PCはサイドバー内ブランドへ上書き）。
-    expect(css).toContain('body.explore-fullbleed .brand { justify-self: start; width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
+    expect(css).toContain('body.explore-fullbleed .brand { justify-self: start; width: fit-content; padding: 4px 10px 4px 4px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: none; }')
     expect(css).toContain('.brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); }')
     expect(css).not.toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow);')
     expect(css).toContain('border-radius: 0; padding: 0 10px 16px;')
@@ -427,7 +427,7 @@ describe('PC sidebar containment and collapsed rail', () => {
 
   it('keeps brand mark, toggle and nav icons on the collapsed ~56px rail', () => {
     expect(css).toContain('--pc-sidebar-rail-w: 56px;')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 32px; height: 32px; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 32px; height: 32px; border-radius: 12px; }')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 18px; height: 18px; flex: none; }')
     expect(css).toContain('left: calc(var(--pc-sidebar-open-w) - 48px)')
     expect(css).not.toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
