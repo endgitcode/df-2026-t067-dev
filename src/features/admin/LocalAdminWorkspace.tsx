@@ -223,8 +223,8 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
         ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
         : <a href="/">旅行者画面へ</a>}
     </header>
-    <p className="demo-notice">{teamPreview ? '架空のデータを使ってください。公開した問題と公開ヒントは誰でも閲覧できます。'
-      : '架空の組織と検証用の保存先を使います。' + (dataMode === 'durable-local' ? '下書きと報告は検証環境の保存先に保存されます。' : '下書きと報告は一時的な保存先に保存されます。')}</p>
+    <p className="demo-notice">{teamPreview ? '公開した問題と公開ヒントは誰でも閲覧できます。'
+      : '' + (dataMode === 'durable-local' ? '下書きと報告は検証環境の保存先に保存されます。' : '下書きと報告は一時的な保存先に保存されます。')}</p>
     {(auth.status !== 'signed-in' || error) && <section className="form-section" aria-label="担当者ログイン">
       {auth.status === 'signed-out' && <button type="button" disabled={pending} onClick={() => void authenticate('login')}>Googleログイン</button>}
       {(pending || auth.status === 'checking') && <p role="status">ログイン状態を確認しています…</p>}
@@ -236,6 +236,6 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
         ? 'このアカウントは共有検証に招待されていません。' : 'ログインを確認できませんでした。'}</p>
         <button type="button" onClick={identity.retry}>ログインを確認し直す</button></div>
         : <p role="status">サーバーでログインを確認しています…</p>)}
-    {dataMode === 'demo' && <p><a href="/admin-demo">ログインなしで試せる架空フォームへ戻る</a></p>}
+    {dataMode === 'demo' && <p><a href="/admin-demo">ログインなしで試せるフォームへ戻る</a></p>}
   </main>
 }

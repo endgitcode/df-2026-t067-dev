@@ -57,8 +57,8 @@ export class DemoDiscoveryStore implements DiscoveryRepository {
     const photo = await preparePhoto({ bytes: syntheticPng, mimeType: 'image/png' })
     store.insertFirst(uid, {
       placeId: 'demo-fixture-place', questId: 'demo-quest', questVersion: 1, areaId: 'demo-area',
-      placeName: '架空のデモ記録',
-      descriptionSnapshot: '起動時に用意した合成記録です。写真・位置・日時は実際の訪問を表しません。',
+      placeName: '広場の時計',
+      descriptionSnapshot: '',
       revealedLocation: { latitude: 0, longitude: 0 }, photo: photo.bytes,
     })
     return store

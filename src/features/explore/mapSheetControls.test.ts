@@ -365,7 +365,7 @@ describe('records view tab position (D-60 addendum)', () => {
     expect(css).toContain('body:has(.owner-records:not([hidden])) .owner-records {')
     expect(css).toContain('margin-left: var(--pc-sidebar-w);')
     expect(mapPreview).toContain('{createPortal(<button type="button" className="sidebar-toggle"')
-    expect(mapPreview).toContain('</button>, document.body)}')
+    expect(mapPreview).toContain("</button>, typeof document === 'undefined' ? null : document.body)}")
     expect(mapPreview).toContain('[panelMode, sidebarCollapsed])')
     expect(css).toContain('body.explore-fullbleed .desktop-nav {')
     expect(css).toContain('top: var(--pc-sidebar-brand-h); left: 0;')

@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
+// Build-time React HTML remains visible until this root commits the real app.
+// Deliberate replacement: URL, auth and viewport are browser-owned initial state.
 const root = createRoot(document.getElementById('root')!)
 
 if (import.meta.env.VITE_QUEST_DATA_SOURCE === 'team-preview') {

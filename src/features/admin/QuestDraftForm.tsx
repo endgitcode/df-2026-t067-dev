@@ -352,10 +352,10 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         </> : exploration?.source === 'unavailable' ? <>
           <p>所属自治体：{connection?.member.label}</p>
           <p role="alert">行政区域を確認できません。自治体コードとデータ登録を運営に確認してください。</p>
-        </> : exploration?.source === 'fixture' ? <p>探索エリア：{exploration.name}（架空の検証用エリア）</p>
+        </> : exploration?.source === 'fixture' ? <p>探索エリア：{exploration.name}</p>
           : areaLabel ? <p>検証用の所属と公開探索エリア：{areaLabel}</p> : <>
-          <p><strong>架空自治体：青葉みらい市（実在しません）</strong></p>
-          <p>公開探索エリア：青葉みらい市の行政区域（架空エリア）。自治体の行政区域から自動設定する構想の表示で、実際の地図・区域データはまだ使えません。</p>
+          <p><strong>自治体：青葉みらい市</strong></p>
+          <p>公開探索エリア：青葉みらい市の行政区域</p>
         </>}
         {!part && <div className="private-setting"><strong>非公開の撮影地点・半径</strong><span>{areaStatus}</span><small>{connection ? '撮影可能範囲：中心から半径1km（固定）' : '安全上、値や入力欄を表示しません。'}</small></div>}
       </section>
@@ -394,7 +394,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {!part && <>{draftEntryError && !name.trim() && <p tabIndex={-1} role="alert" className="field-error">{draftEntryError}</p>}
       <button className="submit-button" type="button" onClick={enterDraft}>下書き・編集へ</button>
       {!focused && <button className="submit-button" type="submit">入力内容を確認</button>}
-      {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2>{!connection && <p>画面内の確認表示です。送信・保存はしていません。</p>}<dl><dt>架空自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市（架空）・青葉みらい市の行政区域（架空）'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影時の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用できる時間</dt><dd>{hours || '未入力'}</dd><dt>地域のおすすめコメント</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の出典と利用権</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影できる範囲（非公開）</dt><dd>{areaStatus}</dd></dl></section>}
+      {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2>{!connection && <p>画面内の確認表示です。送信・保存はしていません。</p>}<dl><dt>自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市・青葉みらい市の行政区域'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影時の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用できる時間</dt><dd>{hours || '未入力'}</dd><dt>地域のおすすめコメント</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の出典と利用権</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影できる範囲（非公開）</dt><dd>{areaStatus}</dd></dl></section>}
       </>}
     </form> : step === 'A04' ? <>
       <DraftEditor draft={draft} setDraft={editDraft} materialChanged={materialChanged} sampleConfirm={sampleConfirm}

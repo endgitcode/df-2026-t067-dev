@@ -70,12 +70,12 @@ async function seed() {
     const areaId = 'demo-area'
     const orgId = 'demo-org'
     batch.create(db.collection('areas').doc(areaId), {
-      label: '架空の検証地域', marker: { latitude: 0, longitude: 0 },
+      label: 'みなと町', marker: { latitude: 0, longitude: 0 },
       publicGeometryJson: JSON.stringify({ type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] }),
     })
     for (const [uid, role] of [[editor, 'editor'], [publisher, 'publisher']]) {
       const id = createHash('sha256').update(JSON.stringify([uid, orgId])).digest('hex')
-      batch.create(db.collection('memberships').doc(id), { uid, role, orgId, areaId, active: true, label: '架空の自治体' })
+      batch.create(db.collection('memberships').doc(id), { uid, role, orgId, areaId, active: true, label: '青葉みらい市' })
     }
     await batch.commit()
     console.info('共有検証用の地域と所属を作成しました。')

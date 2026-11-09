@@ -14,7 +14,7 @@ export function projectManagedQuest(quest: ManagedQuest, version: number, questN
   const { materials, content, hintAssetId } = draft
   const hintAssetIds = (draft.hintAssetIds ?? [null, null, null]).map((assetId, index) =>
     assetId ?? (index === 0 ? hintAssetId : null))
-  const conditions = ['この問題は架空のデモ問題です。実際の訪問・撮影には使えません。']
+  const conditions: string[] = []
   if (materials.requiresBoat) conditions.push('船上・海上からの撮影が必要。')
   if (materials.requiresPaidFacility) conditions.push('有料施設内での撮影が必要。')
   if (materials.price.trim()) conditions.push('料金 ' + materials.price.trim())

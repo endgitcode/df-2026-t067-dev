@@ -1,4 +1,4 @@
-import { createPortal } from 'react-dom'
+import { createPortal as reactCreatePortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
@@ -15,6 +15,9 @@ import { boundsForFilter } from '../quests/prefectureBounds'
 import { getRegionAreas } from '../quests/areaHierarchy'
 import { areaPinPosition } from './viewportQuests'
 import { isMapControlCovered, isMapControlWithin } from './mapControlVisibility'
+
+// SSR has no portal target; the fixed toggle has the same screen coordinates inline.
+const createPortal = (node: ReactNode, target: HTMLElement | null) => target ? reactCreatePortal(node, target) : node
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
 // 日本国内専用の見た目（D-27／D-41）は、初期表示の日本全体フィットと最小ズームで維持する。
@@ -1003,7 +1006,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
               aria-label={sidebarCollapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
               onClick={() => setSidebarCollapsed((value) => !value)}>
               <Icon name="panel" />
-            </button>, document.body)}
+            </button>, typeof document === 'undefined' ? null : document.body)}
           </>
           : <ExploreBottomSheet openSignal={effectivePinAreaId ?? (selectedQuestId ? `quest:${selectedQuestId}` : null)} onHeightChange={setSheetHeight}
             onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap, true)}{boundaryCredit}</ExploreBottomSheet>

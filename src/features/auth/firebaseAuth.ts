@@ -48,6 +48,7 @@ function disabledClient(snapshot: AuthSnapshot): AuthClient {
 }
 
 export function createFirebaseAuthClient(env: Readonly<Record<string, unknown>> = import.meta.env): AuthClient {
+  if (typeof window === 'undefined') return disabledClient({ status: 'checking', user: null })
   const configuration = readFirebaseConfig(env)
   if (configuration.kind === 'missing') return disabledClient({ status: 'unconfigured', user: null })
   if (configuration.kind === 'invalid') return disabledClient({

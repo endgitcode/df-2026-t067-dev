@@ -359,7 +359,7 @@ describe('A03 admin demo', () => {
     expect(screen.getByRole('group', { name: '撮影に必要な条件' })).toBeInTheDocument()
     expect(screen.getByLabelText('行き方')).toBeInTheDocument()
     expect(screen.getByText('未設定・接続待ち')).toBeInTheDocument()
-    expect(screen.getByText(/架空自治体：青葉みらい市/)).toBeInTheDocument()
+    expect(screen.getByText(/自治体：青葉みらい市/)).toBeInTheDocument()
     expect(screen.getByText(/公開探索エリア：青葉みらい市/)).toBeInTheDocument()
     expect(document.body.textContent).not.toMatch(/緯度|経度|半径\s*\d/)
     const user = userEvent.setup()
@@ -502,16 +502,16 @@ describe('A03 admin demo', () => {
     await user.type(screen.getByLabelText('対象名'), '対象')
     await user.click(screen.getByRole('button', { name: '下書き・編集へ' }))
     expect(screen.getByLabelText('問題タイトル')).toHaveValue('')
-    await user.click(screen.getByRole('button', { name: '架空サンプルを読み込む（AI未使用）' }))
+    await user.click(screen.getByRole('button', { name: 'サンプルを読み込む（AI未使用）' }))
     expect(screen.getByLabelText('問題タイトル')).toHaveValue('青葉みらい市の風見の丘')
     expect((screen.getByLabelText('問題文') as HTMLTextAreaElement).value).toContain('架空')
     await user.clear(screen.getByLabelText('問題タイトル'))
     await user.type(screen.getByLabelText('問題タイトル'), '自分の編集')
-    await user.click(screen.getByRole('button', { name: '架空サンプルを読み込む（AI未使用）' }))
+    await user.click(screen.getByRole('button', { name: 'サンプルを読み込む（AI未使用）' }))
     expect(screen.getByRole('group', { name: 'サンプル置換の確認' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'キャンセル' }))
     expect(screen.getByLabelText('問題タイトル')).toHaveValue('自分の編集')
-    await user.click(screen.getByRole('button', { name: '架空サンプルを読み込む（AI未使用）' }))
+    await user.click(screen.getByRole('button', { name: 'サンプルを読み込む（AI未使用）' }))
     await user.click(screen.getByRole('button', { name: '置き換える' }))
     expect(screen.getByLabelText('問題タイトル')).toHaveValue('青葉みらい市の風見の丘')
     expect(screen.getByText(/ヒント画像は、参考写真から自動流用しません/)).toBeInTheDocument()
@@ -569,7 +569,7 @@ describe('A03 admin demo', () => {
     for (const value of ['PUBLIC_ACCESS_91', 'PUBLIC_HOURS_91', 'PUBLIC_PROMO_91', 'PUBLIC_EXPLANATION_91']) {
       expect(preview.textContent).not.toContain(value)
     }
-    expect(preview.textContent).toContain('青葉みらい市の行政区域（架空エリア）')
+    expect(preview.textContent).toContain('青葉みらい市の行政区域')
     for (const privateValue of ['PRIVATE_TARGET_91', 'PRIVATE_RIGHTS_91', 'PRIVATE_FILENAME_91.png', privateMemo, 'PRIVATE_FEATURE_91', 'blob:demo-1']) {
       expect(preview.textContent).not.toContain(privateValue)
     }

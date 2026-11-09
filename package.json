@@ -15,7 +15,7 @@
     "lint": "oxlint --deny-warnings",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && node scripts/prerender.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "preview": "vite preview"
   },

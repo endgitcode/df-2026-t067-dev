@@ -163,7 +163,7 @@ export function parsePublicQuest(input: unknown): PublicQuest {
   const result: PublicQuest = {
     questId: text(d.questId, 'questId'), version: integer(d.version, 'version', 1),
     title: text(d.title, 'title'), clue: text(d.clue, 'clue'), areaId: text(d.areaId, 'areaId'),
-    visitConditions: text(d.visitConditions, 'visitConditions'), hintCount: integer(d.hintCount, 'hintCount'),
+    visitConditions: text(d.visitConditions, 'visitConditions', true), hintCount: integer(d.hintCount, 'hintCount'),
   }
   if (d.questNumber !== undefined) {
     if (!isQuestNumber(d.questNumber)) throw new ContractError('PublicQuest.questNumber')

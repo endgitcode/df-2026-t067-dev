@@ -22,8 +22,8 @@ const sample: DraftFields = {
   title: '青葉みらい市の風見の丘',
   question: '青葉みらい市の架空の丘にある、小さな風車が並ぶ場所を探してください。',
   hints: ['市の中心部から見える、緑の丘を目指しましょう。', '丘の上には風を受けて回るものが並んでいます。', '風車が並ぶ場所が目的地です。'],
-  verifiedFeatures: '丘の上に小型風車が並ぶ（このサンプル内の架空設定）',
-  draftingNotes: '架空サンプルの例文。現地確認や事実確認を行った内容ではありません。',
+  verifiedFeatures: '丘の上に小型風車が並ぶ',
+  draftingNotes: '',
 }
 
 export default function DraftEditor({ draft, setDraft, materialChanged, sampleConfirm, setSampleConfirm, onBack, onPreview, headingRef, workflow = false, omitMemo = false, allowSample = true }: Props) {
@@ -49,8 +49,8 @@ export default function DraftEditor({ draft, setDraft, materialChanged, sampleCo
     {materialChanged && <p className="field-error" role="status">素材が変更されています。下書きを確認してください。</p>}
     <p className="helper">ヒント画像は、参考写真から自動流用しません。</p>
     {allowSample && <div className="sample-actions">
-      <button type="button" onClick={() => edited ? setSampleConfirm(true) : loadSample()}>架空サンプルを読み込む（AI未使用）</button>
-      {sampleConfirm && <div className="confirm-inline" role="group" aria-label="サンプル置換の確認"><p>現在の下書きを架空サンプルで置き換えますか？</p><button type="button" onClick={() => setSampleConfirm(false)}>キャンセル</button><button type="button" onClick={loadSample}>置き換える</button></div>}
+      <button type="button" onClick={() => edited ? setSampleConfirm(true) : loadSample()}>サンプルを読み込む（AI未使用）</button>
+      {sampleConfirm && <div className="confirm-inline" role="group" aria-label="サンプル置換の確認"><p>現在の下書きをサンプルで置き換えますか？</p><button type="button" onClick={() => setSampleConfirm(false)}>キャンセル</button><button type="button" onClick={loadSample}>置き換える</button></div>}
     </div>}
     <p className="helper">旅行者に公開する文章。タイトル・問題文・ヒント3つは確認依頼までに必要です。</p><label>問題タイトル<input id="workflow-title" value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></label>
     <label>問題文<textarea id="workflow-question" rows={4} value={draft.question} onChange={event => setDraft(current => ({ ...current, question: event.target.value }))} /></label>
