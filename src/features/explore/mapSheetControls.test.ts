@@ -48,7 +48,9 @@ describe('mobile bottom tab bar (D-32)', () => {
   it('pins the mobile nav to the bottom as a tab bar with a shared height token', () => {
     expect(css).toContain(':root { --mobile-tabbar-h: calc(70px + env(safe-area-inset-bottom, 0px)); }')
     expect(css).toContain('.mobile-nav { position: fixed; bottom: 0; left: 0; right: 0;')
-    expect(css).toContain('background: var(--ui-surface); touch-action: pan-x; }')
+    // タブバー上で始まった縦ジェスチャーはページスクロールへ渡さない。
+    // タップは通常の click として残り、地図シートのスクロール領域には適用しない。
+    expect(css).toContain('background: var(--ui-surface); touch-action: none; overscroll-behavior: none; }')
     expect(css).toContain('.mobile-nav [aria-current="page"] { background: var(--ui-accent);')
   })
 
@@ -262,7 +264,7 @@ describe('records view tab position (D-60 addendum)', () => {
 // （2026-11-09、revision 00097）に基づく。CSS の実測は jsdom ではできないため、
 // 規則の置き場所と文字列で担保する。
 describe('chrome consistency (D-66)', () => {
-  const themeCss = readFileSync(resolve(process.cwd(), 'src/theme.css'), 'utf8')
+  const themeCss = readCss('src/theme.css')
 
   it('drops the offset shadow from the shared control rule (detail and hint buttons, account icon), including hover', () => {
     expect(themeCss).not.toContain('box-shadow: var(--ui-control-shadow)')
