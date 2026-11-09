@@ -21,19 +21,18 @@ import { useWideViewport } from './features/quests/useWideViewport'
 import { AuthError, createFirebaseAuthClient } from './features/auth/firebaseAuth'
 import './App.css'
 
-function connectionNotice(auth: AuthSnapshot, durableLocal: boolean): { title: string; description: string } {
-  const previewNote = durableLocal ? '' : '写真判定・記録保存は準備中です。'
+function connectionNotice(auth: AuthSnapshot, _durableLocal: boolean): { title: string; description: string } {
   switch (auth.status) {
     case 'unconfigured':
-      return { title: 'ログイン準備中', description: '問題はログインなしで閲覧できます。ログイン機能は準備中です。' }
+      return { title: 'ログインできません', description: '問題はログインなしで閲覧できます。' }
     case 'unavailable':
       return { title: 'Googleログインを利用できません', description: auth.message }
     case 'checking':
       return { title: 'ログイン状態を確認中', description: '問題はそのまま閲覧できます。しばらくお待ちください。' }
     case 'signed-out':
-      return { title: 'ゲストで閲覧中', description: '問題はログインなしで閲覧できます。' + previewNote }
+      return { title: 'ゲストで閲覧中', description: '問題はログインなしで閲覧できます。' }
     case 'signed-in':
-      return { title: 'Googleログイン済み', description: (auth.user.displayName ?? 'Googleアカウント') + 'でログインしています。' + previewNote }
+      return { title: 'Googleログイン済み', description: (auth.user.displayName ?? 'Googleアカウント') + 'でログインしています。' }
   }
 }
 
@@ -421,7 +420,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const clearedDiscoveryId = quest && uid !== null ? clearedByQuest.get(quest.questId) : undefined
   const questDetailBlock = (
               !railFallback && <div ref={questCard}>
-                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={durableLocal ? '永続APIの公開問題（検証用）' : teamPreview ? 'チーム共有検証の公開問題' : apiMode ? '公開APIデモデータ' : undefined} detailsLabel={durableLocal || teamPreview ? '問題の詳細' : undefined} open={isQuestOpen} hideToggle={detailInList} handoffUrl={handoffUrl}
+                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel="" detailsLabel={durableLocal || teamPreview ? '問題の詳細' : undefined} open={isQuestOpen} hideToggle={detailInList} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
                   onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
@@ -433,7 +432,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                     : auth.status === 'signed-in' ? 'ログイン済みです。挑戦開始先へ選んだ問題を渡します。'
                       : auth.status === 'signed-out' ? 'Googleのログイン画面を開きます。キャンセルしてもこの問題に戻れます。'
                         : auth.status === 'checking' ? 'ログイン状態の確認後に操作できます。'
-                          : 'ログイン機能は準備中です。問題はそのまま閲覧できます。'}
+                          : '問題はそのまま閲覧できます。'}
                   clearedDiscoveryId={clearedDiscoveryId} onOpenDiscovery={(id) => { setRecordDestination({ auth, id }); navigateToRecords(true) }}
                   feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) closeCamera(); /* 開閉ボタンはレールに置く使い方（選択の受け口が無い場合）だけに出る（D-65）。一覧の中の詳細ではボタン自体を出さず、閉じる操作は行の再タップによる選択解除（D-55）に一本化したため、ここで選択解除まで連動させる配線は不要になった（旧 D-60 の配線は廃止）。 */ setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
                     {!questStale && !clearedDiscoveryId && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
@@ -457,9 +456,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
     <>
               {railFallback ?? questPicker}
               {!detailInList && questDetailBlock}
-              {/* 共有検証（team-preview）ではデモの断り書きを出さない（D-39）。永続・公開APIデモでは、
-                  合成画像・架空座標の使用や「実際に訪問できる場所ではない」という制限の明示として残す。 */}
-              {!teamPreview && <div className="demo-note"><span className="demo-note-dot" /><p>{durableLocal ? '永続APIの確認用です。回答の送信には合成画像と架空の座標を使ってください。' : apiMode ? '公開APIが返す架空のデモデータです。実際に訪問できる場所ではありません。' : '今はデザイン確認用の架空の1問を表示しています。実際に訪問できる場所ではありません。'}</p></div>}
+              {/* 開発・モード注記のバナーは出さない（ユーザー向け画面から補足ラベルを撤去）。 */}
     </>
   )
   // サイドバー内では、レールの中身と認証フィードバックをパネルに寄せる。
@@ -483,11 +480,11 @@ export default function App({ authClient: providedClient, apiClient: providedApi
               残ったり消えたりして、URL と表示の対応が分かりにくくなるため）。 */}
           <button type="button" className={showRecords ? undefined : 'nav-active'} aria-current={showRecords ? undefined : 'page'}
             aria-label="謎を探す" onClick={navigateToExplore}><Icon name="search" /><span className="nav-label">謎を探す</span></button>
-          {/* F5でブート殻と並べるため、team-preview でも常に出す。使えないときは準備中で無効。 */}
+          {/* F5でブート殻と並べるため常に出す。使えないときは無効＋薄い見た目だけ（補足文字は出さない）。 */}
           <button type="button" className={showRecords ? 'nav-active' : undefined} aria-current={showRecords ? 'page' : undefined}
-            aria-label={!localApiMode || (teamPreview && !teamAnswerTrial) ? '自分の記録（準備中）' : '自分の記録'}
+            aria-label="自分の記録"
             disabled={!localApiMode || (teamPreview && !teamAnswerTrial) || visiblePending !== null} onClick={() => navigateToRecords(true)}>
-            <Icon name="book" /><span className="nav-label">自分の記録{(!localApiMode || (teamPreview && !teamAnswerTrial)) && <span className="nav-prep">準備中</span>}</span>
+            <Icon name="book" /><span className="nav-label">自分の記録</span>
           </button>
         </nav>
         <div className="account-area">
@@ -550,7 +547,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             <div>
               <h1 id="explore-title">全国から謎を探す</h1>
             </div>
-            <span className={'preview-label' + (apiMode ? ' api-source' : '')}><span className="status-dot" />{teamPreview ? 'チーム共有検証' : durableLocal ? '永続API・ローカル' : apiMode ? '公開API・デモ' : '開発用プレビュー'}</span>
           </div>
 
           <div className="explore-workspace">
@@ -584,8 +580,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           }
         }}>
         <button type="button" aria-current={showRecords ? undefined : 'page'} aria-label="謎を探す" onClick={navigateToExplore}><Icon name="search" /><span>謎を探す</span></button>
-        <button type="button" aria-current={showRecords ? 'page' : undefined} aria-label={!localApiMode || (teamPreview && !teamAnswerTrial) ? '自分の記録（準備中）' : '自分の記録'} disabled={!localApiMode || (teamPreview && !teamAnswerTrial) || visiblePending !== null}
-          onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{(!localApiMode || (teamPreview && !teamAnswerTrial)) && <small>準備中</small>}</span></button>
+        <button type="button" aria-current={showRecords ? 'page' : undefined} aria-label="自分の記録" disabled={!localApiMode || (teamPreview && !teamAnswerTrial) || visiblePending !== null}
+          onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録</span></button>
       </nav>
     </>
   )

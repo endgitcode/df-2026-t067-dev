@@ -62,7 +62,7 @@ describe('explicit local API integration', () => {
     await user.click(screen.getByRole('button', { name: 'デモ報告を送信' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('通信状況')
     await user.click(screen.getByRole('button', { name: 'デモ報告を送信' }))
-    expect(await screen.findByText('開発用の報告を受け付けました。')).toBeVisible()
+    expect(await screen.findByText('報告を受け付けました。')).toBeVisible()
     const requests = fetcher.mock.calls.filter(([url]) => url === '/api/v1/reports')
     expect(requests).toHaveLength(2)
     const first = requests[0][1]
@@ -89,7 +89,7 @@ describe('explicit local API integration', () => {
     await user.click(screen.getByRole('button', { name: '報告を閉じる' }))
     expect(signal?.aborted).toBe(true)
     await act(async () => complete(json({ reportId: 'demo-report', source: 'mock' }, 202)))
-    expect(screen.queryByText('開発用の報告を受け付けました。')).not.toBeInTheDocument()
+    expect(screen.queryByText('報告を受け付けました。')).not.toBeInTheDocument()
   })
   it('shows guidance and a photo only in the verified owner record', async () => {
     let uid = 'test-user'
@@ -219,7 +219,7 @@ describe('explicit local API integration', () => {
     const { auth, user } = mount(fetcher)
     const details = await openQuest(user)
     await user.click(within(details).getByRole('button', { name: 'Googleログインして挑戦する' }))
-    expect(await screen.findByText('デモの回答受付を試せます。')).toBeVisible()
+    expect(await screen.findByRole('button', { name: '挑戦を始める' })).toBeEnabled()
     expect(details).toHaveTextContent(apiQuest.clue)
     expect(auth.client.getIdToken).toHaveBeenCalledTimes(1)
     expect(new Headers(fetcher.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer current-token')
@@ -235,7 +235,7 @@ describe('explicit local API integration', () => {
     expect(screen.queryByText('デモの回答受付を試せます。')).not.toBeInTheDocument()
     expect(document.body).not.toHaveTextContent('private-sdk-details')
     await user.click(screen.getByRole('button', { name: 'ログインを確認し直す' }))
-    expect(await screen.findByText('デモの回答受付を試せます。')).toBeVisible()
+    expect(await screen.findByRole('button', { name: '挑戦を始める' })).toBeEnabled()
     expect(screen.getByRole('button', { name: '挑戦を始める' })).toBeEnabled()
     expect(auth.client.signInWithGoogle).not.toHaveBeenCalled()
     expect(auth.client.getIdToken).toHaveBeenCalledTimes(2)
@@ -271,9 +271,9 @@ describe('explicit local API integration', () => {
     const { auth, user } = mount(fetcher, true)
     await openQuest(user)
     act(() => auth.emit({ status: 'signed-in', user: { uid: 'next-user', displayName: null } }))
-    expect(await screen.findByText('デモの回答受付を試せます。')).toBeVisible()
+    expect(await screen.findByRole('button', { name: '挑戦を始める' })).toBeEnabled()
     await act(async () => resolve(json({ uid: 'wrong-old-user' })))
-    expect(screen.getByText('デモの回答受付を試せます。')).toBeVisible()
+    expect(screen.getByRole('button', { name: '挑戦を始める' })).toBeEnabled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 

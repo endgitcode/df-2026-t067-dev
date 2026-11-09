@@ -237,7 +237,6 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
       {showCaptureLocationMapDebug && photoUrl && metadata && <div className="camera-map-reference">
         <button type="button" className="secondary-button" aria-expanded={showLocationMap}
           onClick={() => setShowLocationMap((visible) => !visible)}>{showLocationMap ? '地図を閉じる' : '撮影地を見る'}</button>
-        <p className="sample-note">地図を表示すると撮影地の座標がGoogle Mapsに送信されます。</p>
         {showLocationMap && <CaptureLocationMap latitude={metadata.position.latitude} longitude={metadata.position.longitude} />}
       </div>}
       {error && <p className="camera-error" role="alert">{error}</p>}
@@ -252,7 +251,7 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
       {!judging && <div className="camera-actions">
         {!photoUrl && <button type="button" className="primary-button" onClick={capture} disabled={phase !== 'live'}>{phase === 'capturing' ? '写真を作成しています…' : '撮影する'}</button>}
         {photoUrl && !metadata && <button type="button" className="primary-button" onClick={requestLocation} disabled={locating}>{locating ? '撮影地を取得中…' : '位置情報を再試行'}</button>}
-        {photoUrl && !answer && <button type="button" className="primary-button" disabled>解答を送信する（準備中）</button>}
+        {photoUrl && !answer && <button type="button" className="primary-button" disabled>解答を送信する</button>}
         {photoUrl && <button type="button" className="secondary-button" onClick={restart} disabled={retakeLocked}>撮り直す</button>}
         {phase === 'error' && <button type="button" className="secondary-button" onClick={restart}>カメラを再試行</button>}
         <button type="button" className="secondary-button" onClick={() => { dispose(); setLocating(false); onClose() }}>撮影を終了</button>

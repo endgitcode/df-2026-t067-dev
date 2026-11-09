@@ -10,9 +10,9 @@ type Submission = { status: 'idle' | 'sending' | 'received' } | { status: 'error
 function reportError(cause: unknown): string {
   if (cause instanceof ApiError) {
     switch (cause.code) {
-      case 'SYSTEM_ERROR': return '開発用の報告受付を利用できません。'
+      case 'SYSTEM_ERROR': return '報告受付を利用できません。'
       case 'NOT_FOUND': return 'この問題への報告を受け付けていません。'
-      case 'RATE_LIMITED': return '開発用の報告上限に達しました。'
+      case 'RATE_LIMITED': return '報告の上限に達しました。'
       case 'UNAUTHENTICATED': return 'ログインを確認できませんでした。'
     }
   }
@@ -47,9 +47,9 @@ function ReportForm({ api, questId, dataMode }: { api: ApiClient; questId: strin
     } finally { operation.finish() }
   }
 
-  if (state.status === 'received') return <p role="status">開発用の報告を受け付けました。</p>
+  if (state.status === 'received') return <p role="status">報告を受け付けました。</p>
   return <form className="quest-report-form" onSubmit={submit}>
-    <p>架空の報告内容でお試しください。写真や個人情報は送らないでください。</p>
+    <p>写真や個人情報は送らないでください。</p>
     <label>分類<select value={category} disabled={state.status === 'sending'} onChange={(event) => {
       setCategory(event.target.value as ReportInput['category']); edited()
     }}>{REPORT_CATEGORIES.map((value) => <option key={value} value={value}>{reportCategoryLabels[value]}</option>)}</select></label>
@@ -66,7 +66,7 @@ export function QuestReport({ api, questId, dataMode, ownerUid, canSignIn, signI
   api: ApiClient; questId: string; dataMode: LocalApiDataMode; ownerUid: string | null; canSignIn: boolean; signInPending: boolean; onSignIn: () => void
 }) {
   const [open, setOpen] = useState(false)
-  return <section aria-label="開発用の問題報告">
+  return <section aria-label="問題報告">
     <button type="button" className="secondary-button" aria-expanded={open} onClick={() => setOpen((previous) => !previous)}>
       {open ? '報告を閉じる' : '問題を報告'}
     </button>

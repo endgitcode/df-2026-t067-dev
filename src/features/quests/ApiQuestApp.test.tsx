@@ -221,7 +221,7 @@ describe('APIから問題を表示', () => {
     window.history.replaceState(null, '', '/?area=area-a&quest=quest-a')
     render(<ApiQuestApp dataMode="durable-local" authClient={authClient} />)
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
-    expect(screen.getByText('永続API・ローカル')).toBeVisible()
+    expect(screen.queryByText('永続API・ローカル')).not.toBeInTheDocument()
     // ログイン済みはヘッダーのアカウントアイコンで分かり、状態表示の説明文は出ない。
     expect(screen.getByRole('button', { name: 'アカウントメニュー' })).toBeVisible()
     expect(screen.queryByText('Googleアカウントでログインしています。', { exact: true })).not.toBeInTheDocument()
@@ -232,7 +232,7 @@ describe('APIから問題を表示', () => {
     await user.click(screen.getByRole('button', { name: '問題を報告' }))
     await user.type(await screen.findByRole('textbox', { name: '報告内容' }), '架空の報告')
     await user.click(screen.getByRole('button', { name: '報告を送信' }))
-    expect(await screen.findByText('開発用の報告を受け付けました。')).toBeVisible()
+    expect(await screen.findByText('報告を受け付けました。')).toBeVisible()
     const report = fetcher.mock.calls.find(([path]) => path === '/api/v1/reports')?.[1]
     expect(new Headers(report?.headers).get('Authorization')).toBe('Bearer test-token')
     expect(JSON.parse(String(report?.body))).toEqual({ questId: first.questId, category: 'PHOTO_UNAVAILABLE', text: '架空の報告' })
@@ -1480,7 +1480,7 @@ it('hands the selected durable quest B and its version through login to challeng
   await user.click(screen.getByRole('button', { name: 'Googleログインして挑戦する' }))
   expect(auth.signInWithGoogle).toHaveBeenCalledOnce()
   await waitFor(() => expect(screen.getByLabelText('カメラ映像')).toHaveProperty('srcObject', stream))
-  expect(screen.getByText('挑戦を開始しました。写真と位置を確認してからテスト送信できます。')).toBeVisible()
+  expect(screen.queryByText(/挑戦を開始しました/)).not.toBeInTheDocument()
   const start = fetcher.mock.calls.find(([path]) => path === '/api/v1/challenges')!
   expect(JSON.parse(String(start[1]?.body))).toEqual({ questId: second.questId, expectedVersion: second.version })
   expect(new Headers(start[1]?.headers).get('Authorization')).toBe('Bearer traveler-token')
@@ -1568,13 +1568,16 @@ it.each(['empty', 'error'] as const)('durable %s keeps the map and region recove
   expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
 })
 
-it('durable labels describe the persistent verification mode and retain synthetic restrictions', async () => {
+it('durable traveler chrome omits mode badges and synthetic-restriction banners', async () => {
   window.history.replaceState(null, '', '/?quest=quest-a')
   render(<ApiQuestApp api={apiFixture()} authClient={signedOutAuth()} dataMode="durable-local" />)
   await screen.findByRole('heading', { name: first.title })
   expect(screen.queryByText('公開APIデモデータ')).not.toBeInTheDocument()
   expect(screen.queryByText('架空のサンプル問題')).not.toBeInTheDocument()
-  expect(screen.getByText('永続APIの公開問題（検証用）')).toBeVisible()
+  expect(screen.queryByText('永続APIの公開問題（検証用）')).not.toBeInTheDocument()
+  expect(screen.queryByText('永続API・ローカル')).not.toBeInTheDocument()
+  expect(screen.queryByText(/回答の送信には合成画像と架空の座標/)).not.toBeInTheDocument()
+  expect(document.querySelector('.demo-note')).toBeNull()
+  expect(document.querySelector('.preview-label')).toBeNull()
   expect(screen.getByRole('region', { name: '問題の詳細' })).toBeVisible()
-  expect(screen.getByText(/回答の送信には合成画像と架空の座標/)).toBeVisible()
 })
