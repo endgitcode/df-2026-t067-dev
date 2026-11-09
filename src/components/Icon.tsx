@@ -1,4 +1,4 @@
-type IconName = 'compass' | 'pin' | 'map' | 'book' | 'user' | 'arrow' | 'plus' | 'minus' | 'reset' | 'locate' | 'check' | 'chevron'
+type IconName = 'compass' | 'pin' | 'map' | 'book' | 'search' | 'user' | 'arrow' | 'plus' | 'minus' | 'reset' | 'locate' | 'check' | 'chevron' | 'panel'
 const paths: Record<IconName, string[]> = {
   compass: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20', 'm16 8-2 6-6 2 2-6 6-2Z'],
   pin: ['M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z', 'M14 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0'],
@@ -12,6 +12,8 @@ const paths: Record<IconName, string[]> = {
   locate: ['M21 3 15 21 11 13 3 9 21 3Z'],
   check: ['M20 6 9 17l-5-5'],
   chevron: ['m6 9 6 6 6-6'],
+  search: ['M11 5a6 6 0 1 0 0 12 6 6 0 0 0 0-12', 'm21 21-4.3-4.3'],
+  panel: ['M4 5h16v14H4z', 'M9 5v14'],
 }
 
 export function Icon({ name, className = '' }: { name: IconName; className?: string }) {
