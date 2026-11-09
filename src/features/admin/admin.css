@@ -295,26 +295,16 @@
 .admin-demo textarea,
 .admin-demo select { border-radius: 12px; }
 .admin-managed { border: 2px solid var(--ui-line); border-radius: 16px; }
+.admin-header-actions { display: flex; align-items: center; gap: 12px; margin-inline-start: auto; }
 .admin-demo .admin-traveler-link {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 50;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   min-height: 44px;
-  padding: 8px 16px;
-  border: 2px solid var(--ui-line);
-  border-radius: 12px;
-  background: var(--ui-surface);
   color: var(--ui-ink);
-  box-shadow: none;
-  text-decoration: none;
-  font-weight: var(--ui-weight-control);
+  text-underline-offset: 4px;
+  white-space: nowrap;
 }
-.admin-demo > .admin-header { padding-top: 64px; }
-.admin-demo .admin-traveler-link:hover { background: var(--ui-surface); }
+.admin-demo > .admin-header { padding-top: 0; }
 .admin-demo input::file-selector-button:focus-visible { outline: 3px solid var(--ui-focus); }
 
 .admin-managed .traveler-card { box-shadow: none; }
@@ -331,8 +321,8 @@
   .admin-save-bar { position: fixed; z-index: 30; bottom: 0; left: 0; right: 0; padding: 16px; margin: 0; background: white; border-top: 2px solid var(--ui-line); box-shadow: none; }
 }
 
-/* Keep the card 24px below the fixed 44px exit button at every width. */
-.admin-demo.admin-managed { margin-top: 84px; min-height: calc(100vh - 84px); }
+/* The traveler exit now belongs to the header. */
+.admin-demo.admin-managed { margin-top: 24px; min-height: calc(100vh - 24px); }
 .admin-managed > .admin-header { padding-top: 0; }
 .admin-account-panel:not([hidden]) { box-shadow: none; }
 .admin-demo input::file-selector-button { background: white; border: 2px solid var(--ui-line); }
@@ -388,3 +378,18 @@
 .admin-editor select[aria-invalid="true"] { background: var(--role-error-bg); color: var(--ui-ink); border-color: var(--ui-error); }
 .admin-demo [role="alert"] { color: var(--ui-error); }
 .admin-demo .save-success { display: inline-block; padding: 2px 8px; border-radius: var(--radius-s); background: var(--role-done); color: var(--ui-ink); }
+
+/* UI policy 7–10, 14: one border level, shared header and native inputs. */
+.admin-workflow .form-section fieldset,
+.admin-workflow fieldset fieldset { border: 0; border-radius: 0; padding: 0; margin-block: 24px; }
+.admin-workflow .form-section .form-section { border: 0; padding: 0; }
+.admin-workflow fieldset legend { padding: 0; margin-bottom: 12px; font-size: 20px; }
+.admin-demo .admin-header { flex-direction: row; align-items: center; }
+.admin-demo .admin-login-heading { width: 100%; }
+.admin-demo .admin-header h1 { font-size: 24px; }
+.admin-demo .admin-back-link { background: transparent; border: 0; padding-inline: 0; box-shadow: none; text-decoration: underline; text-underline-offset: 4px; }
+.admin-demo .photo-picker { position: relative; align-items: start; }
+.admin-demo .photo-picker input[type="file"] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.photo-picker-button { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; box-sizing: border-box; border: 2px solid var(--ui-line); border-radius: 12px; background: white; color: var(--ui-ink); cursor: pointer; }
+.photo-picker:has(input:focus-visible) .photo-picker-button { outline: 3px solid var(--ui-focus); outline-offset: 2px; }
+.photo-picker:has(input:disabled) .photo-picker-button { opacity: .5; cursor: default; }

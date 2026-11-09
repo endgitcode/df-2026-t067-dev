@@ -54,11 +54,12 @@ function PhotoTrial({ expected, disabled, feedback, onTest, onSelection }:   {
   }}>
     <fieldset disabled={disabled}>
       <legend>{label}</legend>
-      <label>{label}<input type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
+      <label className="photo-picker">{label}<span className="photo-picker-button" aria-hidden="true">写真を選ぶ</span><input aria-label={label} type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
         setFile(event.target.files?.[0] ?? null)
         key.current = null
         onSelection(expected)
       }} /></label>
+      {file && <p>{file.name}</p>}
       {file && !valid && <p>JPEG・PNG・WebP／4MiB以下</p>}
       <button type="submit" disabled={!valid}>{label}</button>
       {feedback && <p role={feedback.kind === 'error' ? 'alert' : 'status'}>{feedback.message}</p>}
@@ -223,7 +224,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
               <li><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真をダウンロード</a></li>
               <li><a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真をダウンロード</a></li>
             </ul></>}
-        <label>試験写真<input type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
+        <label className="photo-picker">試験写真<span className="photo-picker-button" aria-hidden="true">写真を選ぶ</span><input aria-label="試験写真" type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
           const next = event.target.files?.[0] ?? null
           if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
           if (next) previousPhoto.current = next
@@ -233,6 +234,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
           setRights(value); setReuseNeeded(false); key.current = null; setOutcome(null)
         }} /> : <label>利用権<textarea value={rights} onChange={event => { setRights(event.target.value); key.current = null; setOutcome(null) }} /></label>}
         {reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替え写真の利用権を確認</label>}
+        {photo && <p>{photo.name}</p>}
         {photo && !photoValid && <p>JPEG・PNG・WebP／4MiB以下</p>}
         <button type="submit" disabled={!photoValid || !rights.trim() || reuseNeeded}>写真試験を送信</button>
       </fieldset>

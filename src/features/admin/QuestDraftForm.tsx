@@ -362,6 +362,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
 
   const Root = connection ? 'section' : 'main'
   return <Root className={connection ? 'admin-editor' : 'admin-demo'}>
+    {!part && connection && <button className="admin-back-link" type="button" aria-label="謎一覧へ戻る" disabled={saving} onClick={connection.onBack}>← 謎一覧</button>}
     {!part && <header className="admin-header"><div><h1>{step === 'A03' ? '素材登録' : step === 'A04' ? '問題の編集' : '表示確認'}</h1></div><span className="demo-badge">{connection ? '保存先：検証用' : '未ログイン'}</span></header>}
     <div inert={saving}>
     {!part && <><nav className="steps" aria-label="登録手順">
@@ -381,14 +382,14 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
 
         <label>撮るもの<input aria-label="撮るもの" id="workflow-target-name" ref={nameRef} aria-required={Boolean(part) || !focused} aria-invalid={Boolean((requiredTarget || draftEntryError) && targetMissing)} aria-describedby={(draftEntryError || requiredTarget) && targetMissing ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {(draftEntryError || requiredTarget) && targetMissing && <p id="name-error" className="field-error">撮るものを入力</p>}
-        <label className="file-label">正解の写真<input aria-label="正解の写真" id="workflow-reference" className="reference-photo-input" ref={inputRef} type="file" accept={PHOTO_UPLOAD_ACCEPT} aria-required={Boolean(part)} aria-invalid={Boolean(photoError) || (requiredTarget && referenceMissing)} aria-describedby="photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
+        <label className="photo-picker">正解の写真<span className="photo-picker-button" aria-hidden="true">写真を選ぶ</span><input aria-label="正解の写真" id="workflow-reference" className="reference-photo-input" ref={inputRef} type="file" accept={PHOTO_UPLOAD_ACCEPT} aria-required={Boolean(part)} aria-invalid={Boolean(photoError) || (requiredTarget && referenceMissing)} aria-describedby="photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
 
         {!photo && referenceAssetId && <p>保存済みの参考写真 <button type="button" onClick={() => {
           setReferenceAssetId(null); markMaterialChange()
         }}>参照を外す</button></p>}
         {(photoError || (requiredTarget && referenceMissing)) && <p id="photo-error" role="alert" className="field-error">{photoError || "参考写真を選択。"}</p>}
         {photoLoadFailed && <p role="alert" className="field-error">画像読込失敗・選び直す</p>}
-        {photo && <div className="photo-preview" role="region" aria-label="選択中の参考写真"><img src={photo.url} alt={`選択した参考写真：${photo.file.name}`} onError={() => setPhotoLoadFailed(true)} /><div><span>選択中：{photo.file.name}</span><button type="button" onClick={() => inputRef.current?.click()}>変更</button><button type="button" onClick={clearPhoto}>削除</button>{photoLoadFailed && <button type="button" onClick={() => inputRef.current?.click()}>再試行</button>}</div></div>}
+        {photo && <div className="photo-preview" role="region" aria-label="選択中の参考写真"><img src={photo.url} alt={`選択した参考写真：${photo.file.name}`} onError={() => setPhotoLoadFailed(true)} /><div><span>選択中：{photo.file.name}</span><button type="button" onClick={clearPhoto}>削除</button></div></div>}
       </section>
       {!part && <section className="form-section" ><h2 id="rights-heading">写真の権利</h2>
         {connection ? <PhotoRightsInput key={photo?.url ?? "saved"} purpose="reference" label="写真の権利" textareaRef={rightsRef} invalid={rightsError && !photoRights.trim()} describedBy={rightsError && !photoRights.trim() ? "rights-error" : undefined} value={photoRights} onChange={value => { setPhotoRights(value); setRightsError(false); setRightsReuseNeeded(false); markMaterialChange() }} /> : <label>写真の権利<textarea ref={rightsRef} aria-invalid={rightsError && !photoRights.trim()} aria-describedby={rightsError && !photoRights.trim() ? "rights-error" : undefined} value={photoRights} onChange={event => { setPhotoRights(event.target.value); setRightsError(false); markMaterialChange() }} rows={2} placeholder="出典・撮影者・利用許諾など" /></label>}
@@ -494,7 +495,6 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
             <button type="button" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('publication')}>保存して試験・公開確認へ</button>
           </div>
         </details>}
-        {!part && <button type="button" disabled={saving} onClick={connection.onBack}>謎一覧へ</button>}
       </div>
     </section>}
   </Root>

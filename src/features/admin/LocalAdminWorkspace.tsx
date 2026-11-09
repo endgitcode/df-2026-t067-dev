@@ -243,12 +243,14 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
   }
 
   return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '')}>
-    <a className="admin-traveler-link" href="/">旅行者画面へ</a>
     <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header admin-login-heading'}>
       <h1>謎づくり</h1>
+      <div className="admin-header-actions">
+      <a className="admin-traveler-link" href="/">旅行者画面へ</a>
       {auth.status === 'signed-in'
         ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
         : null}
+      </div>
     </header>
     {(auth.status !== 'signed-in' || error) && <section className="admin-login" aria-label="担当者ログイン">
       {auth.status === 'signed-out' && <button className="google-continue" type="button" disabled={pending} onClick={() => void authenticate('login')}><GoogleContinue /></button>}

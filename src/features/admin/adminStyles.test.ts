@@ -27,10 +27,13 @@ describe('管理画面の見た目の規則', () => {
     expect(css).toContain('padding: 16px 16px 48px')
     expect(css).toContain('.admin-workflow .form-section { padding: 16px; }')
   })
-  it('旅行者への入口は右上固定の44px副ボタン', () => {
+  it('旅行者リンクはヘッダ内の文字リンク、戻るは左上、写真選択にはフォーカスを示す', () => {
     const rule = css.match(/\.admin-demo \.admin-traveler-link \{([^}]+)\}/)?.[1]
-    for (const declaration of ['position: fixed;', 'top: 16px;', 'right: 16px;', 'min-height: 44px;', 'border: 2px solid var(--ui-line);', 'border-radius: 12px;', 'background: var(--ui-surface);']) {
-      expect(rule).toContain(declaration)
-    }
+    expect(rule).toContain('min-height: 44px;')
+    expect(rule).not.toMatch(/position: fixed|border:/)
+    expect(css).toContain('.admin-header-actions { display: flex; align-items: center;')
+    expect(css).toContain('.photo-picker:has(input:focus-visible) .photo-picker-button')
+    expect(css).toContain('.admin-workflow .form-section fieldset,')
+    expect(css).toContain('.admin-workflow fieldset fieldset { border: 0;')
   })
 })

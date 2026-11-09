@@ -76,3 +76,22 @@ it('toggles the map with the same button', async () => {
   expect(toggle).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByRole('button', { name: '地図の場所A' })).not.toBeInTheDocument()
 })
+
+it('collapses coordinates, allows manual expansion, and opens invalid or missing coordinates', async () => {
+  const user = userEvent.setup()
+  const input = { ...initialSpotInput(), latitude: '35', longitude: '135' }
+  const { rerender } = render(<MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={vi.fn()} />)
+  const details = screen.getByText('緯度・経度').closest('details')!
+  expect(details.open).toBe(false)
+  await user.click(screen.getByText('緯度・経度'))
+  expect(details.open).toBe(true)
+  await user.click(screen.getByText('緯度・経度'))
+  rerender(<MapSpotEditor input={{ ...input, latitude: '91' }} invalid={false} orgId="fixture" onChange={vi.fn()} />)
+  expect(details.open).toBe(true)
+  expect(screen.getByLabelText('緯度')).toHaveAttribute('aria-invalid', 'true')
+  rerender(<MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={vi.fn()} />)
+  await user.click(screen.getByText('緯度・経度'))
+  rerender(<MapSpotEditor input={initialSpotInput()} invalid orgId="fixture" onChange={vi.fn()} />)
+  expect(details.open).toBe(true)
+  expect(screen.getByLabelText('経度')).toHaveAttribute('aria-invalid', 'true')
+})

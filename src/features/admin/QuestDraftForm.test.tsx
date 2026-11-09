@@ -84,7 +84,7 @@ it('blocks a second create when the response is lost and preserves the entered d
   expect(screen.getByLabelText('撮るもの')).toHaveValue('架空の対象')
   expect(screen.getByRole('button', { name: '下書きを保存' })).toBeDisabled()
   expect(createManagedQuest).toHaveBeenCalledTimes(1)
-  await user.click(screen.getByRole('button', { name: '謎一覧へ' }))
+  await user.click(screen.getByRole('button', { name: '謎一覧へ戻る' }))
   expect(back).toHaveBeenCalledOnce()
 })
 
@@ -356,7 +356,9 @@ describe('A03 admin demo', () => {
     await user.upload(screen.getByLabelText(/正解の写真/), image())
     fireEvent.error(screen.getByRole('img'))
     expect(screen.getByRole('alert')).toHaveTextContent('画像読込失敗')
-    expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument()
+    expect(screen.getByLabelText('正解の写真').closest('label')).toHaveTextContent('写真を選ぶ')
+    await user.upload(screen.getByLabelText('正解の写真'), image('retry.png'))
+    expect(screen.queryByText('画像読込失敗・選び直す')).not.toBeInTheDocument()
   })
 
   it('exposes accessible fieldsets, labels, focusable controls and no private coordinates or network actions', async () => {
@@ -423,7 +425,7 @@ describe('A03 admin demo', () => {
     fireEvent.error(screen.getByRole('img'))
     await user.upload(input, image('wrong.gif', 30, 'image/gif'))
     expect(screen.getAllByRole('alert').map(item => item.textContent).join(' ')).toMatch(/画像読込失敗/)
-    expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument()
+    expect(screen.getByLabelText('正解の写真').closest('label')).toHaveTextContent('写真を選ぶ')
   })
 
   it('keeps every A03 field, the photo URL, and edited draft through A03/A04 navigation', async () => {

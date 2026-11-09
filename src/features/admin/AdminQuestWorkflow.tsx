@@ -100,8 +100,8 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
 
   return <section className="admin-workflow" aria-label="問題作成" ref={root}>
     <header className="workflow-heading" ref={heading} tabIndex={-1} aria-label="問題作成">
+      <button className="admin-back-link" type="button" aria-label="謎一覧へ戻る" disabled={busy} onClick={() => navigate('list')}>← 謎一覧</button>
       <QuestStatusBadge status={record?.status ?? 'draft'} />
-      <button type="button" disabled={busy} onClick={() => navigate('list')}>謎一覧へ</button>
     </header>
     {pending && <div role="alertdialog" aria-label="未保存の入力" className="unsaved-dialog" tabIndex={-1} ref={dialog} onKeyDown={event => {
       if (event.key === 'Escape') { setPending(null); heading.current?.focus() }

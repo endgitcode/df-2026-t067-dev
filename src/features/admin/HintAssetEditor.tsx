@@ -71,7 +71,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
         <label>設定するヒント<select value={slot} onChange={(event) => setSlot(Number(event.target.value))}>
           {activeSlots.map((number) => <option value={number} key={number}>ヒント {number}</option>)}
         </select></label>
-        <label>ヒント画像<input id="workflow-hint-image" ref={input} aria-invalid={Boolean(file && !valid)} aria-describedby={file && !valid ? "hint-photo-error" : undefined} type="file" accept={PHOTO_UPLOAD_ACCEPT}
+        <label className="photo-picker">ヒント画像<span className="photo-picker-button" aria-hidden="true">写真を選ぶ</span><input aria-label="ヒント画像" id="workflow-hint-image" ref={input} aria-invalid={Boolean(file && !valid)} aria-describedby={file && !valid ? "hint-photo-error" : undefined} type="file" accept={PHOTO_UPLOAD_ACCEPT}
           onChange={(event) => {
             const next = event.target.files?.[0] ?? null
             if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
@@ -79,6 +79,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
             setFile(next)
             onDirty?.(next !== null)
           }} /></label>
+        {file && <p>{file.name}</p>}
         {!onContinue && (rightsAssist ? <PhotoRightsInput key={file ? `${slot}:${file.name}:${file.lastModified}` : `empty:${slot}`} purpose="public_hint" label="画像の権利" value={rights} onChange={value => { setRights(value); setReuseNeeded(false) }} /> : <label>画像の権利<textarea value={rights} onChange={event => setRights(event.target.value)} /></label>)}
         {!onContinue && reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替え写真の公開権を確認</label>}
         {file && !valid && <p id="hint-photo-error" role="alert" className="field-error">JPEG・PNG・WebP／4MB以下</p>}

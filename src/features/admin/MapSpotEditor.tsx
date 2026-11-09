@@ -13,12 +13,17 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
   const [open, setOpen] = useState(false)
   const [candidate, setCandidate] = useState<MapPlaceDetails>({})
   const [message, setMessage] = useState('')
+  const coordinatesRef = useRef<HTMLDetailsElement>(null)
   const request = useRef<AbortController | null>(null)
   const latitudeInvalid = Boolean(input.latitude) && (!Number.isFinite(Number(input.latitude)) || Math.abs(Number(input.latitude)) > 90)
   const longitudeInvalid = Boolean(input.longitude) && (!Number.isFinite(Number(input.longitude)) || Math.abs(Number(input.longitude)) > 180)
   const point = spotPosition(input.latitude, input.longitude)
 
   useEffect(() => () => request.current?.abort(), [])
+  const coordinatesInvalid = latitudeInvalid || longitudeInvalid || (invalid && (!input.latitude.trim() || !input.longitude.trim()))
+  useEffect(() => {
+    if (coordinatesInvalid && coordinatesRef.current) coordinatesRef.current.open = true
+  }, [coordinatesInvalid, input.latitude, input.longitude])
 
   function cancelLookup() {
     request.current?.abort()
@@ -76,6 +81,10 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
     <label>住所<input aria-describedby={invalid && !input.address.trim() ? "spot-address-error" : undefined} aria-label="住所" value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
        placeholder="例：青葉みらい市風見1-2-3" onChange={(event) => edit({ address: event.target.value })} /></label>
     {invalid && !input.address.trim() && <p id="spot-address-error" className="field-error">住所を入力</p>}
+    <details ref={coordinatesRef} className="spot-coordinates" onToggle={event => {
+      if (coordinatesInvalid && !event.currentTarget.open) event.currentTarget.open = true
+    }}>
+      <summary>緯度・経度</summary>
     <div className="field-pair">
       <label>緯度<input aria-describedby={(latitudeInvalid || (invalid && !input.latitude.trim())) ? "spot-latitude-error" : undefined} inputMode="decimal" aria-label="緯度" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={(latitudeInvalid || (invalid && !input.latitude.trim()))}
         onChange={(event) => edit({ latitude: event.target.value })} /></label>
@@ -84,6 +93,7 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
         onChange={(event) => edit({ longitude: event.target.value })} /></label>
     {(longitudeInvalid || (invalid && !input.longitude.trim())) && <p id="spot-longitude-error" className="field-error">経度は-180〜180</p>}
     </div>
+    </details>
     {(input.name || input.address || input.latitude || input.longitude) &&
       <button type="button" className="spot-clear-button" onClick={() => {
         cancelLookup()

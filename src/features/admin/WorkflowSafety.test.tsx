@@ -23,14 +23,16 @@ it('guards only dirty edits, restores URL step, and offers three focused navigat
   const client = api(); const onBack = vi.fn()
   render(<AdminQuestWorkflow api={client} initial={initial} member={member} teamPreview={false} photoTestSource="mock" areaUnclassified={false} onBack={onBack} onPublished={vi.fn()} />)
   expect(screen.getByRole('heading', { name: '非公開', level: 2 })).toBeVisible()
+  expect(screen.getAllByRole('button', { name: '謎一覧へ戻る' })).toHaveLength(1)
+  expect(screen.getByRole('button', { name: '謎一覧へ戻る' })).toBe(screen.getByLabelText('問題作成', { selector: 'header' }).firstElementChild)
   expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true)
   fireEvent.change(screen.getByLabelText('撮るもの'), { target: { value: '変更' } })
   expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(false)
-  fireEvent.click(screen.getByRole('button', { name: '謎一覧へ' }))
+  fireEvent.click(screen.getByRole('button', { name: '謎一覧へ戻る' }))
   expect(screen.getByRole('alertdialog')).toHaveFocus()
   fireEvent.click(screen.getByRole('button', { name: 'とどまる' }))
   expect(screen.queryByRole('alertdialog')).toBeNull()
-  fireEvent.click(screen.getByRole('button', { name: '謎一覧へ' }))
+  fireEvent.click(screen.getByRole('button', { name: '謎一覧へ戻る' }))
   fireEvent.click(screen.getByRole('button', { name: '保存して移動' }))
   await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1))
   expect(client.updateManagedQuest).toHaveBeenCalledTimes(1)
@@ -71,7 +73,7 @@ it('never creates an empty draft and discards only after choosing to leave witho
   expect(client.createManagedQuest).not.toHaveBeenCalled()
   expect(screen.getByText('撮るものを入力')).toBeVisible()
   fireEvent.change(screen.getByLabelText('撮るもの'), { target: { value: '未保存' } })
-  fireEvent.click(screen.getByRole('button', { name: '謎一覧へ' }))
+  fireEvent.click(screen.getByRole('button', { name: '謎一覧へ戻る' }))
   expect(onBack).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: '保存せず移動' }))
   expect(onBack).toHaveBeenCalledTimes(1)
@@ -106,7 +108,7 @@ it.each([
   render(<AdminQuestWorkflow api={client} initial={record} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
   expect(screen.getByText(label).closest('header')).toHaveAttribute('aria-label', '問題作成')
   expect(screen.getByRole('button', { name: action })).toBeVisible()
-  expect(screen.getAllByRole('button', { name: '謎一覧へ' })).toHaveLength(1)
+  expect(screen.getAllByRole('button', { name: '謎一覧へ戻る' })).toHaveLength(1)
   await waitFor(() => expect(client.getManagedQuestReadiness).toHaveBeenCalled())
 })
 
@@ -156,10 +158,11 @@ it.each([
 it('keeps the inventory fields and distinct actions on one page', () => {
   render(<AdminQuestWorkflow api={api()} initial={initial} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
   fireEvent.click(screen.getByText('クリア後'))
+  fireEvent.click(screen.getByText('緯度・経度'))
   for (const label of ['撮るもの', '正解の写真', '場所の名前', '住所', '緯度', '経度', '船上・海上', '有料施設内', '料金の区分', '撮影の注意', '行き方', '交通手段', '所要分数', '紹介', '解説', 'タイトル', '問題文', 'ヒント 1', 'ヒント 2', 'ヒント 3', '特徴', '特徴を1行で追加', '設定するヒント', 'ヒント画像', '正解写真で試す', '別の写真で試す']) {
     expect(screen.getByLabelText(label, { exact: true, selector: 'input, textarea, select' })).toBeVisible()
   }
-  for (const name of ['地図', '参照を外す', '行き方の文を作る', '特徴を追加', '画像を保存', '正解写真で試す', '別の写真で試す', '公開', '謎一覧へ']) {
+  for (const name of ['地図', '参照を外す', '行き方の文を作る', '特徴を追加', '画像を保存', '正解写真で試す', '別の写真で試す', '公開', '謎一覧へ戻る']) {
     expect(screen.getByRole('button', { name })).toBeVisible()
   }
   expect(screen.getByText('下書き案を取り込む')).toBeVisible()
@@ -184,8 +187,20 @@ it('saves a hint selection on guarded exit and retains it on the next body save'
   await waitFor(() => expect(client.updateManagedQuest).toHaveBeenCalledTimes(2))
   expect(client.updateManagedQuest.mock.calls[1][2].draft.hintAssetIds).toEqual(['hint-image', null, null])
   fireEvent.change(screen.getByLabelText('ヒント画像', { selector: 'input' }), { target: { files: [new File(['next'], 'next.png', { type: 'image/png' })] } })
-  fireEvent.click(screen.getByRole('button', { name: '謎一覧へ' }))
+  fireEvent.click(screen.getByRole('button', { name: '謎一覧へ戻る' }))
   fireEvent.click(screen.getByRole('button', { name: '保存して移動' }))
   await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1))
   expect(client.updateManagedQuest).toHaveBeenCalledTimes(3)
+})
+
+it('opens missing coordinates on save and retains Japanese photo selectors', () => {
+  render(<AdminQuestWorkflow api={api()} initial={null} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
+  const details = screen.getByText('緯度・経度').closest('details')!
+  expect(details.open).toBe(false)
+  const photo = screen.getByLabelText('正解の写真')
+  expect(photo.closest('label')).toHaveTextContent('写真を選ぶ')
+  photo.focus()
+  expect(photo).toHaveFocus()
+  fireEvent.click(screen.getByRole('button', { name: '保存' }))
+  expect(details.open).toBe(true)
 })
