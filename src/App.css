@@ -478,13 +478,19 @@ button.explore-quest-card { cursor: pointer; }
 /* 記録画面の列は中央に寄せず、探索画面と同じ左のラインに揃える（D-60）。幅の上限は読みやすさのために残す。 */
 /* 記録の本文列は 1080px まで使う（D-74）。720px では PC 幅で左に細く寄り、
    右側の大半が空白になった（実地目視）。読み物の行長としては上限を残す。 */
-.owner-records { display: grid; gap: 16px; max-width: 1080px; }
+.owner-records { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 1080px; }
 /* 記録画面と探索画面は hidden で切り替える（アンマウントしない）。display を
    指定している要素では hidden が負けるため、明示的に打ち消す。 */
 .owner-records[hidden], .explore-view[hidden] { display: none; }
 .owner-records > button { justify-self: start; }
-.record-table { width: 100%; border-collapse: collapse; text-align: start; }
+.record-table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: start; }
 .record-table th, .record-table td { padding: 8px; border-bottom: var(--ui-border-width) solid var(--ui-line); text-align: start; }
+.record-table th:first-child { width: 72px; }
+.record-table th:last-child { width: 9em; }
+.record-table th, .record-table td { overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .record-table th:last-child { width: 6.5em; }
+}
 .record-table tbody tr { cursor: pointer; }
 .record-table tbody tr:hover, .record-table tbody tr:focus-within { background: var(--ui-tint); }
 .record-open { min-height: 44px; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: start; overflow-wrap: anywhere; cursor: pointer; }
@@ -819,7 +825,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body:has(.owner-records:not([hidden])) .owner-records {
     margin-left: var(--pc-sidebar-w);
     max-width: none;
-    padding-left: 28px;
+    padding-inline: 28px;
     padding-top: 24px;
     align-content: start;
     min-height: 100svh;
