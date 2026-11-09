@@ -982,3 +982,14 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     width: calc(100% - 32px);
   }
 }
+
+/* 認証前の案内も本人の一覧も、固定アカウントの下端から24px空ける。
+   各幅の左右・下余白は維持し、上余白だけ同じスロットから計算する。 */
+body:has(.traveler-shell) .owner-records {
+  margin-top: calc(var(--account-slot-top) + var(--account-slot-size) + 24px);
+}
+
+/* 選択中も操作中も、下部タブにはオフセットシャドウを付けない。 */
+.traveler-shell .mobile-nav button {
+  box-shadow: none;
+}
