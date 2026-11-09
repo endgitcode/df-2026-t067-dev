@@ -6,9 +6,11 @@ import { SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 // パネル幅と周囲の余白を見込む。閉じている間は通常の余白だけにする。
 // （380px は CSS の --pc-sidebar-w、16px は --pc-sidebar-gap と揃える。）
 // 開閉そのものでは再フィットしない（開閉で地図の中心を動かさないため、D-38）。
+// スマホ幅で選択に伴うフィットをする時は、シートが half まで開いた後の高さを渡す
+// （D-70）。peek 前提のままだと、開いたシートの裏にピンが隠れてしまう。
 const PC_SIDEBAR_FIT_LEFT = 380 + 16 * 2 + 36
-export function visibleAreaFitPadding(wide: boolean, sidebarCollapsed = false): { top: number; right: number; bottom: number; left: number } {
+export function visibleAreaFitPadding(wide: boolean, sidebarCollapsed = false, sheetHeight?: number): { top: number; right: number; bottom: number; left: number } {
   return wide
     ? { top: 88, right: 48, bottom: 48, left: sidebarCollapsed ? 48 : PC_SIDEBAR_FIT_LEFT }
-    : { top: 140, right: 16, bottom: SHEET_PEEK_HEIGHT + 84, left: 16 }
+    : { top: 140, right: 16, bottom: (sheetHeight ?? SHEET_PEEK_HEIGHT) + 84, left: 16 }
 }
