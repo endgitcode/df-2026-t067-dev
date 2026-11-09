@@ -461,6 +461,9 @@ button.explore-quest-card { cursor: pointer; }
 .owner-records > button { justify-self: start; }
 .record-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .record-list li { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.record-list-item { display: inline-flex; align-items: center; gap: 12px; min-height: 72px; text-align: left; }
+.record-thumbnail, .record-thumbnail-placeholder { display: grid; width: 56px; height: 56px; flex: 0 0 56px; place-items: center; border-radius: 8px; object-fit: cover; background: var(--ui-tint); color: var(--ui-muted); }
+.record-thumbnail-placeholder { font-size: 10px; }
 .record-detail { display: grid; gap: 12px; overflow-wrap: anywhere; }
 .record-detail > button { justify-self: start; }
 .record-guidance { display: grid; gap: 12px; margin: 0; }

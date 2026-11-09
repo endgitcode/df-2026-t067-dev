@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { createApiClient } from '../../shared/api'
@@ -130,6 +130,103 @@ it('refetches the list when the records view is entered again', async () => {
   // 合図が変わらなければ余分な再取得はしない。
   rerender(<OwnerDiscoveries api={api} visit={2} />)
   expect(listDiscoveries).toHaveBeenCalledTimes(2)
+})
+
+it('shows record thumbnails and releases their Blob URLs when opening a detail', async () => {
+  const user = userEvent.setup()
+  const revokeObjectURL = vi.fn()
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = () => 'blob:record-thumb'
+    static revokeObjectURL = revokeObjectURL
+  })
+  const api = {
+    ...createApiClient(),
+    listDiscoveries: vi.fn().mockResolvedValue({ items: [discovery], nextCursor: null }),
+    getDiscovery: vi.fn().mockResolvedValue(discovery),
+    getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['thumb'])),
+  }
+  const { container } = render(<OwnerDiscoveries api={api} />)
+  const openRecord = await screen.findByRole('button', { name: discovery.placeName })
+  await waitFor(() => expect(container.querySelector('.record-thumbnail')).toHaveAttribute('src', 'blob:record-thumb'))
+  expect(openRecord).toBeEnabled()
+  await user.click(openRecord)
+  expect(await screen.findByRole('heading', { name: discovery.placeName })).toBeVisible()
+  expect(api.getDiscovery).toHaveBeenCalled()
+  expect(revokeObjectURL).toHaveBeenCalledWith('blob:record-thumb')
+})
+
+it('keeps record navigation available when a thumbnail cannot be loaded', async () => {
+  const user = userEvent.setup()
+  const api = {
+    ...createApiClient(),
+    listDiscoveries: vi.fn().mockResolvedValue({ items: [discovery], nextCursor: null }),
+    getDiscovery: vi.fn().mockResolvedValue(discovery),
+    getDiscoveryPhoto: vi.fn().mockRejectedValueOnce(new Error('photo unavailable')).mockResolvedValue(new Blob(['detail photo'])),
+  }
+  render(<OwnerDiscoveries api={api} />)
+  const openRecord = await screen.findByRole('button', { name: discovery.placeName })
+  expect(await screen.findByText('写真なし')).toBeVisible()
+  expect(openRecord).toBeEnabled()
+  await user.click(openRecord)
+  expect(await screen.findByRole('heading', { name: discovery.placeName })).toBeVisible()
+})
+
+it('aborts thumbnail requests when changing pages', async () => {
+  const user = userEvent.setup()
+  let firstSignal: AbortSignal | undefined
+  const api = {
+    ...createApiClient(),
+    listDiscoveries: vi.fn()
+      .mockResolvedValueOnce({ items: [discovery], nextCursor: 'page-2' })
+      .mockResolvedValue({ items: [], nextCursor: null }),
+    getDiscoveryPhoto: vi.fn((_id: string, { signal }: { signal: AbortSignal }) => {
+      firstSignal = signal
+      return new Promise<Blob>(() => {})
+    }),
+  }
+  render(<OwnerDiscoveries api={api} />)
+  await screen.findByRole('button', { name: discovery.placeName })
+  await user.click(screen.getByRole('button', { name: '次の記録' }))
+  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(firstSignal?.aborted).toBe(true)
+})
+
+it('loads only thumbnails near the viewport and cancels observed requests on page change', async () => {
+  const user = userEvent.setup()
+  const observers: Array<{ callback: IntersectionObserverCallback; disconnect: ReturnType<typeof vi.fn>; target?: Element }> = []
+  class TestIntersectionObserver {
+    readonly disconnect = vi.fn()
+    constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+      expect(options?.rootMargin).toBe('160px')
+      observers.push({ callback, disconnect: this.disconnect })
+    }
+    observe = vi.fn((target: Element) => { observers[observers.length - 1].target = target })
+    unobserve = vi.fn()
+    takeRecords = () => []
+  }
+  vi.stubGlobal('IntersectionObserver', TestIntersectionObserver)
+  const second = { ...discovery, discoveryId: 'record-2', placeName: '二つ目の場所' }
+  let photoSignal: AbortSignal | undefined
+  const api = {
+    ...createApiClient(),
+    listDiscoveries: vi.fn()
+      .mockResolvedValueOnce({ items: [discovery, second], nextCursor: 'page-2' })
+      .mockResolvedValue({ items: [], nextCursor: null }),
+    getDiscoveryPhoto: vi.fn((_id: string, { signal }: { signal: AbortSignal }) => {
+      photoSignal = signal
+      return new Promise<Blob>(() => {})
+    }),
+  }
+  render(<OwnerDiscoveries api={api} />)
+  await screen.findByRole('button', { name: discovery.placeName })
+  expect(api.getDiscoveryPhoto).not.toHaveBeenCalled()
+  expect(observers).toHaveLength(2)
+  observers[0].callback([{ isIntersecting: true, intersectionRatio: 1, target: observers[0].target! } as IntersectionObserverEntry], {} as IntersectionObserver)
+  expect(api.getDiscoveryPhoto).toHaveBeenCalledExactlyOnceWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
+  await user.click(screen.getByRole('button', { name: '次の記録' }))
+  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(photoSignal?.aborted).toBe(true)
+  expect(observers.every(({ disconnect }) => disconnect.mock.calls.length > 0)).toBe(true)
 })
 
 it('reads and deletes durable owner records through the authenticated common HTTP client', async () => {

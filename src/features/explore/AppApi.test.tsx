@@ -130,6 +130,15 @@ describe('explicit local API integration', () => {
     await user.click(screen.getByRole('button', { name: '記録一覧へ戻る' }))
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:owner-fixture')
     expect(screen.queryByText(afterClear.explanation)).not.toBeInTheDocument()
+    // 記録画面は hidden で常駐する。タブ切替時は一覧サムネイルを解放し、
+    // 戻った時に同じ一覧の写真だけを新しく取得する。
+    await waitFor(() => expect(fetcher.mock.calls.filter(([path]) => path === photoPath).length).toBeGreaterThanOrEqual(2))
+    const photoCallsBeforeHide = fetcher.mock.calls.filter(([path]) => path === photoPath).length
+    await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '謎を探す' }))
+    await waitFor(() => expect(revokeObjectURL.mock.calls.length).toBeGreaterThanOrEqual(2))
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:owner-fixture')
+    await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
+    await waitFor(() => expect(fetcher.mock.calls.filter(([path]) => path === photoPath).length).toBe(photoCallsBeforeHide + 1))
     holdPhoto = true
     await user.click(await screen.findByRole('button', { name: discovery.placeName }))
     await waitFor(() => expect(finishPhoto).toBeTypeOf('function'))
@@ -141,7 +150,7 @@ describe('explicit local API integration', () => {
     await act(async () => finishPhoto(photoResponse()))
     expect(screen.queryByRole('img', { name: '本人の記録写真' })).not.toBeInTheDocument()
     expect(screen.queryByText(afterClear.explanation)).not.toBeInTheDocument()
-    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    expect(createObjectURL).toHaveBeenCalledTimes(photoCallsBeforeHide + 1)
   })
   it('checks the server identity for a B-supplied quest without loading the fixed quest again', async () => {
     const auth = authFixture(true)
