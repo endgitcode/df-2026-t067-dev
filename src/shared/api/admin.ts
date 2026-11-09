@@ -49,13 +49,13 @@ export function shootingAreaStatus(zones: readonly CaptureZone[]): ManagedQuest[
   if (!zones.length) return 'unconfigured'
   return zones.every(({ radiusMeters }) => radiusMeters === CAPTURE_ZONE_RADIUS_METERS) ? 'configured' : 'needs-review'
 }
-export interface UpdateManagedQuest { expectedDraftRevision: number; draft: ManagedQuestDraft }
+export interface UpdateManagedQuest { expectedDraftRevision: number; draft: ManagedQuestDraft; deriveShootingArea?: true }
 export interface DraftSuggestion {
   orgId: string; questId: string; draftRevision: number; content: ManagedQuestDraft['content']; source: 'mock' | 'real'
 }
 export const REVIEW_FIELDS = [
   'materials.name', 'materials.evidence', 'materials.photoRights', 'referenceAssetId', 'hintAssetId',
-  'referenceApproval', 'hintApproval', 'shootingAreas', 'content.title', 'content.question', 'content.hints', 'content.verifiedFeatures',
+  'referenceApproval', 'hintApproval', 'targetSpot', 'shootingAreas', 'content.title', 'content.question', 'content.hints', 'content.verifiedFeatures',
 ] as const
 export type ReviewField = typeof REVIEW_FIELDS[number]
 export interface ReviewSubmission { quest: ManagedQuest; missing: ReviewField[] }
@@ -214,13 +214,15 @@ function parseHintAssetIds(input: unknown): (string | null)[] {
   return input.map((value, index) => value === null ? null : identifier(value, 'hintAssetIds.' + index))
 }
 
-export function parseCreateManagedQuest(input: unknown): { draft: ManagedQuestDraft } {
-  const d = fields(input, ['draft'], 'createManagedQuest')
-  return { draft: parseManagedQuestDraft(d.draft) }
+export function parseCreateManagedQuest(input: unknown): { draft: ManagedQuestDraft; deriveShootingArea?: true } {
+  const d = fields(input, ['draft', 'deriveShootingArea'], 'createManagedQuest')
+  if (d.deriveShootingArea !== undefined && d.deriveShootingArea !== true) throw new ContractError('deriveShootingArea')
+  return { draft: parseManagedQuestDraft(d.draft), ...(d.deriveShootingArea ? { deriveShootingArea: true } : {}) }
 }
 export function parseUpdateManagedQuest(input: unknown): UpdateManagedQuest {
-  const d = fields(input, ['expectedDraftRevision', 'draft'], 'updateManagedQuest')
-  return { expectedDraftRevision: revision(d.expectedDraftRevision), draft: parseManagedQuestDraft(d.draft) }
+  const d = fields(input, ['expectedDraftRevision', 'draft', 'deriveShootingArea'], 'updateManagedQuest')
+  const { expectedDraftRevision, ...body } = d
+  return { expectedDraftRevision: revision(expectedDraftRevision), ...parseCreateManagedQuest(body) }
 }
 export function parseDraftRevisionRequest(input: unknown): { expectedDraftRevision: number } {
   const d = fields(input, ['expectedDraftRevision'], 'draftRevisionRequest')
@@ -228,6 +230,12 @@ export function parseDraftRevisionRequest(input: unknown): { expectedDraftRevisi
 }
 export const parseSubmitReview = parseDraftRevisionRequest
 export function parseReviewSubmission(input: unknown): ReviewSubmission {
+  const result = parsePublicationReadiness(input)
+  if (result.quest.status !== (result.missing.length ? 'draft' : 'review_pending')) throw new ContractError('reviewSubmission.status')
+  return result
+}
+
+export function parsePublicationReadiness(input: unknown): ReviewSubmission {
   const d = fields(input, ['quest', 'missing'], 'reviewSubmission')
   const quest = parseManagedQuest(d.quest)
   if (!Array.isArray(d.missing) || d.missing.length > REVIEW_FIELDS.length) throw new ContractError('reviewSubmission.missing')
@@ -235,7 +243,7 @@ export function parseReviewSubmission(input: unknown): ReviewSubmission {
     if (!REVIEW_FIELDS.includes(value as ReviewField)) throw new ContractError('reviewSubmission.missing')
     return value as ReviewField
   })
-  if (new Set(missing).size !== missing.length || quest.status !== (missing.length === 0 ? 'review_pending' : 'draft')) {
+  if (new Set(missing).size !== missing.length) {
     throw new ContractError('reviewSubmission.status')
   }
   return { quest, missing }

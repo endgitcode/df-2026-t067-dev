@@ -7,6 +7,8 @@ import { useRequestAction } from '../../shared/useRequestAction'
 export interface LocalDraftConnection {
   taskFocused?: boolean
   workflowPart?: 1 | 2 | 3
+  onDirty?: (dirty: boolean) => void
+  onSaving?: (busy: boolean) => void
   onWorkflowSave?: (record: ManagedQuest, advance: boolean) => void
   api: Pick<ApiClient, 'uploadOrgAsset' | 'createManagedQuest' | 'updateManagedQuest' | 'generateManagedQuestDraft' | 'canLookupSpotAddress' | 'lookupSpotAddress'>
   initial: ManagedQuest | null
@@ -42,9 +44,10 @@ export function useLocalDraftSave(connection?: LocalDraftConnection) {
       return
     }
     let attemptedCreate = false
-    const operation = begin(() => setState(saveFailure(undefined, attemptedCreate)))
+    const operation = begin(() => { setState(saveFailure(undefined, attemptedCreate)); connection.onSaving?.(false) })
     if (!operation) return
     setState({ status: 'saving' })
+    connection.onSaving?.(true)
     const { api, member: { orgId } } = connection
     const call = { signal: operation.signal }
     try {
@@ -66,16 +69,20 @@ export function useLocalDraftSave(connection?: LocalDraftConnection) {
         } else payload = { ...draft, hintAssetId: savedAsset.assetId }
       }
       attemptedCreate = record === null
-      const saved = record === null ? await api.createManagedQuest(orgId, payload, call)
-        : await api.updateManagedQuest(orgId, record.questId, { expectedDraftRevision: record.draftRevision, draft: payload }, call)
+      const saved = record === null ? await api.createManagedQuest(orgId, payload, { ...call, ...(connection.workflowPart ? { deriveShootingArea: true } : {}) })
+        : await api.updateManagedQuest(orgId, record.questId, { expectedDraftRevision: record.draftRevision, draft: payload, ...(connection.workflowPart ? { deriveShootingArea: true } : {}) }, call)
       if (!operation.isCurrent()) return
       setRecord(saved)
       setState({ status: 'saved' })
       upload.current = null
       onSaved(saved)
+      connection.onDirty?.(false)
     } catch (cause) {
       if (operation.isCurrent()) setState(saveFailure(cause, attemptedCreate))
-    } finally { operation.finish() }
+    } finally {
+      if (operation.isCurrent()) connection.onSaving?.(false)
+      operation.finish()
+    }
   }
 
   return { record, state, save }

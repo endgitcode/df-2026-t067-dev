@@ -5,8 +5,8 @@ import { PhotoRightsInput } from './PhotoRightsInput'
 import { normalizeHintAssets } from './hintAssets'
 import { useLocalDraftSave } from './useLocalDraftSave'
 
-export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1, rightsAssist = false, backLabel = '問題一覧へ戻る', onContinue }:  { api: ApiClient; initial: ManagedQuest; member: OrgMembership; onBack: () => void; initialSlot?: number; rightsAssist?: boolean; backLabel?: string; onContinue?: (record: ManagedQuest) => void }) {
-  const { record, state, save } = useLocalDraftSave({ api, initial, member, onBack, ...(onContinue ? { workflowPart: 3 } : {}) })
+export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1, rightsAssist = false, backLabel = '問題一覧へ戻る', onContinue, onDirty, onSaving, onSaved }:  { api: ApiClient; initial: ManagedQuest; member: OrgMembership; onBack: () => void; initialSlot?: number; rightsAssist?: boolean; backLabel?: string; onContinue?: (record: ManagedQuest) => void; onDirty?: (dirty: boolean) => void; onSaving?: (busy: boolean) => void; onSaved?: (record: ManagedQuest) => void }) {
+  const { record, state, save } = useLocalDraftSave({ api, initial, member, onBack, ...(onContinue ? { workflowPart: 3, onDirty, onSaving } : {}) })
   const [slot, setSlot] = useState(initialSlot)
   const [file, setFile] = useState<File | null>(null)
   const [rights, setRights] = useState('')
@@ -22,6 +22,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
 
   function clearSelection() {
     setFile(null)
+    onDirty?.(false)
     setRights('')
     setReuseNeeded(false); previousPhoto.current = null
     if (input.current) input.current.value = ''
@@ -33,6 +34,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
     const advance = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'next'
     void save(current.draft, { file, purpose: 'public_hint', photoRights: rights, hintIndex: slot }, (saved) => {
       clearSelection()
+      onSaved?.(saved)
       if (advance) onContinue?.(saved)
     })
   }
@@ -40,7 +42,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
   function remove(index: number) {
     const { hintAssetIds, hintAssetId } = normalizeHintAssets(current.draft)
     hintAssetIds[index - 1] = null
-    void save({ ...current.draft, hintAssetId, hintAssetIds }, undefined, clearSelection)
+    void save({ ...current.draft, hintAssetId, hintAssetIds }, undefined, (saved) => { clearSelection(); onSaved?.(saved) })
   }
 
   return <section className="form-section" aria-labelledby="hint-asset-title">
@@ -63,12 +65,13 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
         <label>設定するヒント<select value={slot} onChange={(event) => setSlot(Number(event.target.value))}>
           {activeSlots.map((number) => <option value={number} key={number}>ヒント {number}</option>)}
         </select></label>
-        <label>ヒント画像<input ref={input} type="file" accept="image/jpeg,image/png,image/webp"
+        <label>ヒント画像<input id="workflow-hint-image" ref={input} type="file" accept="image/jpeg,image/png,image/webp"
           onChange={(event) => {
             const next = event.target.files?.[0] ?? null
             if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
             if (next) previousPhoto.current = next
             setFile(next)
+            onDirty?.(next !== null)
           }} /></label>
         {!onContinue && (rightsAssist ? <PhotoRightsInput key={file ? `${slot}:${file.name}:${file.lastModified}` : `empty:${slot}`} purpose="public_hint" label="画像の出典と利用権" value={rights} onChange={value => { setRights(value); setReuseNeeded(false) }} /> : <label>画像の出典と利用権<textarea value={rights} onChange={event => setRights(event.target.value)} /></label>)}
         {!onContinue && reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替えた写真を公開ヒントに使う権利を確認し、入力済みの権利文を適用する</label>}

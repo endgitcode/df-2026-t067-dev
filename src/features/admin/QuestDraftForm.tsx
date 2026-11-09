@@ -155,6 +155,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   }, [step, rightsError])
 
   function markMaterialChange() {
+    connection?.onDirty?.(true)
     if (visitedDraft) setMaterialChanged(true)
   }
 
@@ -226,6 +227,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   }
 
   function editDraft(next: SetStateAction<DraftFields>) {
+    connection?.onDirty?.(true)
     setDraft(next)
     setDraftEdit((value) => value + 1)
   }
@@ -325,9 +327,9 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {part !== 2 && <><section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1}>{part ? '対象と参考写真' : '1/3 素材と場所'}</h2>
         {!part && <p className="helper">{focused ? '途中でも文章編集・保存できます。写真・権利などは公開までに必要です。' : '対象名は必須です。写真・権利などは公開までに必要で、下書きは未完成でも保存できます。'}</p>}
         <p className="helper">対象名は非公開です。</p>
-        <span className="helper">{focused ? '公開までに必須' : '必須（次へ進むとき）'}</span><label>対象名<input ref={nameRef} aria-required={!focused} aria-invalid={Boolean(draftEntryError && !name.trim())} aria-describedby={draftEntryError && !name.trim() ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
+        <span className="helper">{focused ? '公開までに必須' : '必須（次へ進むとき）'}</span><label>対象名<input id="workflow-target-name" ref={nameRef} aria-required={!focused} aria-invalid={Boolean(draftEntryError && !name.trim())} aria-describedby={draftEntryError && !name.trim() ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {draftEntryError && !name.trim() && <p id="name-error" className="field-error">対象名を入力してください。</p>}
-        <span className="helper">{part ? '公開までに必須・非公開' : '任意（後で登録可・非公開の照合用）'}</span><label className="file-label">参考写真（公開ヒントには自動流用しません）<input className="reference-photo-input" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
+        <span className="helper">{part ? '公開までに必須・非公開' : '任意（後で登録可・非公開の照合用）'}</span><label className="file-label">参考写真（公開ヒントには自動流用しません）<input id="workflow-reference" className="reference-photo-input" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
         <p id="photo-help" className="helper">{connection ? 'JPEG / PNG / WebP、送信上限4 MiB。' + (part ? '事前承認済みの画像を使ってください。' : '合成素材を使ってください。')
           : 'JPEG / PNG / WebP、選択上限5 MB。参考写真の選択・プレビューのみです。'}</p>
         {!photo && referenceAssetId && <p>保存済みの参考写真 <button type="button" onClick={() => {
@@ -357,9 +359,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         </>}
         {!part && <div className="private-setting"><strong>非公開の撮影地点・半径</strong><span>{areaStatus}</span><small>{connection ? '撮影可能範囲：中心から半径1km（固定）' : '安全上、値や入力欄を表示しません。'}</small></div>}
       </section>
-      {connection && <section className="form-section" aria-label="対象スポット登録">
-        {part && <p className="helper">対象スポットの場所（任意）</p>}
-        <SpotEditor input={spotInput} durable={connection.taskFocused || teamPreview} orgId={connection.member.orgId}
+      {connection && <section className="form-section" aria-label="対象スポット登録" id="workflow-spot" tabIndex={-1}>
+        <SpotEditor input={spotInput} deriveShootingArea={Boolean(part)} durable={connection.taskFocused || teamPreview} orgId={connection.member.orgId}
           canLookupSpotAddress={connection.api.canLookupSpotAddress} lookupSpotAddress={connection.api.lookupSpotAddress}
           onChange={(input) => { setSpotInput(input); setInputError(''); markMaterialChange() }} />
       </section>}</>}
@@ -398,7 +399,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     </form> : step === 'A04' ? <>
       <DraftEditor draft={draft} setDraft={editDraft} materialChanged={materialChanged} sampleConfirm={sampleConfirm}
         setSampleConfirm={setSampleConfirm} onBack={() => setStep('A03')} workflow={part === 3} onPreview={enterPreview} headingRef={a04HeadingRef} omitMemo={focused} allowSample={!connection} />
-      {connection && record && <DraftCandidate key={record.draftRevision + ':' + draftEdit} api={connection.api} saved={record} current={draft} omitNotes={focused} onApply={next => setDraft(current => focused ? { ...next, draftingNotes: current.draftingNotes } : next)} />}
+      {connection && record && <DraftCandidate key={record.draftRevision + ':' + draftEdit} api={connection.api} saved={record} current={draft} omitNotes={focused} onApply={next => editDraft(current => focused ? { ...next, draftingNotes: current.draftingNotes } : next)} />}
     </> : <>
       <section className="form-section" aria-label="公開までに足りないもの">
         <p><strong>公開までに足りないもの</strong></p>
@@ -421,7 +422,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         <button type="button" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => {
           saveDraft()
         }}>{saving ? '保存しています…' : '下書きを保存'}</button>
-        {part && <button type="button" className="workflow-primary" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('next')}>{part === 2 ? '保存して撮影範囲へ' : '保存して次へ'}</button>}
+        {part && <button type="button" className="workflow-primary" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('next')}>保存して次へ</button>}
         {!part && connection.onContinue && <details className="save-continue">
           <summary>保存して進む（進み先を選ぶ）</summary>
           <div className="admin-list-actions">

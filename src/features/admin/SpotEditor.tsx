@@ -5,9 +5,9 @@ import type { SpotAddressInput, SpotAddressLookup } from '../../shared/api/admin
 
 type Lookup = (orgId: string, input: SpotAddressInput, call?: { signal?: AbortSignal }) => Promise<SpotAddressLookup>
 
-export function SpotEditor({ input, onChange, durable = false, orgId, canLookupSpotAddress = false, lookupSpotAddress }: {
+export function SpotEditor({ input, onChange, durable = false, orgId, canLookupSpotAddress = false, lookupSpotAddress, deriveShootingArea = false }: {
   input: SpotInput; onChange(input: SpotInput): void; durable?: boolean; orgId?: string
-  canLookupSpotAddress?: boolean; lookupSpotAddress?: Lookup
+  canLookupSpotAddress?: boolean; lookupSpotAddress?: Lookup; deriveShootingArea?: boolean
 }) {
   const [message, setMessage] = useState('')
   const [showMap, setShowMap] = useState(false)
@@ -82,7 +82,7 @@ export function SpotEditor({ input, onChange, durable = false, orgId, canLookupS
 
   return <fieldset>
     <legend>対象スポットの位置・住所</legend>
-    <p>クリア後の案内に使います。撮影者の立ち位置は「撮影範囲」で別に設定します。</p>
+    <p>{deriveShootingArea ? '公開までに必須。保存した位置を中心に、半径1kmの撮影範囲を設定します。住所はクリア後の案内にも使います。' : 'クリア後の案内に使います。撮影者の立ち位置は「撮影範囲」で別に設定します。'}</p>
     <label>Google Maps共有URL<input type="url" value={input.url} maxLength={4096}
       onChange={(event) => {
         const url = event.target.value
