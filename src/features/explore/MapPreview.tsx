@@ -14,6 +14,7 @@ import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, M
 import { boundsForFilter } from '../quests/prefectureBounds'
 import { getRegionAreas } from '../quests/areaHierarchy'
 import { areaPinPosition } from './viewportQuests'
+import { isMapControlCovered, isMapControlWithin } from './mapControlVisibility'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
 // 日本国内専用の見た目（D-27／D-41）は、初期表示の日本全体フィットと最小ズームで維持する。
@@ -141,9 +142,11 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const locationMarkerRef = useRef<MarkerInstance | null>(null)
   const dataLayer = useRef<DataLayer | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
+  const mapShell = useRef<HTMLDivElement>(null)
   // PC幅（981px以上）ではボトムシートを使わず、左サイドバーのパネルに一覧を出す（D-34）。
   const wideViewport = useWideViewport()
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
+  const [inactiveMapControls, setInactiveMapControls] = useState<ReadonlySet<string>>(() => new Set())
   const [locationStatus, setLocationStatus] = useState('')
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
 
@@ -263,6 +266,88 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const wideByWidth = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     && window.matchMedia(WIDE_VIEWPORT_QUERY).matches
   const panelMode = sheetMode && (wideViewport || wideByWidth)
+  // Keep mobile map buttons at a viewport-fixed position and disable each button
+  // while any part of its hit target is underneath the moving sheet.
+  useLayoutEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const media = window.matchMedia('(max-width: 980px)')
+    if (!sheetMode || panelMode || !media.matches) return
+    const shell = mapShell.current
+    const sheet = shell?.querySelector<HTMLElement>('.explore-sheet')
+    const controls = shell?.querySelector<HTMLElement>('.map-controls')
+    const handle = shell?.querySelector<HTMLButtonElement>('.explore-sheet-handle')
+    const buttons = controls ? [...controls.querySelectorAll<HTMLButtonElement>('button')] : []
+    if (!sheet || !controls || !buttons.length) return
+
+    const update = () => {
+      if (!media.matches) { setInactiveMapControls(new Set()); return }
+      const sheetRect = sheet.getBoundingClientRect()
+      const shellRect = shell!.getBoundingClientRect()
+      const viewportLeft = window.visualViewport?.offsetLeft ?? 0
+      const viewportTop = window.visualViewport?.offsetTop ?? 0
+      const viewportWidth = window.visualViewport?.width ?? window.innerWidth
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight
+      const visibleBounds = {
+        left: Math.max(viewportLeft, shellRect.left), top: Math.max(viewportTop, shellRect.top),
+        right: Math.min(viewportLeft + viewportWidth, shellRect.right), bottom: Math.min(viewportTop + viewportHeight, shellRect.bottom),
+        width: Math.max(0, Math.min(viewportLeft + viewportWidth, shellRect.right) - Math.max(viewportLeft, shellRect.left)),
+        height: Math.max(0, Math.min(viewportTop + viewportHeight, shellRect.bottom) - Math.max(viewportTop, shellRect.top)),
+      }
+      const inactiveLabels = new Set<string>()
+      for (const button of buttons) {
+        const rect = button.getBoundingClientRect()
+        const label = button.getAttribute('aria-label') ?? ''
+        const available = isMapControlWithin(rect, visibleBounds)
+        const covered = available && isMapControlCovered(rect, sheetRect)
+        if (!available || covered) {
+          if (document.activeElement === button) handle?.focus({ preventScroll: true })
+          inactiveLabels.add(label)
+        }
+      }
+      setInactiveMapControls((current) => current.size === inactiveLabels.size && [...current].every((label) => inactiveLabels.has(label)) ? current : inactiveLabels)
+    }
+    update()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    observer?.observe(sheet)
+    observer?.observe(controls)
+    let animationFrame = 0
+    const sampleTransition = () => {
+      update()
+      if (animationFrame) animationFrame = window.requestAnimationFrame(sampleTransition)
+    }
+    const onTransitionRun = (event: TransitionEvent) => {
+      if (event.propertyName !== 'height' || animationFrame) return
+      animationFrame = window.requestAnimationFrame(sampleTransition)
+    }
+    const stopTransitionSampling = (event: TransitionEvent) => {
+      if (event.propertyName !== 'height') return
+      if (animationFrame) window.cancelAnimationFrame(animationFrame)
+      animationFrame = 0
+      update()
+    }
+    sheet.addEventListener('transitionrun', onTransitionRun)
+    sheet.addEventListener('transitionend', stopTransitionSampling)
+    sheet.addEventListener('transitioncancel', stopTransitionSampling)
+    const onViewportChange = () => update()
+    window.addEventListener('resize', onViewportChange)
+    window.addEventListener('scroll', onViewportChange, true)
+    window.visualViewport?.addEventListener('resize', onViewportChange)
+    window.visualViewport?.addEventListener('scroll', onViewportChange)
+    media.addEventListener('change', onViewportChange)
+    return () => {
+      observer?.disconnect()
+      if (animationFrame) window.cancelAnimationFrame(animationFrame)
+      sheet.removeEventListener('transitionrun', onTransitionRun)
+      sheet.removeEventListener('transitionend', stopTransitionSampling)
+      sheet.removeEventListener('transitioncancel', stopTransitionSampling)
+      window.removeEventListener('resize', onViewportChange)
+      window.removeEventListener('scroll', onViewportChange, true)
+      window.visualViewport?.removeEventListener('resize', onViewportChange)
+      window.visualViewport?.removeEventListener('scroll', onViewportChange)
+      media.removeEventListener('change', onViewportChange)
+      setInactiveMapControls(new Set())
+    }
+  }, [sheetMode, panelMode, status, sheetHeight, zoom, locating])
   // 地域の範囲へ地図をフィットさせる共通処理。選択時フィットと、再タップ時の再フィットで使う。
   // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
   // 実際に見えている領域の中央に来るようにする。
@@ -720,7 +805,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const [browseBelowMap, setBrowseBelowMap] = useState(false)
   const belowMap = sheetMode && !panelMode && browseBelowMap
   const belowMapList = useRef<HTMLElement>(null)
-  const mapShell = useRef<HTMLDivElement>(null)
   const mapControlGesture = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
   const mapControlGestureProps = {
     onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => {
@@ -802,13 +886,13 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     : null
   const mapControls = status === 'ready' ? <div className="map-controls" {...mapControlGestureProps}>
     <div className="map-zoom" aria-label="地図の表示操作">
-      <div className="map-zoom-group">
-        <button type="button" aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
-        <button type="button" aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
-        <button type="button" aria-label="地図の表示を戻す" onClick={reset}><Icon name="reset" /></button>
+      <div className={'map-zoom-group' + (['地図を拡大', '地図を縮小', '地図の表示を戻す'].every((label) => inactiveMapControls.has(label)) ? ' is-hidden' : '')}>
+        <button type="button" className={inactiveMapControls.has('地図を拡大') ? 'is-hidden' : undefined} aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM || inactiveMapControls.has('地図を拡大')} inert={inactiveMapControls.has('地図を拡大')} aria-hidden={inactiveMapControls.has('地図を拡大')} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
+        <button type="button" className={inactiveMapControls.has('地図を縮小') ? 'is-hidden' : undefined} aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM || inactiveMapControls.has('地図を縮小')} inert={inactiveMapControls.has('地図を縮小')} aria-hidden={inactiveMapControls.has('地図を縮小')} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
+        <button type="button" className={inactiveMapControls.has('地図の表示を戻す') ? 'is-hidden' : undefined} aria-label="地図の表示を戻す" disabled={inactiveMapControls.has('地図の表示を戻す')} inert={inactiveMapControls.has('地図の表示を戻す')} aria-hidden={inactiveMapControls.has('地図の表示を戻す')} onClick={reset}><Icon name="reset" /></button>
       </div>
     </div>
-    <button type="button" className="map-locate-fab" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating} onClick={locate}><Icon name="locate" /></button>
+    <button type="button" className={'map-locate-fab' + (inactiveMapControls.has('現在地へ戻る') ? ' is-hidden' : '')} aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating || inactiveMapControls.has('現在地へ戻る')} inert={inactiveMapControls.has('現在地へ戻る')} aria-hidden={inactiveMapControls.has('現在地へ戻る')} onClick={locate}><Icon name="locate" /></button>
   </div> : null
 
   // 公開地図シェルの間は縁なし fullbleed にする（地図の ready 前から。ブートと形を揃える）。
