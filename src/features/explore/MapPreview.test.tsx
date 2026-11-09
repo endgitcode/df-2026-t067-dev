@@ -7,10 +7,11 @@ const areas: PublicArea[] = [{ areaId: 'area-a', label: 'A', publishedCount: 1, 
   publicGeometry: { type: 'Polygon', coordinates: [[[139, 35], [140, 35], [140, 36], [139, 36], [139, 35]], [[139.2, 35.2], [139.3, 35.2], [139.3, 35.3], [139.2, 35.3], [139.2, 35.2]]] } }]
 
 describe('Google map panel', () => {
-  it('explains that a key is required while leaving problem browsing available', () => {
+  it('explains that a key is required without a browsing-continues note', () => {
     render(<MapPreview />)
     expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
-    expect(screen.getByText('地図を表示するには設定をご確認ください。問題の閲覧は続けられます。')).toBeVisible()
+    expect(screen.getByText('地図を表示するには設定をご確認ください。')).toBeVisible()
+    expect(screen.queryByText(/問題の閲覧は続けられます/)).not.toBeInTheDocument()
   })
   it('does not create quest markers from the currently selected sample', () => {
     render(<MapPreview />)
@@ -40,7 +41,9 @@ describe('Google map panel', () => {
     } as never }
     try {
       const { unmount } = render(<ConfiguredMapPreview />)
-      expect(await screen.findByRole('alert')).toHaveTextContent('地図を読み込めませんでした')
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('地図を読み込めませんでした')
+      expect(alert).not.toHaveTextContent('問題の閲覧は続けられます')
       expect(screen.queryByRole('button', { name: '地図を拡大' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'ページを再読み込み' })).toBeVisible()
       unmount()
