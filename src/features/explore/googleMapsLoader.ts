@@ -25,6 +25,10 @@ export interface MapInstance {
 
 export interface MarkerInstance {
   setMap(map: MapInstance | null): void
+  setPosition?(position: { lat: number; lng: number }): void
+  setTitle?(title: string): void
+  setZIndex?(zIndex: number): void
+  setOptions?(options: Record<string, unknown>): void
   setIcon?(icon: { url: string }): void
   addListener(name: string, callback: () => void): { remove(): void }
 }
