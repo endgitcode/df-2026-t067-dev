@@ -120,6 +120,9 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   // 選択状態）も同様に隠すだけで壊さないため、タブ往復でフィルタ・一覧・地図・選択が
   // 食い違わない（往復の前後で状態は visibility だけが変わる）。
   const [recordsVisited, setRecordsVisited] = useState(false)
+  // 記録画面へ入るたびに数え、一覧の取り直しの合図にする。画面は常駐させる
+  // （D-53）ため、合図が無いと初回の取得結果がセッション中ずっと残ってしまう。
+  const [recordsVisit, setRecordsVisit] = useState(0)
   const questCard = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (isQuestOpen && openedRequest && document.querySelector('.is-browsing-below-map')) {
@@ -301,7 +304,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
 
   function navigateToRecords(open: boolean) {
     if (!open) setRecordDestination(null)
-    else setRecordsVisited(true)
+    else { setRecordsVisited(true); setRecordsVisit((value) => value + 1) }
     closeCamera()
     selectionGeneration.current++
     setFeedback(null)
@@ -436,7 +439,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {auth.status === 'checking' && <p role="status">ログイン状態を確認しています…</p>}
           {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">{notice.description}</p>}
           {uid !== null && visiblePending === null && (serverIdentity.result?.status === 'ready'
-            ? <OwnerDiscoveries key={uid} api={api} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
+            ? <OwnerDiscoveries key={uid} api={api} visit={recordsVisit} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
             : serverIdentity.result?.status === 'error'
               ? <><p role="alert">ログインを確認できませんでした。</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></>
               : <p role="status">ログインを確認しています…</p>)}

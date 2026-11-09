@@ -73,12 +73,22 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
   </section>
 }
 
-export function OwnerDiscoveries({ api, initialId }: { api: ApiClient; initialId?: string }) {
+export function OwnerDiscoveries({ api, initialId, visit = 0 }: { api: ApiClient; initialId?: string; visit?: number }) {
   const [selected, setSelected] = useState<string | null>(initialId ?? null)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   const [deleted, setDeleted] = useState(false)
   const read = useCallback((signal: AbortSignal) => api.listDiscoveries({ limit: 20, cursor }, { signal }), [api, cursor])
   const { result, retry } = useRemote(selected === null, read)
+  // 記録画面は一度開くとアンマウントせず隠して常駐させる（D-53）ため、この部品も
+  // 残り続け、初回の取得結果だけが表示され続けてしまう。画面へ入り直すたびに
+  // （visit の増加で）一覧を取り直し、初回に空・失敗だった表示が居座ることと、
+  // 挑戦で増えた記録が再読み込みなしでは出てこないことを防ぐ。
+  const mountedVisit = useRef(visit)
+  useEffect(() => {
+    if (visit === mountedVisit.current) return
+    mountedVisit.current = visit
+    retry()
+  }, [visit, retry])
   if (selected !== null) return <DiscoveryDetail api={api} id={selected} onBack={() => { setSelected(null); retry() }}
     onDeleted={() => { setDeleted(true); setSelected(null); setCursor(undefined); retry() }} />
   const confirmation = deleted && <p role="status">記録と写真の削除が完了しました。</p>
