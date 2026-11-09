@@ -354,3 +354,24 @@ describe('sheet peek height and overflow guards (D-73)', () => {
     expect(css).not.toContain('.map-filter-chips::-webkit-scrollbar')
   })
 })
+
+// ボタンの尺と記録画面の統一（D-74）。CSS の実測は jsdom ではできないため、
+// 規則の文字列と置き場所で担保する。
+describe('button widths and records alignment (D-74)', () => {
+  it('stretches the hint buttons across their frame', () => {
+    expect(css).toContain('.hint-item > button, .hint-item [role="alert"] button, .hint-version-changed button { width: 100%; min-height: 44px;')
+    expect(css).toContain('.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 44px;')
+  })
+
+  it('keeps the PC handoff emphasis on the direct start and widens the records body column', () => {
+    expect(css).toContain('.quest-handoff-toggle { width: 100%; min-height: 44px;')
+    expect(css).not.toContain('.quest-handoff-direct')
+    expect(css).toContain('.owner-records { display: grid; gap: 16px; max-width: 1080px; }')
+  })
+
+  it('gives the mobile records header the same transparent floating look as explore', () => {
+    const mediaAt = css.indexOf('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand')
+    expect(mediaAt).toBeGreaterThan(-1)
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { background: transparent; border-bottom: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }')
+  })
+})
