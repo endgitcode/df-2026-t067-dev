@@ -500,6 +500,9 @@ describe('Google map panel', () => {
     expect(document.querySelector('.map-location-status')).toHaveTextContent('アドレスバーのサイト情報から位置情報を「確認」または「許可」に変更')
     // そのセッションで最初の現在地利用なので、結果メッセージに送信案内が一度だけ添えられる（D-28）。
     expect(document.querySelector('.map-location-status')).toHaveTextContent('位置情報はGoogle Mapsに送信されます')
+    // 失敗の表示は閉じるボタンでも即座に消せる（D-58）。
+    await user.click(screen.getByRole('button', { name: '位置情報の表示を閉じる' }))
+    expect(document.querySelector('.map-location-status')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '現在地へ戻る' }))
     expect(getCurrentPosition).toHaveBeenCalledTimes(3)
     act(() => success?.({ coords: { latitude: 35.6812, longitude: 139.7671 } }))
@@ -638,6 +641,9 @@ describe('Google map panel', () => {
     expect(document.querySelector('.map-location-status')).toHaveTextContent('現在地を取得できませんでした')
     act(() => success?.({ coords: { latitude: 35, longitude: 139 } }))
     expect(setCenter).not.toHaveBeenCalled()
+    // 失敗の表示も常駐させず、10秒で自動で消える（D-58）。
+    await act(() => vi.advanceTimersByTimeAsync(10_000))
+    expect(document.querySelector('.map-location-status')).not.toBeInTheDocument()
     delete window.google
     vi.useRealTimers()
   })

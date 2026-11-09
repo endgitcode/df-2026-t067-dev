@@ -94,7 +94,7 @@ describe('PC floating sidebar (D-38)', () => {
     // 押し出すと、相対配置と重なって二重に効く（2026-11-08 の実機報告）。
     expect(css).not.toContain('body.explore-fullbleed .explore-workspace { padding-left:')
     expect(css).not.toContain('.map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }')
-    const rule = 'body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap);'
+    const rule = 'body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: calc(var(--pc-sidebar-gap) + 24px); left: var(--pc-sidebar-gap);'
     expect(css).toContain(rule)
     expect(css.indexOf(rule)).toBeGreaterThan(mediaAt)
   })
