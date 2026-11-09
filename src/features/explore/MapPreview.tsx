@@ -11,6 +11,8 @@ import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
 import { arrangePins } from './pinClustering'
 import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
+import { boundsForFilter } from '../quests/prefectureBounds'
+import { getRegionAreas } from '../quests/areaHierarchy'
 import { areaPinPosition } from './viewportQuests'
 
 const JAPAN = { lat: 36.2048, lng: 138.2529 }
@@ -36,20 +38,20 @@ const LOCATION_ZOOM = 14
 const LOCATION_DEADLINE_MS = 10_000
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
 
-function pinIcon(color: string, count: number, emphasized = false): { url: string } {
+function pinIcon(color: string, count: number, emphasized = false, dimmed = false): { url: string } {
   const center = count >= 2
     ? `<circle cx="18" cy="17" r="9.5" fill="#ffffff"/><text x="18" y="21.5" text-anchor="middle" font-family="sans-serif" font-size="${count >= 10 ? 10 : 12}" font-weight="700" fill="${PIN_STROKE}">${count}</text>`
     : '<circle cx="18" cy="17" r="7" fill="#ffffff"/>'
   // ピンの色は青と赤だけ。ホバー／フォーカス中は赤くし、選択中も呼び出し側が同じ赤を渡す。
   const fill = emphasized ? PIN_ACTIVE_COLOR : color
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="0 0 36 44"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="0 0 36 44" opacity="${dimmed && !emphasized ? 0.3 : 1}"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
 // クラスタマーカー（D-52）：重なったピンの合計問題数を出す丸いバッジ。ピンの色（青）に揃え、
 // 形でピンと区別する（尾のない円＋二重リング）。
-function clusterIcon(totalQuests: number): { url: string } {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="${PIN_COLOR}" stroke="${PIN_STROKE}" stroke-width="2"/><circle cx="20" cy="20" r="12" fill="#ffffff"/><text x="20" y="25" text-anchor="middle" font-family="sans-serif" font-size="${totalQuests >= 10 ? 11 : 13}" font-weight="700" fill="${PIN_STROKE}">${totalQuests}</text></svg>`
+function clusterIcon(totalQuests: number, dimmed = false): { url: string } {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" opacity="${dimmed ? 0.3 : 1}"><circle cx="20" cy="20" r="17" fill="${PIN_COLOR}" stroke="${PIN_STROKE}" stroke-width="2"/><circle cx="20" cy="20" r="12" fill="#ffffff"/><text x="20" y="25" text-anchor="middle" font-family="sans-serif" font-size="${totalQuests >= 10 ? 11 : 13}" font-weight="700" fill="${PIN_STROKE}">${totalQuests}</text></svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
@@ -106,7 +108,8 @@ function clampFitZoomOnIdle(instance: MapInstance): void {
 // 共有の定数にして同一性を安定させる（Issue #129）。
 const EMPTY_AREAS: PublicArea[] = []
 
-export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, onDeselectQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
+export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefecture = '', selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, onDeselectQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
+  filterRegion?: string; filterPrefecture?: string
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; questsLoading?: boolean; onOpenQuest?: (questId: string) => void; onDeselectQuest?: () => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
   /** 探索画面が前面にあるか。記録画面の表示中は探索側を隠したまま常駐させるため、
@@ -303,7 +306,14 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
     if (!google?.LatLngBounds) return false
     const bounds = new google.LatLngBounds()
     let fitted = false
-    for (const area of areas) {
+    const filterBounds = boundsForFilter(filterRegion, filterPrefecture)
+    if (filterBounds) {
+      for (const lat of [filterBounds.south, filterBounds.north]) {
+        for (const lng of [filterBounds.west, filterBounds.east]) bounds.extend({ lat, lng })
+      }
+      fitted = true
+    }
+    for (const area of filterBounds ? [] : areas) {
       if (area.publishedCount < 1) continue
       const position = areaPinPosition(area)
       if (!position) continue
@@ -316,7 +326,7 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
     initialFitDone.current = instance
     initialFitSignature.current = `${sheetMode}:${panelMode}`
     return true
-  }, [areas, wideViewport, sheetMode, panelMode])
+  }, [areas, filterRegion, filterPrefecture, wideViewport, sheetMode, panelMode])
   // カメラが、その地域へのフィット完了位置に（実質）留まっているか。
   const cameraAtFit = useCallback((instance: MapInstance, areaId: string): boolean => {
     const snapshot = fittedCamera.current
@@ -458,6 +468,7 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
       // 現在のズームで画面上重なるピンはクラスタにまとめる（D-52）。フィット対象の
       // 地域（選択中の地域／選択中の問題の所属地域）のピンはクラスタに隠さず常に
       // 対象外とする。まとめ直しはズームが変わるたびにこの効果が担う。
+      const emphasizedIds = new Set(getRegionAreas(areas, filterRegion, filterPrefecture).map((area) => area.areaId))
       const pinPoints = []
       const areaById = new Map<string, PublicArea>()
       for (const area of areas) {
@@ -469,12 +480,13 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
       }
       for (const arrangement of arrangePins(pinPoints, zoom, fitAreaId)) {
         if (arrangement.kind === 'cluster') {
+          const dimmed = arrangement.points.every((point) => !emphasizedIds.has(point.areaId))
           const marker = new google.Marker({
             position: { lat: arrangement.lat, lng: arrangement.lng }, map: instance,
             title: `重なっている${arrangement.points.length}地域のピン（合計${arrangement.totalQuests}問）`,
-            icon: clusterIcon(arrangement.totalQuests),
+            icon: clusterIcon(arrangement.totalQuests, dimmed),
             cursor: 'pointer',
-            zIndex: 0,
+            zIndex: dimmed ? 0 : 1,
           })
           listeners.push(marker.addListener('click', () => {
             if (!active || !google.LatLngBounds) return
@@ -496,14 +508,15 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
         if (!area) continue
         const position = { lat: arrangement.point.lat, lng: arrangement.point.lng }
         const selected = area.areaId === selectedAreaId
+        const dimmed = !selected && !emphasizedIds.has(area.areaId)
         // 選択中のピンもホバーと同じ赤にする（ピン本体に黄色は使わない。黄色は地域の塗りだけ）。
         const pinColor = selected ? PIN_ACTIVE_COLOR : PIN_COLOR
         const marker = new google.Marker({
           position, map: instance,
           title: `${area.label}の探索エリア（${area.publishedCount}問）`,
-          icon: pinIcon(pinColor, area.publishedCount),
+          icon: pinIcon(pinColor, area.publishedCount, false, dimmed),
           cursor: 'pointer',
-          zIndex: selected ? 2 : 1,
+          zIndex: selected ? 3 : dimmed ? 0 : 2,
         })
         listeners.push(marker.addListener('click', () => {
           if (!active) return
@@ -512,6 +525,7 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
           // 従来どおり選択解除として扱う（ハイライトを外し、解除は呼び出し側が担う）。
           if (selected && refitIfCameraMoved(instance, area)) return
           setPinAreaId((current) => (current === area.areaId ? null : area.areaId))
+          // 絞り込み外の薄いピンも、通常のピンと同じ onSelectArea で選択できる。
           onSelectArea?.(area.areaId)
         }))
         // Google Maps のポインタイベントに任せ、PC・タッチ端末で共通の強調表示を行う。
@@ -520,7 +534,7 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
             if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, true))
           }))
           listeners.push(marker.addListener('mouseout', () => {
-            if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount))
+            if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, false, dimmed))
           }))
         }
         created.push(marker)
@@ -533,7 +547,7 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, fitAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas])
+  }, [areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas])
 
   useEffect(() => {
     const instance = map.current
@@ -581,43 +595,18 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
     } catch { failArea() }
   }, [selectedAreaId, fitAreaId, fitKey, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest, fitToArea])
 
-  // 地方・都道府県の絞り込みで地域の集合が変わったら、その範囲へ地図を寄せる（D-60）。
-  // 絞っても地図が日本全体のままだと、絞った結果が空っぽに見えた。
-  // 解除して全件に戻れば、初期表示と同じ全ピンの範囲へ戻る。読み込み中の一時的な
-  // 空は範囲変更として扱わない。地域・問題のいずれかが選択中は選択フィットが優先する。
-  // 範囲は地域の境界形状から作り、寄せ過ぎは上限で抑える（D-60 追記）。
+  // D-60: ピン数によらず静的な都道府県／地方全体へフィットする。
+  // 選択中の地域・問題へのフィットを優先し、解除時は全ピンへ戻す。
   const lastAreasKey = useRef<{ map: MapInstance; key: string } | null>(null)
   useEffect(() => {
     const instance = map.current
     if (!API_KEY || !instance || status !== 'ready' || areas.length === 0) return
-    const key = areas.map((area) => area.areaId).sort().join(',')
+    const key = `${filterRegion}:${filterPrefecture}:${areas.map((area) => area.areaId).sort().join(',')}`
     const previous = lastAreasKey.current
     lastAreasKey.current = { map: instance, key }
-    if (!previous || previous.map !== instance || previous.key === key) return
-    if (fitAreaId) return
-    const google = window.google?.maps
-    if (!google?.LatLngBounds) return
-    const bounds = new google.LatLngBounds()
-    let fitted = false
-    for (const area of areas) {
-      if (area.publishedCount < 1) continue
-      // 範囲はピンの位置ではなく地域の境界形状で作る（D-60 追記）。ピン位置だけだと
-      // 対象が1地域の時に範囲が実質1点になり、最大倍率まで寄ってしまった。
-      const fitPoints = areaFitPoints(area)
-      if (fitPoints) {
-        for (const point of fitPoints) { bounds.extend(point); fitted = true }
-        continue
-      }
-      const position = areaPinPosition(area)
-      if (!position) continue
-      bounds.extend(position)
-      fitted = true
-    }
-    if (!fitted) return
-    if (showPublicAreas) instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
-    else instance.fitBounds(bounds)
-    clampFitZoomOnIdle(instance)
-  }, [areas, fitAreaId, status, showPublicAreas, wideViewport])
+    if (!previous || previous.map !== instance || previous.key === key || fitAreaId) return
+    fitInitialAreas(instance)
+  }, [areas, filterRegion, filterPrefecture, fitAreaId, status, fitInitialAreas])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
