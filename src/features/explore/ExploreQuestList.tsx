@@ -99,7 +99,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
       </div>
       {quests.length === 0 && loading
         ? <ul className="explore-quest-list" aria-hidden="true">
-          {[0, 1, 2, 3, 4].map((index) => <li key={index}><div className="explore-quest-card explore-quest-skeleton" /></li>)}
+          {[0, 1, 2, 3, 4].map((index) => <li key={index}><div className="explore-quest-skeleton" aria-hidden="true" /></li>)}
         </ul>
         : quests.length === 0
         ? <p className="explore-list-empty">選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。</p>

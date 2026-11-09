@@ -226,13 +226,6 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
   const panel = (
     <section className={wide ? "camera-panel" : "camera-panel camera-overlay"} aria-label="写真撮影と確認">
       <h4>{photoUrl ? '写真を確認' : '写真を撮影'}</h4>
-      {!submissionStarted && <p className="sample-note">{answer
-        ? answer.dataMode === 'durable-local'
-          ? 'テスト送信で写真と位置を送ります。'
-          : answer.dataMode === 'team-preview'
-            ? '「写真と位置を送信」で判定します。'
-            : '「写真と位置をデモ送信」で受付を試せます。'
-        : '撮影地はこの画面内だけで保持します。'}</p>}
       {photoUrl ? <img className="photo-preview" src={photoUrl} alt="撮影した写真のプレビュー" />
         : <video ref={videoRef} className="camera-video" autoPlay playsInline muted aria-label="カメラ映像"
           onLoadedData={ready} onCanPlay={ready} onError={() => fail('カメラ映像を表示できませんでした。再試行してください。')} />}

@@ -252,9 +252,15 @@ describe('challenge before camera', () => {
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
     expect(screen.getByText('挑戦を開始しました。写真と位置を確認してから送信できます。')).toBeVisible()
     takePhoto()
-    expect(screen.getByText(/「写真と位置を送信」で判定します/)).toBeVisible()
+    // 細かい説明カードは出さない（写真確認は見出しと操作だけ）
+    expect(screen.queryByText(/「写真と位置を送信」で判定します/)).not.toBeInTheDocument()
+    expect(document.querySelector('.camera-overlay > p.sample-note')).toBeNull()
     await f.user.click(screen.getByRole('button', { name: '写真と位置を送信' }))
-    expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toHaveTextContent('受付済み・解析中')
+    const waiting = await screen.findByRole('status', { name: '写真の判定待ち' })
+    expect(waiting).toHaveTextContent('受付済み・解析中')
+    // 判定待ちにも細かい説明カード（sample-note）は出さない
+    expect(waiting.querySelector('.sample-note')).toBeNull()
+    expect(screen.queryByText(/「写真と位置を送信」で判定します/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'クリア！' }, { timeout: 4000 })).toBeVisible()
     expect(f.getAttempt).toHaveBeenCalledExactlyOnceWith(receipt.attemptId, { signal: expect.any(AbortSignal) })
