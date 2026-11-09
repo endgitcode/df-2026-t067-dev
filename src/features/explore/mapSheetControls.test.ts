@@ -512,7 +512,7 @@ describe('records body and mobile return clearance', () => {
   })
 })
 
-describe('traveler navigation selection (D-84)', () => {
+describe('traveler navigation selection (D-85)', () => {
   it('uses yellow, black 2px borders and no shadow on mobile and PC', () => {
     const theme = readCss('src/theme.css')
     expect(theme).toContain('--ui-accent: #ffe66b;')
