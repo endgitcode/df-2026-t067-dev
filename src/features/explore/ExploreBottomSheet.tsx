@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 
 export type SheetSnap = 'closed' | 'peek' | 'half' | 'full'
 
-// 覗き見では、ハンドル＋件数＋先頭の行1つが丸ごと収まる高さにする
-// （ドラッグしなくても最初の謎に届くことが狙い）。一覧の行はタイトルだけの
-// 簡素な形（D-46）になったため、内訳の目安：ハンドル34＋件数行・余白 約28＋
-// タイトル行 約46＋余裕 約20。
+// 覗き見では、ハンドル＋件数＋先頭の行2つが丸ごと収まる高さにする
+// （ドラッグしなくても最初の謎に届くことが狙い）。当初は行1つ分だったが、
+// 実地目視で「低すぎて1件目しか見えない」と報告があったため行2つ分に広げた（D-73）。
+// 一覧の行はタイトルだけの簡素な形（D-46）で、内訳の目安：ハンドル34＋
+// （本体側：上余白2＋件数行 約19＋行間10＋タイトル行 約46＋行間10＋タイトル行 約46）。
 // 全開では上部の地図操作（範囲チップ等）を残す。
-export const SHEET_PEEK_HEIGHT = 128
+export const SHEET_PEEK_HEIGHT = 168
 const SHEET_CLOSED_HEIGHT = 34
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
@@ -42,6 +43,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const drag = useRef<{ pointerId: number; startY: number; startHeight: number; distance: number } | null>(null)
   const suppressClick = useRef(false)
+  const reopenGesture = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
   const lastOpenSignal = useRef<string | null>(null)
   const bodyId = useId()
 
@@ -141,6 +143,26 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
     if (snap === 'closed' && onBrowseBelowMap) onBrowseBelowMap()
     else reopen()
   }
+  const reopenGestureProps = {
+    onPointerDownCapture: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      reopenGesture.current = event.pointerType === 'touch'
+        ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false }
+        : null
+    },
+    onPointerMoveCapture: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      const gesture = reopenGesture.current
+      if (gesture?.pointerId === event.pointerId && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 8) gesture.moved = true
+    },
+    onPointerCancelCapture: () => { reopenGesture.current = null },
+    onClickCapture: (event: ReactMouseEvent<HTMLButtonElement>) => {
+      const gesture = reopenGesture.current
+      reopenGesture.current = null
+      if (gesture?.moved && event.detail !== 0) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    },
+  }
 
   return <>
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
@@ -151,7 +173,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
       </button>
       <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
     </div>
-    {snap === 'closed' && <button ref={reopenRef} type="button" className="explore-sheet-reopen"
+    {snap === 'closed' && <button ref={reopenRef} type="button" className="explore-sheet-reopen" {...reopenGestureProps}
       inert={!reopenVisible} aria-hidden={!reopenVisible} disabled={!reopenVisible}
       {...(!onBrowseBelowMap ? { 'aria-expanded': false, 'aria-controls': bodyId } : {})}
       onClick={onReopenClick}>問題を見る</button>}

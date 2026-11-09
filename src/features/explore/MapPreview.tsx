@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode, RefObject } from 'react'
+import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport } from '../quests/useWideViewport'
@@ -670,6 +670,28 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const belowMap = sheetMode && !panelMode && browseBelowMap
   const belowMapList = useRef<HTMLElement>(null)
   const mapShell = useRef<HTMLDivElement>(null)
+  const mapControlGesture = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
+  const mapControlGestureProps = {
+    onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => {
+      mapControlGesture.current = event.pointerType === 'touch'
+        ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false }
+        : null
+    },
+    onPointerMoveCapture: (event: ReactPointerEvent<HTMLElement>) => {
+      const gesture = mapControlGesture.current
+      if (gesture?.pointerId === event.pointerId && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 8) gesture.moved = true
+    },
+    onPointerCancelCapture: () => { mapControlGesture.current = null },
+    onClickCapture: (event: ReactMouseEvent<HTMLElement>) => {
+      const gesture = mapControlGesture.current
+      mapControlGesture.current = null
+      // タッチスワイプ後に合成される誤クリックだけを抑え、タップとキーボード操作は残す。
+      if (gesture?.moved && event.detail !== 0) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    },
+  }
   const [pastMap, setPastMap] = useState(false)
   const updateMapScrollPosition = useCallback(() => {
     const bottom = mapShell.current?.getBoundingClientRect().bottom
@@ -727,7 +749,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const boundaryCredit = showBoundaryCredit && showPublicAreas
     ? <p className="map-boundary-credit">{boundaryCreditText}</p>
     : null
-  const mapControls = status === 'ready' ? <div className="map-controls">
+  const mapControls = status === 'ready' ? <div className="map-controls" {...mapControlGestureProps}>
     <div className="map-zoom" aria-label="地図の表示操作">
       <div className="map-zoom-group">
         <button type="button" aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
@@ -813,14 +835,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {status === 'ready' && !panelMode && (topOverlay || focusArea) && <div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}</div>}
       {status === 'ready' && panelMode && focusArea && <div className="map-topline is-sidebar"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
-      {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'}>
+      {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'} {...mapControlGestureProps}>
         {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。問題の閲覧は続けられます。</span></> :
           status === 'loading' ? <span>地図を読み込んでいます…</span> :
             <><strong>地図を読み込めませんでした</strong><span>問題の閲覧は続けられます。</span>{status === 'auth-error'
               ? <><span>地図の設定を確認して、このページを再読み込みしてください。</span><button type="button" onClick={() => window.location.reload()}>ページを再読み込み</button></>
               : <button type="button" onClick={() => { setStatus('loading'); setAttempt((value) => value + 1) }}>地図を再試行</button>}</>}
       </div>}
-      {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert"><strong>地域エリアを表示できませんでした</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
+      {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert" {...mapControlGestureProps}><strong>地域エリアを表示できませんでした</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
       {!sheetMode && mapControls}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
     </section>
@@ -843,7 +865,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
             onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap, true)}{boundaryCredit}</ExploreBottomSheet>
         : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>
-    {sheetMode && !panelMode && (pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button"
+    {sheetMode && !panelMode && (pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button" {...mapControlGestureProps}
       className={'explore-sheet-reopen map-browse-shortcut' + (pastMap ? ' is-return-to-map' : '')}
       inert={!pastMap && sheetHeight > 48} aria-hidden={!pastMap && sheetHeight > 48} disabled={!pastMap && sheetHeight > 48}
       onClick={pastMap ? returnToMap : browseQuests}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
