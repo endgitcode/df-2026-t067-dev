@@ -5,6 +5,17 @@ import App from './App'
 import { demoQuest } from './features/quests/demoQuest'
 
 describe('未接続の起動画面', () => {
+  it('ブランドはコンパスではなく装飾用の新アイコンを表示する', () => {
+    const { container } = render(<App />)
+    const mark = container.querySelector('.brand-mark')
+    const image = mark?.querySelector('img')
+    expect(image).toHaveAttribute('src', '/favicon.svg')
+    expect(image).toHaveAttribute('alt', '')
+    expect(image).toHaveAttribute('aria-hidden', 'true')
+    expect(mark?.querySelector('svg')).toBeNull()
+    expect(container.querySelector('.brand')).toHaveTextContent('NAZOP')
+  })
+
   it('認証設定がなくても入口を閲覧でき、未接続であることが分かる', () => {
     render(<App />)
 

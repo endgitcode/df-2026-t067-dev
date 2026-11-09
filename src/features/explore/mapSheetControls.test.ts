@@ -389,7 +389,7 @@ describe('chrome consistency (D-66)', () => {
   it('drops the offset shadow from the title pill, the brand mark, the side panel and the sheet', () => {
     // スマホ幅フルブリードのタイトルピル（PCはサイドバー内ブランドへ上書き）。
     expect(css).toContain('body.explore-fullbleed .brand { justify-self: start; width: fit-content; padding: 4px 10px 4px 4px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: none; }')
-    expect(css).toContain('.brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); }')
+    expect(css).toContain('.brand-mark { border: 0; background: transparent; }')
     expect(css).not.toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow);')
     expect(css).toContain('border-radius: 0; padding: 0 10px 16px;')
     expect(css).not.toContain('background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 300ms var(--ease-drawer), visibility 0s; }')

@@ -27,8 +27,8 @@ p { overflow-wrap: anywhere; }
   border-bottom: var(--ui-border-width) solid var(--ui-line); background: var(--ui-surface);
 }
 .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
-.brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: var(--ui-radius); background: var(--ui-ink); color: var(--ui-surface); }
-.brand-mark .icon { width: 26px; height: 26px; }
+.brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: var(--ui-radius); background: transparent; }
+.brand-mark img { display: block; width: 100%; height: 100%; border-radius: inherit; }
 .brand-copy { font-size: 16px; font-weight: var(--ui-weight-display); letter-spacing: .015em; white-space: nowrap; }
 /* タブはブランドの右＝左側に置く。探索画面（PC）でタブが左サイドバーの上段に
    あるのと基点を揃え、画面が変わってもタブの位置の考え方が変わらないようにする。 */
@@ -379,7 +379,6 @@ button.traveler-list-row { cursor: pointer; }
   .site-header { min-height: 75px; padding: 12px 17px; gap: 12px; }
   .brand { gap: 8px; }
   .brand-mark { width: 34px; height: 34px; border-radius: var(--ui-radius); }
-  .brand-mark .icon { width: 22px; height: 22px; }
   .brand-copy { font-size: 13px; }
   /* account-area は固定スロットのため max-width 制限しない（t154u） */
   .page { width: calc(100% - 32px); }
@@ -418,7 +417,7 @@ button.traveler-list-row { cursor: pointer; }
 
 /* Shared theme treatments for traveler, API, authentication and camera states. */
 .site-header { background: var(--ui-surface); }
-.brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); }
+.brand-mark { border: 0; background: transparent; }
 .desktop-nav .nav-active { color: var(--ui-ink); }
 .desktop-nav button { color: var(--ui-muted); }
 .explore-heading h1 { font-size: clamp(1.75rem, 3.2vw, 2.65rem); font-weight: var(--ui-weight-display); letter-spacing: -.04em; }
@@ -635,8 +634,6 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* ロゴマークは開閉中も縮めない（一定サイズ、t161u）。 */
   body:has(.traveler-shell) .brand-mark,
   body.explore-fullbleed .brand-mark { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 12px; }
-  body:has(.traveler-shell) .brand-mark .icon,
-  body.explore-fullbleed .brand-mark .icon { width: 20px; height: 20px; }
   /* アプリ名は折り返さず、幅と透明度でフェードアウトする。 */
   body:has(.traveler-shell) .brand-copy,
   body.explore-fullbleed .brand-copy {
@@ -748,8 +745,6 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   }
   body:has(.traveler-shell).explore-sidebar-collapsed .brand-mark,
   body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 32px; height: 32px; border-radius: 12px; }
-  body:has(.traveler-shell).explore-sidebar-collapsed .brand-mark .icon,
-  body.explore-fullbleed.explore-sidebar-collapsed .brand-mark .icon { width: 20px; height: 20px; }
   /* 閉じたときだけトグルを細い列の中（ナビ直下）へ。ロゴ／ナビアイコンの座標は変えない。 */
   body:has(.traveler-shell).explore-sidebar-collapsed .sidebar-toggle,
   body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {
@@ -839,7 +834,6 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* 上部は帯ではなく小さな浮きチップに留め、地図が周囲と上下に抜けて見えるようにする。 */
   body.explore-fullbleed .brand { padding: 4px 10px 4px 4px; gap: 8px; }
   body.explore-fullbleed .brand-mark { width: 30px; height: 30px; border-radius: 12px; }
-  body.explore-fullbleed .brand-mark .icon { width: 18px; height: 18px; }
   body.explore-fullbleed .brand-copy { font-size: 13px; }
   /* 問題詳細を開いてスクロールすると、浮きのロゴ／アカウントが
      問題タイトルに重なる（実地目視）。詳細表示中は両者を隠し、閉じたら戻す。
@@ -970,7 +964,6 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     gap: 8px; padding: 4px 8px 4px 4px; pointer-events: auto;
   }
   body:has(.traveler-shell) .brand-mark { width: 32px; height: 32px; border-radius: 12px; }
-  body:has(.traveler-shell) .brand-mark .icon { width: 20px; height: 20px; }
   body:has(.traveler-shell) .brand-copy { font-size: 13px; }
   body:has(.traveler-shell) .page { width: 100%; margin: 0; padding: 0; }
   body:has(.traveler-shell) .owner-records {

@@ -450,7 +450,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       <a className="skip-link" href="#main">本文へ移動</a>
       <header className="site-header">
         <div className="brand">
-          <span className="brand-mark"><Icon name="compass" /></span>
+          <span className="brand-mark"><img src="/favicon.svg" alt="" aria-hidden="true" /></span>
           <span className="brand-copy">NAZOP</span>
         </div>
         <nav className="desktop-nav" aria-label="主要ナビゲーション">
