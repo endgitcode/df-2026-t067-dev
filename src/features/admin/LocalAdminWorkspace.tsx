@@ -182,7 +182,6 @@ function AdminAccountMenu({ user, pending, onLogout }: {
     </button>
     <div className="admin-account-panel" id={panelId} hidden={!open}>
       <p>{name || 'ログイン中のアカウント'}</p>
-      <a href="/">旅行者画面へ</a>
       <button type="button" disabled={pending} onClick={onLogout}>{pending ? 'ログアウト中…' : 'ログアウト'}</button>
     </div>
   </div>
@@ -217,16 +216,17 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
   }
 
   return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '')}>
+    <a className="admin-traveler-link" href="/">旅行者画面へ</a>
     <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header'}>
       <h1>{teamPreview ? '自治体向け共有検証' : '自治体向けローカル管理'}</h1>
       {auth.status === 'signed-in'
         ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
-        : <a href="/">旅行者画面へ</a>}
+        : null}
     </header>
     <p className="demo-notice">{teamPreview ? '公開した問題と公開ヒントは誰でも閲覧できます。'
       : '' + (dataMode === 'durable-local' ? '下書きと報告は検証環境の保存先に保存されます。' : '下書きと報告は一時的な保存先に保存されます。')}</p>
     {(auth.status !== 'signed-in' || error) && <section className="form-section" aria-label="担当者ログイン">
-      {auth.status === 'signed-out' && <button type="button" disabled={pending} onClick={() => void authenticate('login')}>Googleログイン</button>}
+      {auth.status === 'signed-out' && <button className="workflow-primary" type="button" disabled={pending} onClick={() => void authenticate('login')}>Googleログイン</button>}
       {(pending || auth.status === 'checking') && <p role="status">ログイン状態を確認しています…</p>}
       {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p>Googleログインの設定を確認してください。</p>}
       {error && <p role="alert">{error}</p>}
