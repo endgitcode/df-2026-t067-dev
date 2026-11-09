@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ApiClient, ApiErrorCode, Discovery } from '../../shared/api'
 import { useRemote } from '../../shared/useRemote'
 import { DiscoveryDeletion } from './DiscoveryDeletion'
@@ -80,28 +80,55 @@ function RecordGuidance({ record }: { record: Discovery }) {
     ['利用時間', afterClear?.hours.trim()],
     ['自治体からの紹介', afterClear?.promoComment.trim()],
     ['解説', afterClear?.explanation.trim() || descriptionSnapshot.trim()],
-    ['スポット名', spot?.name],
-    ['住所', spot?.address],
   ] as const).filter(([, value]) => value)
 
-  if (fields.length === 0) return null
   // 地図リンクは固定の Google Maps 検索URLから組み立てる（D-71）。スポットに
   // 由来する URL を保存・再表示せず、位置と任意の Place ID だけから作る。
   const mapsUrl = spot && 'https://www.google.com/maps/search/?api=1&query='
     + spot.position.latitude + ',' + spot.position.longitude
     + (spot.googlePlaceId ? '&query_place_id=' + encodeURIComponent(spot.googlePlaceId) : '')
   return <>
-    <dl className="record-guidance">
+    {fields.length > 0 && <dl className="record-guidance">
       {fields.map(([label, value]) => <div key={label}>
         <dt>{label}</dt>
         <dd>{value}</dd>
       </div>)}
-    </dl>
-    {mapsUrl && <p className="record-spot-link"><a href={mapsUrl} target="_blank" rel="noreferrer">Googleマップで開く</a></p>}
+    </dl>}
+    {mapsUrl && <p className="record-spot-link"><a href={mapsUrl} target="_blank" rel="noreferrer">Google マップを開く</a></p>}
   </>
 }
 
-function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: string; onBack: () => void; onDeleted: () => void }) {
+function RecordMetadata({ api, record }: { api: ApiClient; record: Discovery }) {
+  const readTitle = useCallback(async (signal: AbortSignal) => {
+    const quest = await api.getQuest(record.questId, { signal })
+    return quest.version === record.questVersion ? quest.title : null
+  }, [api, record.questId, record.questVersion])
+  const { result } = useRemote(true, readTitle)
+  const spot = record.afterClear?.spot
+  const title = result.status === 'loading' ? '読み込み中…'
+    : (result.status === 'ready' && result.value) || 'クリア時の問題名を取得できません'
+  return <dl className="record-guidance">
+    <div><dt>スポット名</dt><dd>{spot?.name ?? record.placeName}</dd></div>
+    <div><dt>日付</dt><dd><RecordDate date={record.firstClearedAt} /></dd></div>
+    <div><dt>問題の名前</dt><dd>{title}</dd></div>
+    <div><dt>住所</dt><dd>{spot?.address || '住所情報なし'}</dd></div>
+  </dl>
+}
+
+function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: string; onBack: (refresh: boolean) => void; onDeleted: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  const headingId = useId()
+  const [deletionState, setDeletionState] = useState('idle')
+  const deletionInFlight = deletionState === 'working'
+  function close() {
+    if (!deletionInFlight) onBack(deletionState !== 'idle')
+  }
+  useEffect(() => {
+    const element = dialog.current
+    if (!element) return
+    element.showModal()
+    return () => element.close()
+  }, [])
   const read = useCallback(async (signal: AbortSignal) => {
     const [record, photo] = await Promise.all([
       api.getDiscovery(id, { signal }),
@@ -110,18 +137,23 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
     return { record, photo }
   }, [api, id])
   const { result, retry } = useRemote(true, read)
-  return <section aria-label="記録詳細" className="record-detail">
-    <button type="button" className="secondary-button" onClick={onBack}>記録一覧へ戻る</button>
-    {result.status === 'loading' && <p role="status">記録を読み込んでいます…</p>}
-    {result.status === 'error' && <ReadFailure code={result.code} retry={retry} />}
-    {result.status === 'ready' && <>
-      <RecordPhoto blob={result.value.photo} />
-      <h2>{result.value.record.placeName}</h2>
-      <p>初回の記録 <RecordDate date={result.value.record.firstClearedAt} /></p>
-      <RecordGuidance record={result.value.record} />
-      <DiscoveryDeletion api={api} id={id} onDeleted={onDeleted} />
-    </>}
-  </section>
+  return <dialog ref={dialog} aria-labelledby={headingId} className="record-dialog"
+    onCancel={(event) => { event.preventDefault(); close() }}>
+    <div className="record-detail">
+      <header className="record-dialog-heading">
+        <h2 id={headingId}>記録詳細</h2>
+        <button type="button" className="secondary-button" disabled={deletionInFlight} onClick={close}>閉じる</button>
+      </header>
+      {result.status === 'loading' && <p role="status">記録を読み込んでいます…</p>}
+      {result.status === 'error' && <ReadFailure code={result.code} retry={retry} />}
+      {result.status === 'ready' && <>
+        <RecordPhoto blob={result.value.photo} />
+        <RecordMetadata api={api} record={result.value.record} />
+        <RecordGuidance record={result.value.record} />
+        <DiscoveryDeletion api={api} id={id} onDeleted={onDeleted} onStateChange={setDeletionState} />
+      </>}
+    </div>
+  </dialog>
 }
 
 export function OwnerDiscoveries({ api, initialId, visit = 0, active = true }: { api: ApiClient; initialId?: string; visit?: number; active?: boolean }) {
@@ -132,11 +164,12 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true }: {
   // 常駐中の明示遷移を反映する。同じIDでも再訪時は詳細を開き直す。
   if (destination.initialId !== initialId || destination.visit !== visit) {
     setDestination({ initialId, visit })
-    if (initialId) { setSelected(initialId); setDeleted(false) }
+    setSelected(initialId ?? null)
+    if (initialId) setDeleted(false)
   }
 
   const read = useCallback((signal: AbortSignal) => api.listDiscoveries({ limit: 20, cursor }, { signal }), [api, cursor])
-  const { result, retry } = useRemote(selected === null, read)
+  const { result, retry } = useRemote(true, read)
   // 記録画面は一度開くとアンマウントせず隠して常駐させる（D-53）ため、この部品も
   // 残り続け、初回の取得結果だけが表示され続けてしまう。画面へ入り直すたびに
   // （visit の増加で）一覧を取り直し、初回に空・失敗だった表示が居座ることと、
@@ -147,24 +180,35 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true }: {
     mountedVisit.current = visit
     retry()
   }, [visit, retry])
-  if (selected !== null) return <DiscoveryDetail key={selected} api={api} id={selected} onBack={() => { setSelected(null); retry() }}
+  const detail = active && selected !== null && <DiscoveryDetail key={selected} api={api} id={selected} onBack={(refresh) => {
+    setSelected(null)
+    if (refresh) retry()
+  }}
     onDeleted={() => { setDeleted(true); setSelected(null); setCursor(undefined); retry() }} />
   const confirmation = deleted && <p role="status">記録と写真の削除が完了しました。</p>
-  if (result.status === 'loading') return <>{confirmation}<p role="status">記録を読み込んでいます…</p></>
+  if (result.status === 'loading') return <>{detail}{confirmation}<p role="status">記録を読み込んでいます…</p></>
   const firstPage = cursor !== undefined && <button type="button" className="secondary-button" onClick={() => setCursor(undefined)}>最初のページへ</button>
-  if (result.status === 'error') return <>{confirmation}<ReadFailure code={result.code} retry={retry} />{firstPage}</>
+  if (result.status === 'error') return <>{detail}{confirmation}<ReadFailure code={result.code} retry={retry} />{firstPage}</>
   const { items, nextCursor } = result.value
   return <>
+    {detail}
     {confirmation}
-    {items.length === 0 ? <p>自分の記録はまだありません。</p> : <ul className="record-list">
-      {items.map((record) => <li key={record.discoveryId}>
-        <button type="button" className="record-list-item secondary-button" onClick={() => { setDeleted(false); setSelected(record.discoveryId) }}>
-          <RecordThumbnail key={`${record.discoveryId}:${active}`} api={api} id={record.discoveryId} active={active} />
-          <span>{record.placeName}</span>
-        </button>
-        <RecordDate date={record.firstClearedAt} />
-      </li>)}
-    </ul>}
+    {items.length === 0 ? <p>自分の記録はまだありません。</p> : <table className="record-table" aria-label="自分の記録一覧">
+      <thead><tr><th scope="col">写真</th><th scope="col">スポット名</th><th scope="col">日付</th></tr></thead>
+      <tbody>{items.map((record) => {
+        const open = () => { setDeleted(false); setSelected(record.discoveryId) }
+        return <tr key={record.discoveryId} onClick={(event) => {
+          event.currentTarget.querySelector('button')?.focus()
+          open()
+        }}>
+          <td><RecordThumbnail key={`${record.discoveryId}:${active}`} api={api} id={record.discoveryId} active={active} /></td>
+          <td><button type="button" className="record-open" aria-haspopup="dialog" onClick={(event) => { event.stopPropagation(); open() }}>
+            {record.afterClear?.spot?.name ?? record.placeName}
+          </button></td>
+          <td><RecordDate date={record.firstClearedAt} /></td>
+        </tr>
+      })}</tbody>
+    </table>}
     <div className="camera-actions">
       {firstPage}
       {nextCursor && <button type="button" className="secondary-button" onClick={() => setCursor(nextCursor)}>次の記録</button>}
