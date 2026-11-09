@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
+const readCss = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8').replace(/\r\n?/g, '\n')
+const css = readCss('src/App.css')
 const PLAIN_FIXED = '.map-preview-shell.has-sheet .map-controls { bottom: 72px; }'
 const mapPreview = readFileSync(resolve(process.cwd(), 'src/features/explore/MapPreview.tsx'), 'utf8')
 
@@ -47,6 +48,7 @@ describe('mobile bottom tab bar (D-32)', () => {
   it('pins the mobile nav to the bottom as a tab bar with a shared height token', () => {
     expect(css).toContain(':root { --mobile-tabbar-h: calc(70px + env(safe-area-inset-bottom, 0px)); }')
     expect(css).toContain('.mobile-nav { position: fixed; bottom: 0; left: 0; right: 0;')
+    expect(css).toContain('background: var(--ui-surface); touch-action: pan-x; }')
     expect(css).toContain('.mobile-nav [aria-current="page"] { background: var(--ui-accent);')
   })
 
@@ -114,7 +116,7 @@ describe('PC floating sidebar (D-38)', () => {
 })
 
 describe('rounded corner scale (D-35)', () => {
-  const themeCss = readFileSync(resolve(process.cwd(), 'src/theme.css'), 'utf8')
+  const themeCss = readCss('src/theme.css')
 
   it('defines a three-step radius scale and keeps --ui-radius as the middle alias', () => {
     expect(themeCss).toContain('--radius-s: 10px;')
@@ -156,7 +158,7 @@ describe('PC sidebar layout integrity', () => {
 
 // UI の動き（D-42）: 入場は CSS、開閉は transition、曲線と尺はトークンで統一する。
 describe('UI motion (D-42)', () => {
-  const themeCss = readFileSync(resolve(process.cwd(), 'src/theme.css'), 'utf8')
+  const themeCss = readCss('src/theme.css')
 
   it('defines the strong easing tokens in the theme', () => {
     expect(themeCss).toContain('--ease-out: cubic-bezier(0.23, 1, 0.32, 1);')
