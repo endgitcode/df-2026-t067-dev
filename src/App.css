@@ -463,13 +463,18 @@ button.explore-quest-card { cursor: pointer; }
    指定している要素では hidden が負けるため、明示的に打ち消す。 */
 .owner-records[hidden], .explore-view[hidden] { display: none; }
 .owner-records > button { justify-self: start; }
-.record-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.record-list li { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
-.record-list-item { display: inline-flex; align-items: center; gap: 12px; min-height: 72px; text-align: left; }
+.record-table { width: 100%; border-collapse: collapse; text-align: start; }
+.record-table th, .record-table td { padding: 8px; border-bottom: var(--ui-border-width) solid var(--ui-line); text-align: start; }
+.record-table tbody tr { cursor: pointer; }
+.record-table tbody tr:hover, .record-table tbody tr:focus-within { background: var(--ui-tint); }
+.record-open { min-height: 44px; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: start; overflow-wrap: anywhere; cursor: pointer; }
 .record-thumbnail, .record-thumbnail-placeholder { display: grid; width: 56px; height: 56px; flex: 0 0 56px; place-items: center; border-radius: 8px; object-fit: cover; background: var(--ui-tint); color: var(--ui-muted); }
 .record-thumbnail-placeholder { font-size: 10px; }
 .record-detail { display: grid; gap: 12px; overflow-wrap: anywhere; }
-.record-detail > button { justify-self: start; }
+.record-dialog { box-sizing: border-box; width: min(560px, calc(100% - 24px)); max-height: calc(100dvh - 24px); padding: 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); overscroll-behavior: contain; }
+.record-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+.record-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.record-dialog-heading h2 { margin: 0; }
 .record-guidance { display: grid; gap: 12px; margin: 0; }
 .record-spot-link { margin: 12px 0 0; }
 .record-guidance dt { font-weight: var(--ui-weight-strong); }

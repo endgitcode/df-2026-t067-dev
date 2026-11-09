@@ -9,6 +9,12 @@ const requestPosition = vi.fn()
 const watchPosition = vi.fn()
 const requestCamera = vi.fn()
 
+// jsdom exposes the element but does not implement opening or closing it.
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () { this.open = true }
+  HTMLDialogElement.prototype.close = function () { this.open = false }
+}
+
 beforeEach(() => {
   // 画面タブの ?view= などがテスト間に残ると、次の App マウントが記録画面から始まる。
   window.history.replaceState(null, '', '/')

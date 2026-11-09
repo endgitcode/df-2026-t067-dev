@@ -144,7 +144,7 @@ it('answer trial build shows a cleared quest as cleared with no way to re-challe
   expect(screen.queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
   // 記録への導線で本人の記録詳細まで進める。
   await user.click(screen.getByRole('button', { name: '自分の記録を見る' }))
-  expect(await screen.findByRole('heading', { name: discovery.placeName })).toBeVisible()
+  expect(await screen.findByRole('img', { name: '本人の記録写真' })).toBeVisible()
   vi.unstubAllEnvs()
 })
 

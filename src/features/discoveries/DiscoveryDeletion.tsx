@@ -30,7 +30,7 @@ export function DiscoveryDeletion({ api, id, onDeleted }: { api: ApiClient; id: 
     } finally { operation.finish() }
   }
 
-  if (state === 'idle') return <button type="button" className="secondary-button" onClick={() => setState('confirm')}>記録を削除</button>
+  if (state === 'idle') return <button type="button" className="danger-button" onClick={() => setState('confirm')}>記録を削除</button>
   return <div role="group" aria-label="本人記録の削除">
     {state === 'confirm' && <>
       <p>この記録と写真を削除しますか？</p>
