@@ -1,3 +1,4 @@
+import { openedHints } from '../capture/captureContinuity'
 import type { PublicQuest } from '../../shared/api/types'
 import { Icon } from '../../components/Icon'
 import { QuestHandoff } from '../../components/QuestHandoff'
@@ -66,7 +67,7 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
       if (generation.current !== currentGeneration) return
       generation.current++
       controller.abort()
-      setState({ status: 'error', message: '取得がタイムアウトしました。再試行できます。' })
+      setState({ status: 'error', message: '時間切れ' })
     }, 10_000)
     timeoutRef.current = timeout
     setOpened(true)
@@ -77,6 +78,8 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
       const hint = await getHint!({ questId, expectedVersion: version, index }, { signal: controller.signal })
       if (controller.signal.aborted || generation.current !== currentGeneration) return
       setCache((current) => ({ ...current, [index]: hint.text }))
+      const key = `${questId}:${version}`
+      openedHints.set(key, { ...openedHints.get(key), [index]: hint.text })
       setState({ status: 'ready', text: hint.text })
       setUnlockedThrough((current) => Math.max(current, index + 1))
     } catch (error) {
@@ -89,11 +92,11 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
       else {
         const reloadNeeded = error instanceof ApiError && (error.code === 'NOT_FOUND' || error.code === 'INVALID_INPUT')
         onReloadNeeded(index, reloadNeeded)
-        setState({ status: 'error', message: timedOut ? '取得がタイムアウトしました。再試行できます。'
-          : error instanceof ApiError && error.code === 'NOT_FOUND' ? 'このヒントは見つかりません（404）。問題を読み直してください。'
-            : error instanceof ApiError && error.code === 'INVALID_INPUT' ? 'ヒント番号が無効です。問題を読み直してください。'
-              : error instanceof ApiError && error.code === 'INVALID_RESPONSE' ? 'ヒントの応答を確認できませんでした。'
-                : 'ヒントを取得できませんでした。通信を確認して再試行してください。' })
+        setState({ status: 'error', message: timedOut ? '時間切れ'
+          : error instanceof ApiError && error.code === 'NOT_FOUND' ? 'ヒントなし。問題を再読込'
+            : error instanceof ApiError && error.code === 'INVALID_INPUT' ? 'ヒント番号エラー'
+              : error instanceof ApiError && error.code === 'INVALID_RESPONSE' ? 'ヒント確認失敗'
+                : 'ヒント取得失敗' })
       }
     } finally {
       window.clearTimeout(timeout)
@@ -115,13 +118,13 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
     }
   }
 
-  if (stale || changed) return <div role="alert" className="hint-version-changed"><p>問題の版が変わりました。すべてのヒントと挑戦を無効にしました。</p></div>
+  if (stale || changed) return <div role="alert" className="hint-version-changed"><p>問題更新。再読込</p></div>
   if (!getHint) return null
-  if (!hintCount) return <p className="hints-note">この問題には通常ヒントがありません。</p>
+  if (!hintCount) return <p className="hints-note">ヒントなし</p>
 
 
-  return <div className="quest-hints" aria-label="段階ヒント">
-    <h4>段階ヒント</h4>
+  return <div className="quest-hints" aria-label="ヒント">
+    <h4>ヒント</h4>
     {!opened && <button ref={openRef} type="button" className="hint-open" onClick={() => void load(1)}>ヒントを見る</button>}
     {opened && <div className="hint-card" aria-live="polite">
       <div className="hint-card-toolbar">
@@ -139,7 +142,7 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
         </div>
       </div>
       {state.status === 'loading' && <>
-        <p role="status">ヒントを取得しています。</p>
+        <p role="status">ヒント取得中</p>
         <button type="button" className="hint-cancel" onClick={cancelLoad}>キャンセル</button>
       </>}
       {state.status === 'ready' && <>
@@ -150,9 +153,9 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
           onReloadNeeded={(needed) => onReloadNeeded(currentIndex, needed)} />}
       </>}
       {state.status === 'error' && <div role="alert"><p>{state.message}</p>
-        <button type="button" className="hint-retry" onClick={() => void load(currentIndex)}>ヒントを再試行</button>
+        <button type="button" className="hint-retry" onClick={() => void load(currentIndex)}>再試行</button>
       </div>}
-      {state.status === 'changed' && <div role="alert"><p>問題の版が変わりました。古いヒントと挑戦を無効にしました。</p><button type="button" onClick={onVersionChanged}>最新版の問題を読み直す</button></div>}
+      {state.status === 'changed' && <div role="alert"><p>問題更新。再読込</p><button type="button" onClick={onVersionChanged}>問題を再読込</button></div>}
 
     </div>}
   </div>
@@ -288,7 +291,7 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
           setExpanded(true)
         }
       }}>
-      {expanded ? 'ヒント画像を閉じる' : 'ヒント画像を見る'}
+      ヒント画像
     </button>}
     {/* 開閉の枠は行アコーディオン（D-59）と同じく常時マウントし、開状態のクラスだけで
         grid-template-rows を切り替える（D-59 追記）。中身は開いている間と、閉じ終わる
@@ -297,8 +300,8 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
       aria-hidden={!expanded || undefined}>
       <div className="optional-hint-content-clip">
       {(expanded || closing) && <div className="optional-hint-content" aria-live="polite">
-      {status === 'loading' && <p role="status">ヒント画像を読み込み中…</p>}
-      {(status === 'error' || status === 'timeout') && <div role="alert"><p>{status === 'timeout' ? '読み込みがタイムアウトしました。再試行できます。' : 'ヒント画像を読み込めませんでした。'}</p>
+      {status === 'loading' && <p role="status">画像読込中</p>}
+      {(status === 'error' || status === 'timeout') && <div role="alert"><p>{status === 'timeout' ? '時間切れ' : '画像読込失敗'}</p>
         <button type="button" className="optional-hint-retry" onClick={() => {
           if (onRetryFocus) onRetryFocus()
           else toggleRef.current?.focus()
@@ -308,10 +311,10 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
           setStatus('loading')
         }}>再試行</button>
       </div>}
-      {status === 'reload' && <div role="alert"><p>公開情報が変わった可能性があります。問題を読みなおしてください。</p></div>}
+      {status === 'reload' && <div role="alert"><p>問題の再読込が必要</p></div>}
       {status === 'auth' && <div role="alert"><p>{authCode === 'UNAUTHENTICATED'
-        ? 'ヒント画像を表示できません。ページを開き直してから再試行してください。'
-        : 'ヒント画像へのアクセスが拒否されました。もう一度お試しください。'}</p>
+        ? '画像表示失敗。再読込'
+        : '画像アクセス拒否'}</p>
         <button type="button" className="optional-hint-retry" onClick={() => {
           if (onRetryFocus) onRetryFocus()
           else toggleRef.current?.focus()
@@ -319,7 +322,7 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
           finishedAttemptRef.current = -1
           setAttempt(attemptRef.current)
           setStatus('loading')
-        }}>ヒント画像を再試行</button>
+        }}>再試行</button>
       </div>}
       {(status === 'loading' || status === 'loaded') && (getPhoto
         ? <ProtectedHintImage key={attempt} getPhoto={getPhoto} questId={quest.questId} version={quest.version} index={index}
@@ -363,7 +366,7 @@ interface QuestDetailsProps {
       挑戦開始の導線は出さず、「クリア済み」表示と記録への導線に置き換える。
       クリアは1人1問につき1回だけで、再挑戦はできない。 */
   clearedDiscoveryId?: string
-  /** 「自分の記録を見る」の受け口。クリア済み表示から本人の記録詳細へ進む。 */
+  /** 「記録を見る」の受け口。クリア済み表示から本人の記録詳細へ進む。 */
   onOpenDiscovery?: (discoveryId: string) => void
 }
 
@@ -399,7 +402,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
           <h3 id={`${detailsId}-title`}>{quest.title}</h3>
           <ShootingConditionIndicators conditions={quest.shootingConditions} />
         </div>
-        {open && (reloadNeededHints.size > 0 || questStale) && <button type="button" className="quest-reload-subtle" onClick={onReloadQuest}>問題を読みなおす</button>}
+        {open && (reloadNeededHints.size > 0 || questStale) && <button type="button" className="quest-reload-subtle" onClick={onReloadQuest}>問題を再読込</button>}
       </header>
       <div className="quest-card-content">
         {!hideToggle && <button type="button" className={'quest-toggle' + (open ? ' is-open' : '')}
@@ -407,11 +410,11 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
             setReloadNeededState({ identity: hintIdentity, open: !open, indexes: new Set() })
             onToggle()
           }}>
-          <span>{open ? '問題を閉じる' : '問題を見てみる'}</span><Icon name="arrow" />
+          <span>問題を見る</span><Icon name="arrow" />
         </button>}
         {open && (
           <section id={detailsId} className="quest-details" aria-label={detailsLabel}>
-            <h4>この場所はどこ？</h4>
+            <h4>謎</h4>
             <p className="clue-text">{quest.clue}</p>
             {quest.visitConditions.trim() && <p className="sample-note">{quest.visitConditions}</p>}
             <QuestHints key={`hints:${hintIdentity}`} quest={quest} getHint={getHint} getHintPhoto={getHintPhoto} stale={questStale} onVersionChanged={() => { setStaleHintIdentity(hintIdentity); onHintVersionChanged() }} onReloadNeeded={(index, needed) => setReloadNeededState(current => {
@@ -428,8 +431,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
                   その gate の対象にしない（gate の中に入れると、肝心のログイン中本人に
                   何も出なくなってしまう）。 */}
               <p className="quest-cleared-label"><Icon name="check" />クリア済み</p>
-              <p className="unavailable-note">この問題はクリア済みのため、再挑戦はできません。初回の写真と日付は「自分の記録」に保存されています。</p>
-              {onOpenDiscovery && <button type="button" className="primary-button" onClick={() => onOpenDiscovery(clearedDiscoveryId)}>自分の記録を見る</button>}
+              {onOpenDiscovery && <button type="button" className="primary-button" onClick={() => onOpenDiscovery(clearedDiscoveryId)}>記録を見る</button>}
             </div> : !hideStartAction && (handoffActive ? <><QuestHandoff value={handoffUrl ?? questHandoffUrl(quest)} title={quest.title} />{note ? <p className="unavailable-note">{note}</p> : null}</> : <><button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={note ? `${detailsId}-note` : undefined}>
               {buttonLabel}
             </button>

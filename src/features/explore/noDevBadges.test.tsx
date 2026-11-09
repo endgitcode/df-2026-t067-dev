@@ -102,7 +102,7 @@ describe('QuestDetails start-button notes drop login explainers', () => {
     expect(app).not.toMatch(/Googleのログイン画面を開きます。キャンセルしてもこの問題に戻れます/)
     expect(app).not.toMatch(/ログイン状態の確認後に操作できます/)
     // note は stale のときだけ
-    expect(app).toMatch(/note=\{questStale \? '問題の版を確認できていません/)
+    expect(app).toMatch(/note=\{questStale \? '問題の再読込が必要/)
     expect(app).toMatch(/: undefined\}/)
   })
 })

@@ -987,6 +987,55 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 }
 
 /* Detail controls and the closed sheet stay reachable without changing quest rows. */
-.quest-detail-close { display: block; margin: 0 0 8px auto; min-width: 44px; min-height: 44px; padding: 8px 12px; border: 2px solid #000; border-radius: 12px; background: #fff; color: #000; cursor: pointer; }
 .explore-sheet[data-snap="closed"] .explore-sheet-handle { height: 64px; }
 .explore-sheet-count { font-size: 16px; }
+
+/* 撮影・回復操作は白い一つの面にまとめる。 */
+.camera-panel.camera-overlay { overflow-y: auto; background: #fff; gap: 12px; }
+.camera-heading { flex: 0 0 auto; color: var(--ui-ink); }
+.camera-heading h4 { margin: 0 0 8px; }
+.camera-heading details p { margin: 8px 0; }
+.camera-panel.camera-overlay > p,
+.camera-panel.camera-overlay > .camera-actions,
+.camera-panel.camera-overlay > .camera-map-reference { border: 0; padding: 0; border-radius: 0; background: #fff; }
+.camera-panel.camera-overlay .camera-video,
+.camera-panel.camera-overlay .photo-preview { flex-shrink: 0; height: 32dvh; min-height: 128px; border-radius: 12px; }
+.camera-panel .camera-actions { gap: 12px; margin-top: 12px; }
+.answer-waiting-cancel { display: block; min-height: 44px; padding: 8px 16px; border: 2px solid #000; border-radius: 12px; background: #fff; text-decoration: none; }
+.clear-screen-actions > button { font-size: 16px; font-weight: var(--ui-weight-control, 600); }
+.record-dialog-heading { position: sticky; top: 0; z-index: 2; padding: 12px 0; background: #fff; }
+.hint-card, .hint-item, .hint-version-changed, .retry-button, .retry-button:hover { background: #fff; }
+
+/* 旅行者画面の面と操作を統一する。 */
+body:has(.traveler-shell) { background: #fff; }
+.traveler-shell { --ui-surface: #fff; --ui-line: #000; --ui-ink: #000; --ui-border-width: 2px; --ui-radius: 16px; --radius-s: 12px; }
+.traveler-shell .account-menu { padding: 12px; }
+.traveler-shell .brand { gap: 12px; }
+.traveler-shell .desktop-nav { gap: 24px; }
+.traveler-shell .desktop-nav button { gap: 8px; }
+.traveler-shell .account-area { gap: 8px; }
+.traveler-shell .nav-active,
+.traveler-shell .mobile-nav button[aria-current="page"] { background: #fff; }
+.answer-waiting-progress-bar { box-shadow: none; }
+.traveler-shell .quest-toggle,
+.traveler-shell .quest-toggle:hover:not(:disabled) { background: #fff; color: #000; }
+.traveler-shell .camera-panel, .traveler-shell .hint-card { padding: 16px; gap: 12px; background: #fff; }
+.traveler-shell .sample-note { padding: 12px; font-size: 14px; color: #000; background: #fff; }
+.traveler-shell .unavailable-note { font-size: 14px; color: #000; }
+
+.traveler-shell .quest-card-heading,
+.traveler-shell .quest-card-content { padding: 16px; }
+.traveler-shell .account-menu { border-radius: 12px; }
+.traveler-shell .desktop-nav button { padding-block: 8px; }
+.clear-screen { background: #fff; --ui-line: #000; --ui-border-width: 2px; --ui-radius: 16px; --radius-l: 16px; }
+.clear-screen-card { padding: 16px; }
+.clear-screen-actions { margin-top: 4px; }
+.camera-panel { --ui-surface: #fff; --ui-line: #000; --ui-ink: #000; --ui-border-width: 2px; --ui-radius: 16px; --radius-s: 12px; }
+.record-dialog .secondary-button { padding: 8px 12px; }
+body:has(.traveler-shell) .desktop-nav .nav-active,
+body.explore-fullbleed .traveler-shell .desktop-nav .nav-active,
+.traveler-shell .hint-step.is-current { background: #fff; color: #000; }
+body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; }
+.traveler-shell { --radius-l: 16px; }
+.traveler-shell .filter-chip,
+.traveler-shell .map-area-chip { border-radius: 12px; padding: 8px 12px; }

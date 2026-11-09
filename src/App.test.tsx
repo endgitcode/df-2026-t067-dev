@@ -17,7 +17,7 @@ describe('未接続の起動画面', () => {
     expect(login).toHaveAttribute('aria-disabled', 'true')
     expect(login).toBeEnabled()
     expect(screen.queryByRole('button', { name: 'アカウントメニュー' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '問題を見てみる' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '問題を見る' })).toBeEnabled()
     expect(screen.queryByRole('region', { name: 'サンプル問題の詳細' })).not.toBeInTheDocument()
   })
 
@@ -25,19 +25,19 @@ describe('未接続の起動画面', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
     const details = screen.getByRole('region', { name: 'サンプル問題の詳細' })
     expect(details).not.toHaveTextContent(/デモ|実際に訪問・撮影できる場所ではありません/)
-    const startButton = within(details).getByRole('button', { name: 'Googleログインして挑戦する' })
+    const startButton = within(details).getByRole('button', { name: 'Googleでログイン' })
     expect(startButton).toBeDisabled()
     await user.click(startButton)
     expect(details).toBeVisible()
     expect(screen.queryByRole('status', { name: 'ログイン状態' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '問題を閉じる' }))
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
     expect(screen.queryByRole('region', { name: 'サンプル問題の詳細' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
-    expect(screen.getByRole('button', { name: 'Googleログインして挑戦する' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    expect(screen.getByRole('button', { name: 'Googleでログイン' })).toBeDisabled()
   })
 
   it('キーボードで問題を開閉でき、開閉状態が支援技術に伝わる', async () => {
@@ -46,7 +46,7 @@ describe('未接続の起動画面', () => {
 
     await user.tab()
     expect(screen.getByRole('link', { name: '本文へ移動' })).toHaveFocus()
-    const toggle = screen.getByRole('button', { name: '問題を見てみる' })
+    const toggle = screen.getByRole('button', { name: '問題を見る' })
     for (let i = 0; i < 20 && document.activeElement !== toggle; i++) await user.tab()
     expect(toggle).toHaveFocus()
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
@@ -65,7 +65,7 @@ describe('ディープリンク', () => {
     try {
       render(<App />)
       expect(await screen.findByRole('region', { name: 'サンプル問題の詳細' })).toBeVisible()
-      expect(screen.getByRole('button', { name: '問題を閉じる' })).toBeVisible()
+      expect(screen.getByRole('button', { name: '問題を見る' })).toBeVisible()
     } finally {
       window.history.replaceState(null, '', '/')
     }
