@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import {
+  clampWithRubberBand,
+  pickSnapFromRelease,
+  releaseTransitionMs,
+  velocityFromSamples,
+} from './sheetGesturePhysics'
 
 export type SheetSnap = 'closed' | 'peek' | 'half' | 'full'
 
@@ -41,8 +47,17 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
   const [stageHeight, setStageHeight] = useState(FALLBACK_STAGE_HEIGHT)
   const [snap, setSnap] = useState<SheetSnap>('peek')
   const [dragHeight, setDragHeight] = useState<number | null>(null)
-  const drag = useRef<{ pointerId: number; startY: number; startHeight: number; distance: number } | null>(null)
+  const [releaseMs, setReleaseMs] = useState<number | null>(null)
+  const drag = useRef<{ pointerId: number; startY: number; startHeight: number; distance: number; samples: Array<{ y: number; t: number }> } | null>(null)
   const suppressClick = useRef(false)
+  const reducedMotion = useRef(false)
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    const sync = () => { reducedMotion.current = Boolean(mq?.matches) }
+    sync()
+    mq?.addEventListener?.('change', sync)
+    return () => mq?.removeEventListener?.('change', sync)
+  }, [])
   const reopenGesture = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
   const lastOpenSignal = useRef<string | null>(null)
   const bodyId = useId()
@@ -103,8 +118,13 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
 
   const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return
-    drag.current = { pointerId: event.pointerId, startY: event.clientY, startHeight: height, distance: 0 }
+    const now = performance.now()
+    drag.current = {
+      pointerId: event.pointerId, startY: event.clientY, startHeight: height, distance: 0,
+      samples: [{ y: event.clientY, t: now }],
+    }
     suppressClick.current = false
+    setReleaseMs(null)
     setDragHeight(height)
     try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* 捕捉できなくてもドラッグは続けられる。 */ }
   }
@@ -113,19 +133,30 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
     if (!active || event.pointerId !== active.pointerId) return
     const delta = active.startY - event.clientY
     active.distance = Math.max(active.distance, Math.abs(delta))
-    setDragHeight(Math.min(heights.full, Math.max(heights.closed, active.startHeight + delta)))
+    const now = performance.now()
+    active.samples.push({ y: event.clientY, t: now })
+    if (active.samples.length > 6) active.samples.shift()
+    // Track phase: 指に 1:1。端だけラバーバンド（gestures スキル）。
+    setDragHeight(clampWithRubberBand(active.startHeight + delta, heights.closed, heights.full))
   }
   const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const active = drag.current
     if (!active || event.pointerId !== active.pointerId) return
+    const samples = active.samples.concat([{ y: event.clientY, t: performance.now() }])
     drag.current = null
     if (active.distance >= DRAG_TAP_THRESHOLD) {
       suppressClick.current = true
       const target = dragHeight ?? heights[snap]
-      const nearest = (Object.entries(heights) as Array<[SheetSnap, number]>)
-        .reduce((best, entry) => (Math.abs(entry[1] - target) < Math.abs(best[1] - target) ? entry : best))
-      if (nearest[0] === 'closed') focusAfterSnap.current = 'reopen'
-      setSnap(nearest[0])
+      const velocityY = velocityFromSamples(samples)
+      const next = pickSnapFromRelease({
+        height: Math.min(heights.full, Math.max(heights.closed, target)),
+        velocityY,
+        heights,
+        reducedMotion: reducedMotion.current,
+      })
+      setReleaseMs(releaseTransitionMs(velocityY, reducedMotion.current))
+      if (next === 'closed') focusAfterSnap.current = 'reopen'
+      setSnap(next)
     }
     setDragHeight(null)
   }
@@ -165,7 +196,8 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
   }
 
   return <>
-    <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap} style={{ height }}>
+    <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap}
+      style={{ height, ...(releaseMs != null && dragHeight === null ? { '--sheet-release-ms': `${releaseMs}ms` } as CSSProperties : {}) }}>
       <button ref={handleRef} type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
         aria-label={snap === 'closed' || snap === 'peek' ? '謎リストを広げる' : '謎リストを縮める'}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={onClick}>

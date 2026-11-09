@@ -60,7 +60,7 @@ describe('mobile map control swipe handling', () => {
 describe('bottom sheet close visibility timing', () => {
   it('delays hiding through the 300ms close and removes that delay for reduced motion', () => {
     expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; transition: visibility 0s linear 300ms; }')
-    expect(css).toContain('@media (prefers-reduced-motion: reduce) { .explore-sheet { transition: none; } .explore-sheet-body { transition: none !important; } }')
+    expect(css).toContain('@media (prefers-reduced-motion: reduce) { .explore-sheet { transition: height 120ms linear, visibility 0s; } .explore-sheet.is-dragging { transition: none; } .explore-sheet-body { transition: none !important; } }')
   })
 })
 
@@ -196,7 +196,7 @@ describe('UI motion (D-42)', () => {
   })
 
   it('glides the sheet snap with the drawer curve and delays hiding until the close finishes', () => {
-    expect(css).toContain('transition: height 300ms var(--ease-drawer), visibility 0s;')
+    expect(css).toContain('transition: height var(--sheet-release-ms, 300ms) var(--ease-drawer), visibility 0s;')
     expect(css).not.toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) { transition: height 300ms var(--ease-drawer), visibility 0s linear 300ms; }')
   })
 
