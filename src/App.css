@@ -257,6 +257,10 @@ button.explore-quest-card { cursor: pointer; }
 .primary-button:hover:not(:disabled) { background: var(--ui-ink); }
 .primary-button:disabled { border-color: var(--ui-line); background: var(--ui-muted); color: var(--ui-muted); }
 .unavailable-note { font-size: 12px; color: var(--ui-muted); line-height: 1.8; margin-top: 9px; }
+/* クリア済み表示（D-64）：開始導線の代わりに置く。一覧バッジと同じ淡緑で揃える。 */
+.quest-cleared-action { display: grid; gap: 10px; justify-items: start; }
+.quest-cleared-label { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 13px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
+.quest-cleared-action .unavailable-note { margin-top: 0; }
 .quest-handoff { display: grid; gap: 10px; }
 .quest-handoff-panel { display: grid; justify-items: center; gap: 8px; }
 .quest-qr { width: 176px; height: 176px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: #fff; }

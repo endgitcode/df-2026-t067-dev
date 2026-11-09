@@ -10,7 +10,9 @@ export interface DemoAnswerContext {
   onReloadQuest: () => void
   onOpenDiscovery?: (id: string) => void
   // クリア画面の「地図に戻る」用。撮影を終えて探索画面へ戻す操作を呼び出し側が渡す。
-  onReturnToMap?: () => void
+  // クリア済みの記録ID（あれば）を一緒に渡し、呼び出し側が詳細側のクリア済み
+  // 表示へ即時反映できるようにする（D-64）。
+  onReturnToMap?: (discoveryId?: string) => void
   // クリア画面に出す問題タイトル。
   questTitle?: string
   dataMode?: LocalApiDataMode
@@ -131,7 +133,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   }
   function returnToMap() {
     setClearScreenClosed(true)
-    context.onReturnToMap?.()
+    context.onReturnToMap?.(receipt?.discoveryId)
   }
 
   useEffect(() => {
