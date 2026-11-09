@@ -88,8 +88,10 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .status-dot { width: 5px; height: 5px; border-radius: var(--ui-radius); background: var(--ui-muted); }
 .explore-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 368px; gap: 26px; align-items: start; }
 .map-preview-shell { position: sticky; top: 20px; min-width: 0; }
-.map-preview { position: relative; height: 636px; overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); isolation: isolate; }
-.google-map-canvas { position: absolute; inset: 0; }
+.map-preview { position: relative; height: 636px; overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-blue); isolation: isolate; }
+.google-map-canvas { position: absolute; inset: 0; background: var(--ui-blue); }
+/* 殻表示中の Maps 読み込みは色だけ揃え、文言の点滅を避ける */
+.map-state.is-boot-quiet { background: var(--ui-blue); color: transparent; }
 .map-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px; text-align: center; color: var(--ui-ink); }
 .map-area-error { position: relative; inset: auto; margin: 64px 16px 0; padding: 12px 16px; pointer-events: none; }
 .map-area-error button { pointer-events: auto; }
@@ -670,6 +672,10 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* フラット行：枠線なし。ホバーは薄グレー、選択中の謎だけアクセント */
   body.explore-fullbleed .explore-side-panel .explore-quest-card {
     border: 0; border-radius: var(--radius-s); background: transparent; padding: 10px 10px;
+  }
+  /* 仮カードは透明行ルールに負けない（F5で緑スケルトンが消えて空に見えるのを防ぐ） */
+  body.explore-fullbleed .explore-side-panel .explore-quest-skeleton {
+    background: var(--ui-tint);
   }
   body.explore-fullbleed .explore-side-panel button.explore-quest-card:hover { background: var(--ui-disabled); }
   body.explore-fullbleed .explore-side-panel .explore-quest-card.is-selected,

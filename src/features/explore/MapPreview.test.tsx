@@ -1122,8 +1122,7 @@ describe('Google map panel', () => {
     // 一覧は地図の読み込み完了でシート内へ移るため、ready を待ってからシート内の一覧を見る。
     await screen.findByRole('button', { name: '地図を拡大' })
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
-    // シート表示の目印（body のクラス）は effect で付くため、付くまで待つ。
-    await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))
+    expect(document.body).toHaveClass('explore-fullbleed')
     unmount()
     expect(document.body).not.toHaveClass('explore-fullbleed')
     delete window.google
@@ -1164,9 +1163,30 @@ describe('Google map panel', () => {
     const onSheetModeChange = vi.fn()
     render(<MapPreview areas={areas} showPublicAreas onSheetModeChange={onSheetModeChange} />)
     expect(document.body).toHaveClass('explore-fullbleed')
-    // ピッカー制御の sheetMode 通知は ready 後だけ true（殻は先に出す）。
+    // missing では一覧の置き場を殻へ渡さない（ピッカー／フォールバックを出す）。殻の fullbleed は維持。
     expect(onSheetModeChange).toHaveBeenCalledWith(false)
     expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
+  })
+
+  it('notifies list-shell ownership while Maps is still loading so the panel keeps skeletons', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    // loadGoogleMaps を完了させず loading のままにする。
+    vi.doMock('./googleMapsLoader', async () => {
+      const actual = await vi.importActual<typeof import('./googleMapsLoader')>('./googleMapsLoader')
+      return { ...actual, loadGoogleMaps: () => new Promise(() => {}) }
+    })
+    const onSheetModeChange = vi.fn()
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    render(<ConfiguredMapPreview areas={areas} quests={[]} questsLoading showPublicAreas onSheetModeChange={onSheetModeChange} />)
+    expect(document.body).toHaveClass('explore-fullbleed')
+    expect(onSheetModeChange).toHaveBeenCalledWith(true)
+    expect(screen.getByText('読み込み中')).toBeVisible()
+    expect(document.querySelectorAll('.explore-quest-skeleton').length).toBeGreaterThan(0)
+    // 殻表示中は読み込み文言を sr-only にし、地図面の色だけを安定させる。
+    expect(document.querySelector('.map-state')).toHaveClass('is-boot-quiet')
+    expect(screen.getByText('地図を読み込んでいます…')).toHaveClass('sr-only')
+    vi.doUnmock('./googleMapsLoader')
   })
 
   it('keeps the sheet and full-bleed layout with a filter-empty message when filtering leaves no quests', async () => {
