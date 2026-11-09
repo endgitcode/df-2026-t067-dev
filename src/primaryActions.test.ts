@@ -32,16 +32,41 @@ function media(rules: CSSRule[], query: string) {
 describe('主ボタンの形と配置', () => {
   const travelerRules = sheet(traveler)
   const adminRules = sheet(admin)
-  it('主操作はパネル幅で、撮影も同じ幅になる', () => {
+  it('文字の主操作はパネル幅にする', () => {
     expect(last(travelerRules, '.primary-button', 'width')).toBe('100%')
-    expect(last(travelerRules, '.camera-overlay .camera-shutter', 'width')).toBe('100%')
+    expect(last(travelerRules, '.primary-button:not(.camera-shutter)', 'width')).toBe('100%')
     for (const selector of ['.admin-demo .workflow-primary', '.admin-demo .submit-button']) {
       expect(last(adminRules, selector, 'width')).toBe('100%')
     }
   })
+  it('シャッターは指定順とスマホ・PCの共通幅指定に影響されず中央の64px円を保つ', () => {
+    const overlay = document.createElement('div')
+    overlay.className = 'camera-panel camera-overlay'
+    const shutter = document.createElement('button')
+    shutter.className = 'primary-button camera-shutter'
+    overlay.append(shutter)
+    // ソース順に適用候補を集める。メディア規則は各画面幅で別々に確認する。
+    for (const query of ['(max-width: 980px)', '(min-width: 981px)']) {
+      const rules = travelerRules.flatMap(rule => 'conditionText' in rule
+        ? (rule as CSSMediaRule).conditionText === query ? Array.from((rule as CSSMediaRule).cssRules) : []
+        : [rule])
+      const matching = rules.filter((rule): rule is CSSStyleRule => 'selectorText' in rule
+        && shutter.matches((rule as CSSStyleRule).selectorText))
+      for (const [property, value] of [['width', '64px'], ['height', '64px'], ['min-height', '64px'], ['border-radius', '50%'], ['padding', '0px']]) {
+        expect(matching.map(rule => rule.style.getPropertyValue(property)).filter(Boolean).at(-1)).toBe(value)
+      }
+      // 作業9の共通幅ルールは、後ろに移動してもシャッターには一致しない。
+      const fullWidthRules = rules.filter((rule): rule is CSSStyleRule => 'selectorText' in rule
+        && (rule as CSSStyleRule).selectorText.includes(':not(.camera-shutter)')
+        && (rule as CSSStyleRule).style.getPropertyValue('width') === '100%')
+      expect(fullWidthRules.length).toBeGreaterThan(0)
+      for (const rule of fullWidthRules) expect(shutter.matches(rule.selectorText)).toBe(false)
+    }
+    expect(last(travelerRules, '.camera-overlay .camera-shutter-controls', 'justify-content')).toBe('center')
+  })
   it('PCの主操作と保存欄は画面下に固定しない', () => {
     for (const [rules, selectors] of [
-      [travelerRules, ['.primary-button', '.camera-panel .primary-button', '.clear-screen-actions .primary-button']],
+      [travelerRules, ['.primary-button:not(.camera-shutter)', '.camera-panel .primary-button:not(.camera-shutter)', '.clear-screen-actions .primary-button']],
       [adminRules, ['.admin-demo .workflow-primary', '.admin-demo .submit-button', '.admin-demo .admin-save-bar']],
     ] as const) {
       for (const selector of selectors) {

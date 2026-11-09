@@ -930,7 +930,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   }
   .camera-overlay > .camera-actions:last-child { margin-top: auto; }
   .camera-overlay .answer-waiting { background: transparent; border: 0; box-shadow: none; padding: 8px 4px; }
-  .camera-overlay .primary-button { min-height: 64px; width: 100%; font-size: 18px; }
+  .camera-overlay .primary-button:not(.camera-shutter) { min-height: 64px; width: 100%; font-size: 18px; }
 }
 
 /* PC 幅でも確認写真が操作カードと重ならないよう、残り高さに収める */
@@ -1075,16 +1075,16 @@ body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; 
   .map-filter-panel .filter-accordion { max-height: 60dvh; border: 0; border-radius: 0; padding: 0; }
 }
 
-/* 撮影操作もパネル幅の主ボタンにそろえる。 */
-.camera-overlay .camera-shutter-controls { display: block; width: 100%; }
-.camera-overlay .camera-shutter { width: 100%; height: 64px; min-height: 64px; padding: 0; border-radius: var(--ui-radius, 16px); border: 3px solid var(--ui-ink); box-shadow: inset 0 0 0 5px var(--ui-surface); }
+/* シャッターは中央の丸形を保ち、文字の主操作だけをパネル幅にする。 */
+.camera-overlay .camera-shutter-controls { display: flex; justify-content: center; width: 100%; }
+.camera-overlay .camera-shutter { flex: 0 0 64px; box-sizing: border-box; width: 64px; height: 64px; min-height: 64px; padding: 0; border-radius: 50%; border: 3px solid var(--ui-ink); box-shadow: inset 0 0 0 5px var(--ui-surface); }
 
 /* 一覧内は共通カードの上paddingを重ねない。条件表示・再読込は残す。 */
 .traveler-shell .quest-card.is-in-list .quest-card-heading { padding: 0 16px; }
 .traveler-shell .quest-card.is-in-list .quest-card-content { padding: 0 16px 16px; }
 
 /* 主操作はパネル幅、副操作とナビは白地。操作の有無は各画面が管理する。 */
-.primary-button,
+.primary-button:not(.camera-shutter),
 .api-load-state > button { position: static; width: 100%; min-width: 0; box-sizing: border-box; border-radius: var(--ui-radius, 16px); }
 .traveler-shell .quest-toggle,
 .traveler-shell .quest-toggle:hover:not(:disabled),
@@ -1116,8 +1116,8 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
   .owner-records > .primary-button { margin-top: auto; }
 }
 @media (min-width: 981px) {
-  .primary-button,
-  .camera-panel .primary-button,
+  .primary-button:not(.camera-shutter),
+  .camera-panel .primary-button:not(.camera-shutter),
   .clear-screen-actions .primary-button { position: static; width: 100%; }
 }
 
