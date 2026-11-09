@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { ExploreBottomSheet } from './ExploreBottomSheet'
+import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 
 // jsdomでは親の高さが測れないため、段階の高さは代替値（ステージ640px想定:
 // peek 168 / half 352 / full 556）で決まる。
@@ -171,5 +171,78 @@ describe('ExploreBottomSheet', () => {
     expect(sheet).toHaveAttribute('data-snap', 'closed')
     rerender(<ExploreBottomSheet openSignal="area-b"><p>リスト本文</p></ExploreBottomSheet>)
     expect(sheet).toHaveAttribute('data-snap', 'half')
+  })
+})
+
+
+describe('sheet snap height contract', () => {
+  // ExploreBottomSheet 内の snapHeights と同じ式。export すると Fast Refresh lint に当たるためここで固定する。
+  function heights(stageHeight: number) {
+    const half = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
+    const full = Math.max(half, stageHeight - 84)
+    return { closed: 34, peek: SHEET_PEEK_HEIGHT, half, full }
+  }
+  it('keeps peek fixed and derives half/full from the usable stage', () => {
+    expect(heights(640)).toEqual({ closed: 34, peek: SHEET_PEEK_HEIGHT, half: 352, full: 556 })
+    expect(heights(700)).toEqual({ closed: 34, peek: SHEET_PEEK_HEIGHT, half: 385, full: 616 })
+  })
+})
+
+describe('ExploreBottomSheet stage measure', () => {
+  it('subtracts the CSS bottom offset so full fits above the tab bar without a lower gap', () => {
+    const shell = document.createElement('div')
+    Object.defineProperty(shell, 'clientHeight', { configurable: true, value: 800 })
+    document.body.appendChild(shell)
+    render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>, { container: shell })
+    const sheet = shell.querySelector('.explore-sheet') as HTMLElement
+    const original = window.getComputedStyle.bind(window)
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => {
+      const style = original(el)
+      if (el === sheet) {
+        Object.defineProperty(style, 'bottom', { configurable: true, get: () => '104px' })
+      }
+      return style
+    })
+    fireEvent(window, new Event('resize'))
+    const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+    // usable = 800 - 104 = 696 → full = 696 - 84 = 612
+    fireEvent.pointerDown(handle, { pointerId: 20, pointerType: 'touch', clientY: 600 })
+    fireEvent.pointerMove(handle, { pointerId: 20, pointerType: 'touch', clientY: 50 })
+    fireEvent.pointerUp(handle, { pointerId: 20, pointerType: 'touch', clientY: 50 })
+    expect(sheet).toHaveAttribute('data-snap', 'full')
+    expect(sheet.style.height).toBe('612px')
+    // 親800に対し bottom104 + height612 = 716。上に84px（SHEET_TOP_GAP）だけ残り、下端の隙間は出ない。
+    expect(104 + 612 + 84).toBe(800)
+  })
+
+  it('remeasures when the visual viewport resizes (mobile URL bar)', () => {
+    const listeners = new Map<string, Set<(event: Event) => void>>()
+    const viewport = {
+      addEventListener: vi.fn((type: string, handler: (event: Event) => void) => {
+        const set = listeners.get(type) ?? new Set<(event: Event) => void>()
+        set.add(handler)
+        listeners.set(type, set)
+      }),
+      removeEventListener: vi.fn((type: string, handler: (event: Event) => void) => {
+        listeners.get(type)?.delete(handler)
+      }),
+    }
+    vi.stubGlobal('visualViewport', viewport)
+    let parentHeight = 640
+    const shell = document.createElement('div')
+    Object.defineProperty(shell, 'clientHeight', { configurable: true, get: () => parentHeight })
+    document.body.appendChild(shell)
+    const { unmount } = render(<ExploreBottomSheet><p>リスト本文</p></ExploreBottomSheet>, { container: shell })
+    const sheet = shell.querySelector('.explore-sheet') as HTMLElement
+    expect(viewport.addEventListener).toHaveBeenCalledWith('resize', expect.any(Function))
+    expect(viewport.addEventListener).toHaveBeenCalledWith('scroll', expect.any(Function))
+    parentHeight = 500
+    for (const handler of listeners.get('resize') ?? []) handler(new Event('resize'))
+    fireEvent.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    // usable 500 → half = max(SHEET_PEEK_HEIGHT, round(275)) = 275
+    expect(sheet.style.height).toBe('275px')
+    unmount()
+    expect(viewport.removeEventListener).toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
 })
