@@ -359,8 +359,9 @@ describe('sheet peek height and overflow guards (D-73)', () => {
 // 規則の文字列と置き場所で担保する。
 describe('button widths and records alignment (D-74)', () => {
   it('stretches the hint buttons across their frame', () => {
-    expect(css).toContain('.hint-item > button, .hint-item [role="alert"] button, .hint-version-changed button { width: 100%; min-height: 44px;')
-    expect(css).toContain('.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 44px;')
+    expect(css).toContain('.hint-open, .hint-next {')
+    expect(css).toContain('width: 100%; min-height: 52px;')
+    expect(css).toContain('.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 52px;')
   })
 
   it('keeps the PC handoff emphasis on the direct start and widens the records body column', () => {
