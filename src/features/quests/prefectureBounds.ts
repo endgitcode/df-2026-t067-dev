@@ -30,13 +30,37 @@ export const PREFECTURE_BOUNDS: Readonly<Record<string, FilterBounds>> = Object.
   ['鹿児島県', 27.0, 128.35, 32.35, 131.25], ['沖縄県', 24.0, 122.9, 27.95, 131.4],
 ].map(([name, south, west, north, east]) => [name, { south, west, north, east }])) as Readonly<Record<string, FilterBounds>>
 
-export function boundsForFilter(region: string, prefecture: string): FilterBounds | undefined {
-  if (prefecture) return PREFECTURE_BOUNDS[prefecture]
-  const members = REGIONS.find((item) => item.name === region)?.prefectures
-  if (!members) return undefined
-  const bounds = members.map((name) => PREFECTURE_BOUNDS[name])
+function asList(value: string | readonly string[] | undefined): string[] {
+  if (value == null || value === '') return []
+  return (typeof value === 'string' ? [value] : [...value]).filter(Boolean)
+}
+
+function mergeBounds(parts: FilterBounds[]): FilterBounds | undefined {
+  if (parts.length === 0) return undefined
   return {
-    south: Math.min(...bounds.map((b) => b.south)), west: Math.min(...bounds.map((b) => b.west)),
-    north: Math.max(...bounds.map((b) => b.north)), east: Math.max(...bounds.map((b) => b.east)),
+    south: Math.min(...parts.map((b) => b.south)),
+    west: Math.min(...parts.map((b) => b.west)),
+    north: Math.max(...parts.map((b) => b.north)),
+    east: Math.max(...parts.map((b) => b.east)),
   }
+}
+
+/** 選んだ地方・都道府県の固定範囲をすべて含む矩形（または結合）。FIT_MAX_ZOOM は呼び出し側のまま。 */
+export function boundsForFilter(region: string | readonly string[] = '', prefecture: string | readonly string[] = ''): FilterBounds | undefined {
+  const regions = asList(region)
+  const prefectures = asList(prefecture)
+  const parts: FilterBounds[] = []
+  for (const name of prefectures) {
+    const bounds = PREFECTURE_BOUNDS[name]
+    if (bounds) parts.push(bounds)
+  }
+  for (const name of regions) {
+    const members = REGIONS.find((item) => item.name === name)?.prefectures
+    if (!members) continue
+    for (const pref of members) {
+      const bounds = PREFECTURE_BOUNDS[pref]
+      if (bounds) parts.push(bounds)
+    }
+  }
+  return mergeBounds(parts)
 }

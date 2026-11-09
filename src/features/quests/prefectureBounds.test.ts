@@ -24,3 +24,14 @@ describe('static filter bounds', () => {
     expect(boundsForFilter('', '')).toBeUndefined()
   })
 })
+
+  it('merges bounds for multiple regions and prefectures', () => {
+    const bounds = boundsForFilter(['関東', '北海道'], ['大阪府'])!
+    const kanto = boundsForFilter('関東', '')!
+    const hokkaido = PREFECTURE_BOUNDS['北海道']
+    const osaka = PREFECTURE_BOUNDS['大阪府']
+    expect(bounds.south).toBe(Math.min(kanto.south, hokkaido.south, osaka.south))
+    expect(bounds.north).toBe(Math.max(kanto.north, hokkaido.north, osaka.north))
+    expect(bounds.west).toBe(Math.min(kanto.west, hokkaido.west, osaka.west))
+    expect(bounds.east).toBe(Math.max(kanto.east, hokkaido.east, osaka.east))
+  })

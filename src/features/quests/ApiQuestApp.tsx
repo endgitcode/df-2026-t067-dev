@@ -21,17 +21,36 @@ function questNumberKey(quest: PublicQuest): readonly [number, number] | null {
   return match ? [Number(match[1]), Number(match[2])] : null
 }
 
-function readSelectionFromUrl() {
-  const params = new URLSearchParams(window.location.search)
-  return { areaId: params.get('area') ?? '', questId: params.get('quest') ?? '' }
+function parseListParam(params: URLSearchParams, key: string, legacyKey?: string): string[] {
+  const raw = params.get(key) ?? (legacyKey ? params.get(legacyKey) : null) ?? ''
+  return raw.split(',').map((item) => item.trim()).filter(Boolean)
 }
 
-function writeSelectionToUrl(areaId: string, questId: string, mode: 'push' | 'replace') {
+function readSelectionFromUrl() {
+  const params = new URLSearchParams(window.location.search)
+  return {
+    areaId: params.get('area') ?? '',
+    questId: params.get('quest') ?? '',
+    // 複数は regions / prefs。古い単数 region / pref も読む。
+    regions: parseListParam(params, 'regions', 'region'),
+    prefectures: parseListParam(params, 'prefs', 'pref'),
+  }
+}
+
+function writeListParam(url: URL, key: string, values: readonly string[], legacyKey: string) {
+  if (values.length > 0) url.searchParams.set(key, values.join(','))
+  else url.searchParams.delete(key)
+  url.searchParams.delete(legacyKey)
+}
+
+function writeSelectionToUrl(areaId: string, questId: string, mode: 'push' | 'replace', regions: readonly string[] = [], prefectures: readonly string[] = []) {
   const url = new URL(window.location.href)
   if (areaId) url.searchParams.set('area', areaId)
   else url.searchParams.delete('area')
   if (questId) url.searchParams.set('quest', questId)
   else url.searchParams.delete('quest')
+  writeListParam(url, 'regions', regions, 'region')
+  writeListParam(url, 'prefs', prefectures, 'pref')
   window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
 }
 
@@ -55,14 +74,14 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   api?: Api; syncUrl?: boolean; authClient?: AuthClient; dataMode?: LocalApiDataMode; teamAnswerTrial?: boolean
 }) {
   const api = useMemo(() => providedApi ?? createApiClient({ expectedDataMode: dataMode }), [providedApi, dataMode])
-  const [initialSelection] = useState(() => syncUrl ? readSelectionFromUrl() : { areaId: '', questId: '' })
+  const [initialSelection] = useState(() => syncUrl ? readSelectionFromUrl() : { areaId: '', questId: '', regions: [] as string[], prefectures: [] as string[] })
   // URLで問題が指定されて開かれた場合（QRのディープリンク等）は、読み込み後にその問題の詳細を開く。
   const [openQuestRequest, setOpenQuestRequest] = useState<{ questId: string; sequence: number } | undefined>(
     () => initialSelection.questId ? { questId: initialSelection.questId, sequence: 1 } : undefined)
   const [selectedId, setSelectedId] = useState(initialSelection.questId)
   const [selectedAreaId, setSelectedAreaId] = useState(initialSelection.areaId)
-  const [activeRegion, setActiveRegion] = useState('')
-  const [activePrefecture, setActivePrefecture] = useState('')
+  const [activeRegions, setActiveRegions] = useState<string[]>(() => initialSelection.regions)
+  const [activePrefectures, setActivePrefectures] = useState<string[]>(() => initialSelection.prefectures)
   const [filterOpen, setFilterOpen] = useState(false)
   const [retry, setRetry] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -92,8 +111,8 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
 
   // 地方・都道府県の絞り込みは履歴に含まれない一時状態。popstate ハンドラからは
   // 最新の絞り込みを ref 経由で読む。
-  const filterStateRef = useRef({ region: '', prefecture: '' })
-  useEffect(() => { filterStateRef.current = { region: activeRegion, prefecture: activePrefecture } }, [activeRegion, activePrefecture])
+  const filterStateRef = useRef({ regions: [] as string[], prefectures: [] as string[] })
+  useEffect(() => { filterStateRef.current = { regions: activeRegions, prefectures: activePrefectures } }, [activeRegions, activePrefectures])
 
   useEffect(() => {
     if (!syncUrl) return
@@ -105,12 +124,14 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       // 絞り込みを無条件に外すと、履歴の往復だけで「絞り込みは全国・地域と問題は
       // 選択中のまま」という食い違いになる。復元された地域が現在の絞り込みの外に
       // ある時だけ、両立しない組み合わせを避けるため絞り込みを外す。
+      setActiveRegions(selection.regions)
+      setActivePrefectures(selection.prefectures)
       if (selection.areaId) {
         const areas = catalog.current?.areas
-        const { region, prefecture } = filterStateRef.current
-        if (areas && region && !getRegionAreas(areas, region, prefecture).some((area) => area.areaId === selection.areaId)) {
-          setActiveRegion('')
-          setActivePrefecture('')
+        const { regions, prefectures } = filterStateRef.current
+        if (areas && (regions.length > 0 || prefectures.length > 0) && !getRegionAreas(areas, regions, prefectures).some((area) => area.areaId === selection.areaId)) {
+          setActiveRegions([])
+          setActivePrefectures([])
         }
       }
     }
@@ -165,7 +186,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
         // フィットは MapPreview 側が選択中の問題の所属地域から決める（D-44 の寄せは維持）。
         if (!choices.length) {
           if (selectedId) {
-            if (syncUrl) writeSelectionToUrl(selectedAreaId, '', 'replace')
+            if (syncUrl) writeSelectionToUrl(selectedAreaId, '', 'replace', filterStateRef.current.regions, filterStateRef.current.prefectures)
             setSelectedId('')
             return
           }
@@ -186,7 +207,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
         setResult({ api, selection: selectedId, areaSelection: selectedAreaId, retry, state: 'loading', choices, areas })
         const id = choices.some((item) => item.questId === selectedId) ? selectedId : choices[0].questId
         if (id !== selectedId) {
-          if (syncUrl) writeSelectionToUrl(selectedAreaId, id, 'replace')
+          if (syncUrl) writeSelectionToUrl(selectedAreaId, id, 'replace', filterStateRef.current.regions, filterStateRef.current.prefectures)
           setSelectedId(id)
           return
         }
@@ -227,13 +248,18 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // エラー表示へ切り替わる（前のデータは残らない）。
   const choices = current?.choices ?? (result?.api === api ? result.choices : [])
   const availableAreas = result?.api === api ? result.areas : emptyAreas
-  const regionAreas = useMemo(() => getRegionAreas(availableAreas, activeRegion, activePrefecture), [availableAreas, activeRegion, activePrefecture])
-  const prefOptions = REGIONS.find((item) => item.name === activeRegion)?.prefectures ?? []
-  const resetAreaSelection = () => {
+  const regionAreas = useMemo(() => getRegionAreas(availableAreas, activeRegions, activePrefectures), [availableAreas, activeRegions, activePrefectures])
+  const prefOptions = useMemo(() => {
+    const selected = new Set(activeRegions)
+    const names = REGIONS.filter((item) => selected.has(item.name)).flatMap((item) => item.prefectures)
+    // 地方未選択でも都道府県を選べるよう、未選択時は全市区町村ではなく全県を出す。
+    return (names.length > 0 ? names : REGIONS.flatMap((item) => item.prefectures))
+  }, [activeRegions])
+  const resetAreaSelection = (regions: readonly string[] = activeRegions, prefectures: readonly string[] = activePrefectures) => {
     // 問題だけが選択されている状態（D-65）でも、絞り込み変更などでは選択を丸ごと外す。
     if (!selectedAreaId && !selectedId) return
     clearRefreshNotice()
-    if (syncUrl) writeSelectionToUrl('', '', 'push')
+    if (syncUrl) writeSelectionToUrl('', '', 'push', regions, prefectures)
     setSelectedAreaId('')
     setSelectedId('')
   }
@@ -247,7 +273,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     const selectedChoice = choices.find((item) => item.questId === selectedId)
     if (selectedChoice && selectedChoice.areaId === selectedAreaId) { resetAreaSelection(); return }
     clearRefreshNotice()
-    if (syncUrl) writeSelectionToUrl(selectedAreaId, '', 'push')
+    if (syncUrl) writeSelectionToUrl(selectedAreaId, '', 'push', activeRegions, activePrefectures)
     setSelectedId('')
   }
 
@@ -255,7 +281,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // 一覧の並びは問題番号（都道府県コード→連番）の昇順に統一する（D-59）。API の
   // 返却順は地域の登録順で北から南にも番号順にもなっておらず、見る人に規則性が
   // 伝わらなかった。番号が無い問題は番号付きの後ろに、元の順序のまま置く。
-  const visibleChoices = [...(activeRegion ? choices.filter((item) => visibleAreaIds.has(item.areaId)) : choices)]
+  const visibleChoices = [...((activeRegions.length > 0 || activePrefectures.length > 0) ? choices.filter((item) => visibleAreaIds.has(item.areaId)) : choices)]
     .sort((a, b) => {
       const ka = questNumberKey(a); const kb = questNumberKey(b)
       if (ka && kb) return ka[0] - kb[0] || ka[1] - kb[1]
@@ -265,34 +291,54 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // 勝手に選択扱いすると、URL や詳細に出ている問題と別の問題が選択中として
   // 見えてしまう。先頭問題の自動選択は読み込み側が選択状態と URL を更新して行う。
   const selectedQuestId = visibleChoices.some((item) => item.questId === selectedId) ? selectedId : ''
-  const selectRegion = (region: string) => { setActiveRegion(region); setActivePrefecture(''); resetAreaSelection() }
-  const selectPrefecture = (prefecture: string) => { setActivePrefecture(prefecture); resetAreaSelection() }
-  // 地方・都道府県の絞り込みは「場所で絞る」ボタンの中に畳む（D-48）。常時並べず、ボタンを
-  // 押した時だけチップを展開する（PC はパネル内、スマホは地図の上に浮く表示のまま）。
-  // ボタンの文言に現在の絞り込み状態を出す。地方・都道府県のどちらを選んでも展開は閉じる。
-  // 「全国」「地方内すべて」のチップは置かない（D-55）。何も選んでいない状態がそれぞれ
-  // 全国・地方内すべてであり、選択中のチップをもう一度押すと解除される（トグル）。
-  // 地方を解除・変更すると都道府県の選択も外れる（従来どおり selectRegion が都道府県をリセットする）。
-  // 展開は常時マウントして高さと透明度で開閉する（D-55）。出し入れで一覧がガクッと
-  // 押し下げられないよう、開閉はアニメーションさせる。
-  const filterSummary = activeRegion ? `場所で絞る：${activeRegion}${activePrefecture ? `・${activePrefecture}` : ''}` : '場所で絞る'
+  const syncFilterToUrl = (regions: readonly string[], prefectures: readonly string[]) => {
+    if (!syncUrl) return
+    writeSelectionToUrl(selectedAreaId, selectedId, 'replace', regions, prefectures)
+  }
+  const toggleRegion = (region: string) => {
+    const next = activeRegions.includes(region) ? activeRegions.filter((item) => item !== region) : [...activeRegions, region]
+    const allowed = new Set<string>(REGIONS.filter((item) => next.includes(item.name)).flatMap((item) => [...item.prefectures]))
+    // 地方が残っているときはその地方の県だけ残す。地方が空なら県の選択はそのまま（県だけの絞り込みを許す）。
+    const nextPrefs = next.length === 0 ? activePrefectures : activePrefectures.filter((pref) => allowed.has(pref))
+    setActiveRegions(next)
+    setActivePrefectures(nextPrefs)
+    if (selectedAreaId || selectedId) resetAreaSelection(next, nextPrefs)
+    else syncFilterToUrl(next, nextPrefs)
+  }
+  const togglePrefecture = (prefecture: string) => {
+    const next = activePrefectures.includes(prefecture) ? activePrefectures.filter((item) => item !== prefecture) : [...activePrefectures, prefecture]
+    setActivePrefectures(next)
+    if (selectedAreaId || selectedId) resetAreaSelection(activeRegions, next)
+    else syncFilterToUrl(activeRegions, next)
+  }
+  const clearPlaceFilter = () => {
+    setActiveRegions([])
+    setActivePrefectures([])
+    if (selectedAreaId || selectedId) resetAreaSelection([], [])
+    else syncFilterToUrl([], [])
+  }
+  // 地方・都道府県の絞り込みは「場所で絞る」ボタンの中に畳む（D-48）。複数選択は「または」。
+  // チップ操作ではパネルを閉じない。件数をボタンへ出し、「すべて解除」で空に戻す。
+  const selectedPlaceCount = activeRegions.length + activePrefectures.length
+  const filterSummary = selectedPlaceCount > 0 ? `場所で絞る：${selectedPlaceCount}件` : '場所で絞る'
   const filterControls = <div className="map-filter-panel">
     <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={() => setFilterOpen((value) => !value)}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
-    {(activeRegion || activePrefecture) && <div className="map-filter-selection">
-      {activeRegion && <button type="button" className="filter-chip" aria-label={`${activeRegion}の絞り込みを解除`} onClick={() => { selectRegion(''); setFilterOpen(false) }}>{activeRegion} <span aria-hidden="true">×</span></button>}
-      {activePrefecture && <button type="button" className="filter-chip" aria-label={`${activePrefecture}の絞り込みを解除`} onClick={() => { selectPrefecture(''); setFilterOpen(false) }}>{activePrefecture} <span aria-hidden="true">×</span></button>}
+    {selectedPlaceCount > 0 && <div className="map-filter-selection">
+      {activeRegions.map((region) => <button key={`r-${region}`} type="button" className="filter-chip" aria-label={`${region}の絞り込みを解除`} onClick={() => toggleRegion(region)}>{region} <span aria-hidden="true">×</span></button>)}
+      {activePrefectures.map((prefecture) => <button key={`p-${prefecture}`} type="button" className="filter-chip" aria-label={`${prefecture}の絞り込みを解除`} onClick={() => togglePrefecture(prefecture)}>{prefecture} <span aria-hidden="true">×</span></button>)}
+      <button type="button" className="filter-chip filter-clear-all" onClick={clearPlaceFilter}>すべて解除</button>
     </div>}
     <div className={'map-filter-chips-wrap' + (filterOpen ? ' is-open' : '')} aria-hidden={!filterOpen}>
       <div className="map-filter-chips-inner">
         <p className="filter-stage-label">地方</p>
         <div className="map-filter-chips" role="group" aria-label="地方">
-          {REGIONS.map((region) => <button key={region.name} type="button" className="filter-chip" aria-pressed={activeRegion === region.name} onClick={() => { selectRegion(activeRegion === region.name ? '' : region.name); setFilterOpen(false) }}>{region.name}</button>)}
+          {REGIONS.map((region) => <button key={region.name} type="button" className="filter-chip" aria-pressed={activeRegions.includes(region.name)} onClick={() => toggleRegion(region.name)}>{region.name}</button>)}
         </div>
-        {activeRegion && <div>
+        <div>
           <p className="filter-stage-label">都道府県</p>
           <div className="map-filter-chips" role="group" aria-label="都道府県">
-          {prefOptions.map((prefecture) => <button key={prefecture} type="button" className="filter-chip" aria-pressed={activePrefecture === prefecture} onClick={() => { selectPrefecture(activePrefecture === prefecture ? '' : prefecture); setFilterOpen(false) }}>{prefecture}</button>)}
-        </div></div>}
+          {prefOptions.map((prefecture) => <button key={prefecture} type="button" className="filter-chip" aria-pressed={activePrefectures.includes(prefecture)} onClick={() => togglePrefecture(prefecture)}>{prefecture}</button>)}
+        </div></div>
       </div>
     </div>
   </div>
@@ -312,14 +358,14 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     clearRefreshNotice()
     // 問題の選択は所属地域の選択を伴わない（D-65）。一覧は現在の絞り込みのまま
     // 残り、地図のフィットは MapPreview 側が所属地域から決める（D-44 の寄せは維持）。
-    if (syncUrl) writeSelectionToUrl(selectedAreaId, item.questId, 'push')
+    if (syncUrl) writeSelectionToUrl(selectedAreaId, item.questId, 'push', activeRegions, activePrefectures)
     setSelectedId(item.questId)
     if (dataMode === 'durable-local') {
       setOpenQuestRequest((previous) => ({ questId: item.questId, sequence: (previous?.sequence ?? 0) + 1 }))
     }
   }
   const picker = <div className="api-quest-picker">
-    {activeRegion && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '一覧から問題を選んでください。' : 'この条件に合う問題はありません。'}</p>}
+    {(activeRegions.length > 0 || activePrefectures.length > 0) && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '一覧から問題を選んでください。' : 'この条件に合う問題はありません。'}</p>}
     <ul aria-label="問題一覧">{visibleChoices.map((item) => <li key={item.questId}>
       <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => chooseQuest(item)}>{item.title}</button>
     </li>)}</ul>
@@ -356,9 +402,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     if (areaId === selectedAreaId) { resetAreaSelection(); return }
     if (!availableAreas.some((item) => item.areaId === areaId)) return
     // 薄いピンも通常と同じ地域選択。対象を一覧にも出すため場所フィルタを解除する。
-    if (!visibleAreaIds.has(areaId)) { setActiveRegion(''); setActivePrefecture('') }
+    if (!visibleAreaIds.has(areaId)) { setActiveRegions([]); setActivePrefectures([]) }
     clearRefreshNotice()
-    if (syncUrl) writeSelectionToUrl(areaId, '', 'push')
+    if (syncUrl) writeSelectionToUrl(areaId, '', 'push', activeRegions, activePrefectures)
     setSelectedAreaId(areaId)
     setSelectedId('')
   }
@@ -374,7 +420,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     // 問題の選択は所属地域の選択を伴わない（D-65）。URL には問題だけを足し、
     // 一覧は現在の絞り込みのまま残る。地図のフィットは MapPreview 側が選択中の
     // 問題の所属地域から決める（D-44 の寄せは維持）。
-    if (syncUrl) writeSelectionToUrl(selectedAreaId, questId, 'push')
+    if (syncUrl) writeSelectionToUrl(selectedAreaId, questId, 'push', activeRegions, activePrefectures)
     setSelectedId(questId)
     setOpenQuestRequest((previous) => ({ questId, sequence: (previous?.sequence ?? 0) + 1 }))
   }
@@ -396,7 +442,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       {!mapSheetMode && refreshControl}
       {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode === 'demo' && filterControls}{!mapSheetMode && picker}</>}
     </section> : undefined
-  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={availableAreas} filterRegion={activeRegion} filterPrefecture={activePrefecture} mapQuests={visibleChoices} mapQuestsLoading={state === 'loading' && visibleChoices.length === 0} onOpenQuest={openQuestFromMap} onDeselectQuest={deselectQuest} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
+  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && ((activeRegions.length === 0 && activePrefectures.length === 0) || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={availableAreas} filterRegion={activeRegions} filterPrefecture={activePrefectures} mapQuests={visibleChoices} mapQuestsLoading={state === 'loading' && visibleChoices.length === 0} onOpenQuest={openQuestFromMap} onDeselectQuest={deselectQuest} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
     areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
     questPicker={mapSheetMode ? undefined : <>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} onMapSheetModeChange={setMapSheetMode} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}

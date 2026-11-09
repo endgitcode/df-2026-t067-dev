@@ -25,13 +25,26 @@ export function regionForPrefecture(prefecture: string) {
   return REGIONS.find((region) => (region.prefectures as readonly string[]).includes(prefecture))?.name
 }
 
-export function getRegionAreas(areas: PublicArea[], region: string, prefecture: string) {
-  if (!region) return areas
+function asList(value: string | readonly string[] | undefined): string[] {
+  if (value == null || value === '') return []
+  return (typeof value === 'string' ? [value] : [...value]).filter(Boolean)
+}
+
+/** 絞り込みは「または」。選んだ地方のいずれかに属する、または選んだ都道府県のいずれかに一致すれば残す。
+ *  地方とその中の県を両方選んでも、地方全体が残る（県指定は冗長）。未選択は全件。 */
+export function getRegionAreas(areas: PublicArea[], region: string | readonly string[] = '', prefecture: string | readonly string[] = '') {
+  const regions = asList(region)
+  const prefectures = asList(prefecture)
+  if (regions.length === 0 && prefectures.length === 0) return areas
+  const regionSet = new Set(regions)
+  const prefectureSet = new Set(prefectures)
   return areas.filter((area) => {
     const classifiedPrefecture = prefectureForArea(area)
     // 「未分類」という分類は廃止した（D-33）。コードの無い地域は、未選択（全件表示）の時だけ出る。
     if (!classifiedPrefecture) return false
-    return regionForPrefecture(classifiedPrefecture) === region && (!prefecture || classifiedPrefecture === prefecture)
+    if (prefectureSet.has(classifiedPrefecture)) return true
+    const classifiedRegion = regionForPrefecture(classifiedPrefecture)
+    return !!classifiedRegion && regionSet.has(classifiedRegion)
   })
 }
 
