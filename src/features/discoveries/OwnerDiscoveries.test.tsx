@@ -25,6 +25,59 @@ it('keeps the earlier explanation and omits blank guidance fields', async () => 
   expect(screen.queryByText('自治体からの紹介')).not.toBeInTheDocument()
 })
 
+it('shows the confirmed spot guidance with a fixed Google Maps search link', async () => {
+  const user = userEvent.setup()
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = () => 'blob:synthetic-record'
+    static revokeObjectURL = vi.fn()
+  })
+  const spot = { name: '架空の灯台', address: '架空県架空市1-1', position: { latitude: 35.5, longitude: 139.5 }, googlePlaceId: 'place-abc_123' }
+  const api = {
+    ...createApiClient(),
+    listDiscoveries: vi.fn().mockResolvedValue({ items: [discovery], nextCursor: null }),
+    getDiscovery: vi.fn().mockResolvedValue({ ...discovery, afterClear: { access: '', hours: '', promoComment: '', explanation: '', spot } }),
+    getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
+  }
+  render(<OwnerDiscoveries api={api} />)
+  await user.click(await screen.findByRole('button', { name: discovery.placeName }))
+  expect(await screen.findByText('架空の灯台')).toBeVisible()
+  expect(screen.getByText('架空県架空市1-1')).toBeVisible()
+  expect(screen.getByRole('link', { name: 'Googleマップで開く' })).toHaveAttribute('href',
+    'https://www.google.com/maps/search/?api=1&query=35.5,139.5&query_place_id=place-abc_123')
+})
+
+it('links to the spot position without a place id, and omits the link when no spot was registered', async () => {
+  const user = userEvent.setup()
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = () => 'blob:synthetic-record'
+    static revokeObjectURL = vi.fn()
+  })
+  const spot = { name: '架空の灯台', address: '架空県架空市1-1', position: { latitude: 35.5, longitude: 139.5 } }
+  const withSpot = {
+    ...createApiClient(),
+    listDiscoveries: vi.fn().mockResolvedValue({ items: [discovery], nextCursor: null }),
+    getDiscovery: vi.fn().mockResolvedValue({ ...discovery, afterClear: { access: '', hours: '', promoComment: '', explanation: '', spot } }),
+    getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
+  }
+  const first = render(<OwnerDiscoveries api={withSpot} />)
+  await user.click(await screen.findByRole('button', { name: discovery.placeName }))
+  expect(await screen.findByRole('link', { name: 'Googleマップで開く' })).toHaveAttribute('href',
+    'https://www.google.com/maps/search/?api=1&query=35.5,139.5')
+  first.unmount()
+
+  const withoutSpot = {
+    ...createApiClient(),
+    listDiscoveries: vi.fn().mockResolvedValue({ items: [discovery], nextCursor: null }),
+    getDiscovery: vi.fn().mockResolvedValue({ ...discovery, afterClear: { access: '徒歩5分', hours: '', promoComment: '', explanation: '' } }),
+    getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
+  }
+  render(<OwnerDiscoveries api={withoutSpot} />)
+  await user.click(await screen.findByRole('button', { name: discovery.placeName }))
+  expect(await screen.findByText('徒歩5分')).toBeVisible()
+  expect(screen.queryByRole('link', { name: 'Googleマップで開く' })).not.toBeInTheDocument()
+  expect(screen.queryByText('住所')).not.toBeInTheDocument()
+})
+
 it('confirms deletion, checks a known receipt without resending, and refreshes the list after completion', async () => {
   const user = userEvent.setup()
   const revokeObjectURL = vi.fn()
