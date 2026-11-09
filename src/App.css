@@ -459,14 +459,36 @@ button.explore-quest-card { cursor: pointer; }
 @media (max-width: 640px) {
   .hint-item .optional-hint-image { max-height: min(320px, 45svh); }
 }
-.quest-hints { display: grid; gap: 10px; margin: 18px 0; }
+.quest-hints { display: grid; gap: 12px; margin: 18px 0; }
 .quest-hints h4 { margin: 0; }
+.hint-open, .hint-next {
+  width: 100%; min-height: 52px; padding: 12px 18px; border: var(--ui-border-width) solid var(--ui-line);
+  border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-weight: 600; cursor: pointer;
+}
+.hint-open { justify-self: stretch; }
+.hint-card { display: grid; gap: 12px; padding: 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
+.hint-card-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hint-card-steps { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.hint-step {
+  min-width: 32px; min-height: 32px; padding: 0 8px; border: var(--ui-border-width) solid var(--ui-line);
+  border-radius: 999px; background: var(--ui-surface); color: var(--ui-muted); font: inherit; font-size: 12px; cursor: pointer;
+}
+.hint-step.is-current { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: var(--ui-line); font-weight: var(--ui-weight-strong); }
+.hint-step:disabled { opacity: .45; cursor: default; }
+.hint-step-total { color: var(--ui-muted); font-size: 12px; margin-left: 2px; }
+.hint-back, .hint-cancel {
+  min-height: 36px; padding: 6px 12px; border: var(--ui-border-width) solid var(--ui-line);
+  border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-size: 13px; cursor: pointer;
+}
+.hint-card-text { margin: 0; color: var(--ui-ink); font-size: 15px; line-height: 1.7; }
+.hint-next { justify-self: center; width: min(100%, 16rem); }
 .hint-item, .hint-version-changed { padding: 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
-/* ヒントを開くボタンは枠いっぱいに広げ、主ボタンと同じ幅の尺に揃える（D-74）。
-   中身の幅だけだと左に小さく寄り、右側が余って見えた（実地目視、PC・スマホ共通）。
-   さらに押せる高さを 52px にして、細字の順序注記を外したあとも主操作として目立つようにする。 */
-.hint-item > button, .hint-item [role="alert"] button, .hint-version-changed button { width: 100%; min-height: 52px; padding: 12px 18px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-weight: 600; cursor: pointer; }
-.hint-item p, .hint-version-changed p, .hints-note { margin: 8px 0 0; color: var(--ui-muted); font-size: 13px; line-height: 1.7; }
+.hint-item > button, .hint-item [role="alert"] button, .hint-version-changed button, .hint-card [role="alert"] button {
+  width: 100%; min-height: 44px; padding: 10px 14px; border: var(--ui-border-width) solid var(--ui-line);
+  border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; cursor: pointer;
+}
+.hint-item p, .hint-version-changed p, .hints-note, .hint-card p { margin: 8px 0 0; color: var(--ui-muted); font-size: 13px; line-height: 1.7; }
+.hint-card-text { color: var(--ui-ink); font-size: 15px; }
 .hint-item [role="alert"] { color: var(--ui-error); }
 .hint-item [role="alert"] .hint-retry, .optional-hint-content .optional-hint-retry, .quest-reload-subtle { min-height: 44px; padding: 8px 10px; border: 1px solid transparent; border-radius: var(--ui-radius); background: transparent; color: var(--ui-muted); font: inherit; font-size: 12px; font-weight: 400; cursor: pointer; }
 .hint-item [role="alert"] .hint-retry, .optional-hint-content .optional-hint-retry { text-decoration: underline; text-underline-offset: 2px; }
