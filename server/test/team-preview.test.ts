@@ -145,7 +145,7 @@ test('answer trial photo tests are wired to the shared Vertex matcher as real re
   assert.equal(options.timeoutMs, 30_000)
 })
 
-const trialIdentity = { version: 1, trial: 'vertex-photo-2026-11-05', project: 'tour-513804', model: 'gemini-3.8-flash', location: 'global', limit: 20 }
+const trialIdentity = { version: 1, trial: 'vertex-photo-2026-11-05', project: 'tour-513804', model: 'gemini-3.8-flash', location: 'global', limit: 40 }
 
 function fakeTrialCounterDb(initial?: Record<string, unknown>) {
   let stored = initial
@@ -183,7 +183,7 @@ test('a photo test send through the trial transport consumes one shared counter 
 })
 
 test('photo test sends fail closed without reaching Vertex when the counter is unseeded or exhausted', async () => {
-  for (const initial of [undefined, { ...trialIdentity, used: 20 }]) {
+  for (const initial of [undefined, { ...trialIdentity, used: 40 }]) {
     const counter = fakeTrialCounterDb(initial)
     let calls = 0
     const transport = createFirestoreVertexTrialTransport(counter.db, {
