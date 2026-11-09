@@ -1174,7 +1174,7 @@ describe('Google map panel', () => {
     // half はその 55%（352px）。開くのは effect 経由なので状態が落ち着くまで待つ。
     await waitFor(() => expect(sheet).toHaveAttribute('data-snap', 'half'))
     expect(sheet.style.height).toBe('352px')
-    expect(SHEET_PEEK_HEIGHT).toBe(128)
+    expect(SHEET_PEEK_HEIGHT).toBe(168)
     expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')

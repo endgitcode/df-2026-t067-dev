@@ -82,7 +82,7 @@ describe('mobile bottom tab bar (D-32)', () => {
 
   it('keeps the mobile map controls fixed behind the sheet and the sheet above the tab bar', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); z-index: 3; }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
     const reopenRule = 'body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px;'
     expect(css).toContain(reopenRule)
@@ -331,5 +331,26 @@ describe('panel single scroll and in-list detail (D-70)', () => {
   it('raises the sheet for quest selection and fits selections above the raised sheet', () => {
     expect(mapPreview).toContain("selectedQuestId ? `quest:${selectedQuestId}` : null")
     expect(mapPreview).toContain('Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))')
+  })
+})
+
+// シートの高さ・はみ出し・チップの折り返し（D-73）。CSS の実測は jsdom ではできないため、
+// 規則の文字列と定数で担保する。
+describe('sheet peek height and overflow guards (D-73)', () => {
+  it('clears the mobile map controls above the peek sheet via the sheet height variable', () => {
+    expect(css).toContain('body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); }')
+    expect(css).not.toContain('bottom: calc(var(--mobile-tabbar-h) + 58px)')
+  })
+
+  it('keeps the full-bleed page free of phantom vertical growth and puts the clearance on the rail', () => {
+    expect(css).toContain('body.explore-fullbleed .page { padding-bottom: 0; }')
+    expect(css).toContain('body.explore-fullbleed .quest-rail { padding: 22px 16px calc(var(--mobile-tabbar-h) + 25px); }')
+    expect(css).toContain('body.explore-fullbleed .quest-rail:empty { display: none; }')
+  })
+
+  it('clips horizontal overflow at the viewport and wraps the region chips', () => {
+    expect(css).toContain('html, body { overflow-x: clip; }')
+    expect(css).toContain('.map-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; overflow: visible; padding: 2px; pointer-events: auto; }')
+    expect(css).not.toContain('.map-filter-chips::-webkit-scrollbar')
   })
 })

@@ -3,12 +3,13 @@ import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, 
 
 export type SheetSnap = 'closed' | 'peek' | 'half' | 'full'
 
-// 覗き見では、ハンドル＋件数＋先頭の行1つが丸ごと収まる高さにする
-// （ドラッグしなくても最初の謎に届くことが狙い）。一覧の行はタイトルだけの
-// 簡素な形（D-46）になったため、内訳の目安：ハンドル34＋件数行・余白 約28＋
-// タイトル行 約46＋余裕 約20。
+// 覗き見では、ハンドル＋件数＋先頭の行2つが丸ごと収まる高さにする
+// （ドラッグしなくても最初の謎に届くことが狙い）。当初は行1つ分だったが、
+// 実地目視で「低すぎて1件目しか見えない」と報告があったため行2つ分に広げた（D-73）。
+// 一覧の行はタイトルだけの簡素な形（D-46）で、内訳の目安：ハンドル34＋
+// （本体側：上余白2＋件数行 約19＋行間10＋タイトル行 約46＋行間10＋タイトル行 約46）。
 // 全開では上部の地図操作（範囲チップ等）を残す。
-export const SHEET_PEEK_HEIGHT = 128
+export const SHEET_PEEK_HEIGHT = 168
 const SHEET_CLOSED_HEIGHT = 34
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
