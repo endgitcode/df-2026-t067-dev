@@ -82,6 +82,23 @@ test('durable managed drafts isolate organizations and use one revision for text
   assert.equal(created.source, 'real')
   assert.equal(created.areaId, areaId)
   assert.deepEqual((await colleague.listManagedQuests(orgId)).items, [created])
+  await t.test('derives the 1km zone from the same saved spot and keeps readiness read-only', async () => {
+    const position = { latitude: 35, longitude: 135 }
+    const withSpot = { ...draft, afterClear: { ...draft.afterClear, spot: { name: '架空の塔', address: '架空住所', position } } }
+    const created = await editor.createManagedQuest(orgId, withSpot, { deriveShootingArea: true })
+    assert.equal(created.shootingAreaStatus, 'configured')
+    assert.deepEqual((await editor.getShootingAreas(orgId, created.questId)).zones, [{ ...position, radiusMeters: 1000 }])
+    await assert.rejects(editor.updateShootingAreas(orgId, created.questId, { expectedDraftRevision: created.draftRevision, zones: [] }), { code: 'INVALID_INPUT' })
+    await assert.rejects(first('traveler').getManagedQuestReadiness(orgId, created.questId), { code: 'FORBIDDEN' })
+    const before = await editor.getManagedQuestReadiness(orgId, created.questId)
+    assert.equal(before.quest.status, 'draft')
+    assert.equal(before.missing.includes('shootingAreas'), false)
+    assert.deepEqual(await editor.getManagedQuest(orgId, created.questId), created)
+    const updated = await editor.updateManagedQuest(orgId, created.questId, { expectedDraftRevision: created.draftRevision, draft })
+    assert.equal(updated.shootingAreaStatus, 'unconfigured')
+    assert.deepEqual((await editor.getShootingAreas(orgId, created.questId)).zones, [])
+    assert((await editor.getManagedQuestReadiness(orgId, created.questId)).missing.includes('targetSpot'))
+  })
   await assert.rejects(second('other').getManagedQuest(orgId, questId), { code: 'FORBIDDEN' })
   await assert.rejects(second('other').getManagedQuest('other-org', questId), { code: 'NOT_FOUND' })
 

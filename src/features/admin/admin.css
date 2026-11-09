@@ -226,6 +226,9 @@
 .workflow-steps li { display: grid; padding: 8px 10px; border-radius: 8px; background: #f5f6f8; line-height: 1.5; }
 .workflow-steps li[aria-current="step"] { color: #153f6f; background: #e8f2ff; outline: 2px solid #32689e; outline-offset: -2px; }
 .workflow-steps small { color: #4d5763; }
+.admin-managed .workflow-steps li { padding: 0; }
+.admin-managed .workflow-steps button { display: grid; height: 100%; min-width: 0; padding: 8px 10px; text-align: start; background: transparent; color: inherit; border-color: transparent; border-radius: 8px; }
+.admin-managed .workflow-steps button:hover { border-color: #32689e; }
 .workflow-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-block: 14px; }
 .workflow-heading h2 { margin: 0; }
 .workflow-remaining { margin-block: 8px; }

@@ -1,4 +1,4 @@
-import type { ManagedQuest } from '../../shared/api'
+import type { ManagedQuest, ReviewField } from '../../shared/api'
 
 // Mirrors the saved-data checks of server/src/admin-review.ts
 // (missingReviewFields), minus the parts only the server can know:
@@ -26,4 +26,13 @@ export function remainingWork(quest: ManagedQuest, approvedAssets = false): stri
   else if (quest.status === 'review_pending') items.push('公開前のチェックと公開')
   else if (quest.status === 'paused') items.push('再公開の条件確認と公開前のチェック')
   return items
+}
+
+export const reviewLabels: Record<ReviewField, string> = {
+  'materials.name': '対象名', 'materials.evidence': '対象にした理由（確認したこと）', 'materials.photoRights': '写真の利用権',
+  targetSpot: '対象スポットの位置と住所',
+  referenceApproval: '参考写真の事前承認', hintApproval: 'ヒント画像の事前承認',
+  referenceAssetId: '参考写真', hintAssetId: 'ヒント画像の用途', shootingAreas: '撮影できる範囲（非公開）',
+  'content.title': '問題タイトル', 'content.question': '問題文', 'content.hints': '3本のヒント',
+  'content.verifiedFeatures': '現地で確かめた見た目の特徴',
 }

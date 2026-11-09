@@ -1,18 +1,13 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError, parsePublishManagedQuest } from '../../shared/api'
-import type { ApiClient, ManagedQuest, PhotoDecision, PublishManagedQuest, ReviewField } from '../../shared/api'
+import type { ApiClient, ManagedQuest, PhotoDecision, PublishManagedQuest, ReviewField, ReviewSubmission } from '../../shared/api'
 import { PhotoRightsInput } from './PhotoRightsInput'
 import { fixturePngUrl, matchFixturePngBase64, otherFixturePngBase64 } from './photoTestFixtures'
 import { useRequestAction } from '../../shared/useRequestAction'
 
-const reviewLabels: Record<ReviewField, string> = {
-  'materials.name': '対象名', 'materials.evidence': '対象にした理由（確認したこと）', 'materials.photoRights': '写真の利用権',
-  referenceApproval: '参考写真の事前承認', hintApproval: 'ヒント画像の事前承認',
-  referenceAssetId: '参考写真', hintAssetId: 'ヒント画像の用途', shootingAreas: '撮影できる範囲（非公開）',
-  'content.title': '問題タイトル', 'content.question': '問題文', 'content.hints': '3本のヒント',
-  'content.verifiedFeatures': '現地で確かめた見た目の特徴',
-}
+import { reviewLabels } from './publicationReadiness'
+
 type Confirmation = keyof PublishManagedQuest['confirmations']
 const confirmationLabels: ReadonlyArray<readonly [Confirmation, string]> = [
   ['fictionalData', '架空の素材と情報だけを使った'],
@@ -22,14 +17,17 @@ const confirmationLabels: ReadonlyArray<readonly [Confirmation, string]> = [
   ['testCases', '一致と別対象の試験を確認した'],
 ]
 type Failure = { message: string; stale?: true }
-type TestProofs = Partial<Record<'MATCH' | 'WRONG_TARGET', string>>
+type TrialKind = 'MATCH' | 'WRONG_TARGET'
+type TestProofs = Partial<Record<TrialKind, string>>
+type TrialFeedback = { kind: 'pending' | 'success' | 'error'; message: string }
 
 function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
   const code = cause instanceof ApiError ? cause.code : undefined
   switch (code) {
     case 'DRAFT_CONFLICT': return { message: '下書きの版が変わりました。一覧から最新版を確認してください。', stale: true }
     case 'FORBIDDEN': return { message: '担当組織の操作権限を確認できません。', stale: true }
-    case 'PHOTO_APPROVAL_REQUIRED': return { message: 'この画像は指定用途で事前承認されていません。承認済み素材を選ぶか、運営に確認してください。' }
+    case 'PHOTO_APPROVAL_REQUIRED': return { message: '素材の事前承認が必要です。運営に承認を依頼するか、承認済みの写真を選んでください。' }
+    case 'NETWORK_ERROR': return { message: '通信に失敗しました。通信状況を確認し、同じ写真で再送してください。' }
     case 'PHOTO_TEST_REQUIRED': return { message: 'この版で異なる写真を使って一致・別対象の試験を確認してください。' }
     case 'REVIEW_REQUIRED': return { message: 'この版の確認依頼と確認項目を見直してください。' }
     case 'INVALID_INPUT': return { message: '試験写真・利用権と保存済みの参考素材を確認してください。' }
@@ -41,9 +39,9 @@ function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
   }
 }
 
-function ApprovedTrial({ expected, disabled, verified, onTest }: {
-  expected: 'MATCH' | 'WRONG_TARGET'; disabled: boolean; verified: boolean
-  onTest: (file: File, key: string, expected: 'MATCH' | 'WRONG_TARGET') => void
+function ApprovedTrial({ expected, disabled, feedback, onTest, onSelection }:   {
+  expected: TrialKind; disabled: boolean; feedback?: TrialFeedback; onSelection: (kind: TrialKind) => void
+  onTest: (file: File, key: string, expected: TrialKind) => void
 }) {
   const [file, setFile] = useState<File | null>(null)
   const key = useRef<string | null>(null)
@@ -58,16 +56,18 @@ function ApprovedTrial({ expected, disabled, verified, onTest }: {
       <label>{label}を選択<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
         setFile(event.target.files?.[0] ?? null)
         key.current = null
+        onSelection(expected)
       }} /></label>
       {file && !valid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
       <button type="submit" disabled={!valid}>{label}の試験を送信</button>
-      <span> {verified ? '確認済み' : '未確認'}</span>
+      <p role={feedback?.kind === 'error' ? 'alert' : 'status'}>{feedback?.message ?? '写真を選んで送信してください。'}</p>
     </fieldset>
   </form>
 }
 
-export function PublicationWorkspace({ api, initial, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock', areaUnclassified = false, approvedAssets = false, onFix }: {
-  api: ApiClient; initial: ManagedQuest; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; approvedAssets?: boolean; onFix?: (field: ReviewField) => void; onBack: () => void; onPublished: () => void
+export function PublicationWorkspace({ api, initial, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock', areaUnclassified = false, approvedAssets = false, onFix, onBusy, onTrialConfirmed, readiness, readinessFailed, onReadinessRetry }: {
+  api: ApiClient; initial: ManagedQuest; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; approvedAssets?: boolean; onFix?: (field: ReviewField) => void; onBusy?: (busy: boolean) => void; onTrialConfirmed?: () => void;
+  readiness?: ReviewSubmission; readinessFailed?: boolean; onReadinessRetry?: () => void; onBack: () => void; onPublished: () => void
 }) {
   const [quest, setQuest] = useState(initial)
   const [photo, setPhoto] = useState<File | null>(null)
@@ -77,7 +77,8 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   const key = useRef<string | null>(null)
   const [outcome, setOutcome] = useState<PhotoDecision | null>(null)
   const [proofs, setProofs] = useState<TestProofs>({})
-  const [missing, setMissing] = useState<ReviewField[]>([])
+  const [trialFeedback, setTrialFeedback] = useState<Partial<Record<TrialKind, TrialFeedback>>>({})
+  const [reviewMissing, setMissing] = useState<ReviewField[]>([])
   const [checked, setChecked] = useState<Confirmation[]>([])
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<Failure | null>(null)
@@ -86,27 +87,45 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   const disabled = busy || !!failure?.stale
   const photoValid = photo !== null && photo.size > 0 && photo.size <= 4 * 1024 * 1024 &&
     ['image/jpeg', 'image/png', 'image/webp'].includes(photo.type)
-  const reviewed = quest.status === 'review_pending' && !!proofs.MATCH && !!proofs.WRONG_TARGET
+  const missing = approvedAssets ? readiness?.missing ?? [] : reviewMissing
+  const checkReason = areaUnclassified ? '地域の分類が完了するまで公開できません。'
+    : approvedAssets && !readiness ? '最新版の公開準備状況を確認してください。'
+    : missing.length ? '不足項目を修正してください。'
+    : (approvedAssets ? readiness?.quest.status : quest.status) !== 'review_pending' ? 'この版の公開条件を確認してください。'
+    : !proofs.MATCH || !proofs.WRONG_TARGET ? 'この下書き版で一致・別対象の写真試験を完了してください。'
+    : ''
+  const reviewed = !checkReason
   const confirmations = approvedAssets ? confirmationLabels.filter(([item]) => item !== 'photoRights') : confirmationLabels
   const ready = reviewed && confirmations.every(([item]) => checked.includes(item))
   const realPhotoTest = photoTestSource === 'real'
 
-  async function perform<T>(work: (signal: AbortSignal) => Promise<T>, receive: (value: T) => void) {
+  async function perform<T>(work: (signal: AbortSignal) => Promise<T>, receive: (value: T) => void,
+    report?: (result: TrialFeedback) => void) {
     if (failure?.stale) return
     const operation = begin(() => {
-      setFailure({ message: '操作の確認に時間がかかっています。通信状況を確認してください。' })
+      const message = '通信に時間がかかっています。通信状況を確認し、同じ写真で再送してください。'
+      if (report) report({ kind: 'error', message })
+      else setFailure({ message })
       setBusy(false)
+      onBusy?.(false)
     })
     if (!operation) return
     setBusy(true)
+    onBusy?.(true)
     setFailure(null)
+    report?.({ kind: 'pending', message: '写真を送信し、結果を確認しています…' })
     try {
       const result = await work(operation.signal)
       if (operation.isCurrent()) receive(result)
     } catch (cause) {
-      if (operation.isCurrent()) setFailure(publicationFailure(cause, realPhotoTest))
+      if (operation.isCurrent()) {
+        const failure = publicationFailure(cause, realPhotoTest)
+        if (report) report({ kind: 'error', message: failure.message })
+        if (!report || failure.stale) setFailure(failure)
+        if (cause instanceof ApiError && ['PHOTO_APPROVAL_REQUIRED', 'REVIEW_REQUIRED', 'DRAFT_CONFLICT'].includes(cause.code)) onReadinessRetry?.()
+      }
     } finally {
-      if (operation.isCurrent()) setBusy(false)
+      if (operation.isCurrent()) { setBusy(false); onBusy?.(false) }
       operation.finish()
     }
   }
@@ -117,21 +136,35 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
     sendTrial(photo!, key.current ??= crypto.randomUUID())
   }
 
-  function sendTrial(file: File, idempotencyKey: string, expected?: 'MATCH' | 'WRONG_TARGET') {
+  function resetTrial(kind: TrialKind) {
+    setTrialFeedback((current) => ({ ...current, [kind]: undefined }))
+    setProofs((current) => ({ ...current, [kind]: undefined }))
+    setChecked([])
+  }
+
+  function sendTrial(file: File, idempotencyKey: string, expected?: TrialKind) {
+    const report = expected && ((feedback: TrialFeedback) => {
+      setTrialFeedback((current) => ({ ...current, [expected]: feedback }))
+      if (feedback.kind === 'pending') setProofs((current) => ({ ...current, [expected]: undefined }))
+    })
     void perform((signal) => api.testManagedQuest(orgId, questId, {
       expectedDraftRevision: draftRevision, photo: file, ...(approvedAssets ? {} : { photoRights: rights }), idempotencyKey,
     }, { signal }), (result) => {
       if (result.source !== photoTestSource) throw new ApiError('INVALID_RESPONSE')
       setOutcome(result.outcome)
       setChecked([])
-      if (expected && result.outcome !== expected && result.outcome !== 'IMAGE_UNCERTAIN') {
-        setFailure({ message: '想定した試験結果と一致しません。別の承認済み写真を選んでください。' })
+      if (expected && result.outcome !== expected) {
+        const message = result.outcome === 'IMAGE_UNCERTAIN' ? '判定できませんでした。対象がはっきり写った承認済み写真で再試験してください。'
+          : '想定した判定と一致しません。対象を確認し、別の承認済み写真で再試験してください。'
+        report?.({ kind: 'error', message })
         return
       }
       if (result.outcome !== 'IMAGE_UNCERTAIN') {
         setProofs((current) => ({ ...current, [result.outcome]: result.testId }))
+        onTrialConfirmed?.()
+        report?.({ kind: 'success', message: result.outcome === 'MATCH' ? '一致試験を確認しました。' : '別対象の試験を確認しました。' })
       }
-    })
+    }, report)
   }
 
   function review() {
@@ -139,6 +172,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
       setQuest(result.quest)
       setMissing(result.missing)
       setChecked([])
+      onReadinessRetry?.()
     })
   }
 
@@ -158,11 +192,19 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
     {areaUnclassified && <p role="alert">この地域は都道府県コードが未設定（未分類）のため、公開できません。地域の分類が完了するまで公開は止まります。</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">操作結果を確認しています…</p>}
+    <fieldset disabled={disabled}>
+      <legend>公開条件の確認</legend>
+      {approvedAssets && !readiness && <p role={readinessFailed ? 'alert' : 'status'}>{readinessFailed ? '公開準備状況を取得できませんでした。' : '公開準備状況を確認しています。'}</p>}
+      {readinessFailed && <button type="button" onClick={onReadinessRetry}>公開準備状況を読み直す</button>}
+      <button type="button" onClick={review} disabled={approvedAssets && (!readiness || missing.length > 0)}>この版の公開条件を確認</button>
+      {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
+      {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}を確認</button> : reviewLabels[item]}</li>)}</ul></>}
+    </fieldset>
     {approvedAssets ? <>
       <p>事前承認済みの写真を使います。{realPhotoTest && '送信ごとに回答と共用の送信枠を1回使います。'}</p>
       {!realPhotoTest && <p><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真</a> ・ <a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真</a></p>}
-      <ApprovedTrial expected="MATCH" disabled={disabled} verified={!!proofs.MATCH} onTest={sendTrial} />
-      <ApprovedTrial expected="WRONG_TARGET" disabled={disabled} verified={!!proofs.WRONG_TARGET} onTest={sendTrial} />
+      <ApprovedTrial expected="MATCH" disabled={disabled} feedback={trialFeedback.MATCH} onTest={sendTrial} onSelection={resetTrial} />
+      <ApprovedTrial expected="WRONG_TARGET" disabled={disabled} feedback={trialFeedback.WRONG_TARGET} onTest={sendTrial} onSelection={resetTrial} />
     </> : <form onSubmit={trial}>
       <fieldset disabled={disabled}>
         <legend>写真試験</legend>
@@ -187,18 +229,12 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
         <button type="submit" disabled={!photoValid || !rights.trim() || reuseNeeded}>写真試験を送信</button>
       </fieldset>
     </form>}
-    {proofs.MATCH && <p role="status">一致試験を確認しました。</p>}
-    {proofs.WRONG_TARGET && <p role="status">別対象の試験を確認しました。</p>}
-    {outcome === 'IMAGE_UNCERTAIN' && <p role="status">{realPhotoTest ? '試験写真を確認できませんでした。対象がはっきり写った別の写真でお試しください。' : '試験写真を確認できませんでした。別の合成写真でお試しください。'}</p>}
-    <fieldset disabled={disabled}>
-      <legend>公開条件の確認</legend>
-      <button type="button" onClick={review}>この版の公開条件を確認</button>
-      {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
-      {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}を確認</button> : reviewLabels[item]}</li>)}</ul></>}
-    </fieldset>
+    {!approvedAssets && proofs.MATCH && <p role="status">一致試験を確認しました。</p>}
+    {!approvedAssets && proofs.WRONG_TARGET && <p role="status">別対象の試験を確認しました。</p>}
+    {!approvedAssets && outcome === 'IMAGE_UNCERTAIN' && <p role="status">{realPhotoTest ? '試験写真を確認できませんでした。対象がはっきり写った別の写真でお試しください。' : '試験写真を確認できませんでした。別の合成写真でお試しください。'}</p>}
     <fieldset disabled={disabled || !reviewed}>
       <legend>公開前のチェック</legend>
-      {!reviewed && <p>この版の公開条件を確認し、この画面で一致と別対象の写真試験を行うとチェックできます。</p>}
+      {checkReason && <p>{checkReason}</p>}
       {confirmations.map(([item, label]) => <label key={item} className="check-option">
         <input type="checkbox" checked={checked.includes(item)} onChange={(event) => {
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))

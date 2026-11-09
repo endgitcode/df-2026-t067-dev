@@ -6,6 +6,7 @@ import { missingReviewFields } from './admin-review'
 import type { AnswerPhotoStorage } from './answer-photo-storage'
 import { HttpError } from './errors'
 import { answerTransaction, processingError, questChanged, validDigest } from './firestore-answer-data'
+import { hasSpotShootingArea } from './firestore-managed-drafts'
 import type { FirestoreManagedDraftStore } from './firestore-managed-drafts'
 import { readOrgAssetRecord } from './firestore-org-assets'
 import { isPhotoApproved, photoApprovalRequired } from './admin-photo-approvals'
@@ -105,9 +106,10 @@ export class FirestoreManagedPublication {
 
   private async readPublishable(tx: Transaction, uid: string, orgId: string, questId: string, revision: number) {
     const owned = await this.drafts.readOwned(tx, uid, orgId, questId)
-    const { quest, zones } = owned
+    const { quest, zones, data } = owned
     if (quest.draftRevision !== revision) throw draftConflict()
     if (quest.status !== 'review_pending' && quest.status !== 'published') throw reviewRequired()
+    if (data.shootingAreaSource === 'spot' && !hasSpotShootingArea(quest.draft, zones)) throw reviewRequired()
     const { referenceAssetId, hintAssetId, content } = quest.draft
     const hintAssetIds = (quest.draft.hintAssetIds ?? [null, null, null]).map((assetId, index) =>
       assetId ?? (index === 0 ? hintAssetId : null))

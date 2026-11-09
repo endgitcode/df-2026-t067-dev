@@ -189,7 +189,7 @@ Firestore / Storage、写真判定・本人記録・自治体API・クラウド�
 
 ## 15. Dの非公開撮影範囲
 
-[admin-shooting-areas.md](admin-shooting-areas.md)が入力・認可・競合・接続の正本。GET/PUT `/orgs/:orgId/quests/:questId/shooting-areas`を追加し、getShootingAreas/updateShootingAreasで利用する。共有CaptureZoneは既存GPSと共用し、座標・半径は専用の管理応答だけに含める。本文と同じdraftRevisionで全置換/解除し、通常の管理応答はshootingAreaStatusのみ。18節の開発用公開版に範囲を固定する。実地点の閾値はO-03で扱う。
+[admin-shooting-areas.md](admin-shooting-areas.md)が入力・認可・競合・接続の正本。GET/PUT `/orgs/:orgId/quests/:questId/shooting-areas`を追加し、getShootingAreas/updateShootingAreasで利用する。共有CaptureZoneは既存GPSと共用し、座標・半径は専用の管理応答だけに含める。本文と同じdraftRevisionで全置換/解除し、通常の管理応答はshootingAreaStatusのみ。永続管理画面は下書きのPOST/PATCHで `deriveShootingArea: true` を指定し、スポットと同じ保存処理で1,000mの範囲を設定する。自動設定済みの下書きでは個別PUTによる上書きを拒否する。18節の開発用公開版に範囲を固定する。実地点の閾値はO-03で扱う。
 
 ## 16. Dの写真判定試験
 
@@ -205,6 +205,7 @@ Firestore / Storage、写真判定・本人記録・自治体API・クラウド�
 
 開発サーバーの架空データ専用。`demo` と `durable-local` で使える。自組織の`publisher`のみ実行でき、本文の受信後にも所属と役割を確認する。両操作は200で`ManagedQuest`を返す。
 
+- `GET /orgs/:orgId/quests/:questId/readiness` は、同じ組織の有効な所属に下書きと現在の不足項目を返す。撮影範囲が対象位置と一致するかも確認する。確認待ちへの変更・保存は行わない。
 - 永続側と共有検証では、写真の権利文を[事前承認記録](admin-photo-approvals.md)に置き換える。素材アップロードと写真試験の `photoRights`、公開の `confirmations.photoRights` は省略できる。承認の有無はサーバーが照合し、未承認の試験は `PHOTO_APPROVAL_REQUIRED` で拒否する。確認応答には参考写真の `referenceApproval` とヒント画像の `hintApproval` を追加する。旧デモでは従来の契約を使う。
 - `publishManagedQuest(orgId, questId, input)` は`expectedDraftRevision`、`matchTestId`、`mismatchTestId`と`confirmations`を送る。確認項目は `fictionalData`、`visitConditions`、`shootingArea`、`testCases` がすべて `true`。旧デモでは `photoRights` も必須。自組織に有効な所属がある担当者が架空データ・訪問条件・画像の権利と公開範囲・撮影範囲・試験ケースを確認する。公開処理は所属と下書き版を再確認する。
 - 現在の確認待ち下書きと、同じ組織・問題・下書き版でサーバーが記録した`MATCH`と`WRONG_TARGET`が必要。正規化後に同じ画像の試験は使えない。版違いは409 `DRAFT_CONFLICT`、確認不足は409 `REVIEW_REQUIRED`、試験不足は409 `PHOTO_TEST_REQUIRED`。任意の公開ヒント画像は同組織の`public_hint`素材で、参考写真と同じ正規化画像は拒否する。

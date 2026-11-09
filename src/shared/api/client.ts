@@ -1,4 +1,4 @@
-import { parseDraftRevisionRequest, parseDraftSuggestion, parseManagedQuest, parseManagedQuestDraft, parseManagedShootingAreas, parseOrgAssetMetadata, parseOrgMembership, parsePauseManagedQuest, parsePhotoTestMetadata, parsePhotoTestResult, parsePublishManagedQuest, parseReviewSubmission, parseSubmitReview, parseUpdateManagedQuest, parseUpdateShootingAreas, parseUploadedOrgAsset } from './admin'
+import { parseDraftRevisionRequest, parseDraftSuggestion, parseManagedQuest, parseManagedQuestDraft, parseManagedShootingAreas, parseOrgAssetMetadata, parseOrgMembership, parsePauseManagedQuest, parsePhotoTestMetadata, parsePhotoTestResult, parsePublishManagedQuest, parsePublicationReadiness, parseReviewSubmission, parseSubmitReview, parseUpdateManagedQuest, parseUpdateShootingAreas, parseUploadedOrgAsset } from './admin'
 import type { AssetPurpose, ManagedQuestDraft, PauseManagedQuest, PhotoTestMetadata, PublishManagedQuest, UpdateManagedQuest, UpdateShootingAreas } from './admin'
 import { parseSpotAddressInput, parseSpotAddressLookup, type SpotAddressInput } from './admin-spot-address'
 import { DISCOVERY_PHOTO_MAX_BYTES } from './types'
@@ -340,10 +340,10 @@ export function createApiClient(options: ApiClientOptions = {}) {
         ...call, authenticated: true, method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       })
     },
-    async createManagedQuest(orgId: string, input: ManagedQuestDraft, call: CallOptions = {}) {
+    async createManagedQuest(orgId: string, input: ManagedQuestDraft, call: CallOptions & { deriveShootingArea?: true } = {}) {
       const draft = adminInput(parseManagedQuestDraft, input)
       return request('/orgs/' + id(orgId) + '/quests', managed(orgId), {
-        ...call, authenticated: true, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ draft }),
+        ...call, authenticated: true, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ draft, deriveShootingArea: call.deriveShootingArea }),
       })
     },
     async updateManagedQuest(orgId: string, questId: string, input: UpdateManagedQuest, call: CallOptions = {}) {
@@ -351,6 +351,13 @@ export function createApiClient(options: ApiClientOptions = {}) {
       return request('/orgs/' + id(orgId) + '/quests/' + id(questId), managed(orgId, questId), {
         ...call, authenticated: true, method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       })
+    },
+    async getManagedQuestReadiness(orgId: string, questId: string, call: CallOptions = {}) {
+      return request('/orgs/' + id(orgId) + '/quests/' + id(questId) + '/readiness', (data) => {
+        const result = parsePublicationReadiness(data)
+        managed(orgId, questId)(result.quest)
+        return result
+      }, { ...call, authenticated: true })
     },
     async submitManagedQuestReview(orgId: string, questId: string, expectedDraftRevision: number, call: CallOptions = {}) {
       const body = adminInput(parseSubmitReview, { expectedDraftRevision })
