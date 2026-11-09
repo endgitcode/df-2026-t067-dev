@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
@@ -828,14 +829,13 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
 
   // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
   // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。
-  // 探索が前面にない間はクラスを外すが、開閉状態そのものは保持する。
+  // 記録画面でも同じ開閉状態と操作を使う。トグルは hidden な探索画面の外へ出す。
   useEffect(() => {
     if (!panelMode) return
     sidebarCollapsedRef.current = sidebarCollapsed
-    if (!viewActive) return
     document.body.classList.toggle('explore-sidebar-collapsed', sidebarCollapsed)
     return () => { document.body.classList.remove('explore-sidebar-collapsed') }
-  }, [panelMode, sidebarCollapsed, viewActive])
+  }, [panelMode, sidebarCollapsed])
 
   return (<>
     <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '') + (belowMap ? ' is-browsing-below-map' : '')}
@@ -864,11 +864,11 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
         ? panelMode
           ? <>
             <div className="explore-side-panel">{topOverlay && <div className="side-panel-filters">{topOverlay}</div>}{renderQuestList(true, true, true)}{panelExtra}{boundaryCredit}</div>
-            <button type="button" className="sidebar-toggle" aria-expanded={!sidebarCollapsed}
+            {createPortal(<button type="button" className="sidebar-toggle" aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
               onClick={() => setSidebarCollapsed((value) => !value)}>
               <Icon name="panel" />
-            </button>
+            </button>, document.body)}
           </>
           : <ExploreBottomSheet openSignal={effectivePinAreaId ?? (selectedQuestId ? `quest:${selectedQuestId}` : null)} onHeightChange={setSheetHeight}
             onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap, true)}{boundaryCredit}</ExploreBottomSheet>

@@ -42,7 +42,7 @@ describe('Google sign-in from the selected quest', () => {
     await user.click(within(details).getByRole('button', { name: 'ヒントを見る' }))
     for (let index = 1; index <= hints.length; index++) {
       expect(await within(details).findByText(hints[index - 1])).toBeVisible()
-      if (index < hints.length) await user.click(within(details).getByRole('button', { name: '次へ' }))
+      if (index < hints.length) await user.click(within(details).getByRole('button', { name: String(index + 1) }))
     }
   })
 

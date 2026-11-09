@@ -35,7 +35,7 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
   const controllerRef = useRef<AbortController | null>(null)
   const timeoutRef = useRef<number | null>(null)
   const generation = useRef(0)
-  const nextRef = useRef<HTMLButtonElement>(null)
+  const stepRefs = useRef<Record<number, HTMLButtonElement | null>>({})
   const openRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => () => {
@@ -43,6 +43,10 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
     controllerRef.current?.abort()
     if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current)
   }, [])
+
+  useEffect(() => {
+    if (state.status === 'ready') stepRefs.current[currentIndex]?.focus()
+  }, [state.status, currentIndex])
 
   async function load(index: number) {
     if (cache[index]) {
@@ -74,7 +78,6 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
       setCache((current) => ({ ...current, [index]: hint.text }))
       setState({ status: 'ready', text: hint.text })
       setUnlockedThrough((current) => Math.max(current, index + 1))
-      queueMicrotask(() => nextRef.current?.focus())
     } catch (error) {
       if (generation.current !== currentGeneration) return
       if (error instanceof ApiError && error.code === 'QUEST_CHANGED') {
@@ -116,7 +119,6 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
   if (!hintCount) return <p className="hints-note">この問題には通常ヒントがありません。</p>
 
   const canGoBack = opened && currentIndex > 1
-  const showNext = state.status === 'ready' && currentIndex < hintCount
 
   return <div className="quest-hints" aria-label="段階ヒント">
     <h4>段階ヒント</h4>
@@ -125,11 +127,13 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
       <div className="hint-card-toolbar">
         <div className="hint-card-steps" aria-label={`ヒント ${currentIndex} / ${hintCount}`}>
           {Array.from({ length: hintCount }, (_, offset) => offset + 1).map((index) => {
-            const reachable = index <= Math.max(unlockedThrough - 1, currentIndex) && (cache[index] || index === currentIndex)
-            return <button key={index} type="button" className={'hint-step' + (index === currentIndex ? ' is-current' : '')}
+            const reachable = index <= unlockedThrough
+            return <button key={index} ref={(element) => { stepRefs.current[index] = element }} type="button" className={'hint-step' + (index === currentIndex ? ' is-current' : '')}
               aria-current={index === currentIndex ? 'step' : undefined}
+              aria-disabled={!reachable || state.status === 'loading'}
+              title={!reachable ? 'まだ開けません' : undefined}
               disabled={!reachable || state.status === 'loading'}
-              onClick={() => { if (index !== currentIndex) void load(index) }}>{index}</button>
+              onClick={() => { if (index !== currentIndex) void load(index) }}><span>{index}</span>{!reachable && <span aria-hidden="true" className="hint-step-lock">🔒</span>}</button>
           })}
           <span className="hint-step-total">/ {hintCount}</span>
         </div>
@@ -150,9 +154,7 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
         <button type="button" className="hint-retry" onClick={() => void load(currentIndex)}>ヒントを再試行</button>
       </div>}
       {state.status === 'changed' && <div role="alert"><p>問題の版が変わりました。古いヒントと挑戦を無効にしました。</p><button type="button" onClick={onVersionChanged}>最新版の問題を読み直す</button></div>}
-      {showNext && <button ref={nextRef} type="button" className="hint-next"
-        disabled={state.status !== 'ready' || currentIndex + 1 > unlockedThrough}
-        onClick={() => void load(currentIndex + 1)}>次へ</button>}
+
     </div>}
   </div>
 }

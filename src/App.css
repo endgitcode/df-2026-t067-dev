@@ -91,6 +91,9 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 /* 「場所で絞る」の開閉（D-55）。チップは常時マウントし、行の高さ（grid-template-rows）と
    透明度で開閉する。出し入れで下の一覧がガクッと押し下げられず、なめらかに場所が空く。
    閉じている間の非表示への切り替えは、シートと同じく遷移の終わりに遅らせる。 */
+.map-filter-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: auto; }
+.map-filter-count { font-size: 14px; color: var(--ui-muted); }
+.filter-stage-label { margin: 4px 2px 0; font-size: 14px; font-weight: 600; }
 .map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }
 .map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s; }
 .map-filter-chips-inner { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 0; overflow: hidden; }
@@ -100,7 +103,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
    320pxで「近畿」の途中）。開閉の高さアニメーション（grid-template-rows）が
    折り返し後の高さにも追随する。 */
 .map-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; overflow: visible; padding: 2px; pointer-events: auto; }
-.filter-chip { flex: none; min-height: 40px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
+.filter-chip { flex: none; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
 /* 開閉ボタンは押しやすい44px級にし、開状態の見た目とシェブロンで状態を返す（D-59）。 */
 .filter-toggle { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; transition: background-color 150ms var(--ease-out); }
 .filter-toggle[aria-expanded="true"] { background: var(--ui-soft); }
@@ -461,7 +464,7 @@ button.explore-quest-card { cursor: pointer; }
 }
 .quest-hints { display: grid; gap: 12px; margin: 18px 0; }
 .quest-hints h4 { margin: 0; }
-.hint-open, .hint-next {
+.hint-open {
   width: 100%; min-height: 52px; padding: 12px 18px; border: var(--ui-border-width) solid var(--ui-line);
   border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-weight: 600; cursor: pointer;
 }
@@ -470,8 +473,8 @@ button.explore-quest-card { cursor: pointer; }
 .hint-card-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .hint-card-steps { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .hint-step {
-  min-width: 32px; min-height: 32px; padding: 0 8px; border: var(--ui-border-width) solid var(--ui-line);
-  border-radius: 999px; background: var(--ui-surface); color: var(--ui-muted); font: inherit; font-size: 12px; cursor: pointer;
+  min-width: 44px; min-height: 44px; padding: 0 8px; border: var(--ui-border-width) solid var(--ui-line);
+  border-radius: 999px; background: var(--ui-surface); color: var(--ui-muted); font: inherit; font-size: 18px; cursor: pointer;
 }
 .hint-step.is-current { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: var(--ui-line); font-weight: var(--ui-weight-strong); }
 .hint-step:disabled { opacity: .45; cursor: default; }
@@ -481,7 +484,7 @@ button.explore-quest-card { cursor: pointer; }
   border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-size: 13px; cursor: pointer;
 }
 .hint-card-text { margin: 0; color: var(--ui-ink); font-size: 15px; line-height: 1.7; }
-.hint-next { justify-self: center; width: min(100%, 16rem); }
+.hint-step-lock { margin-left: 3px; font-size: 12px; }
 .hint-item, .hint-version-changed { padding: 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
 .hint-item > button, .hint-item [role="alert"] button, .hint-version-changed button, .hint-card [role="alert"] button {
   width: 100%; min-height: 44px; padding: 10px 14px; border: var(--ui-border-width) solid var(--ui-line);
@@ -520,6 +523,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
    最上部にロゴと開閉、その下に縦並びナビ、続けて絞り込み＋一覧。地図は常に
    画面いっぱいで、サイドバーは上に重なる（D-38）。畳むと約56pxのアイコン帯になる。 */
 @media (min-width: 981px) {
+  body:has(.owner-records:not([hidden])),
   body.explore-fullbleed {
     --pc-sidebar-w: 280px;
     --pc-sidebar-rail-w: 56px;
@@ -529,12 +533,14 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     --pc-sidebar-chrome-h: calc(var(--pc-sidebar-brand-h) + var(--pc-sidebar-nav-h));
     --pc-sidebar-offset: var(--pc-sidebar-w);
   }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed,
   body.explore-fullbleed.explore-sidebar-collapsed {
     --pc-sidebar-w: var(--pc-sidebar-rail-w);
   }
   /* 左カラムの地（畳んでも帯が途切れない）。
      z-index は site-header(25) より下にし、ヘッダー内の fixed ロゴ／ナビが
      帯に隠れないようにする（子の z-index はヘッダーのスタッキング文脈内）。 */
+  body:has(.owner-records:not([hidden]))::before,
   body.explore-fullbleed::before {
     content: ""; position: fixed; top: 0; left: 0; bottom: 0; z-index: 20;
     width: var(--pc-sidebar-w); background: var(--ui-surface);
@@ -542,13 +548,16 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     pointer-events: none; transition: width 200ms var(--ease-out);
   }
   @media (prefers-reduced-motion: reduce) {
+    body:has(.owner-records:not([hidden]))::before,
     body.explore-fullbleed::before { transition: none; }
   }
   /* アカウントだけ右上。ブランドはサイドバー最上段へ移す。 */
+  body:has(.owner-records:not([hidden])) .site-header,
   body.explore-fullbleed .site-header {
     position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 32;
-    grid-template-columns: 1fr auto; padding-left: 12px;
+    min-height: 0; grid-template-columns: 1fr auto; padding: 10px 20px 10px 12px; background: transparent; border-bottom: 0;
   }
+  body:has(.owner-records:not([hidden])) .brand,
   body.explore-fullbleed .brand {
     position: fixed; top: 0; left: 0; z-index: 36;
     display: flex; align-items: center; gap: 8px;
@@ -556,18 +565,24 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     margin: 0; padding: 0 8px; border: 0; border-radius: 0; background: var(--ui-surface);
     justify-self: start;
   }
+  body:has(.owner-records:not([hidden])) .brand-mark,
   body.explore-fullbleed .brand-mark { width: 32px; height: 32px; }
+  body:has(.owner-records:not([hidden])) .brand-mark .icon,
   body.explore-fullbleed .brand-mark .icon { width: 20px; height: 20px; }
+  body:has(.owner-records:not([hidden])) .brand-copy,
   body.explore-fullbleed .brand-copy { font-size: 13px; }
   /* 開閉はロゴと同じ行・十分な当たり（44px） */
+  body:has(.owner-records:not([hidden])) .sidebar-toggle,
   body.explore-fullbleed .sidebar-toggle {
     position: fixed; top: 4px; left: calc(var(--pc-sidebar-w) - 48px); z-index: 37;
     display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
     transform: none; border: 0; border-radius: var(--radius-s);
     background: transparent; color: var(--ui-ink); box-shadow: none; cursor: pointer;
   }
+  body:has(.owner-records:not([hidden])) .sidebar-toggle .icon,
   body.explore-fullbleed .sidebar-toggle .icon { width: 20px; height: 20px; }
   /* 縦並びナビ（アイコン＋14px） */
+  body:has(.owner-records:not([hidden])) .desktop-nav,
   body.explore-fullbleed .desktop-nav {
     position: fixed; top: var(--pc-sidebar-brand-h); left: 0; z-index: 30;
     display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
@@ -575,17 +590,23 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     padding: 4px 8px; background: var(--ui-surface); border: 0; border-radius: 0;
     border-bottom: 1px solid color-mix(in srgb, var(--ui-line) 22%, transparent);
   }
+  body:has(.owner-records:not([hidden])) .desktop-nav a,
   body.explore-fullbleed .desktop-nav a,
+  body:has(.owner-records:not([hidden])) .desktop-nav button,
   body.explore-fullbleed .desktop-nav button {
     flex: 0 0 auto; justify-content: flex-start; gap: 10px;
     min-height: 40px; padding: 8px 10px; border-radius: var(--radius-s);
     font-size: 14px; color: var(--ui-muted); background: transparent;
   }
+  body:has(.owner-records:not([hidden])) .desktop-nav .nav-active,
   body.explore-fullbleed .desktop-nav .nav-active {
     background: var(--ui-disabled); color: var(--ui-ink); font-weight: var(--ui-weight-display);
   }
+  body:has(.owner-records:not([hidden])) .desktop-nav .icon,
   body.explore-fullbleed .desktop-nav .icon { width: 18px; height: 18px; }
+  body:has(.owner-records:not([hidden])) .desktop-nav .nav-label,
   body.explore-fullbleed .desktop-nav .nav-label { font-size: 14px; }
+  body:has(.owner-records:not([hidden])) .desktop-nav .nav-prep,
   body.explore-fullbleed .desktop-nav .nav-prep { margin-left: 6px; font-size: 12px; color: var(--ui-muted); }
   /* パネル本体：ナビ下から画面下端まで、薄い右罫線のフラットカラム */
   body.explore-fullbleed .explore-side-panel {
@@ -645,32 +666,43 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .explore-side-panel .api-load-state > button { width: 100%; }
 
   /* 畳み：アイコン帯。一覧は隠し、ロゴ／ナビ／開閉は残す */
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .brand-copy,
   body.explore-fullbleed.explore-sidebar-collapsed .brand-copy { display: none; }
   /* 畳み: 約56px。上段にロゴマーク＋開閉、その下にナビアイコンだけ */
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .brand,
   body.explore-fullbleed.explore-sidebar-collapsed .brand {
     width: var(--pc-sidebar-rail-w); height: 44px; justify-content: center; padding: 0; gap: 0;
   }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .brand-mark,
   body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 28px; height: 28px; }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .brand-mark .icon,
   body.explore-fullbleed.explore-sidebar-collapsed .brand-mark .icon { width: 18px; height: 18px; }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .sidebar-toggle,
   body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {
     left: 6px; top: 44px; width: 44px; height: 44px;
   }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav {
     top: 92px; height: auto; padding: 4px 4px; gap: 4px;
   }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav .nav-label,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .nav-label {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav a,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav a,
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav button,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav button {
     justify-content: center; align-items: center; padding: 0; min-height: 44px; width: 100%;
   }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav .icon,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 22px; height: 22px; flex: none; }
 
   body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel {
     opacity: 0; visibility: hidden; pointer-events: none;
     transition-delay: 0s, 200ms;
   }
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .site-header,
   body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-rail-w); }
   body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-rail-w) + 12px); }
   body.explore-fullbleed.explore-sidebar-collapsed .map-topline.is-sidebar { left: calc(var(--pc-sidebar-rail-w) + 12px); }
@@ -678,20 +710,28 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     left: calc(var(--pc-sidebar-rail-w) + 12px); bottom: 48px;
     max-width: min(430px, calc(100% - var(--pc-sidebar-rail-w) - 118px));
   }
+  body:has(.owner-records:not([hidden])) .site-header,
   body.explore-fullbleed .site-header,
   body.explore-fullbleed .map-topline,
   body.explore-fullbleed .map-location-status.is-floating,
+  body:has(.owner-records:not([hidden])) .brand,
   body.explore-fullbleed .brand,
+  body:has(.owner-records:not([hidden])) .desktop-nav,
   body.explore-fullbleed .desktop-nav,
+  body:has(.owner-records:not([hidden])) .sidebar-toggle,
   body.explore-fullbleed .sidebar-toggle {
     transition: left 200ms var(--ease-out), width 200ms var(--ease-out), top 200ms var(--ease-out);
   }
   @media (prefers-reduced-motion: reduce) {
+    body:has(.owner-records:not([hidden])) .site-header,
     body.explore-fullbleed .site-header,
     body.explore-fullbleed .map-topline,
     body.explore-fullbleed .map-location-status.is-floating,
+    body:has(.owner-records:not([hidden])) .brand,
     body.explore-fullbleed .brand,
+    body:has(.owner-records:not([hidden])) .desktop-nav,
     body.explore-fullbleed .desktop-nav,
+    body:has(.owner-records:not([hidden])) .sidebar-toggle,
     body.explore-fullbleed .sidebar-toggle,
     body.explore-fullbleed .explore-side-panel { transition: none; }
   }
@@ -699,36 +739,6 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 
 /* 記録画面でも左サイドバー（ロゴ＋縦ナビ）を残し、右側だけ中身を切替（Cursor Web 風） */
 @media (min-width: 981px) {
-  body:has(.owner-records:not([hidden])) {
-    --pc-sidebar-w: 280px;
-    --pc-sidebar-brand-h: 52px;
-    --pc-sidebar-nav-h: 96px;
-  }
-  body:has(.owner-records:not([hidden])) .brand {
-    position: fixed; top: 0; left: 0; z-index: 36;
-    display: flex; align-items: center; gap: 8px;
-    width: var(--pc-sidebar-w); height: var(--pc-sidebar-brand-h);
-    margin: 0; padding: 0 12px; border: 0; border-radius: 0; background: var(--ui-surface);
-  }
-  body:has(.owner-records:not([hidden])) .desktop-nav {
-    position: fixed; top: var(--pc-sidebar-brand-h); left: 0; z-index: 30;
-    display: flex; flex-direction: column; align-items: stretch; gap: 2px;
-    width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h);
-    padding: 4px 8px; background: var(--ui-surface);
-    border: 0; border-right: 1px solid color-mix(in srgb, var(--ui-line) 28%, transparent); border-radius: 0;
-  }
-  body:has(.owner-records:not([hidden])) .desktop-nav a,
-  body:has(.owner-records:not([hidden])) .desktop-nav button {
-    flex: 0 0 auto; justify-content: flex-start; gap: 10px;
-    min-height: 40px; padding: 8px 10px; border-radius: var(--radius-s); font-size: 14px;
-  }
-  body:has(.owner-records:not([hidden])) .desktop-nav .nav-active {
-    background: var(--ui-disabled); color: var(--ui-ink); font-weight: var(--ui-weight-display);
-  }
-  body:has(.owner-records:not([hidden])) .site-header {
-    min-height: 0; grid-template-columns: 1fr auto;
-    padding: 10px 20px 16px calc(var(--pc-sidebar-w) + 16px);
-  }
   body:has(.owner-records:not([hidden])) .owner-records {
     margin-left: var(--pc-sidebar-w);
     max-width: none;
