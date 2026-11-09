@@ -39,7 +39,7 @@
 | POST /challenges | 必要 | questId, expectedVersion → 初回201 Challenge。同じ利用者・問題・版の再要求は200で再利用。開発用の実装範囲は[挑戦開始API](challenge-start.md)を参照。実データでは未公開・版違い・既存発見を確認する |
 | POST /challenges/:challengeId/answers | 必要 | multipartでphotoとCaptureMetadata。Idempotency-Key必須 → AttemptResult |
 | GET /attempts/:attemptId | 必要 | 本人の結果・処理状態。未判定の休止・版違いは409 |
-| GET /me/discoveries | 必要 | 地域・ページ指定 → 本人の発見一覧 |
+| GET /me/discoveries | 必要 | 地域・ページ・sort指定 → 本人の発見一覧 |
 | GET /me/discoveries/:discoveryId | 必要 | 本人のDiscovery。公開中でなくても過去記録は基本保持 |
 | GET /me/discoveries/:discoveryId/photo | 必要 | 本人のJPEG。共通clientはBearer付きで取得してBlobを返す |
 | DELETE /me/discoveries/:discoveryId | 必要 | 202でdeletionIdを返す。画像を含む削除を追跡 |
@@ -166,6 +166,19 @@ Firestore / Storage、写真判定・本人記録・自治体API・クラウド�
 [owner-discoveries.md](owner-discoveries.md)が起動・client・保存境界の正本。既存Discoveryを使う本人一覧/詳細に、認証付きJPEG Blob取得と削除受付/追跡を追加した。`DeletionReceipt`は`{deletionId}`、`DeletionStatus`は`{deletionId, state: pending|completed|failed, retryable}`。HTTPから記録作成・編集は提供しない。
 
 既定は保存先未接続の503。`QUEST_DISCOVERIES_MODE=memory`を明示したときだけ開発用ストアを起動し、記録応答に`X-Quest-Records-Mode: memory`を付ける。共通clientは明示demo接続の場合だけmemoryを受け付ける。設定で本人1人に合成記録を用意できる。回答からの記録作成、実DB/Storage、CORRECTは未接続。[合成記録の設定](owner-discoveries.md#合成記録で一覧写真削除を試す)
+
+本人記録一覧 `GET /api/v1/me/discoveries` の `sort`（D-83）：
+
+| 値 | 全順序 |
+|---|---|
+| `cleared-desc`（未指定時の既定） | firstClearedAt降順、discoveryId降順 |
+| `cleared-asc` | firstClearedAt昇順、discoveryId昇順 |
+| `prefecture-asc` | 都道府県コード昇順（01→47）、firstClearedAt降順、discoveryId降順 |
+| `prefecture-desc` | 都道府県コード降順（47→01）、firstClearedAt降順、discoveryId降順 |
+
+不明県はどちらの県順でも最後に置き、記録を除外しない。不正なsortは400 `INVALID_INPUT`。cursorはuid・areaId・正規化したsortに束縛され、異なる条件では400 `INVALID_INPUT`。未指定と `cleared-desc` は同じスコープ。旧形式のcursorは無効となるため、一覧の先頭から再取得する。
+
+一覧・詳細の `Discovery.prefectureCode?: string` は記録に保存されたareaIdの `areas/{areaId}.prefectureCode` が有効（"01"〜"47"）な場合だけ返す。地域の欠落・不正値・未分類ではフィールドを省略する。県の解決は問題の現在の公開状態や版に依存しない。Firestoreは等価条件で本人記録を取得し、地域を重複なくgetAllで一括取得してメモリ上で並べる（D-57）。
 
 ## 12. Dへの用途別写真素材API
 

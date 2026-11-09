@@ -68,6 +68,7 @@ export interface AfterClearContent {
 }
 
 export interface Discovery {
+  prefectureCode?: string
   discoveryId: string
   placeId: string
   questId: string
