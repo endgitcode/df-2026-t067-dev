@@ -110,7 +110,7 @@ function MobileChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, on
   }, [autoStart])
 
   return <>
-    {savedReceipt && !cameraOpen && !resume && <div><p role="status">判定中の回答があります</p><button type="button" className="primary-button" onClick={() => setResume(true)}>結果を見る</button></div>}
+    {savedReceipt && !cameraOpen && !resume && <div><p role="status">判定中の回答があります</p><button type="button" className="primary-button" onClick={() => setResume(true)}>判定結果を確認</button></div>}
     {savedReceipt && !cameraOpen && resume && <DemoAnswerSubmission context={{ api, challengeId: '', questId: quest.questId, questTitle: quest.title, placeName, storageKey, dataMode, onReloadQuest, onOpenDiscovery, onReturnToMap }} initialAttemptId={savedReceipt} onSubmissionResolved={() => setReceiptResolved(true)} disabled={false} onSubmissionStarted={() => {}} />}
     <button type="button" className="primary-button" onClick={start} aria-describedby={state.status === 'starting' ? 'challenge-note' : undefined}
       disabled={Boolean(savedReceipt && !receiptResolved) || state.status === 'starting' || cameraOpen || seconds > 0 || (state.status === 'error' && state.reload)}>

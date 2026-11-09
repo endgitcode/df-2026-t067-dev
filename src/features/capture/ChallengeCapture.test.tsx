@@ -63,7 +63,7 @@ describe('challenge before camera', () => {
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
     takePhoto()
     await f.user.click(screen.getByRole('button', { name: '写真と位置をテスト送信' }))
-    expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toHaveTextContent('受付済み・解析中')
+    expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toHaveTextContent('AIが写真を確認中…')
     expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'クリア！' }, { timeout: 4000 })).toBeVisible()
     expect(f.getAttempt).toHaveBeenCalledExactlyOnceWith(receipt.attemptId, { signal: expect.any(AbortSignal) })
@@ -81,13 +81,13 @@ describe('challenge before camera', () => {
     await f.user.click(screen.getByRole('button', { name: '写真と位置を送信' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('通信状況')
     await f.user.click(screen.getByRole('button', { name: '同じ回答を再送' }))
-    expect(await screen.findByText(/受付済みです/)).toBeVisible()
+    expect(await screen.findByText(/写真を送信しました/)).toBeVisible()
     expect(f.submitAnswer).toHaveBeenCalledTimes(2)
     expect(f.submitAnswer.mock.calls[0][0]).toEqual({ photo, challengeId: challenge.challengeId,
       metadata: { capturedAt: expect.any(String), position: { latitude: 0, longitude: 0,
         accuracyMeters: 10, measuredAt: new Date(measuredAt).toISOString() } }, idempotencyKey: expect.any(String) })
     expect(f.submitAnswer.mock.calls[1][0]).toEqual(f.submitAnswer.mock.calls[0][0])
-    await f.user.click(screen.getByRole('button', { name: '受付状態を確認' }))
+    await f.user.click(screen.getByRole('button', { name: '判定結果を確認' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('この問題の受付は終了')
     expect(f.getAttempt).toHaveBeenCalledExactlyOnceWith(receipt.attemptId, { signal: expect.any(AbortSignal) })
     expect(f.submitAnswer).toHaveBeenCalledTimes(2)
@@ -104,9 +104,9 @@ describe('challenge before camera', () => {
     takePhoto()
     await f.user.click(screen.getByRole('button', { name: '写真と位置を送信' }))
     expect(await screen.findByText(new RegExp(message))).toBeVisible()
-    expect(screen.queryByText(/受付済みです/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/写真を送信しました/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '撮り直す' })).toBeEnabled()
-    expect(screen.queryByRole('button', { name: '受付状態を確認' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
   })
 
   it('blocks a duplicate upload and ignores a reply after leaving the camera', async () => {
@@ -127,7 +127,7 @@ describe('challenge before camera', () => {
     expect(signal.aborted).toBe(true)
     await f.user.click(screen.getByRole('button', { name: '撮影を終了' }))
     await act(async () => resolve(receipt))
-    expect(screen.queryByText(/受付済みです/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/写真を送信しました/)).not.toBeInTheDocument()
   })
   it('waits for an explicit start and matching response, and locks duplicate starts', async () => {
     const f = fixture()
@@ -270,7 +270,7 @@ describe('challenge before camera', () => {
     expect(document.querySelector('.camera-overlay > p.sample-note')).toBeNull()
     await f.user.click(screen.getByRole('button', { name: '写真と位置を送信' }))
     const waiting = await screen.findByRole('status', { name: '写真の判定待ち' })
-    expect(waiting).toHaveTextContent('受付済み・解析中')
+    expect(waiting).toHaveTextContent('AIが写真を確認中…')
     // 判定待ちにも細かい説明カード（sample-note）は出さない
     expect(waiting.querySelector('.sample-note')).toBeNull()
     expect(screen.queryByText(/「写真と位置を送信」で判定します/)).not.toBeInTheDocument()
@@ -294,7 +294,7 @@ it('再読込後も本人・問題に対応する受付から再開し、POSTを
   const api = { ...createApiClient(), getAttempt, submitAnswer }
   render(<ChallengeCapture api={api} quest={quest} ownerKey="owner" dataMode="durable-local" onReloadQuest={vi.fn()} />)
   expect(screen.getByText('判定中の回答があります')).toBeVisible()
-  await userEvent.setup().click(screen.getByRole('button', { name: '結果を見る' }))
+  await userEvent.setup().click(screen.getByRole('button', { name: '判定結果を確認' }))
   await waitFor(() => expect(getAttempt).toHaveBeenCalledWith('saved-attempt', { signal: expect.any(AbortSignal) }), { timeout: 3000 })
   expect(await screen.findByText(`${quest.title}：範囲の中心付近で撮ってください`)).toBeVisible()
   expect(submitAnswer).not.toHaveBeenCalled()

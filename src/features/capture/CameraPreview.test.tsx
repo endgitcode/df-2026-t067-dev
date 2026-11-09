@@ -343,8 +343,8 @@ describe('local camera preview', () => {
     // 送信後は回転操作を出さない（判定・受付フローに一本化）。
     expect(screen.queryByRole('button', { name: '反時計回りに回転' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '時計回りに回転' })).not.toBeInTheDocument()
-    expect(await screen.findByText('受付済みです。')).toBeVisible()
-    await media.user.click(screen.getByRole('button', { name: '受付状態を確認' }))
+    expect(await screen.findByText('写真を送信しました。')).toBeVisible()
+    await media.user.click(screen.getByRole('button', { name: '判定結果を確認' }))
     expect(getAttempt).toHaveBeenCalledExactlyOnceWith('attempt-locked', { signal: expect.any(AbortSignal) })
     expect(submitAnswer).toHaveBeenCalledOnce()
   })
@@ -366,7 +366,7 @@ describe('local camera preview', () => {
     await act(async () => resolveBitmap(media.bitmap))
     await waitFor(() => expect(send).toBeEnabled())
     await media.user.click(send)
-    expect(await screen.findByText('受付済みです。')).toBeVisible()
+    expect(await screen.findByText('写真を送信しました。')).toBeVisible()
     expect(submitAnswer).toHaveBeenCalledOnce()
   })
 

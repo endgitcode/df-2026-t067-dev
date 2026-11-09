@@ -424,6 +424,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
             })} />
             {hintUrl && !questStale && <OptionalHintImage key={`image:${hintIdentity}`} url={hintUrl} quest={quest} getPhoto={getHintPhoto}
               onVersionChanged={markImageVersionChanged} onReloadNeeded={markImageReloadNeeded} />}
+            {!clearedDiscoveryId && !hideStartAction && <p className="unavailable-note">現地の撮影範囲で対象を撮って送ると、位置情報とAIによる写真の確認でクリアになります。</p>}
             {clearedDiscoveryId ? <div className="quest-cleared-action">
               {/* クリア済みの問題は再挑戦できない（D-64）。開始導線（QRの受け渡しを含む）は
                   丸ごと出さず、記録への導線だけを置く。hideStartAction は撮影フローが

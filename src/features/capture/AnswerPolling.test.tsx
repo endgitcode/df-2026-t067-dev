@@ -11,7 +11,7 @@ it('polls only the accepted ID and stops at completion without posting again', a
   const getAttempt = vi.fn().mockResolvedValue({ ...receipt, state: 'COMPLETED', outcome: 'CORRECT', optionalDiscoveryId: 'record' })
   render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'durable-local' }} photo={new Blob(['synthetic'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置をテスト送信' })))
-  expect(screen.getByRole('status', { name: '写真の判定待ち' })).toHaveTextContent('受付済み・解析中')
+  expect(screen.getByRole('status', { name: '写真の判定待ち' })).toHaveTextContent('AIが写真を確認中…')
   await act(async () => vi.advanceTimersByTimeAsync(1500))
   expect(getAttempt).toHaveBeenCalledExactlyOnceWith('accepted', { signal: expect.any(AbortSignal) })
   // 永続側でも初回クリアでは全画面のクリア画面が出る（D-63）。
@@ -27,9 +27,9 @@ it('bounds automatic reads and aborts an in-flight read when leaving', async () 
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置をテスト送信' })))
   for (let i = 0; i < 10; i++) await act(async () => vi.advanceTimersByTimeAsync(16000))
   expect(getAttempt).toHaveBeenCalledTimes(6)
-  expect(screen.getByText(/自動確認をいったん終了/)).toBeVisible()
+  expect(screen.getByText(/まだ判定中です/)).toBeVisible()
   getAttempt.mockImplementation(() => new Promise(() => {}))
-  await act(async () => fireEvent.click(screen.getByRole('button', { name: '結果を見る' })))
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: '判定結果を確認' })))
   const signal = getAttempt.mock.calls.at(-1)?.[1].signal as AbortSignal
   view.unmount()
   expect(signal.aborted).toBe(true)
@@ -142,7 +142,7 @@ it('team-preview still rejects a mock receipt as an invalid response', async () 
   const submitAnswer = vi.fn().mockResolvedValue({ ...receipt, source: 'mock', state: 'RECEIVED', outcome: null })
   render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt: vi.fn() }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'team-preview' }} photo={new Blob(['photo'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置を送信' })))
-  expect(screen.getByRole('alert')).toHaveTextContent('回答の受付を確認できませんでした。時間をおいて再試行してください。')
+  expect(screen.getByRole('alert')).toHaveTextContent('写真の送信・判定を確認できませんでした。時間をおいて再試行してください。')
 })
 
 it('keeps the waiting card between automatic reads and lets cancellation stop polling', async () => {
@@ -168,7 +168,7 @@ it('keeps a single waiting surface across automatic polls without toggling the r
   render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'durable-local' }} photo={new Blob(['synthetic'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置をテスト送信' })))
   const waiting = screen.getByRole('status', { name: '写真の判定待ち' })
-  expect(waiting).toHaveTextContent('受付済み・解析中')
+  expect(waiting).toHaveTextContent('AIが写真を確認中…')
   expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
   // 数秒ポーリングしても待ち面は同一ノードのまま、結果確認ボタンは一度も出ない。
   for (let i = 0; i < 4; i++) {
@@ -191,7 +191,7 @@ it('does not show judgment-waiting and result-check controls at the same time', 
   // 自動確認上限まで進めると待ちは終わり、結果確認だけが出る。
   for (let i = 0; i < 10; i++) await act(async () => vi.advanceTimersByTimeAsync(16000))
   expect(screen.queryByRole('status', { name: '写真の判定待ち' })).not.toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '結果を見る' })).toBeVisible()
+  expect(screen.getByRole('button', { name: '判定結果を確認' })).toBeVisible()
 })
 
 it('shows real waiting stages without fake percent and keeps the progress node across polls', async () => {
@@ -210,17 +210,17 @@ it('shows real waiting stages without fake percent and keeps the progress node a
   const bar = progress.querySelector('.answer-waiting-progress-bar')
   await act(async () => { finishSubmit(receipt) })
   expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBe(waiting)
-  expect(waiting).toHaveTextContent('受付済み・解析中')
+  expect(waiting).toHaveTextContent('AIが写真を確認中…')
   expect(waiting).not.toHaveTextContent('送信中')
   expect(screen.getByRole('progressbar', { name: '判定の進行状況' })).toBe(progress)
   expect(progress.querySelector('.answer-waiting-progress-bar')).toBe(bar)
-  expect(progress).toHaveAttribute('aria-valuetext', '受付済み・解析中')
+  expect(progress).toHaveAttribute('aria-valuetext', 'AIが写真を確認中…')
   // ポーリング往復でも進捗ノードを引き直さない（アニメ再開＝チラつきの本態）。
   for (let i = 0; i < 3; i++) {
     await act(async () => vi.advanceTimersByTimeAsync(2000))
     expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBe(waiting)
     expect(screen.getByRole('progressbar', { name: '判定の進行状況' })).toBe(progress)
     expect(progress.querySelector('.answer-waiting-progress-bar')).toBe(bar)
-    expect(waiting).toHaveTextContent('受付済み・解析中')
+    expect(waiting).toHaveTextContent('AIが写真を確認中…')
   }
 })

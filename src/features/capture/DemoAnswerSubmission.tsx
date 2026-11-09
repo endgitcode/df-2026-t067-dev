@@ -71,7 +71,7 @@ function receiptView(result: AttemptResult, dataMode: LocalApiDataMode | undefin
       reload: result.outcome === 'QUEST_CHANGED' || result.outcome === 'QUEST_UNAVAILABLE' }
   }
   if (result.state === 'RECEIVED') {
-    return { attemptId, canCheck: true, message: '受付済みです。' }
+    return { attemptId, canCheck: true, message: '写真を送信しました。' }
   }
   if (result.outcome === 'OUTSIDE_AREA') {
     return { attemptId, canCheck: false, outcome: 'OUTSIDE_AREA', message: '指定の撮影範囲外です。範囲内で撮り直してください。' }
@@ -88,13 +88,13 @@ function answerFailure(cause: unknown): Failure {
     case 'QUEST_CHANGED': return { message: '問題が更新されました。最新版を読み直してください。', reload: true }
     case 'QUEST_UNAVAILABLE':
     case 'NOT_FOUND': return { message: 'この問題の受付は終了しました。問題を読み直してください。', reload: true }
-    case 'NETWORK_ERROR': return { message: '通信状況を確認してください。受付済みか確認できませんでした。' }
+    case 'NETWORK_ERROR': return { message: '通信状況を確認してください。写真が届いたか確認できませんでした。' }
     case 'UNAUTHENTICATED': return { message: 'ログインを確認できませんでした。再度ログインしてください。' }
     case 'RATE_LIMITED': return { message: '操作が多いため、時間をおいて再試行してください。', retryAfterSeconds: error.retryAfterSeconds ?? 60 }
     case 'MEDIA_TOO_LARGE': return { message: '写真の容量が上限を超えました。撮り直してください。', retake: true }
     case 'INVALID_INPUT':
     case 'IDEMPOTENCY_CONFLICT': return { message: '写真と位置を確認できませんでした。撮り直してください。', retake: true }
-    default: return { message: '回答の受付を確認できませんでした。時間をおいて再試行してください。' }
+    default: return { message: '写真の送信・判定を確認できませんでした。時間をおいて再試行してください。' }
   }
 }
 
@@ -174,7 +174,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   }, [real, receipt, pending, failure])
 
   useEffect(() => {
-    const leave = () => cancel(receipt ? '受付状態の確認を中止しました。同じ受付IDで再確認できます。' : '送信を中止しました。受付済みか確認できませんでした。')
+    const leave = () => cancel(receipt ? '確認を中止しました。「判定結果を確認」で再確認できます。' : '送信を中止しました。写真が届いたか確認できませんでした。')
     window.addEventListener('pagehide', leave)
     return () => window.removeEventListener('pagehide', leave)
   }, [cancel, receipt])
@@ -191,7 +191,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     setPending(true)
     setFailure(null)
     operation.deadline = setTimeout(() => {
-      if (active.current === operation) cancel('受付の確認に時間がかかっています。通信状況を確認してください。')
+      if (active.current === operation) cancel('写真の送信・判定の確認に時間がかかっています。通信状況を確認してください。')
     }, 10_000)
     try {
       const call = { signal: operation.controller.signal }
@@ -233,10 +233,10 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   }
 
   // 判定中は待ちカードだけを出し続ける（マウントは1回）。段階はアプリが
-  // 実際に知る区切りだけ（送信中 → 受付済み・解析中）。時間や%の偽進捗は出さない。
+  // 実際に知る区切りだけ（送信中 → AIが写真を確認中…）。時間や%の偽進捗は出さない。
   if (waiting) {
     // receipt の有無だけが本当の区切り。ポーリングの pending 往復では段階を動かさない。
-    const stage = receipt ? '受付済み・解析中' : '送信中'
+    const stage = receipt ? 'AIが写真を確認中…' : '送信中'
     return <div className="camera-actions is-waiting" aria-label="回答受付">
       <div className="answer-waiting" role="status" aria-label="写真の判定待ち">
         <p className="answer-waiting-stage">{stage}（通常{usualSeconds}秒ほど）</p>
@@ -244,7 +244,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
           <span className="answer-waiting-progress-bar" />
         </div>
         <button type="button" className="answer-waiting-cancel" onClick={() => cancel(receipt
-          ? '確認を中止しました。同じ受付IDで再確認できます。' : '送信を中止しました。受付済みか確認できませんでした。')}>キャンセル</button>
+          ? '確認を中止しました。「判定結果を確認」で再確認できます。' : '送信を中止しました。写真が届いたか確認できませんでした。')}>キャンセル</button>
       </div>
     </div>
   }
@@ -255,12 +255,12 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     {receipt && !failure && <p role="status">{receipt.message}</p>}
     {(receipt?.outcome === 'OUTSIDE_AREA' || receipt?.outcome === 'LOCATION_UNCERTAIN') && <p role="status">{context.placeName ?? context.questTitle ?? 'この問題の場所'}：範囲の中心付近で撮ってください</p>}
     {receipt?.outcome === 'SYSTEM_ERROR' && photo && metadata && <button type="button" className="secondary-button" onClick={() => void exchange(false, true)}>同じ写真で再送</button>}
-    {failure && <p role="alert">{failure.message}{!failure.retake && !failure.reload && " 受付が未確定のため撮り直せません。"}</p>}
-    {pollLimit && <p role="status">自動確認をいったん終了しました。受付が未確定のため写真を保持し、同じ受付IDで再確認してください。</p>}
+    {failure && <p role="alert">{failure.message}{!failure.retake && !failure.reload && " 送信した写真の結果が分かるまで撮り直せません。"}</p>}
+    {pollLimit && <p role="status">まだ判定中です。少し待って「判定結果を確認」を押してください。</p>}
     {(failure?.reload || receipt?.reload) && <button type="button" className="retry-button" onClick={context.onReloadQuest}>問題を読み直す</button>}
     {!failure?.reload && !failure?.retake && (!receipt || receipt.canCheck) &&
       <button type="button" className="primary-button" disabled={disabled || !!failure?.retryAfterSeconds} onClick={() => void exchange()}>
-        {receipt ? (real ? '結果を見る' : '受付状態を確認')
+        {receipt ? '判定結果を確認'
           : failure ? '同じ回答を再送' : dataMode === 'durable-local' ? '写真と位置をテスト送信'
             : dataMode === 'team-preview' ? '写真と位置を送信' : '写真と位置を送信'}
       </button>}
