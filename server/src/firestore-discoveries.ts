@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { FieldPath, Timestamp } from 'firebase-admin/firestore'
+import { Timestamp } from 'firebase-admin/firestore'
 import type { DocumentData, Firestore, Transaction } from 'firebase-admin/firestore'
 import type { Discovery, Page } from '../../src/shared/api/types'
 import { parseAfterClearContent, parseDiscovery } from '../../src/shared/api/validation'
@@ -29,16 +29,23 @@ export class FirestoreDiscoveryStore implements DiscoveryReadRepository {
     if (requestedLimit !== undefined) params.set('limit', String(requestedLimit))
     const limit = parseLimit(params)
     const scope = 'firestore-discoveries:' + createHash('sha256').update(JSON.stringify([uid, areaId ?? null])).digest('hex')
+    // 等価条件だけで引き、並び替えとページングは取得後にメモリ上で行う。
+    // firstClearedAt の orderBy は uid との複合インデックスが必須で、インデックス
+    // 未整備の DB（共有検証の名前付き DB には複合インデックスが無い）では
+    // 一覧全体が SYSTEM_ERROR になり、ログイン済みでも記録が一切読めなかった
+    // （D-57）。本人の記録は本人のクリア数に限られるため、全件取得でも足りる。
     let records = this.db.collection('discoveries').where('uid', '==', uid)
     if (areaId !== undefined) records = records.where('areaId', '==', parseId(areaId))
-    records = records.orderBy('firstClearedAt', 'desc').orderBy(FieldPath.documentId(), 'desc')
-    if (cursor !== undefined) records = records.startAfter(...readPosition(readScopedCursor(cursor, scope)))
     const snapshot = await records.select('uid', 'discoveryId', 'placeId', 'questId', 'questVersion', 'firstClearedAt',
-      'placeName', 'descriptionSnapshot', 'revealedLocation').limit(limit + 1).get()
-    const page = snapshot.docs.slice(0, limit)
+      'placeName', 'descriptionSnapshot', 'revealedLocation').get()
+    const sorted = [...snapshot.docs].sort((a, b) =>
+      comparePosition(clearTime(a.data()), a.id, clearTime(b.data()), b.id))
+    const remaining = cursor === undefined ? sorted
+      : sorted.filter((doc) => comparePosition(clearTime(doc.data()), doc.id, ...readPosition(readScopedCursor(cursor, scope))) > 0)
+    const page = remaining.slice(0, limit)
     const items = page.map((doc) => publicDiscovery(doc.data(), uid, doc.id))
     const last = page.at(-1)
-    if (!last || snapshot.size <= limit) return { items, nextCursor: null }
+    if (!last || remaining.length <= limit) return { items, nextCursor: null }
     const time = clearTime(last.data())
     return { items, nextCursor: createScopedCursor(scope, `${time.seconds}:${time.nanoseconds}:${last.id}`) }
   }
@@ -98,6 +105,14 @@ function publicDiscovery(data: DocumentData, uid: string, id: string): Discovery
 function clearTime(data: DocumentData): Timestamp {
   if (!(data.firstClearedAt instanceof Timestamp)) throw processingError()
   return data.firstClearedAt
+}
+
+// 一覧の並びは「初回クリア日時の新しい順、同日時ならドキュメントIDの降順」。
+// 位置 a が位置 b より前なら負、後なら正を返す（カーソル位置との比較にも使う）。
+function comparePosition(aTime: Timestamp, aId: string, bTime: Timestamp, bId: string): number {
+  if (aTime.seconds !== bTime.seconds) return bTime.seconds - aTime.seconds
+  if (aTime.nanoseconds !== bTime.nanoseconds) return bTime.nanoseconds - aTime.nanoseconds
+  return aId === bId ? 0 : aId < bId ? 1 : -1
 }
 
 function readPosition(after: string): [Timestamp, string] {

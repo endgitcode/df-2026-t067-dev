@@ -88,7 +88,7 @@ it('answer trial build lets an invited traveler open the capture flow and record
 it('shows the nationwide map even before the first problem is published', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ items: [], nextCursor: null }, { headers })))
   render(<TeamPreview />)
-  expect(await screen.findByRole('heading', { name: '公開問題はありません' })).toBeVisible()
+  expect(await screen.findByRole('heading', { name: '問題はありません' })).toBeVisible()
   expect(screen.getByRole('heading', { name: '全国から謎を探す' })).toBeVisible()
   expect(screen.getByRole('region', { name: '全国の謎' })).toBeVisible()
   expect(screen.getByRole('button', { name: '公開情報を更新' })).toBeVisible()
@@ -180,10 +180,10 @@ it('recovers a public hint image after revision and removes it after publication
     expect(screen.getByRole('button', { name: '問題を読みなおす' })).toBeVisible()
     screen.getByRole('button', { name: '問題を読みなおす' }).focus()
     await user.keyboard('{Enter}')
-    expect(await screen.findByRole('heading', { name: '公開問題はありません' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: '問題はありません' })).toBeVisible()
     expect(screen.getByRole('button', { name: '公開情報を更新' })).toHaveFocus()
     // 一覧の行から選んだ場合は地域まで選択されているため、0件の文言は地域向けになる。
-    expect(screen.getByText('この地域に公開問題はありません。地図や地方の絞り込みから別の地域をお選びください。')).toBeVisible()
+    expect(screen.getByText('この地域には問題がありません。地図や地方の絞り込みから別の地域をお選びください。')).toBeVisible()
     expect(screen.queryByRole('heading', { name: '改版後の問題' })).not.toBeInTheDocument()
     expect(screen.queryByAltText('改版後の問題のヒント画像')).not.toBeInTheDocument()
     expect(fetcher).toHaveBeenCalledWith(imagePath(1), expect.anything())

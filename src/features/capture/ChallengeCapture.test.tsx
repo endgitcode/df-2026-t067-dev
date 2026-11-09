@@ -245,7 +245,7 @@ describe('challenge before camera', () => {
     f.submitAnswer.mockResolvedValue(receipt)
     f.getAttempt.mockResolvedValue({ ...receipt, state: 'COMPLETED', outcome: 'CORRECT',
       nextAction: 'OPEN_DISCOVERY', optionalDiscoveryId: 'trial-discovery' })
-    expect(screen.getByText('ログインを確認しました。撮影して回答を試せます。')).toBeVisible()
+    expect(screen.getByText('撮影して回答を試せます。')).toBeVisible()
     await f.user.click(screen.getByRole('button', { name: '挑戦を始める' }))
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
     expect(screen.getByText('挑戦を開始しました。写真と位置を確認してから送信できます。')).toBeVisible()
