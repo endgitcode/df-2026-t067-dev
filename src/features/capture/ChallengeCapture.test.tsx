@@ -35,7 +35,7 @@ function takePhoto() {
   const video = screen.getByLabelText('カメラ映像') as HTMLVideoElement
   Object.defineProperties(video, { videoWidth: { value: 640 }, videoHeight: { value: 480 }, readyState: { value: 2 } })
   fireEvent.loadedData(video)
-  fireEvent.click(screen.getByRole('button', { name: '撮影する' }))
+  fireEvent.click(screen.getByRole('button', { name: '撮影' }))
   return { photo, measuredAt }
 }
 
@@ -62,7 +62,7 @@ describe('challenge before camera', () => {
     await f.user.click(screen.getByRole('button', { name: '挑戦する' }))
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
     takePhoto()
-    await f.user.click(screen.getByRole('button', { name: 'テスト送信' }))
+    await f.user.click(screen.getByRole('button', { name: '送る' }))
     expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toHaveTextContent('写真確認中')
     expect(screen.queryByRole('button', { name: '判定を確認' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'クリア！' }, { timeout: 4000 })).toBeVisible()
@@ -78,7 +78,7 @@ describe('challenge before camera', () => {
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
     const { photo, measuredAt } = takePhoto()
     expect(f.submitAnswer).not.toHaveBeenCalled()
-    await f.user.click(screen.getByRole('button', { name: '送信する' }))
+    await f.user.click(screen.getByRole('button', { name: '送る' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('通信失敗')
     await f.user.click(screen.getByRole('button', { name: '再送する' }))
     expect(await screen.findByText(/送信済み/)).toBeVisible()
@@ -102,7 +102,7 @@ describe('challenge before camera', () => {
     await f.user.click(screen.getByRole('button', { name: '挑戦する' }))
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
     takePhoto()
-    await f.user.click(screen.getByRole('button', { name: '送信する' }))
+    await f.user.click(screen.getByRole('button', { name: '送る' }))
     expect(await screen.findByText(new RegExp(message))).toBeVisible()
     expect(screen.queryByText(/送信済み/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '撮り直す' })).toBeEnabled()
@@ -117,7 +117,7 @@ describe('challenge before camera', () => {
     await f.user.click(screen.getByRole('button', { name: '挑戦する' }))
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
     takePhoto()
-    const send = screen.getByRole('button', { name: '送信する' })
+    const send = screen.getByRole('button', { name: '送る' })
     fireEvent.click(send)
     fireEvent.click(send)
     expect(f.submitAnswer).toHaveBeenCalledTimes(1)
@@ -268,7 +268,7 @@ describe('challenge before camera', () => {
     // 細かい説明カードは出さない（写真確認は見出しと操作だけ）
     expect(screen.queryByText(/「送信する」で判定します/)).not.toBeInTheDocument()
     expect(document.querySelector('.camera-overlay > p.sample-note')).toBeNull()
-    await f.user.click(screen.getByRole('button', { name: '送信する' }))
+    await f.user.click(screen.getByRole('button', { name: '送る' }))
     const waiting = await screen.findByRole('status', { name: '写真の判定待ち' })
     expect(waiting).toHaveTextContent('写真確認中')
     // 判定待ちにも細かい説明カード（sample-note）は出さない

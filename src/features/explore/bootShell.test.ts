@@ -55,7 +55,7 @@ describe('React boot prerender without browser globals', () => {
     vi.stubGlobal('document', undefined)
     const { html, fullbleed } = renderBoot()
     expect(fullbleed).toBe(false)
-    expect(html).toContain('全国観光謎アプリ')
+    expect(html).toContain('NAZOP')
     expect(html).toContain('mobile-nav')
   })
 })

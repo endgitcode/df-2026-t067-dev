@@ -62,7 +62,7 @@ describe('demo mode PC sidebar', () => {
     const list = await screen.findByRole('region', { name: '選べる謎の一覧' })
     expect(within(list).getByRole('button', { name: quest.title + 'の詳細を見る' })).toBeVisible()
     expect(document.querySelector('.brand')).not.toBeNull()
-    expect(document.querySelector('.brand-copy')?.textContent).toContain('全国観光謎アプリ')
+    expect(document.querySelector('.brand-copy')?.textContent).toContain('NAZOP')
     const nav = document.querySelector('.desktop-nav') as HTMLElement
     expect(within(nav).getByRole('button', { name: '謎を探す' })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('button', { name: '自分の記録' })).toBeVisible()

@@ -298,14 +298,14 @@ function MobileCameraPreview({ onClose, answer, clue, hints = [] }: CameraPrevie
         <button type="button" className="secondary-button" onClick={() => void rotatePhoto(-1)} disabled={rotating || submissionStarted}>左に回す</button>
         <button type="button" className="secondary-button" onClick={() => void rotatePhoto(1)} disabled={rotating || submissionStarted}>右に回す</button>
       </div>}
-      {answer && photo && metadata && <DemoAnswerSubmission context={answer} photo={photo.blob} metadata={metadata} disabled={rotating}
+      {answer && photo && metadata && <DemoAnswerSubmission initialSubmitLabel="送る" context={answer} photo={photo.blob} metadata={metadata} disabled={rotating}
         onSubmissionStarted={() => { setSubmissionStarted(true); setRetakeLocked(true) }}
         onSubmissionResolved={() => setRetakeLocked(false)}
         onWaitingChange={setJudging} />}
       {!judging && <div className="camera-actions">
-        {!photoUrl && phase !== 'error' && <button type="button" className="primary-button" onClick={capture} disabled={phase !== 'live'}>{phase === 'capturing' ? '写真作成中' : '撮影する'}</button>}
-        {photoUrl && !metadata && <button type="button" className="secondary-button" onClick={requestLocation} disabled={locating}>{locating ? '撮影地取得中' : '位置を再取得'}</button>}
-        {photoUrl && !answer && <button type="button" className="primary-button" disabled>送信する</button>}
+        {!photoUrl && phase !== 'error' && <div className="camera-shutter-controls"><button type="button" className="primary-button camera-shutter" aria-label="撮影" onClick={capture} disabled={phase !== 'live'} /></div>}
+        {photoUrl && !metadata && <button type="button" className="secondary-button" onClick={requestLocation} disabled={locating}>位置を再取得</button>}
+        {photoUrl && (!answer || !metadata) && <button type="button" className="primary-button" disabled>送る</button>}
         {photoUrl && <button type="button" className={submissionStarted && !retakeLocked ? "primary-button" : "secondary-button"} onClick={restart} disabled={retakeLocked}>撮り直す</button>}
         {phase === 'error' && <button type="button" className="primary-button" onClick={restart}>カメラを再試行</button>}
         <button ref={closeRef} type="button" className="secondary-button" onClick={() => requestClose()}>撮影を終了</button>

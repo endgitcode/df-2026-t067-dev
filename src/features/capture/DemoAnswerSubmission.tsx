@@ -97,11 +97,12 @@ function answerFailure(cause: unknown): Failure {
   }
 }
 
-export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSubmissionStarted, onSubmissionResolved, onWaitingChange, initialAttemptId }: {
+export function DemoAnswerSubmission({ context, photo, metadata, disabled, initialSubmitLabel, onSubmissionStarted, onSubmissionResolved, onWaitingChange, initialAttemptId }: {
   context: DemoAnswerContext
   initialAttemptId?: string
   photo?: Blob
   metadata?: CaptureMetadata
+  initialSubmitLabel?: string
   disabled: boolean
   onSubmissionStarted: () => void
   onSubmissionResolved?: () => void
@@ -260,8 +261,8 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     {!failure?.reload && !failure?.retake && (!receipt || receipt.canCheck) &&
       <button type="button" className="primary-button" disabled={disabled || !!failure?.retryAfterSeconds} onClick={() => void exchange()}>
         {receipt ? '判定を確認'
-          : failure ? '再送する' : dataMode === 'durable-local' ? 'テスト送信'
-            : dataMode === 'team-preview' ? '送信する' : '送信する'}
+          : failure ? '再送する' : initialSubmitLabel ?? (dataMode === 'durable-local' ? 'テスト送信'
+            : dataMode === 'team-preview' ? '送信する' : '送信する')}
       </button>}
   </div>
 }

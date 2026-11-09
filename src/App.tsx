@@ -451,7 +451,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       <header className="site-header">
         <div className="brand">
           <span className="brand-mark"><Icon name="compass" /></span>
-          <span className="brand-copy">全国観光謎アプリ</span>
+          <span className="brand-copy">NAZOP</span>
         </div>
         <nav className="desktop-nav" aria-label="主要ナビゲーション">
           {/* 画面遷移のタブは2つともボタンで揃える（片方だけリンクだと URL のハッシュが
