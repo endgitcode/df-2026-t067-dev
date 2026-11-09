@@ -1437,7 +1437,8 @@ describe('Google map panel', () => {
     const { rerender, unmount } = render(<ConfiguredMapPreview areas={areas} onSelectArea={vi.fn()} />)
     try {
       await screen.findByRole('button', { name: '地図を拡大' })
-      expect(markers).toHaveLength(1)
+      // ピン同期は layout 後。ready と同時にコントロールだけ先に見えないよう待つ。
+      await waitFor(() => expect(markers).toHaveLength(1))
       // 初回の現在地表示を含めて2個。以後の連打でも2個のまま。
       fireEvent.click(screen.getByRole('button', { name: '現在地へ戻る' }))
       expect(markers).toHaveLength(2)

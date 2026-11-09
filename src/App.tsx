@@ -109,6 +109,23 @@ function waitForSignedIn(authClient: AuthClient, signal: AbortSignal): Promise<b
   })
 }
 
+
+function readRecordsViewFromUrl() {
+  try { return new URLSearchParams(window.location.search).get('view') === 'records' } catch { return false }
+}
+
+function writeRecordsViewToUrl(open: boolean, mode: 'push' | 'replace') {
+  try {
+    const url = new URL(window.location.href)
+    if (open) url.searchParams.set('view', 'records')
+    else url.searchParams.delete('view')
+    const next = `${url.pathname}${url.search}${url.hash}`
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    if (next === current) return
+    window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', next)
+  } catch { /* URL 反映は補助。画面状態は React 側が正。 */ }
+}
+
 export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, filterRegion = '', filterPrefecture = '', mapAreas = [], mapQuests = [], mapQuestsLoading = false, onOpenQuest, onDeselectQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, onMapSheetModeChange, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
   const [openState, setOpenState] = useState<{ quest?: PublicQuest; open: boolean }>({ open: false })
   const [openedRequest, setOpenedRequest] = useState<typeof openQuestRequest>()
@@ -118,11 +135,13 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   }
 
   const [recordDestination, setRecordDestination] = useState<{ auth: AuthSnapshot; id: string } | null>(null)
-  const [recordsOpen, setRecordsOpen] = useState(false)
+  // 記録タブは ?view=records で復元する（パスは Cloud Run の静的配信が / と /admin 以外
+  // を HTML に落とさないため使わない。Firebase Hosting は SPA rewrite あり）。
+  const [recordsOpen, setRecordsOpen] = useState(() => readRecordsViewFromUrl())
   // 記録画面は一度開いたらアンマウントせず、隠して常駐させる。探索側（地図・パネル・
   // 選択状態）も同様に隠すだけで壊さないため、タブ往復でフィルタ・一覧・地図・選択が
   // 食い違わない（往復の前後で状態は visibility だけが変わる）。
-  const [recordsVisited, setRecordsVisited] = useState(false)
+  const [recordsVisited, setRecordsVisited] = useState(() => readRecordsViewFromUrl())
   // 記録画面へ入るたびに数え、一覧の取り直しの合図にする。画面は常駐させる
   // （D-53）ため、合図が無いと初回の取得結果がセッション中ずっと残ってしまう。
   const [recordsVisit, setRecordsVisit] = useState(0)
@@ -142,6 +161,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   // demo でも PC 幅は Cursor 風サイドバーへ載せる（ローカルデモ／審査確認用。team-preview と同じ殻）。
   const panelArrangement = wideViewport && (teamPreview || durableLocal || apiMode)
   const showRecords = localApiMode && recordsOpen
+
   const api = useMemo(() => providedApi ?? createApiClient({ getIdToken: () => authClient.getIdToken(),
     expectedDataMode: localApiMode ? apiDataMode : undefined }), [providedApi, authClient, localApiMode, apiDataMode])
   const connection = useQuestConnection(apiMode || externalQuest || catalogFallback ? 'preview' : source, api)
@@ -231,6 +251,18 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   // 失敗した時は「未クリア扱い」で従来表示に倒す。
   const [clearedState, setClearedState] = useState<{ uid: string; byQuest: ReadonlyMap<string, string> } | null>(null)
   const [clearedRefresh, setClearedRefresh] = useState(0)
+  // 戻る／進むで ?view=records を読み直し、記録⇄探索を同期する。
+  useEffect(() => {
+    if (!localApiMode) return
+    const onPopState = () => {
+      const open = readRecordsViewFromUrl()
+      if (open) { setRecordsVisited(true); setRecordsVisit((value) => value + 1) }
+      else { setRecordDestination(null); setClearedRefresh((value) => value + 1) }
+      setRecordsOpen(open)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [localApiMode])
   const clearedByQuest = clearedState && uid !== null && clearedState.uid === uid ? clearedState.byQuest : emptyClearedByQuest
   const clearedQuestIds = useMemo(() => new Set(clearedByQuest.keys()), [clearedByQuest])
   useEffect(() => {
@@ -368,6 +400,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
     selectionGeneration.current++
     setFeedback(null)
     setRecordsOpen(open)
+    // 再読み込み・戻る／進むで同じ画面に戻せるよう URL に載せる（t165u）。
+    if (localApiMode) writeRecordsViewToUrl(open, 'push')
   }
 
   // 探索へ戻る導線はタブに一本化する（記録画面の本文に重複した戻りボタンは置かない）。

@@ -1461,6 +1461,30 @@ it('opens a durable quest directly from its public card with a region list fallb
   expect(screen.getByRole('button', { name: '場所で絞る' })).toBeVisible()
 })
 
+
+it('restores the records view from ?view=records on reload and keeps back/forward in sync', async () => {
+  // Cloud Run の静的配信は深いパスを HTML に落とさないため、記録タブは ?view=records で持つ（t165u）。
+  window.history.replaceState(null, '', '/?view=records')
+  const user = userEvent.setup()
+  const api = apiFixture()
+  render(<ApiQuestApp api={api} syncUrl dataMode="durable-local" authClient={signedOutAuth()} />)
+  expect(await screen.findByRole('heading', { name: '自分の記録' })).toBeVisible()
+  expect(new URLSearchParams(window.location.search).get('view')).toBe('records')
+  const nav = () => within(screen.getByRole('navigation', { name: '主要ナビゲーション' }))
+  await user.click(nav().getByRole('button', { name: '謎を探す' }))
+  await waitFor(() => expect(new URLSearchParams(window.location.search).get('view')).toBeNull())
+  await waitFor(() => expect(screen.queryByRole('heading', { name: '自分の記録' })).toBeNull())
+  await user.click(nav().getByRole('button', { name: '自分の記録' }))
+  expect(await screen.findByRole('heading', { name: '自分の記録' })).toBeVisible()
+  expect(new URLSearchParams(window.location.search).get('view')).toBe('records')
+  await act(async () => { window.history.back() })
+  await waitFor(() => expect(new URLSearchParams(window.location.search).get('view')).toBeNull())
+  await waitFor(() => expect(screen.queryByRole('heading', { name: '自分の記録' })).toBeNull())
+  await act(async () => { window.history.forward() })
+  expect(await screen.findByRole('heading', { name: '自分の記録' })).toBeVisible()
+  expect(new URLSearchParams(window.location.search).get('view')).toBe('records')
+})
+
 describe('ディープリンク', () => {
   it('URLで問題を指定して開くと、その問題の詳細が最初から開いている', async () => {
     window.history.replaceState(null, '', '/?area=area-a&quest=quest-a')
