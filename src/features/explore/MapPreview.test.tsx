@@ -1025,7 +1025,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('shows the first quest card in the peeked sheet and opens it on tap without dragging', async () => {
+  it('raises the sheet to half while a quest is selected and opens a tapped card without dragging', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const map = { ...mapInstance, fitBounds: vi.fn() }
@@ -1052,10 +1052,11 @@ describe('Google map panel', () => {
       expect(element).not.toBeNull()
       return element as HTMLElement
     })
-    // 覗き見（peek）の高さは、ハンドルと件数に加えて先頭の行1つ（タイトルだけの形、D-46）が
-    // 丸ごと収まる前提で決める。
-    expect(sheet).toHaveAttribute('data-snap', 'peek')
-    expect(sheet.style.height).toBe(`${SHEET_PEEK_HEIGHT}px`)
+    // 問題が選択されている間は、詳細が覗き見（peek）の枠内に埋もれないよう、シートは
+    // half まで開いた状態で出る（D-70）。ステージ高さは jsdom では代替値 640 になり、
+    // half はその 55%（352px）。開くのは effect 経由なので状態が落ち着くまで待つ。
+    await waitFor(() => expect(sheet).toHaveAttribute('data-snap', 'half'))
+    expect(sheet.style.height).toBe('352px')
     expect(SHEET_PEEK_HEIGHT).toBe(128)
     expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
@@ -1068,8 +1069,8 @@ describe('Google map panel', () => {
     const scroll = vi.fn()
     const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
     HTMLElement.prototype.scrollIntoView = scroll
-    // シートが伸びても「地図に戻る」は固定位置で前面に残る。
-    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    // シートが伸びても「地図に戻る」は固定位置で前面に残る（シートは選択に合わせて
+    // 既に half まで開いているため、ここではハンドル操作は挟まない）。
     const browseShortcut = container.querySelector('.map-browse-shortcut') as HTMLButtonElement
     expect(browseShortcut).toHaveClass('is-return-to-map')
     expect(browseShortcut).not.toHaveAttribute('inert')

@@ -239,7 +239,13 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     for (const pending of pendingFitListeners.current) { try { pending.remove() } catch { /* SDK teardown is best effort. */ } }
     pendingFitListeners.current = []
     if (showPublicAreas) {
-      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+      // スマホ幅の選択フィットでは、選択でシートが half まで開く前提で下パディングを
+      // 見積もる（D-70）。peek 前提のままだと、開いたシートの裏にピンが隠れる。
+      // ステージの高さは地図キャンバスの実高から取り、half の定義（ExploreBottomSheet の
+      // snapHeights）と揃える。読めない時は peek 前提に倒す。
+      const stageHeight = target.current?.clientHeight ?? 0
+      const sheetFitHeight = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
+      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, wideViewport ? undefined : sheetFitHeight))
     } else instance.fitBounds(bounds)
     try {
       // フィット完了（idle）前に利用者が地図を掴んだら、その回の完了位置は記録しない
@@ -798,7 +804,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
               <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
             </button>
           </>
-          : <ExploreBottomSheet openSignal={effectivePinAreaId} onHeightChange={setSheetHeight}
+          : <ExploreBottomSheet openSignal={effectivePinAreaId ?? (selectedQuestId ? `quest:${selectedQuestId}` : null)} onHeightChange={setSheetHeight}
             onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap, true)}{boundaryCredit}</ExploreBottomSheet>
         : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>
