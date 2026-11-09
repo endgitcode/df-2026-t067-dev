@@ -14,6 +14,8 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
   const [candidate, setCandidate] = useState<MapPlaceDetails>({})
   const [message, setMessage] = useState('')
   const request = useRef<AbortController | null>(null)
+  const latitudeInvalid = Boolean(input.latitude) && (!Number.isFinite(Number(input.latitude)) || Math.abs(Number(input.latitude)) > 90)
+  const longitudeInvalid = Boolean(input.longitude) && (!Number.isFinite(Number(input.longitude)) || Math.abs(Number(input.longitude)) > 180)
   const point = spotPosition(input.latitude, input.longitude)
 
   useEffect(() => () => request.current?.abort(), [])
@@ -69,15 +71,19 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
       {candidate.address && <p>住所候補：{candidate.address}</p>}
     </div>}
     <p id="spot-registration-help" className="helper">保存する名称と住所は、自治体で確認した情報を下の欄に入力してください。</p>
-    <label>スポット名・施設名<input value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
-      aria-describedby="spot-registration-help" placeholder="自治体の名称を入力" onChange={(event) => edit({ name: event.target.value })} /></label>
-    <label>確認済み住所<input value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
-      aria-describedby="spot-registration-help" placeholder="自治体の住所を入力" onChange={(event) => edit({ address: event.target.value })} /></label>
+    <label>スポット名・施設名<small className="required-mark">必須</small><input aria-describedby={invalid && !input.name.trim() ? "spot-name-error" : undefined} aria-label="スポット名・施設名" value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
+       placeholder="自治体の名称を入力" onChange={(event) => edit({ name: event.target.value })} /></label>
+    {invalid && !input.name.trim() && <p id="spot-name-error" className="field-error">スポット名・施設名を入力してください。</p>}
+    <label>確認済み住所<small className="required-mark">必須</small><input aria-describedby={invalid && !input.address.trim() ? "spot-address-error" : undefined} aria-label="確認済み住所" value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
+       placeholder="自治体の住所を入力" onChange={(event) => edit({ address: event.target.value })} /></label>
+    {invalid && !input.address.trim() && <p id="spot-address-error" className="field-error">確認済み住所を入力してください。</p>}
     <div className="field-pair">
-      <label>スポットの緯度<input inputMode="decimal" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={invalid && !point}
+      <label>スポットの緯度<small className="required-mark">必須</small><input aria-describedby={(latitudeInvalid || (invalid && !input.latitude.trim())) ? "spot-latitude-error" : undefined} inputMode="decimal" aria-label="スポットの緯度" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={(latitudeInvalid || (invalid && !input.latitude.trim()))}
         onChange={(event) => edit({ latitude: event.target.value })} /></label>
-      <label>スポットの経度<input inputMode="decimal" value={input.longitude} maxLength={32} aria-required="true" aria-invalid={invalid && !point}
+    {(latitudeInvalid || (invalid && !input.latitude.trim())) && <p id="spot-latitude-error" className="field-error">緯度は-90〜90の数値で入力してください。</p>}
+      <label>スポットの経度<small className="required-mark">必須</small><input aria-describedby={(longitudeInvalid || (invalid && !input.longitude.trim())) ? "spot-longitude-error" : undefined} inputMode="decimal" aria-label="スポットの経度" value={input.longitude} maxLength={32} aria-required="true" aria-invalid={(longitudeInvalid || (invalid && !input.longitude.trim()))}
         onChange={(event) => edit({ longitude: event.target.value })} /></label>
+    {(longitudeInvalid || (invalid && !input.longitude.trim())) && <p id="spot-longitude-error" className="field-error">経度は-180〜180の数値で入力してください。</p>}
     </div>
     {(input.name || input.address || input.latitude || input.longitude) &&
       <button type="button" className="spot-clear-button" onClick={() => {

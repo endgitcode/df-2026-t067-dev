@@ -37,7 +37,7 @@ function Pager({ cursor, next, onMove }: { cursor?: string; next?: string | null
   </div>
 }
 
-function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSource }: { api: ApiClient; member: OrgMembership; teamPreview: boolean; durable: boolean; photoTestSource: 'mock' | 'real' }) {
+function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSource, onEditing }: { onEditing: (editing: boolean) => void; api: ApiClient; member: OrgMembership; teamPreview: boolean; durable: boolean; photoTestSource: 'mock' | 'real' }) {
   const [section, setSection] = useState<'quests' | 'reports'>('quests')
   const [cursor, setCursor] = useState<string>()
   const [notice, setNotice] = useState('')
@@ -52,7 +52,27 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
   const areaUnclassified = (teamPreview || durable) && !member.prefectureCode
   function select(next: typeof section) { setNotice(''); setCursor(undefined); setSection(next) }
 
-  function closeEditor() { setEditor(null); retry() }
+  const restored = useRef(false)
+  const listHeading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => { onEditing(editor !== null) }, [editor, onEditing])
+  useEffect(() => {
+    if (restored.current || result.status !== 'ready') return
+    restored.current = true
+    const params = new URLSearchParams(location.search)
+    const quest = params.get('quest'); const step = params.get('step')
+    if (!quest) return
+    const found = result.value.items.find((item): item is ManagedQuest => 'draft' in item && item.questId === quest)
+    const clear = () => { const url = new URL(location.href); url.searchParams.delete('quest'); url.searchParams.delete('step'); history.replaceState(null, '', url) }
+    if (step && !['target', 'conditions', 'content', 'hints', 'publication'].includes(step)) { clear(); return }
+    if (found || (quest === 'new' && !areaUnclassified)) queueMicrotask(() => setEditor({ kind: 'draft', initial: found ?? null }))
+    else if (quest !== 'new') {
+      void api.getManagedQuest(member.orgId, quest).then(record => {
+        if (new URLSearchParams(location.search).get('quest') === quest) setEditor({ kind: 'draft', initial: record })
+      }).catch(clear)
+    } else clear()
+  }, [result, api, member.orgId, areaUnclassified])
+  useEffect(() => { if (!editor) listHeading.current?.focus() }, [editor])
+  function closeEditor() { const url = new URL(location.href); url.searchParams.delete('quest'); url.searchParams.delete('step'); history.replaceState(null, '', url); setEditor(null); retry() }
   if (editor?.kind === 'draft' && (durable || teamPreview)) return <AdminQuestWorkflow api={api} member={member} initial={editor.initial}
     teamPreview={teamPreview} photoTestSource={photoTestSource} areaUnclassified={areaUnclassified} onBack={closeEditor}
     onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
@@ -63,7 +83,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
     onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
 
   return <section className="form-section" aria-labelledby="org-workspace-title">
-    <h2 id="org-workspace-title">{heading}</h2>
+    <h2 id="org-workspace-title" tabIndex={-1} ref={listHeading}>{heading}</h2>
     <p>{member.label}</p>
     {areaUnclassified && <p role="alert">この組織の地域は都道府県コードが未設定（未分類）のため、新しい問題を作成できず、既存の下書きも公開できません。</p>}
     {notice && <p role="status">{notice}</p>}
@@ -89,7 +109,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
           </p>
           <strong>{item.draft.content.title || '無題の下書き'}</strong>
           <details><summary>詳細</summary>
-            <p>問題 {item.questId}・下書き版 {item.draftRevision}{item.publishedVersion !== null && '・公開版 ' + item.publishedVersion}</p>
+            <p>問題 {item.questId}</p>
           </details>
           <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>{teamPreview || durable ? '編集を続ける' : '下書きを編集'}</button>
           {(teamPreview || durable) ? item.status !== 'published' && <details className="workflow-remaining">
@@ -127,25 +147,26 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
 
 function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiClient; teamPreview: boolean; durable: boolean; photoTestSource: 'mock' | 'real' }) {
   const [cursor, setCursor] = useState<string>()
-  const [selected, setSelected] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [selected, setSelected] = useState<string | null>(() => { try { return sessionStorage.getItem('admin-selected-org') } catch { return null } })
   const read = useCallback((signal: AbortSignal) => api.listMemberships({ cursor, limit: 20 }, { signal }), [api, cursor])
   const { result, retry } = useRemote(true, read)
   const current = result.status === 'ready' ? result.value.items.find((member) => member.orgId === selected) ?? (durable && !cursor && !result.value.nextCursor && result.value.items.length === 1 ? result.value.items[0] : undefined) : undefined
   return <>
-    <section className="form-section" aria-labelledby="membership-title">
+    <section hidden={editing} className="form-section" aria-labelledby="membership-title">
       <h2 id="membership-title">所属する組織</h2>
       {result.status === 'loading' && <p role="status">所属を確認しています…</p>}
       {result.status === 'error' && <><p role="alert">所属を確認できませんでした。</p>
         <button type="button" onClick={retry}>所属を確認し直す</button></>}
       {result.status === 'ready' && (result.value.items.length === 0 ? <p>利用できる所属がありません。</p>
         : <ul className="admin-read-list">{result.value.items.map((member) => <li key={member.orgId}>
-          <button type="button" aria-pressed={member.orgId === selected} onClick={() => setSelected(member.orgId)}>
+          <button type="button" aria-pressed={member.orgId === current?.orgId} onClick={() => { setSelected(member.orgId); try { sessionStorage.setItem('admin-selected-org', member.orgId) } catch { /* Selection still works without session storage. */ } }}>
             {member.label}
           </button></li>)}</ul>)}
       <Pager cursor={cursor} next={result.status === 'ready' ? result.value.nextCursor : undefined}
         onMove={(next) => { setSelected(null); setCursor(next) }} />
     </section>
-    {current && <OrganizationWorkspace key={JSON.stringify([current.orgId, current.role])} api={api} member={current} teamPreview={teamPreview} durable={durable} photoTestSource={photoTestSource} />}
+    {current && <OrganizationWorkspace onEditing={setEditing} key={JSON.stringify([current.orgId, current.role])} api={api} member={current} teamPreview={teamPreview} durable={durable} photoTestSource={photoTestSource} />}
   </>
 }
 

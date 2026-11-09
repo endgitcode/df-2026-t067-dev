@@ -55,7 +55,7 @@ it('returns from range editing to fresh content in the same task without listing
   fireEvent.click(await screen.findByRole('button', { name: '撮影範囲を保存' }))
   await screen.findByText('撮影できる範囲（非公開）を保存しました。')
   fireEvent.click(screen.getByRole('button', { name: '本文編集へ戻る' }))
-  await screen.findByText('下書き版 2')
+  await screen.findByRole('button', { name: '下書き・編集へ' })
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('問題タイトル')).toHaveValue('保持する題')
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))

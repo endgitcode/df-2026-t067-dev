@@ -53,13 +53,27 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
   photoTestSource: 'mock' | 'real'; areaUnclassified: boolean; onBack: () => void; onPublished: () => void
 }) {
   const [record, setRecord] = useState(initial)
-  const [part, setPart] = useState<Part>(() => resumePart(initial))
+  const [part, setPart] = useState<Part>(() => { const value = new URLSearchParams(location.search).get('step'); return value && ['target', 'conditions', 'content', 'hints', 'publication'].includes(value) ? value as Part : resumePart(initial) })
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<Destination | null>(null)
   const [focusField, setFocusField] = useState<ReviewField | null>(null)
   const [lastTrialRevision, setLastTrialRevision] = useState<number | null>(null)
   const [openedPublication, setOpenedPublication] = useState(part === 'publication')
+  const dialog = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (pending) dialog.current?.focus() }, [pending])
+  useEffect(() => {
+    if (!dirty) return
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', guard)
+    return () => window.removeEventListener('beforeunload', guard)
+  }, [dirty])
+  useEffect(() => {
+    const url = new URL(location.href)
+    url.searchParams.set('quest', record?.questId ?? 'new')
+    url.searchParams.set('step', part)
+    history.replaceState(null, '', url)
+  }, [record?.questId, part])
   const heading = useRef<HTMLHeadingElement>(null)
   const root = useRef<HTMLElement>(null)
   const step = stepNumber[part]
@@ -127,12 +141,20 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
       <h2 ref={heading} tabIndex={-1}>STEP {step}　{steps[step - 1]}</h2>
       <button type="button" disabled={busy} onClick={() => navigate('list')}>問題一覧へ戻る</button>
     </header>
-    {pending && <div role="group" aria-label="未保存の入力">
-      <p>未保存の入力があります。「下書きを保存」または「ヒント画像を保存」を押すと移動します。</p>
-      <button type="button" disabled={busy} onClick={() => setPending(null)}>この工程にとどまる</button>
+    {pending && <div role="alertdialog" aria-label="未保存の入力" className="unsaved-dialog" tabIndex={-1} ref={dialog} onKeyDown={event => {
+      if (event.key === 'Escape') { setPending(null); heading.current?.focus() }
+      if (event.key === 'Tab') {
+        const buttons = dialog.current?.querySelectorAll('button')
+        if (!buttons?.length) return
+        if (event.shiftKey && (document.activeElement === buttons[0] || document.activeElement === dialog.current)) { event.preventDefault(); buttons[buttons.length - 1].focus() }
+        else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) { event.preventDefault(); buttons[0].focus() }
+      }
+    }}>
+      <p>STEP {step}の未保存の入力があります。</p>
+      <button type="button" disabled={busy} onClick={() => document.dispatchEvent(new Event('admin-save-draft'))}>保存して移動</button>
       <button type="button" disabled={busy} onClick={() => move(pending)}>保存せず移動</button>
+      <button type="button" disabled={busy} onClick={() => { setPending(null); heading.current?.focus() }}>とどまる</button>
     </div>}
-    {step !== 4 && <button type="button" disabled={busy} onClick={() => navigate({ part: 'publication' })}>STEP 4へ移動</button>}
     {part === 'conditions' && <p>撮影範囲は、STEP 1で保存した対象スポットの位置を中心に半径1kmです。
       {missing.includes('targetSpot') || missing.includes('shootingAreas') ? ' STEP 1でスポットを保存してください。' : ' 設定済みです。'}</p>}
     {part === 'hints' && record ? <HintAssetEditor api={api} initial={record} member={member}

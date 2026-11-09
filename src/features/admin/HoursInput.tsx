@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 
 type Mode = 'unset' | 'all-day' | 'specified' | 'supplement'
 const exceptionPhrases = ['月曜休業', '日曜休業', '祝日は休業', '臨時休業あり'] as const
@@ -11,7 +11,7 @@ function read(value: string) {
 }
 
 /** UI helpers only: the persisted contract remains an optional, bounded string. */
-export function HoursInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function HoursInput({ value, onChange, onError }: { value: string; onChange: (value: string) => void; onError?: (error: string) => void }) {
   const [initial] = useState(() => read(value))
   const [mode, setMode] = useState(initial.mode)
   const [start, setStart] = useState(initial.start)
@@ -20,9 +20,8 @@ export function HoursInput({ value, onChange }: { value: string; onChange: (valu
   const [exceptions, setExceptions] = useState(initial.exceptions)
   const [free, setFree] = useState(initial.mode === 'supplement' ? value : '')
   function update(m: Mode, s = start, e = end, n = next, x = exceptions) {
-    const reversed = Boolean(s && e && e <= s && !n)
     const base = m === 'all-day' ? '終日' : m === 'specified' && (s || e)
-      ? `${s || '（開始未設定）'}〜${n ? '翌日 ' : ''}${e || '（終了未設定）'}${reversed ? '（前後関係を要確認）' : ''}` : ''
+      ? `${s || '（開始未設定）'}〜${n ? '翌日 ' : ''}${e || '（終了未設定）'}` : ''
     onChange(m === 'supplement' ? free : [base, x].filter(Boolean).join('\n'))
   }
   function toggleExceptionPhrase(phrase: string) {
@@ -32,7 +31,9 @@ export function HoursInput({ value, onChange }: { value: string; onChange: (valu
     setExceptions(joined)
     update(mode, start, end, next, joined)
   }
-  const incomplete = mode === 'specified' && (!start || !end || (end <= start && !next))
+  const errorId = useId()
+  const error = mode === 'specified' && start && end && end <= start && !next ? '終了時刻は開始時刻より後にするか、終了は翌日を選んでください。' : ''
+  useEffect(() => { onError?.(error) }, [error, onError])
   return <fieldset><legend>利用できる時間</legend>
     <p className="helper">施設の営業時間などのクリア後案内です。撮影可能時間の制約は「撮影時の注意」に記載してください。</p>
     <div role="radiogroup" aria-label="利用できる時間の設定">
@@ -50,10 +51,10 @@ export function HoursInput({ value, onChange }: { value: string; onChange: (valu
       }} />{label}</label>)}
     </div>
     {mode === 'specified' && <div>
-      <label>開始時刻<input type="time" step="60" value={start} onChange={event => { setStart(event.target.value); update(mode, event.target.value) }} /></label>
-      <label>終了時刻<input type="time" step="60" value={end} onChange={event => { setEnd(event.target.value); update(mode, start, event.target.value) }} /></label>
+      <label>開始時刻<input aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} type="time" step="60" value={start} onChange={event => { setStart(event.target.value); update(mode, event.target.value) }} /></label>
+      <label>終了時刻<input aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} type="time" step="60" value={end} onChange={event => { setEnd(event.target.value); update(mode, start, event.target.value) }} /></label>
       <label><input type="checkbox" checked={next} onChange={event => { setNext(event.target.checked); update(mode, start, end, event.target.checked) }} />終了は翌日</label>
-      {incomplete && <p role="status">時間は入力途中です。未設定の部分も明記して保存します。</p>}
+      {error && <p id={errorId} role="alert" className="field-error">{error}</p>}
     </div>}
     {mode !== 'supplement' && <>
       <div className="phrase-chips">

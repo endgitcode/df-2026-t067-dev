@@ -28,6 +28,7 @@ it('saves a complete Maps spot without a confirmation checkbox and restores it i
   const connection = { api: { ...api, createManagedQuest }, initial: null as ManagedQuest | null, member, onBack: vi.fn() }
   const view = render(<QuestDraftForm teamPreview connection={connection} />)
   expect(screen.getByText(/区域テスト/)).toBeVisible()
+  await user.type(screen.getByLabelText('対象名'), '対象')
   await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://www.google.com/maps/place/Pin/@35,139,15z/data=!3d36!4d140')
   await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
   expect(screen.getByLabelText('スポットの緯度')).toHaveValue('36')
