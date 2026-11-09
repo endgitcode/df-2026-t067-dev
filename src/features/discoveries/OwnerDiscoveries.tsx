@@ -119,9 +119,9 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
   const dialog = useRef<HTMLDialogElement>(null)
   const headingId = useId()
   const [deletionState, setDeletionState] = useState('idle')
-  const deletionUnresolved = deletionState === 'working' || deletionState === 'pending' || deletionState === 'check-error'
+  const deletionInFlight = deletionState === 'working'
   function close() {
-    if (!deletionUnresolved) onBack(deletionState === 'send-error' || deletionState === 'failed')
+    if (!deletionInFlight) onBack(deletionState !== 'idle')
   }
   useEffect(() => {
     const element = dialog.current
@@ -142,7 +142,7 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
     <div className="record-detail">
       <header className="record-dialog-heading">
         <h2 id={headingId}>記録詳細</h2>
-        <button type="button" className="secondary-button" disabled={deletionUnresolved} onClick={close}>閉じる</button>
+        <button type="button" className="secondary-button" disabled={deletionInFlight} onClick={close}>閉じる</button>
       </header>
       {result.status === 'loading' && <p role="status">記録を読み込んでいます…</p>}
       {result.status === 'error' && <ReadFailure code={result.code} retry={retry} />}

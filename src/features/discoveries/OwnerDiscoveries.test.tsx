@@ -102,10 +102,7 @@ it('confirms deletion, checks a known receipt without resending, and refreshes t
   await user.click(screen.getByRole('button', { name: '記録と写真を削除する' }))
   await user.click(await screen.findByRole('button', { name: '削除状態を再確認' }))
   expect(await screen.findByText('削除を受け付けました。')).toBeVisible()
-  expect(screen.getByRole('button', { name: '閉じる' })).toBeDisabled()
-  const dialog = screen.getByRole('dialog', { name: '記録詳細' })
-  expect(fireEvent(dialog, new Event('cancel', { cancelable: true }))).toBe(false)
-  expect(dialog).toBeVisible()
+  expect(screen.getByRole('button', { name: '閉じる' })).toBeEnabled()
   expect(screen.queryByText('記録と写真の削除が完了しました。')).not.toBeInTheDocument()
   expect(deleteDiscovery).toHaveBeenCalledExactlyOnceWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
   await user.click(screen.getByRole('button', { name: '削除状態を確認' }))
@@ -117,6 +114,35 @@ it('confirms deletion, checks a known receipt without resending, and refreshes t
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:synthetic-record')
 })
 
+
+it.each(['button', 'escape'])('refreshes records after closing a failed deletion check via %s', async (method) => {
+  const user = userEvent.setup()
+  const listDiscoveries = vi.fn().mockResolvedValueOnce({ items: [discovery], nextCursor: null })
+    .mockResolvedValue({ items: [], nextCursor: null })
+  const deleteDiscovery = vi.fn().mockResolvedValue({ deletionId: 'demo-deletion' })
+  const api = {
+    ...createApiClient(),
+    listDiscoveries,
+    deleteDiscovery,
+    getDeletion: vi.fn().mockRejectedValue(new Error('network')),
+    getQuest: vi.fn().mockResolvedValue({ title: 'テスト問題', version: discovery.questVersion }),
+    getDiscovery: vi.fn().mockResolvedValue(discovery),
+    getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
+  }
+  render(<OwnerDiscoveries api={api} />)
+  await user.click(await screen.findByRole('button', { name: discovery.placeName }))
+  await user.click(await screen.findByRole('button', { name: '記録を削除' }))
+  await user.click(screen.getByRole('button', { name: '記録と写真を削除する' }))
+  await screen.findByRole('button', { name: '削除状態を再確認' })
+  const dialog = screen.getByRole('dialog', { name: '記録詳細' })
+  if (method === 'button') await user.click(within(dialog).getByRole('button', { name: '閉じる' }))
+  else fireEvent(dialog, new Event('cancel', { cancelable: true }))
+  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(dialog).not.toBeInTheDocument()
+  expect(screen.queryByText('記録と写真の削除が完了しました。')).not.toBeInTheDocument()
+  expect(deleteDiscovery).toHaveBeenCalledTimes(1)
+  expect(listDiscoveries).toHaveBeenCalledTimes(2)
+})
 
 it('refetches the list when the records view is entered again', async () => {
   const listDiscoveries = vi.fn()
