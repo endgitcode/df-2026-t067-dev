@@ -120,22 +120,25 @@ describe('PC floating sidebar (D-38)', () => {
     // 押し出すと、相対配置と重なって二重に効く（2026-11-08 の実機報告）。
     expect(css).not.toContain('body.explore-fullbleed .explore-workspace { padding-left:')
     expect(css).not.toContain('.map-preview-shell { inset: 0 0 0 var(--pc-sidebar-w); }')
-    const rule = 'body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: calc(var(--pc-sidebar-gap) + 24px); left: var(--pc-sidebar-gap);'
-    expect(css).toContain(rule)
-    expect(css.indexOf(rule)).toBeGreaterThan(mediaAt)
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel {')
+    expect(css).toContain('top: var(--pc-sidebar-chrome-h); bottom: 0; left: 0;')
+    expect(css.indexOf('top: var(--pc-sidebar-chrome-h);')).toBeGreaterThan(mediaAt)
   })
 
-  it('floats the primary nav as the top piece of the same card', () => {
-    expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap);')
-    // ナビはカードの上半分（上の角だけ丸く）、パネルは下半分（下の角だけ丸く）。
+  it('places the primary nav as vertical rows under the brand row', () => {
+    expect(css).toContain('body.explore-fullbleed .desktop-nav {')
+    expect(css).toContain('top: var(--pc-sidebar-brand-h); left: 0;')
+    expect(css).toContain('flex-direction: column;')
+    expect(css).toContain('font-size: 14px;')
+    // シートの上角丸はボトムシート側で維持（サイドバーはフラットカラム）。
     expect(css).toContain('border-radius: var(--radius-l) var(--radius-l) 0 0;')
-    expect(css).toContain('border-radius: 0 0 var(--radius-l) var(--radius-l);')
   })
 
   it('keeps map-side floating UI clear of the panel zone', () => {
-    expect(css).toContain('body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset);')
-    expect(css).toContain('body.explore-fullbleed .map-topline { left: calc(var(--pc-sidebar-offset) + 8px); }')
-    expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { left: calc(var(--pc-sidebar-offset) + 8px);')
+    expect(css).toContain('body.explore-fullbleed .site-header {')
+    expect(css).toContain('left: var(--pc-sidebar-offset);')
+    expect(css).toContain('body.explore-fullbleed .map-topline { left: calc(var(--pc-sidebar-offset) + 12px); }')
+    expect(css).toContain('left: calc(var(--pc-sidebar-offset) + 12px);')
   })
 })
 
@@ -161,22 +164,24 @@ describe('PC sidebar layout integrity', () => {
     expect(css).not.toContain('body.explore-fullbleed .explore-workspace { padding-left:')
   })
 
-  it('keeps the floating brand a compact chip instead of a stretched bar', () => {
+  it('keeps the floating brand a compact chip on mobile and a sidebar row on PC', () => {
     expect(css).toContain('body.explore-fullbleed .brand { justify-self: start;')
+    expect(css).toContain('body.explore-fullbleed .brand {')
+    expect(css).toContain('height: var(--pc-sidebar-brand-h);')
   })
 
-  it('collapses the sidebar by hiding the panel only: the tabs stay reachable and the stage and the header do not move', () => {
-    // D-42 以降、畳む時は display ではなく opacity / visibility / transform で
-    // 滑らせて消す（非表示への切り替えは遷移の終わりに遅らせる）。
-    // D-53 以降、畳むのはパネルだけで、タブ（主要ナビ）は単独カードとして残す。
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { opacity: 0; visibility: hidden;')
+  it('collapses to an icon rail (~56px): list hides, brand/nav/toggle stay, stage is not padded away', () => {
+    expect(css).toContain('--pc-sidebar-rail-w: 56px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed {')
+    expect(css).toContain('--pc-sidebar-w: var(--pc-sidebar-rail-w);')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel {')
+    expect(css).toContain('opacity: 0; visibility: hidden;')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { opacity: 0;')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: 0; }')
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace')
-    expect(css).toContain('body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-w));')
-    // 閉じている間は、開くボタンをナビカードの直下（カードの左端のライン）に残す。
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h) + 8px); left: var(--pc-sidebar-gap);')
+    expect(css).toContain('body.explore-fullbleed .sidebar-toggle {')
+    expect(css).toContain('width: 44px; height: 44px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { left: 6px;')
   })
 })
 
@@ -201,9 +206,9 @@ describe('UI motion (D-42)', () => {
     expect(css).toContain('.view-enter { animation: view-fade-in 180ms var(--ease-out); }')
   })
 
-  it('slides the floating sidebar card out instead of snapping it off', () => {
-    expect(css).toContain('transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s;')
-    expect(css).toContain('transform: translateX(-12px); pointer-events: none; transition-delay: 0s, 0s, 200ms;')
+  it('fades the list panel out on collapse while the icon rail width transitions', () => {
+    expect(css).toContain('transition: width 200ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s;')
+    expect(css).toContain('opacity: 0; visibility: hidden; pointer-events: none;')
   })
 })
 
@@ -230,24 +235,29 @@ describe('look and spacing (D-54)', () => {
     expect(css).not.toContain('body.explore-fullbleed .account-icon-button { box-shadow')
     expect(css).not.toContain('box-shadow: 6px 0 0 var(--ui-line)')
     // パネル本体の影は D-66 で外した（右端は枠線2pxだけになる）。
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel { position: fixed;')
-    expect(css).not.toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow);')
-    expect(css).toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); padding: 0 16px 20px;')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel {')
+    expect(css).toContain('position: fixed; top: var(--pc-sidebar-chrome-h); bottom: 0; left: 0;')
+    expect(css).toContain('border-radius: 0; padding: 0 10px 16px;')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-quest-card {')
+    expect(css).toContain('border: 0; border-radius: var(--radius-s);')
   })
 
   it('aligns the floating title chip line with the panel side, open and collapsed', () => {
-    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 25; grid-template-columns: 1fr auto; padding-left: 8px;')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-gap); }')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-gap) + 8px); }')
+    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 25;')
+    expect(css).toContain('grid-template-columns: 1fr auto; padding-left: 12px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-rail-w); }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-rail-w) + 12px); }')
   })
 
   it('keeps a single panel scroller with a stable gutter (D-70 supersedes the D-54 list scroller)', () => {
     // スクロールはパネル本体だけが担い、一覧リスト側は伸縮もスクロールもしない。
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 0 0 auto;')
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: none; max-height: none; overflow: visible; padding-bottom: 18px; }')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list {')
+    expect(css).toContain('position: relative; flex: 0 0 auto;')
+    expect(css).toContain('flex: none; max-height: none; overflow: visible; padding-bottom: 12px;')
     expect(css).not.toContain('.explore-side-panel .explore-list::after')
     expect(css).toContain('.explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }')
-    expect(css).toContain('overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column;')
+    expect(css).toContain('overflow-y: auto; scrollbar-gutter: stable;')
+    expect(css).toContain('display: flex; flex-direction: column;')
   })
 })
 
@@ -261,7 +271,9 @@ describe('filter motion (D-55)', () => {
   })
 
   it('glides the floating elements sideways when the PC sidebar collapses', () => {
-    expect(css).toContain('body.explore-fullbleed .site-header, body.explore-fullbleed .map-topline, body.explore-fullbleed .map-location-status.is-floating { transition: left 200ms var(--ease-out); }')
+    expect(css).toContain('body.explore-fullbleed .site-header,')
+    expect(css).toContain('body.explore-fullbleed .map-topline,')
+    expect(css).toContain('transition: left 200ms var(--ease-out), width 200ms var(--ease-out), top 200ms var(--ease-out);')
   })
 })
 
@@ -269,16 +281,13 @@ describe('filter motion (D-55)', () => {
 // 同じ左のライン（左カラム上段）に置く。CSS の実測は jsdom ではできないため、
 // 規則の置き場所（記録画面が表示されている間だけ・PC 幅だけ）で担保する。
 describe('records view tab position (D-60 addendum)', () => {
-  it('pins the tab group as the nav card at the left column line while records are shown', () => {
-    const mediaAt = css.indexOf('@media (min-width: 981px) {\n  body:has(.owner-records:not([hidden])) .desktop-nav')
-    expect(mediaAt).toBeGreaterThan(-1)
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav { position: fixed; top: 16px; left: 16px; z-index: 30; display: flex; align-items: center; gap: 8px; width: 380px; height: 68px; padding: 12px 16px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }')
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav a, body:has(.owner-records:not([hidden])) .desktop-nav button { flex: 1 1 0; justify-content: center; }')
-    // ブランドはカードの右へ逃がし、重ならないようにする。ヘッダーの列構成と
-    // 余白は D-66 で探索画面に揃えた（タイトル／アイコンの固定は下の D-66 側）。
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { min-height: 0; grid-template-columns: 1fr auto; padding: 10px 20px 16px calc(16px + 380px + 24px); }')
-    // 探索画面のナビカード（fullbleed）と同じ寸法であること。
-    expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h);')
+  it('keeps a vertical left sidebar (brand + nav) while records are shown on PC', () => {
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav {')
+    expect(css).toContain('flex-direction: column;')
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .owner-records {')
+    expect(css).toContain('margin-left: var(--pc-sidebar-w);')
+    expect(css).toContain('body.explore-fullbleed .desktop-nav {')
+    expect(css).toContain('top: var(--pc-sidebar-brand-h); left: 0;')
   })
 })
 
@@ -297,19 +306,17 @@ describe('chrome consistency (D-66)', () => {
   })
 
   it('drops the offset shadow from the title pill, the brand mark, the side panel and the sheet', () => {
+    // スマホ幅フルブリードのタイトルピル（PCはサイドバー内ブランドへ上書き）。
     expect(css).toContain('body.explore-fullbleed .brand { justify-self: start; width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
     expect(css).toContain('.brand-mark { border: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); color: var(--ui-ink); }')
     expect(css).not.toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); box-shadow: var(--ui-shadow);')
-    expect(css).toContain('border-radius: 0 0 var(--radius-l) var(--radius-l); padding: 0 16px 20px;')
+    expect(css).toContain('border-radius: 0; padding: 0 10px 16px;')
     expect(css).not.toContain('background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 300ms var(--ease-drawer), visibility 0s; }')
   })
 
-  it('shows the same title pill on the records view and keeps the account icon at the viewport right edge', () => {
-    // ピルの形（寸法・枠線・角丸・面）は探索画面のピルと同一文字列で揃える。
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
-    expect(css).toContain('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand { padding: 4px 10px 4px 4px; }')
-    // アカウント側の列はビューポート右端基準（1fr auto＋右余白20px）にする。
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { min-height: 0; grid-template-columns: 1fr auto; padding: 10px 20px 16px calc(16px + 380px + 24px); }')
+  it('keeps records chrome aligned: mobile title pill, PC left sidebar, account at the right edge', () => {
+    expect(css).toContain('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-content; padding: 4px 10px 4px 4px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header {\n    min-height: 0; grid-template-columns: 1fr auto;\n    padding: 10px 20px 16px calc(var(--pc-sidebar-w) + 16px);')
   })
 })
 
@@ -317,8 +324,9 @@ describe('chrome consistency (D-66)', () => {
 // できないため、規則の文字列と置き場所で担保する。
 describe('panel single scroll and in-list detail (D-70)', () => {
   it('makes the PC side panel the only scroller for the quest list', () => {
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 0 0 auto;')
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: none; max-height: none; overflow: visible; padding-bottom: 18px; }')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list {')
+    expect(css).toContain('position: relative; flex: 0 0 auto;')
+    expect(css).toContain('flex: none; max-height: none; overflow: visible; padding-bottom: 12px;')
     expect(css).not.toContain('.explore-side-panel .explore-list::after')
   })
 

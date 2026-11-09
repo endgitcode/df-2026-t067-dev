@@ -79,7 +79,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-location-status { display: flex; align-items: flex-start; gap: 8px; width: fit-content; max-width: 100%; margin-top: 8px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; box-shadow: var(--ui-control-shadow); }
 .map-location-status > span { flex: 1 1 auto; min-width: 0; }
 .map-location-status-close { flex: 0 0 auto; min-width: 28px; min-height: 28px; margin: -4px -6px -4px 0; padding: 0 6px; border: 0; border-radius: var(--radius-s); background: transparent; color: var(--ui-ink); font-size: 16px; line-height: 1; cursor: pointer; }
-.map-boundary-credit { margin: 10px 2px 2px; font-size: 11px; color: var(--ui-muted); }
+.map-boundary-credit { margin: 10px 2px 2px; font-size: 12px; color: var(--ui-muted); opacity: .72; }
 /* 浮動表示は幅を内容に絞り（最大430px）、長い案内でも折り返して右下の
    地図の著作権表示まで届かせない（D-58）。 */
 .map-location-status.is-floating { position: absolute; left: 20px; bottom: calc(var(--sheet-h, 0px) + 14px); z-index: 5; margin: 0; max-width: min(430px, calc(100% - 110px)); }
@@ -115,7 +115,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-filter-flow .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .explore-list { margin-top: 14px; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); }
 .explore-list-head { display: flex; align-items: baseline; gap: 10px; }
-.explore-list-head span { font-size: 12px; color: var(--ui-muted); }
+.explore-list-head span { font-size: 12px; font-weight: var(--ui-weight-strong); color: var(--ui-muted); }
 .explore-list-empty { margin: 10px 0 0; font-size: 13px; color: var(--ui-muted); line-height: 1.7; }
 .explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }
 /* 読み込み中の一覧の仮の行。行の高さを確保し、読み込み前後の大きさの変化と
@@ -139,9 +139,9 @@ button.explore-quest-card { cursor: pointer; }
 .explore-quest-list li.is-highlighted .explore-quest-card { background: var(--ui-soft); }
 .explore-quest-card.is-selected { background: var(--ui-accent); }
 .explore-quest-title { flex: 1; min-width: 0; font-size: 13px; font-weight: var(--ui-weight-strong); }
-.explore-quest-number { flex: none; font-size: 11px; font-weight: var(--ui-weight-strong); color: var(--ui-ink); }
+.explore-quest-number { flex: none; font-size: 12px; font-weight: var(--ui-weight-strong); color: var(--ui-muted); }
 .quest-number-label { color: var(--ui-muted); border-left: var(--ui-border-width) solid var(--ui-line); padding-left: 8px; font-size: 12px; font-weight: var(--ui-weight-strong); }
-.explore-quest-cleared { flex: none; padding: 3px 8px; font-size: 11px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
+.explore-quest-cleared { flex: none; padding: 3px 8px; font-size: 12px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
 .explore-quest-detail { margin-top: 10px; }
 /* アコーディオンの押し広げも高さで滑らせる（D-59）。「場所で絞る」と同じ
    grid-template-rows 方式で、閉じる時は visibility の切り替えを遷移の終わりに遅らせる。 */
@@ -516,103 +516,210 @@ body.explore-fullbleed .account-area { flex-wrap: nowrap; max-width: none; }
 body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 88px); }
 body.explore-fullbleed .quest-rail { max-width: 760px; margin-inline: auto; padding: 24px 20px 0; }
 body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bottom); }
-/* PC幅の縁なし表示は、左サイドバーに集約する（D-34）: 主要ナビはサイドバー上段に固定し、
-   絞り込みと表示範囲連動リストはその下のパネル（.explore-side-panel）に入れる。ボトムシートは使わない。
-   サイドバーは押し出し式ではなく、地図の上に浮くカード型にする（D-38、Google マップの
-   デスクトップ版の型）。地図は常に画面いっぱいで、ステージ側はオフセットしない
-   （ワークスペースの padding やシェルへの inset で押し出すと、相対配置と重なって
-   二重に効いた前例がある。2026-11-08 の実機報告）。ナビ（上段）とパネル（下段）は
-   周囲に余白を置いて浮く1枚のカードとして見えるよう、角丸と枠線を上下でつなげる
-   （影は D-66 で全廃し、パネル本体も枠線だけで示す）。
-   地図側の浮動要素（ヘッダー・地域名チップ・状態表示）はパネルと重ならないよう
-   --pc-sidebar-offset の位置から始め、開閉では動かさない。 */
+/* PC幅の縁なし表示は、左サイドバーに集約する（D-34 → Cursor Web 風カラム）:
+   最上部にロゴと開閉、その下に縦並びナビ、続けて絞り込み＋一覧。地図は常に
+   画面いっぱいで、サイドバーは上に重なる（D-38）。畳むと約56pxのアイコン帯になる。 */
 @media (min-width: 981px) {
-  body.explore-fullbleed { --pc-sidebar-w: 380px; --pc-sidebar-nav-h: 68px; --pc-sidebar-gap: 16px; --pc-sidebar-offset: calc(var(--pc-sidebar-w) + var(--pc-sidebar-gap) * 2); }
-  /* タイトルチップの左端は、地図上の浮動要素（map-topline）のライン
-     （サイドバーのオフセット + 8px）に揃える（D-54）。 */
-  body.explore-fullbleed .site-header { position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 25; grid-template-columns: 1fr auto; padding-left: 8px; }
-  /* タブ（主要ナビ）にオフセットシャドウは付けない（D-54）。パネル本体の影も D-66 で外した。 */
-  body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h); padding: 12px 16px; background: var(--ui-surface); border-radius: var(--radius-l) var(--radius-l) 0 0; transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
-  body.explore-fullbleed .desktop-nav a, body.explore-fullbleed .desktop-nav button { flex: 1 1 0; justify-content: center; }
-  /* パネルの下端は、左下の Google ロゴ（帰属表示）がパネルに隠れて切れないよう、
-     ロゴの高さ分だけ画面下端から浮かせる（D-58）。 */
-  body.explore-fullbleed .explore-side-panel { position: fixed; top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h)); bottom: calc(var(--pc-sidebar-gap) + 24px); left: var(--pc-sidebar-gap); z-index: 30; width: var(--pc-sidebar-w); overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-top: 0; border-radius: 0 0 var(--radius-l) var(--radius-l); padding: 0 16px 20px; transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
-  body.explore-fullbleed .map-topline { left: calc(var(--pc-sidebar-offset) + 8px); }
-  body.explore-fullbleed .map-location-status.is-floating { left: calc(var(--pc-sidebar-offset) + 8px); max-width: min(430px, calc(100% - var(--pc-sidebar-offset) - 118px)); }
-  body.explore-fullbleed .explore-side-panel .side-panel-filters { position: sticky; top: 0; z-index: 2; margin: 0 -16px; padding: 12px 16px 10px; background: var(--ui-surface); }
-  body.explore-fullbleed .explore-side-panel .map-filter-chips { flex-wrap: wrap; overflow: visible; }
-  /* スクロールはパネル本体だけが担う（D-70）。一覧リスト側にもスクロールを持たせると
-     スクロールバーが2本出て、ガターの分だけ詳細の幅も削られた（D-54 の「一覧領域は
-     パネルの下まで伸ばす」はこの形に置き換える）。出典クレジットは margin-top: auto で
-     最下部に残し、中身が短い時はパネル下端へ寄せる。一覧下端のグラデーションは
-     リスト内スクロール前提の整えだったため、単一スクロール化に合わせて外した。 */
-  body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 0 0 auto; display: flex; flex-direction: column; margin: 10px 0 0; border: 0; border-radius: 0; box-shadow: none; padding-right: 0; padding-left: 0; background: transparent; }
-  body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: none; max-height: none; overflow: visible; padding-bottom: 18px; }
-  /* 出典表記はパネルの一番下に置く（D-46）。中身が短い時は下端へ寄せる。 */
-  body.explore-fullbleed .explore-side-panel .map-boundary-credit { margin: auto 0 0; padding-top: 12px; }
-  /* 地図の下に通常フローで残っていたレール（問題の選択・詳細）はサイドバー内に寄せ、
-     探索画面はサイドバー＋地図だけで完結させる
-     （ページ自体のスクロールで下に何も出てこないようにする）。 */
-  body.explore-fullbleed .explore-side-panel .side-panel-rail { margin-top: 18px; padding-top: 16px; border-top: var(--ui-border-width) solid var(--ui-line); }
-  /* サイドバーの開閉トグル（D-36）：開いている間は浮動カードの右端に付く小さなタブ。
-     フローティング方式（D-38）では開閉はカードの表示／非表示だけで、地図もヘッダーも動かない。
-     閉じている間は、左上に小さな浮動ボタンとして残す（ブランドチップはカードの右側に
-     寄せてあるため重ならない。地域名チップはさらに下に付く）。 */
-  body.explore-fullbleed .sidebar-toggle { position: fixed; top: 50%; left: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-w)); z-index: 35; display: grid; place-items: center; width: 26px; height: 56px; padding: 0; transform: translate(-50%, -50%); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-m); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); font-size: 18px; line-height: 1; cursor: pointer; }
-  /* 閉じた状態でもタブ（画面遷移）は常に到達可能にする：畳むのはパネルだけで、
-     ナビは単独のカードとして残す。開くトグルはナビカードの直下に置き、カードの
-     左端のラインに揃える（画面端に張り付いて半分切れて見える置き方はしない）。 */
-  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }
-  /* パネルを閉じている間は、地図上の浮動要素の左ラインを左端の余白ライン
-     （ナビカードと同じ列）に寄せ、右に寄ったままにしない（D-54）。 */
-  body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-gap); }
-  body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-gap) + 8px); }
-  /* 閉状態では再開ボタン（左端・42px）が同じ高さに出るため、地域名チップの行だけ
-     ボタンの右端＋余白の分だけ右へずらし、チップの左端が隠れないようにする（D-58）。 */
-  body.explore-fullbleed.explore-sidebar-collapsed .map-topline.is-sidebar { left: calc(var(--pc-sidebar-gap) + 52px); }
-  /* 閉状態では左下に Google ロゴが見えているため、状態表示はロゴの上へ逃がす（D-58）。 */
-  body.explore-fullbleed.explore-sidebar-collapsed .map-location-status.is-floating { left: calc(var(--pc-sidebar-gap) + 8px); bottom: 48px; max-width: min(430px, calc(100% - var(--pc-sidebar-gap) - 118px)); }
-  /* 開閉に合わせて浮動要素の左ラインも滑らせる（D-55）。パネルのフェードと同じ尺にする。 */
-  body.explore-fullbleed .site-header, body.explore-fullbleed .map-topline, body.explore-fullbleed .map-location-status.is-floating { transition: left 200ms var(--ease-out); }
-  @media (prefers-reduced-motion: reduce) {
-    body.explore-fullbleed .site-header, body.explore-fullbleed .map-topline, body.explore-fullbleed .map-location-status.is-floating { transition: none; }
+  body.explore-fullbleed {
+    --pc-sidebar-w: 280px;
+    --pc-sidebar-rail-w: 56px;
+    --pc-sidebar-gap: 0px;
+    --pc-sidebar-brand-h: 52px;
+    --pc-sidebar-nav-h: 96px;
+    --pc-sidebar-chrome-h: calc(var(--pc-sidebar-brand-h) + var(--pc-sidebar-nav-h));
+    --pc-sidebar-offset: var(--pc-sidebar-w);
   }
-  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { top: calc(var(--pc-sidebar-gap) + var(--pc-sidebar-nav-h) + 8px); left: var(--pc-sidebar-gap); width: 42px; height: 42px; transform: none; }
-  /* 閉じる時はカードを少し左へ滑らせながら消し、非表示への切り替えは遷移の
-     終わりに遅らせる（D-42）。開く時は逆向きに即座に出る。地図とヘッダーは動かさない。 */
-  body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { opacity: 0; visibility: hidden; transform: translateX(-12px); pointer-events: none; transition-delay: 0s, 0s, 200ms; }
+  body.explore-fullbleed.explore-sidebar-collapsed {
+    --pc-sidebar-w: var(--pc-sidebar-rail-w);
+  }
+  /* 左カラムの地（畳んでも帯が途切れない） */
+  body.explore-fullbleed::before {
+    content: ""; position: fixed; top: 0; left: 0; bottom: 0; z-index: 29;
+    width: var(--pc-sidebar-w); background: var(--ui-surface);
+    border-right: 1px solid color-mix(in srgb, var(--ui-line) 28%, transparent);
+    pointer-events: none; transition: width 200ms var(--ease-out);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body.explore-fullbleed::before { transition: none; }
+  }
+  /* アカウントだけ右上。ブランドはサイドバー最上段へ移す。 */
+  body.explore-fullbleed .site-header {
+    position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 25;
+    grid-template-columns: 1fr auto; padding-left: 12px;
+  }
+  body.explore-fullbleed .brand {
+    position: fixed; top: 0; left: 0; z-index: 36;
+    display: flex; align-items: center; gap: 8px;
+    width: calc(var(--pc-sidebar-w) - 48px); height: var(--pc-sidebar-brand-h);
+    margin: 0; padding: 0 8px; border: 0; border-radius: 0; background: var(--ui-surface);
+    justify-self: start;
+  }
+  body.explore-fullbleed .brand-mark { width: 32px; height: 32px; }
+  body.explore-fullbleed .brand-mark .icon { width: 20px; height: 20px; }
+  body.explore-fullbleed .brand-copy { font-size: 13px; }
+  /* 開閉はロゴと同じ行・十分な当たり（44px） */
+  body.explore-fullbleed .sidebar-toggle {
+    position: fixed; top: 4px; left: calc(var(--pc-sidebar-w) - 48px); z-index: 37;
+    display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+    transform: none; border: 0; border-radius: var(--radius-s);
+    background: transparent; color: var(--ui-ink); box-shadow: none; cursor: pointer;
+  }
+  body.explore-fullbleed .sidebar-toggle .icon { width: 20px; height: 20px; }
+  /* 縦並びナビ（アイコン＋14px） */
+  body.explore-fullbleed .desktop-nav {
+    position: fixed; top: var(--pc-sidebar-brand-h); left: 0; z-index: 30;
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+    gap: 2px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h);
+    padding: 4px 8px; background: var(--ui-surface); border: 0; border-radius: 0;
+  }
+  body.explore-fullbleed .desktop-nav a,
+  body.explore-fullbleed .desktop-nav button {
+    flex: 0 0 auto; justify-content: flex-start; gap: 10px;
+    min-height: 40px; padding: 8px 10px; border-radius: var(--radius-s);
+    font-size: 14px; color: var(--ui-muted); background: transparent;
+  }
+  body.explore-fullbleed .desktop-nav .nav-active {
+    background: var(--ui-disabled); color: var(--ui-ink); font-weight: var(--ui-weight-display);
+  }
+  body.explore-fullbleed .desktop-nav .icon { width: 18px; height: 18px; }
+  body.explore-fullbleed .desktop-nav .nav-label { font-size: 14px; }
+  body.explore-fullbleed .desktop-nav .nav-prep { margin-left: 6px; font-size: 12px; color: var(--ui-muted); }
+  /* パネル本体：ナビ下から画面下端まで、薄い右罫線のフラットカラム */
+  body.explore-fullbleed .explore-side-panel {
+    position: fixed; top: var(--pc-sidebar-chrome-h); bottom: 0; left: 0; z-index: 30;
+    width: var(--pc-sidebar-w); overflow-y: auto; scrollbar-gutter: stable;
+    display: flex; flex-direction: column;
+    background: var(--ui-surface);
+    border: 0; border-right: 1px solid color-mix(in srgb, var(--ui-line) 28%, transparent);
+    border-radius: 0; padding: 0 10px 16px;
+    transition: width 200ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s;
+  }
+  body.explore-fullbleed .map-topline { left: calc(var(--pc-sidebar-offset) + 12px); }
+  body.explore-fullbleed .map-location-status.is-floating {
+    left: calc(var(--pc-sidebar-offset) + 12px);
+    max-width: min(430px, calc(100% - var(--pc-sidebar-offset) - 118px));
+  }
+  body.explore-fullbleed .explore-side-panel .side-panel-filters {
+    position: sticky; top: 0; z-index: 2; margin: 0 -10px; padding: 10px 10px 8px; background: var(--ui-surface);
+  }
+  body.explore-fullbleed .explore-side-panel .map-filter-chips { flex-wrap: wrap; overflow: visible; }
+  body.explore-fullbleed .explore-side-panel .explore-list {
+    position: relative; flex: 0 0 auto; display: flex; flex-direction: column;
+    margin: 4px 0 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; background: transparent;
+  }
+  body.explore-fullbleed .explore-side-panel .explore-list-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-height: 28px; padding: 0 6px; margin: 0;
+  }
+  body.explore-fullbleed .explore-side-panel .explore-quest-list {
+    flex: none; max-height: none; overflow: visible; padding-bottom: 12px; gap: 2px;
+  }
+  /* フラット行：枠線なし。ホバーは薄グレー、選択中の謎だけアクセント */
+  body.explore-fullbleed .explore-side-panel .explore-quest-card {
+    border: 0; border-radius: var(--radius-s); background: transparent; padding: 10px 10px;
+  }
+  body.explore-fullbleed .explore-side-panel button.explore-quest-card:hover { background: var(--ui-disabled); }
+  body.explore-fullbleed .explore-side-panel .explore-quest-card.is-selected,
+  body.explore-fullbleed .explore-side-panel button.explore-quest-card.is-selected:hover {
+    background: var(--ui-accent);
+  }
+  body.explore-fullbleed .explore-side-panel .explore-quest-title { font-size: 14px; }
+  body.explore-fullbleed .explore-side-panel .explore-quest-number { font-size: 12px; color: var(--ui-muted); }
+  body.explore-fullbleed .explore-side-panel .map-boundary-credit {
+    margin: auto 0 0; padding-top: 10px; font-size: 12px; opacity: .65;
+  }
+  body.explore-fullbleed .explore-side-panel .side-panel-rail {
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--ui-line) 22%, transparent);
+  }
+  /* 畳み：アイコン帯。一覧は隠し、ロゴ／ナビ／開閉は残す */
+  body.explore-fullbleed.explore-sidebar-collapsed .brand-copy { display: none; }
+  body.explore-fullbleed.explore-sidebar-collapsed .brand { width: var(--pc-sidebar-rail-w); justify-content: center; padding: 0; }
+  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { left: 6px; top: calc(var(--pc-sidebar-brand-h) - 2px); }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav {
+    top: calc(var(--pc-sidebar-brand-h) + 44px); height: auto; padding: 4px;
+  }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav a,
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav button {
+    justify-content: center; padding: 10px 0;
+  }
+  body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel {
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition-delay: 0s, 200ms;
+  }
+  body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-rail-w); }
+  body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-rail-w) + 12px); }
+  body.explore-fullbleed.explore-sidebar-collapsed .map-topline.is-sidebar { left: calc(var(--pc-sidebar-rail-w) + 12px); }
+  body.explore-fullbleed.explore-sidebar-collapsed .map-location-status.is-floating {
+    left: calc(var(--pc-sidebar-rail-w) + 12px); bottom: 48px;
+    max-width: min(430px, calc(100% - var(--pc-sidebar-rail-w) - 118px));
+  }
+  body.explore-fullbleed .site-header,
+  body.explore-fullbleed .map-topline,
+  body.explore-fullbleed .map-location-status.is-floating,
+  body.explore-fullbleed .brand,
+  body.explore-fullbleed .desktop-nav,
+  body.explore-fullbleed .sidebar-toggle {
+    transition: left 200ms var(--ease-out), width 200ms var(--ease-out), top 200ms var(--ease-out);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body.explore-fullbleed .site-header,
+    body.explore-fullbleed .map-topline,
+    body.explore-fullbleed .map-location-status.is-floating,
+    body.explore-fullbleed .brand,
+    body.explore-fullbleed .desktop-nav,
+    body.explore-fullbleed .sidebar-toggle,
+    body.explore-fullbleed .explore-side-panel { transition: none; }
+  }
 }
 
-/* 記録画面（非探索）でも、タブ群は探索画面のナビカードと同じ左のラインに置く
-   （D-60 追記）。通常ヘッダーは内容を 1440px 列へ中央寄せするため、そのままだと
-   タブが画面中央寄り（広い画面では x≈447、ブランドの右）に出て、左カラム上段の
-   カード内にある探索画面のタブと基点が揃わなかった。記録画面が表示されている
-   間だけ、PC ではタブをナビカード（上・左 16px、幅 380px、高さ 68px、閉状態と
-   同じ枠線と角丸）として固定し、ブランドはカードの右へ逃がす。寸法の変数
-   （--pc-sidebar-*）は fullbleed の下でしか定義されないため、揃える値を直接書く
-   （探索側の寸法を変える時はここも合わせること）。 */
+/* 記録画面でも左サイドバー（ロゴ＋縦ナビ）を残し、右側だけ中身を切替（Cursor Web 風） */
 @media (min-width: 981px) {
-  body:has(.owner-records:not([hidden])) .desktop-nav { position: fixed; top: 16px; left: 16px; z-index: 30; display: flex; align-items: center; gap: 8px; width: 380px; height: 68px; padding: 12px 16px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }
-  body:has(.owner-records:not([hidden])) .desktop-nav a, body:has(.owner-records:not([hidden])) .desktop-nav button { flex: 1 1 0; justify-content: center; }
-  /* タイトルとアカウントアイコンも探索画面と同位置に固定する（D-66）：ヘッダーの
-     列構成と余白を探索画面（fullbleed の ≥981px）と同じにし、タイトルピルは
-     サイドバーのオフセット＋8px のライン、アカウントはビューポート右端基準に置く。
-     1440px 列の右端に寄せていた従来の配置では、広い画面でアイコンが左へ大きく
-     移動して見えた。min-height は探索側に合わせて外し、行の高さはピルで決める。
-     下の余白は、固定したナビカードの下端（上16px＋高さ68px＝84px）とヘッダーの
-     下端が揃う量にする。 */
-  body:has(.owner-records:not([hidden])) .site-header { min-height: 0; grid-template-columns: 1fr auto; padding: 10px 20px 16px calc(16px + 380px + 24px); }
+  body:has(.owner-records:not([hidden])) {
+    --pc-sidebar-w: 280px;
+    --pc-sidebar-brand-h: 52px;
+    --pc-sidebar-nav-h: 96px;
+  }
+  body:has(.owner-records:not([hidden])) .brand {
+    position: fixed; top: 0; left: 0; z-index: 36;
+    display: flex; align-items: center; gap: 8px;
+    width: var(--pc-sidebar-w); height: var(--pc-sidebar-brand-h);
+    margin: 0; padding: 0 12px; border: 0; border-radius: 0; background: var(--ui-surface);
+  }
+  body:has(.owner-records:not([hidden])) .desktop-nav {
+    position: fixed; top: var(--pc-sidebar-brand-h); left: 0; z-index: 30;
+    display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+    width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h);
+    padding: 4px 8px; background: var(--ui-surface);
+    border: 0; border-right: 1px solid color-mix(in srgb, var(--ui-line) 28%, transparent); border-radius: 0;
+  }
+  body:has(.owner-records:not([hidden])) .desktop-nav a,
+  body:has(.owner-records:not([hidden])) .desktop-nav button {
+    flex: 0 0 auto; justify-content: flex-start; gap: 10px;
+    min-height: 40px; padding: 8px 10px; border-radius: var(--radius-s); font-size: 14px;
+  }
+  body:has(.owner-records:not([hidden])) .desktop-nav .nav-active {
+    background: var(--ui-disabled); color: var(--ui-ink); font-weight: var(--ui-weight-display);
+  }
+  body:has(.owner-records:not([hidden])) .site-header {
+    min-height: 0; grid-template-columns: 1fr auto;
+    padding: 10px 20px 16px calc(var(--pc-sidebar-w) + 16px);
+  }
+  body:has(.owner-records:not([hidden])) .owner-records {
+    margin-left: var(--pc-sidebar-w);
+    max-width: none;
+    padding-left: 28px;
+    border-left: 1px solid color-mix(in srgb, var(--ui-line) 28%, transparent);
+    min-height: 100svh;
+    background: var(--ui-bg);
+  }
 }
 
-/* 記録画面でもタイトルは探索画面と同じピル（枠線＋面、影なし）で出す（D-66）。
-   ピルをやめて素の文字にすると、画面を切り替えた瞬間にタイトルの形と位置が
-   変わって見えるため、ヘッダーの仕組み（通常フロー）はそのままに形だけ揃える。 */
-body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-content; padding: 5px 11px 5px 5px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }
+/* スマホ幅の記録画面は従来どおりタイトルピル＋透明ヘッダー（D-66/D-74）。
+   PC幅は上のサイドバーカラム規則がブランドを左カラムに固定する。 */
 @media (max-width: 980px) {
-  body:has(.owner-records:not([hidden])) .brand { padding: 4px 10px 4px 4px; }
-  /* スマホ幅の記録画面ヘッダーも、探索画面と同じ「透明地にピルが浮く」見た目に
-     揃える（D-74）。ヘッダーの仕組み（通常フロー）はそのままに、地の色と下線を
-     外し、余白を探索画面のスマホ幅ヘッダーと同値にする。ピルの形は D-66 で統一済み。 */
+  body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-content; padding: 4px 10px 4px 4px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }
   body:has(.owner-records:not([hidden])) .site-header { background: transparent; border-bottom: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }
 }
 
