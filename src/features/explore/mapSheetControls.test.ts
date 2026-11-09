@@ -459,7 +459,11 @@ describe('button widths and records alignment (D-74)', () => {
   it('keeps the PC handoff emphasis on the direct start and widens the records body column', () => {
     expect(css).toContain('.quest-handoff-toggle { width: 100%; min-height: 44px;')
     expect(css).not.toContain('.quest-handoff-direct')
-    expect(css).toContain('.owner-records { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 1080px; }')
+    const recordsRule = css.match(/^\.owner-records\s*\{([^}]+)\}/m)?.[1] ?? ''
+    expect(recordsRule).toMatch(/\bdisplay:\s*grid\s*;/)
+    expect(recordsRule).toMatch(/\bgap:\s*16px\s*;/)
+    expect(recordsRule).toMatch(/\bmax-width:\s*1080px\s*;/)
+    expect(recordsRule).toMatch(/\bgrid-template-columns:\s*minmax\(0,\s*1fr\)\s*;/)
   })
 
   it('gives the mobile records header the same transparent floating look as explore', () => {
