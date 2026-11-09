@@ -11,7 +11,7 @@ it('polls only the accepted ID and stops at completion without posting again', a
   const getAttempt = vi.fn().mockResolvedValue({ ...receipt, state: 'COMPLETED', outcome: 'CORRECT', optionalDiscoveryId: 'record' })
   render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'durable-local' }} photo={new Blob(['synthetic'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置をテスト送信' })))
-  expect(screen.getByRole('status', { name: '写真の判定待ち' })).toHaveTextContent('写真を判定しています')
+  expect(screen.getByRole('status', { name: '写真の判定待ち' })).toHaveTextContent('受付済み・解析中')
   await act(async () => vi.advanceTimersByTimeAsync(1500))
   expect(getAttempt).toHaveBeenCalledExactlyOnceWith('accepted', { signal: expect.any(AbortSignal) })
   // 永続側でも初回クリアでは全画面のクリア画面が出る（D-63）。
@@ -168,7 +168,7 @@ it('keeps a single waiting surface across automatic polls without toggling the r
   render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'durable-local' }} photo={new Blob(['synthetic'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置をテスト送信' })))
   const waiting = screen.getByRole('status', { name: '写真の判定待ち' })
-  expect(waiting).toHaveTextContent('写真を判定しています')
+  expect(waiting).toHaveTextContent('受付済み・解析中')
   expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
   // 数秒ポーリングしても待ち面は同一ノードのまま、結果確認ボタンは一度も出ない。
   for (let i = 0; i < 4; i++) {
@@ -192,4 +192,35 @@ it('does not show judgment-waiting and result-check controls at the same time', 
   for (let i = 0; i < 10; i++) await act(async () => vi.advanceTimersByTimeAsync(16000))
   expect(screen.queryByRole('status', { name: '写真の判定待ち' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: '判定結果を確認' })).toBeVisible()
+})
+
+it('shows real waiting stages without fake percent and keeps the progress node across polls', async () => {
+  vi.useFakeTimers()
+  let finishSubmit: (value: AttemptResult) => void = () => {}
+  const submitAnswer = vi.fn().mockImplementation(() => new Promise<AttemptResult>((resolve) => { finishSubmit = resolve }))
+  const getAttempt = vi.fn().mockResolvedValue(receipt)
+  render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'durable-local' }} photo={new Blob(['synthetic'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置をテスト送信' })))
+  const waiting = screen.getByRole('status', { name: '写真の判定待ち' })
+  expect(waiting).toHaveTextContent('送信中')
+  expect(waiting).not.toHaveTextContent('%')
+  const progress = screen.getByRole('progressbar', { name: '判定の進行状況' })
+  expect(progress).toHaveAttribute('aria-valuetext', '送信中')
+  expect(progress.querySelector('.answer-waiting-progress-bar')).toBeTruthy()
+  const bar = progress.querySelector('.answer-waiting-progress-bar')
+  await act(async () => { finishSubmit(receipt) })
+  expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBe(waiting)
+  expect(waiting).toHaveTextContent('受付済み・解析中')
+  expect(waiting).not.toHaveTextContent('送信中')
+  expect(screen.getByRole('progressbar', { name: '判定の進行状況' })).toBe(progress)
+  expect(progress.querySelector('.answer-waiting-progress-bar')).toBe(bar)
+  expect(progress).toHaveAttribute('aria-valuetext', '受付済み・解析中')
+  // ポーリング往復でも進捗ノードを引き直さない（アニメ再開＝チラつきの本態）。
+  for (let i = 0; i < 3; i++) {
+    await act(async () => vi.advanceTimersByTimeAsync(2000))
+    expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBe(waiting)
+    expect(screen.getByRole('progressbar', { name: '判定の進行状況' })).toBe(progress)
+    expect(progress.querySelector('.answer-waiting-progress-bar')).toBe(bar)
+    expect(waiting).toHaveTextContent('受付済み・解析中')
+  }
 })

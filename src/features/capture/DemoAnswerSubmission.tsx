@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import { ApiError } from '../../shared/api'
 import { ClearCelebration } from './ClearCelebration'
 import { ClearScreen } from './ClearScreen'
@@ -207,19 +207,29 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   // 判定待ちは「送信〜完了/失敗/上限」まで一つの状態。ポーリングの pending 往復で
   // 「判定結果を確認」ボタンと待ちカードを出し分けない（チラつきの本態、t157u）。
   const waiting = pending || (real && !!receipt?.canCheck && !failure && !pollLimit)
-  useEffect(() => { onWaitingChange?.(waiting) }, [waiting, onWaitingChange])
-  useEffect(() => () => { onWaitingChange?.(false) }, [onWaitingChange])
+  // 親の撮り直し等の表示は paint 前に同期する。useEffect だと判定終了直後に
+  // failure は見えても judging が残り「撮り直す」が一時的に無い競合が起きた（#149後）。
+  useLayoutEffect(() => {
+    onWaitingChange?.(waiting)
+    return () => { onWaitingChange?.(false) }
+  }, [waiting, onWaitingChange])
 
   if (showClearScreen) {
     return <ClearScreen questTitle={context.questTitle} photo={photo}
       onViewRecord={viewRecord} onReturnToMap={returnToMap} />
   }
 
-  // 判定中は待ちカードだけを出し続ける（マウントは1回。文言も固定）。
+  // 判定中は待ちカードだけを出し続ける（マウントは1回）。段階はアプリが
+  // 実際に知る区切りだけ（送信中 → 受付済み・解析中）。時間や%の偽進捗は出さない。
   if (waiting) {
+    // receipt の有無だけが本当の区切り。ポーリングの pending 往復では段階を動かさない。
+    const stage = receipt ? '受付済み・解析中' : '送信中'
     return <div className="camera-actions is-waiting" aria-label="開発用の回答受付">
       <div className="answer-waiting" role="status" aria-label="写真の判定待ち">
-        <p>{real ? '写真を判定しています…' : '回答の受付を確認しています…'}</p>
+        <p className="answer-waiting-stage">{stage}</p>
+        <div className="answer-waiting-progress" role="progressbar" aria-label="判定の進行状況" aria-valuetext={stage}>
+          <span className="answer-waiting-progress-bar" />
+        </div>
         <button type="button" className="answer-waiting-cancel" onClick={() => cancel(receipt
           ? '受付状態の確認を中止しました。' : '送信を中止しました。受付済みか確認できませんでした。')}>キャンセル</button>
       </div>
