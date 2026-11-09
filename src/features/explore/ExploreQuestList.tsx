@@ -9,7 +9,7 @@ import type { PublicArea, PublicQuest } from '../../shared/api/types'
 // 行はタイトルだけの簡素な形にし、選んだ行の直下に詳細（QuestDetails）を開く
 // アコーディオンにする（D-46）。詳細を別枠で下に置くと、タイトルが一覧と詳細で
 // 二重に出てパネル／シートが煩雑になるため。
-export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false }: {
+export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false, discardClosingDetail = false, detailOwner }: {
   areas: PublicArea[]
   quests: PublicQuest[]
   highlightArea?: PublicArea
@@ -31,6 +31,10 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   detailContent?: ReactNode
   /** 詳細のラッパへの ref。呼び出し側が「問題を見る」の着地（#70）に使う。 */
   detailRef?: RefObject<HTMLDivElement | null>
+  /** Immediately unmount a detail moved to the other list, avoiding duplicate stateful instances. */
+  discardClosingDetail?: boolean
+  /** Identifies which persistent list owns the stateful detail during a deliberate handoff. */
+  detailOwner?: 'sheet' | 'belowMap'
 }) {
   const listRef = useRef<HTMLUListElement>(null)
   // アコーディオンを閉じた問題。選択解除の受け口が無い使われ方でのみ使い、
@@ -42,6 +46,8 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   const [prevExpandedQuestId, setPrevExpandedQuestId] = useState('')
   const [lastDetail, setLastDetail] = useState<{ questId: string; content: ReactNode } | null>(null)
   const [closingDetail, setClosingDetail] = useState<{ questId: string; content: ReactNode } | null>(null)
+  const [previousDetailOwner, setPreviousDetailOwner] = useState(detailOwner)
+  const detailOwnerChanged = previousDetailOwner !== detailOwner
   // ピンで選ばれた地域の問題は先頭に寄せ、シートを開いた時にスクロールなしで先頭に出るようにする。
   const orderedQuests = highlightArea
     ? [...quests.filter((quest) => quest.areaId === highlightArea.areaId), ...quests.filter((quest) => quest.areaId !== highlightArea.areaId)]
@@ -52,9 +58,15 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   if (expandedQuestId && detailContent && (lastDetail?.questId !== expandedQuestId || lastDetail.content !== detailContent)) {
     setLastDetail({ questId: expandedQuestId, content: detailContent })
   }
+  if (detailOwnerChanged) {
+    setPreviousDetailOwner(detailOwner)
+    setLastDetail(null)
+    setClosingDetail(null)
+  }
   if (expandedQuestId !== prevExpandedQuestId) {
     setPrevExpandedQuestId(expandedQuestId)
-    if (lastDetail && lastDetail.questId !== expandedQuestId) setClosingDetail(lastDetail)
+    if (!detailOwnerChanged && lastDetail && lastDetail.questId !== expandedQuestId && !discardClosingDetail) setClosingDetail(lastDetail)
+    else if (discardClosingDetail) setClosingDetail(null)
     else if (closingDetail?.questId === expandedQuestId) setClosingDetail(null)
   }
 

@@ -18,7 +18,9 @@ describe('map controls placement with the bottom sheet', () => {
     const phoneAt = css.indexOf('@media (max-width: 640px)')
     expect(css.indexOf(MOBILE_CONTROL_RULE)).toBeGreaterThan(mediaAt)
     expect(css.indexOf(MOBILE_CONTROL_RULE)).toBeLessThan(phoneAt)
-    expect(css).toContain('.map-controls button.is-hidden { visibility: hidden; pointer-events: none; }')
+    expect(css).not.toContain('.map-controls button.is-hidden')
+    expect(css).toContain('.map-locate-fab:disabled:not([inert])')
+    expect(css).toContain('.map-zoom button:disabled:not([inert])')
   })
 
   it('keeps the wide-layout controls at their fixed bottom position', () => {
@@ -100,8 +102,8 @@ describe('mobile map control swipe handling', () => {
     expect(mapPreview).toContain('if (gesture?.moved && event.detail !== 0) {')
     expect(mapPreview).toContain('isMapControlWithin(rect, visibleBounds)')
     expect(mapPreview).toContain('<button type="button" {...mapControlGestureProps}')
-    expect(bottomSheet).toContain('className="explore-sheet-reopen" {...reopenGestureProps}')
-    expect(bottomSheet).toContain('if (gesture?.moved && event.detail !== 0) {')
+    expect(bottomSheet).toContain('onUserClosedChange?: (closed: boolean) => void')
+    expect(bottomSheet).toContain('onUserClosedChange?.(next === \'closed\')')
   })
 })
 
@@ -131,7 +133,7 @@ describe('mobile bottom tab bar (D-32)', () => {
   it('keeps the mobile map controls at a constant position behind the sheet and the sheet above the tab bar', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
     expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 180px); z-index: 3; }')
-    expect(mapPreview).toContain('isMapControlCovered(rect, sheetRect)')
+    expect(mapPreview).toContain('isMapControlFullyCovered(rect, sheetRect)')
     expect(mapPreview).toContain("inert={inactiveMapControls.has('地図を拡大')}")
     expect(mapPreview).toContain('new ResizeObserver(update)')
     expect(css).toContain('.map-preview-shell.has-sheet .map-controls { right: 64px; bottom: min(calc(var(--mobile-tabbar-h, 70px) + 169px), calc(100dvh - 48px)); flex-direction: row; }')
