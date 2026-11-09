@@ -283,9 +283,15 @@ interface QuestDetailsProps {
   hideStartAction?: boolean
   stale?: boolean
   handoffUrl?: string
+  /** ログイン中の本人がこの問題をクリア済みの時の記録ID（D-64）。渡されたら
+      挑戦開始の導線は出さず、「クリア済み」表示と記録への導線に置き換える。
+      クリアは1人1問につき1回だけで、再挑戦はできない。 */
+  clearedDiscoveryId?: string
+  /** 「自分の記録を見る」の受け口。クリア済み表示から本人の記録詳細へ進む。 */
+  onOpenDiscovery?: (discoveryId: string) => void
 }
 
-export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, note, sourceLabel = '架空のサンプル問題', feedback, onToggle, onStart, children, hideStartAction = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl }: QuestDetailsProps) {
+export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, note, sourceLabel = '架空のサンプル問題', feedback, onToggle, onStart, children, hideStartAction = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl, clearedDiscoveryId, onOpenDiscovery }: QuestDetailsProps) {
   const wideViewport = useWideViewport()
   const [qrVisible, setQrVisible] = useState(true)
   const handoffActive = Boolean(handoffUrl) && wideViewport
@@ -340,7 +346,16 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
             })} />
             {hintUrl && !questStale && <OptionalHintImage key={`image:${hintIdentity}`} url={hintUrl} quest={quest} getPhoto={getHintPhoto}
               onVersionChanged={markImageVersionChanged} onReloadNeeded={markImageReloadNeeded} />}
-            {!hideStartAction && (handoffActive ? <div className="quest-handoff">
+            {clearedDiscoveryId ? <div className="quest-cleared-action">
+              {/* クリア済みの問題は再挑戦できない（D-64）。開始導線（QRの受け渡しを含む）は
+                  丸ごと出さず、記録への導線だけを置く。hideStartAction は撮影フローが
+                  使える時に開始ボタンの二重化を防ぐためのものなので、クリア済み表示は
+                  その gate の対象にしない（gate の中に入れると、肝心のログイン中本人に
+                  何も出なくなってしまう）。 */}
+              <p className="quest-cleared-label"><Icon name="check" />クリア済み</p>
+              <p className="unavailable-note">この問題はクリア済みのため、再挑戦はできません。初回の写真と日付は「自分の記録」に保存されています。</p>
+              {onOpenDiscovery && <button type="button" className="primary-button" onClick={() => onOpenDiscovery(clearedDiscoveryId)}>自分の記録を見る</button>}
+            </div> : !hideStartAction && (handoffActive ? <div className="quest-handoff">
               <button type="button" className="primary-button" aria-expanded={qrVisible} onClick={() => setQrVisible((value) => !value)}>
                 スマホで挑戦する
               </button>

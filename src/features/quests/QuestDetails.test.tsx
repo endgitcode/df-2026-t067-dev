@@ -5,6 +5,22 @@ import { QuestDetails } from './QuestDetails'
 import { ApiError } from '../../shared/api/client'
 import { demoQuest } from './demoQuest'
 
+it('replaces the start action with a cleared notice and a record link for a cleared quest (D-64)', async () => {
+  const user = userEvent.setup()
+  const onOpenDiscovery = vi.fn()
+  const onStart = vi.fn()
+  render(<QuestDetails quest={demoQuest} areaLabel="架空エリア" open disabled={false} buttonLabel="挑戦する" note="架空の問題です。" onToggle={vi.fn()} onStart={onStart} clearedDiscoveryId="record-1" onOpenDiscovery={onOpenDiscovery} />)
+
+  expect(screen.getByText('クリア済み')).toBeVisible()
+  expect(screen.getByText(/再挑戦はできません/)).toBeVisible()
+  expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: '自分の記録を見る' }))
+  expect(onOpenDiscovery).toHaveBeenCalledExactlyOnceWith('record-1')
+  expect(onStart).not.toHaveBeenCalled()
+})
+
 it('reads a quest without auth and forwards the currently displayed id and version', async () => {
   const user = userEvent.setup()
   const onStart = vi.fn()

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { area, quest } from '../../shared/api/testFixtures'
+import { area, discovery, quest } from '../../shared/api/testFixtures'
 import type { AuthClient } from '../auth/authTypes'
 import { TeamPreview } from './TeamPreview'
 
@@ -82,6 +82,42 @@ it('answer trial build lets an invited traveler open the capture flow and record
   expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
   expect(screen.getAllByRole('button', { name: /自分の記録/ }).length).toBeGreaterThan(0)
   expect(await screen.findByRole('button', { name: '挑戦を始める' })).toBeVisible()
+  vi.unstubAllEnvs()
+})
+
+it('answer trial build shows a cleared quest as cleared with no way to re-challenge (D-64)', async () => {
+  vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
+  const signedIn = { status: 'signed-in', user: { uid: 'traveler-a', displayName: null } } as const
+  const auth: AuthClient = {
+    getSnapshot: () => signedIn, subscribe: () => () => {},
+    signInWithGoogle: vi.fn(), signOut: vi.fn(), getIdToken: vi.fn(async () => 'team-token'),
+  }
+  const fetcher = vi.fn<typeof fetch>(async (input, _init) => {
+    const path = String(input)
+    if (path.startsWith('/api/v1/areas?')) return Response.json({ items: [area], nextCursor: null }, { headers })
+    if (path.startsWith('/api/v1/quests?')) return Response.json({ items: [quest], nextCursor: null }, { headers })
+    if (path === '/api/v1/quests/' + quest.questId) return Response.json(quest, { headers })
+    if (path === '/api/v1/session') return Response.json({ uid: 'traveler-a' }, { headers })
+    if (path.startsWith('/api/v1/me/memberships?')) return Response.json({ items: [], nextCursor: null }, { headers })
+    if (path === '/api/v1/me/discoveries/' + discovery.discoveryId) return Response.json(discovery, { headers })
+    if (path === '/api/v1/me/discoveries/' + discovery.discoveryId + '/photo') return new Response(new Uint8Array([255, 216, 255, 217]), { headers: { ...headers, 'Content-Type': 'image/jpeg' } })
+    if (path.startsWith('/api/v1/me/discoveries?')) return Response.json({ items: [discovery], nextCursor: null }, { headers })
+    throw new Error('Unexpected request: ' + path)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const user = userEvent.setup()
+  const view = render(<TeamPreview authClient={auth} />)
+  await user.click(await screen.findByRole('button', { name: quest.title + 'の詳細を見る' }))
+  expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
+  // 本人の記録からクリア状態が配線されると、開始導線は消えてクリア済み表示に替わる。
+  expect(await screen.findByText(/再挑戦はできません/)).toBeVisible()
+  expect(view.container.querySelector('.quest-cleared-label')).not.toBeNull()
+  expect(view.container.querySelector('.explore-quest-cleared')).not.toBeNull()
+  expect(screen.queryByRole('button', { name: '挑戦を始める' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
+  // 記録への導線で本人の記録詳細まで進める。
+  await user.click(screen.getByRole('button', { name: '自分の記録を見る' }))
+  expect(await screen.findByRole('heading', { name: discovery.placeName })).toBeVisible()
   vi.unstubAllEnvs()
 })
 
