@@ -57,7 +57,11 @@ export function readMunicipalArea(record: MunicipalAreaRecord | null, member: Mu
   } catch { return null }
 
   if (data.boundarySource === 'fixture') {
-    if (member.municipalityCode !== undefined || data.municipalityCode !== undefined) return null
+    // 架空区域の照合は所属側だけで行う（D-69）。合成検証の所属には実自治体コードを
+    // 設定しない運用（D-23）のため、所属にコードがあれば不一致として弾く。一方、
+    // 地域側の municipalityCode は D-30 の公開射影用メタデータであり、境界の出所とは
+    // 独立に持たせてある（デモ地域9件）。付いていること自体は fixture 解決を妨げない。
+    if (member.municipalityCode !== undefined) return null
     return { area, boundary: { source: 'fixture' } }
   }
 
