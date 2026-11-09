@@ -53,9 +53,7 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
     }
     if (controller.signal.aborted) return
     setCandidate(details)
-    setMessage(details.name && details.address ? '地図の候補を表示しました。登録する名称・住所は自治体の情報を入力してください。'
-      : details.address ? '住所の候補を表示しました。登録する名称・住所は自治体の情報を入力してください。'
-      : '場所情報を取得できませんでした。登録する名称・住所を入力してください。')
+    setMessage(details.name || details.address ? '' : '地図から名称・住所の候補を取得できませんでした。')
     request.current = null
   }
 
@@ -65,11 +63,16 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
     <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? '地図を閉じる' : '地図を開いて場所を選ぶ'}</button>
     {open && <ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} spot={point} pickPlace onSelect={select} />}
     {message && <p role="status">{message}</p>}
-    {(candidate.name || candidate.address) && <p className="helper" translate="no">Google Maps</p>}
+    {(candidate.name || candidate.address) && <div className="spot-address-candidate" aria-live="polite">
+      <p><strong>地図の候補（参考）</strong> <span translate="no">Google Maps</span></p>
+      {candidate.name && <p>名称候補：{candidate.name}</p>}
+      {candidate.address && <p>住所候補：{candidate.address}</p>}
+    </div>}
+    <p id="spot-registration-help" className="helper">保存する名称と住所は、自治体で確認した情報を下の欄に入力してください。</p>
     <label>スポット名・施設名<input value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
-      placeholder={candidate.name ?? '自治体の名称を入力'} onChange={(event) => edit({ name: event.target.value })} /></label>
+      aria-describedby="spot-registration-help" placeholder="自治体の名称を入力" onChange={(event) => edit({ name: event.target.value })} /></label>
     <label>確認済み住所<input value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
-      placeholder={candidate.address ?? '自治体の住所を入力'} onChange={(event) => edit({ address: event.target.value })} /></label>
+      aria-describedby="spot-registration-help" placeholder="自治体の住所を入力" onChange={(event) => edit({ address: event.target.value })} /></label>
     <div className="field-pair">
       <label>スポットの緯度<input inputMode="decimal" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={invalid && !point}
         onChange={(event) => edit({ latitude: event.target.value })} /></label>

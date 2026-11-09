@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { MAP_STYLES } from '../explore/mapStyles'
 const loader = vi.hoisted(() => ({ loadGoogleMaps: vi.fn(), subscribeMapsAuthFailure: vi.fn(() => () => {}) }))
@@ -52,6 +53,39 @@ it('shows a spot marker independently of any private GPS circle', async () => {
   view.unmount()
   expect(setMap).toHaveBeenCalledWith(null)
 })
+it('moves the spot picker to the current location only on request and leaves the registered spot alone', async () => {
+  const setCenter = vi.fn(), setZoom = vi.fn(), onSelect = vi.fn()
+  const Marker = vi.fn(function (_options: Record<string, unknown>) { return { setMap: vi.fn() } })
+  const getCurrentPosition = vi.fn<Geolocation['getCurrentPosition']>()
+  const user = userEvent.setup()
+  vi.stubGlobal('navigator', Object.assign(Object.create(navigator), { geolocation: { getCurrentPosition } }))
+  try {
+    loader.loadGoogleMaps.mockResolvedValue({ Map: function () { return { setCenter, setZoom } }, Marker,
+      event: { addListener: () => ({ remove() {} }) } })
+    const { ShootingAreasMap } = await import('./ShootingAreasMap')
+    const view = render(<ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} onSelect={onSelect}
+      spot={{ latitude: 35, longitude: 135 }} pickPlace />)
+    const locate = await screen.findByRole('button', { name: '現在地へ移動' })
+    expect(getCurrentPosition).not.toHaveBeenCalled()
+    await user.click(locate)
+    expect(locate).toBeDisabled()
+    act(() => getCurrentPosition.mock.calls[0][1]?.({ code: 1 } as GeolocationPositionError))
+    expect(screen.getByRole('status')).toHaveTextContent('位置情報が許可されていません')
+    await user.click(locate)
+    const position = { coords: { latitude: 36, longitude: 136 } } as GeolocationPosition
+    act(() => getCurrentPosition.mock.calls[1][0](position))
+    expect(setCenter).toHaveBeenLastCalledWith({ lat: 36, lng: 136 })
+    expect(Marker).toHaveBeenCalledTimes(1)
+    expect(onSelect).not.toHaveBeenCalled()
+    await user.click(locate)
+    view.unmount()
+    act(() => getCurrentPosition.mock.calls[2][0](position))
+    expect(setCenter).toHaveBeenCalledTimes(2)
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
 it('does not request Maps without configuration', async () => {
   vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', '')
   const { ShootingAreasMap } = await import('./ShootingAreasMap')

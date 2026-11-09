@@ -3,6 +3,7 @@ import type { CaptureZone } from '../../shared/api'
 import type { Position } from '../../shared/api/types'
 import type { GoogleMapsApi, MapInstance } from '../explore/googleMapsLoader'
 import { loadGoogleMaps, subscribeMapsAuthFailure } from '../explore/googleMapsLoader'
+import { useRequestAction } from '../../shared/useRequestAction'
 import { MAP_PIN_COLOR, MAP_PIN_SELECTED_COLOR, MAP_STYLES } from '../explore/mapStyles'
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
@@ -24,6 +25,10 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
   useEffect(() => { latest.current = { disabled, onSelect, zones, selectedIndex, spot } }, [disabled, onSelect, zones, selectedIndex, spot])
   const [loaded, setLoaded] = useState<{ google: GoogleMapsApi; map: MapInstance } | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [currentLocation, setCurrentLocation] = useState<Position | null>(null)
+  const [locating, setLocating] = useState(false)
+  const [locationStatus, setLocationStatus] = useState('')
+  const beginLocation = useRequestAction()
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>(API_KEY ? 'loading' : 'missing')
   useEffect(() => {
     if (!API_KEY || !target.current) return
@@ -86,7 +91,50 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
     })] : [])
     return () => { circles.forEach((circle) => circle.setMap(null)) }
   }, [loaded, zones, selectedIndex])
+  useEffect(() => {
+    if (!loaded || !currentLocation) return
+    loaded.map.setCenter({ lat: currentLocation.latitude, lng: currentLocation.longitude })
+    loaded.map.setZoom(17)
+  }, [loaded, currentLocation])
+
+  function locate() {
+    const geolocation = navigator.geolocation
+    if (!geolocation?.getCurrentPosition) {
+      setLocationStatus('この端末では現在地を取得できません。地図から場所を選べます。')
+      return
+    }
+    const retryMessage = '現在地を取得できませんでした。もう一度お試しください。'
+    const operation = beginLocation(() => { setLocating(false); setLocationStatus(retryMessage) })
+    if (!operation) return
+    setLocating(true)
+    setLocationStatus('現在地を取得しています…')
+    function finish(message: string) {
+      if (!operation?.isCurrent()) return
+      operation.finish()
+      setLocating(false)
+      setLocationStatus(message)
+    }
+    try {
+      geolocation.getCurrentPosition(({ coords: { latitude, longitude } }) => {
+        if (!operation.isCurrent()) return
+        if (!Number.isFinite(latitude) || Math.abs(latitude) > 90 || !Number.isFinite(longitude) || Math.abs(longitude) > 180) {
+          finish(retryMessage)
+          return
+        }
+        setCurrentLocation({ latitude, longitude })
+        finish('現在地の周辺を表示しました。登録する場所を地図で選んでください。')
+      }, (error) => finish(error.code === 1 ? '位置情報が許可されていません。ブラウザのサイト設定で許可して、もう一度お試しください。' : retryMessage),
+      { enableHighAccuracy: false, maximumAge: 0, timeout: 10_000 })
+    } catch {
+      finish(retryMessage)
+    }
+  }
+
   return <div className="capture-map" aria-label={spotMode ? '対象スポットの確認地図' : '非公開の撮影範囲の地図'}>
+    {pickPlace && status === 'ready' && <div className="spot-location-actions">
+      <button type="button" disabled={disabled || locating} onClick={locate}>現在地へ移動</button>
+      {locationStatus && <p role="status">{locationStatus}</p>}
+    </div>}
     {API_KEY && <div ref={target} className="google-map-canvas" aria-label={spotMode ? '対象スポットを選ぶGoogleマップ' : '撮影の立ち位置を選ぶGoogleマップ'} />}
     {status === 'missing' && <p>地図の設定がないため、下の数値入力で設定できます。</p>}
     {status === 'loading' && <p role="status">地図を読み込んでいます…</p>}
