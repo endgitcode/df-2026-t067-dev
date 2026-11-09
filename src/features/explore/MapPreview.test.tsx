@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { MapPreview } from './MapPreview'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
@@ -229,7 +230,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('disables partly sheet-covered controls, restores them, and exits focus to the sheet handle', async () => {
+  it('disables fully sheet-covered controls, leaves partly visible hit targets active, and exits focus to the sheet handle', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia')
@@ -292,10 +293,10 @@ describe('Google map panel', () => {
       const zoomGroup = reset.closest('.map-zoom-group')
       sheetTop = 310
       act(() => { fireEvent.scroll(window) })
-      expect(zoomGroup).toHaveClass('is-hidden')
+      expect(zoomGroup).not.toHaveClass('is-hidden')
       expect(reset).toBeDisabled()
       expect(locate).toBeDisabled()
-      expect(locate).toHaveClass('is-hidden')
+      expect(locate).toHaveAttribute('inert')
       const { userEvent } = await import('@testing-library/user-event')
       sheetTop = 500
       act(() => { fireEvent.scroll(window) })
@@ -307,7 +308,7 @@ describe('Google map panel', () => {
       shellRight = 320
       act(() => { fireEvent.scroll(window) })
       expect(zoomIn).toBeDisabled()
-      expect(zoomIn).toHaveClass('is-hidden')
+      expect(zoomIn).not.toHaveClass('is-hidden')
       shellRight = 360
       act(() => { fireEvent.scroll(window) })
       expect(zoomIn).toBeEnabled()
@@ -323,8 +324,8 @@ describe('Google map panel', () => {
       sheetBottom = 210
       shortLandscape = true
       act(() => { fireEvent.resize(window) })
-      expect(zoomIn).toBeDisabled()
-      expect(locate).toBeDisabled()
+      expect(zoomIn).toBeEnabled()
+      expect(locate).toBeEnabled()
       sheetTop = 176
       act(() => { fireEvent.scroll(window) })
       expect(zoomIn).toBeEnabled()
@@ -1365,7 +1366,11 @@ describe('Google map panel', () => {
     vi.resetModules()
     const map = { ...mapInstance, fitBounds: vi.fn() }
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
-    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    const mapPinClicks: Array<() => void> = []
+    class Marker {
+      setMap() {}
+      addListener(name: string, callback: () => void) { if (name === 'click') mapPinClicks.push(callback); return { remove() {} } }
+    }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
     const { SHEET_PEEK_HEIGHT } = await import('./ExploreBottomSheet')
@@ -1376,7 +1381,11 @@ describe('Google map panel', () => {
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
     const questScrollTarget = { current: null as HTMLDivElement | null }
-    const detailFor = (title: string) => <div><header className="quest-card-heading"><h3>{title}</h3></header></div>
+    function StatefulQuestDetail({ title }: { title: string }) {
+      const [draft, setDraft] = useState('')
+      return <div><header className="quest-card-heading"><h3>{title}</h3></header><textarea aria-label={`${title}の下書き`} value={draft} onChange={(event) => setDraft(event.target.value)} /></div>
+    }
+    const detailFor = (title: string) => <StatefulQuestDetail title={title} />
     const quests2: PublicQuest[] = [
       ...quests,
       { questId: 'q2', version: 1, title: '博多の灯台', clue: '海に突き出た灯台', areaId: 'area-a', visitConditions: '', hintCount: 2 },
@@ -1398,6 +1407,9 @@ describe('Google map panel', () => {
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
     // 呼び出し側が選択を切り替えると、詳細は新しい選択行の直下へ移る。
     rerender(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q1" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('港の時計台')} />)
+    const detailDraft = screen.getByRole('textbox', { name: '港の時計台の下書き' }) as HTMLTextAreaElement
+    await user.type(detailDraft, '送信前の下書き')
+    const persistentDraft = detailDraft
     const mapShell = container.querySelector('.map-preview-shell') as HTMLElement
     vi.spyOn(mapShell, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ x: 0, y: 0, width: 400, height: 0 }))
     fireEvent.scroll(window)
@@ -1417,20 +1429,56 @@ describe('Google map panel', () => {
     expect(scroll).toHaveBeenCalledWith({ block: 'start' })
     expect(container.querySelector('.explore-sheet')).toBe(sheet)
     expect(sheet).toHaveAttribute('data-snap', 'half')
-    // Once the sheet is closed, 問題を見る navigates to the below-map list.
+    // Closing exposes the below-map list without scrolling or moving focus; the handle still reopens the sheet.
     const handle = screen.getByRole('button', { name: '謎リストを縮める' })
     fireEvent.pointerDown(handle, { pointerId: 30, pointerType: 'touch', clientY: 200 })
     fireEvent.pointerMove(handle, { pointerId: 30, pointerType: 'touch', clientY: 600 })
     fireEvent.pointerUp(handle, { pointerId: 30, pointerType: 'touch', clientY: 600 })
     expect(sheet).toHaveAttribute('data-snap', 'closed')
-    const reopen = screen.getByRole('button', { name: '問題を見る' })
-    expect(reopen).not.toHaveAttribute('aria-expanded')
-    expect(reopen).not.toHaveAttribute('aria-controls')
-    await user.click(reopen)
-    expect(sheet).toHaveAttribute('data-snap', 'closed')
     expect(container.querySelector('.below-map-quests')).toBeInTheDocument()
+    expect(scroll).toHaveBeenCalledTimes(1)
+    expect(sheet.querySelector('textarea')).toBe(persistentDraft)
+    expect(persistentDraft).toHaveValue('送信前の下書き')
+    expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: '港の時計台' })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: '地図に戻る' })).toBeInTheDocument()
+    // Returning to the map while the sheet is closed must not be undone by a closed-state effect.
+    await user.click(screen.getByRole('button', { name: '地図に戻る' }))
+    expect(container.querySelector('.below-map-quests')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
     expect(sheet).toHaveAttribute('data-snap', 'peek')
+    await waitFor(() => expect(container.querySelector('.below-map-quests')).not.toBeInTheDocument())
+    expect(sheet).toContainElement(screen.getByRole('heading', { name: '港の時計台' }))
+    expect(sheet.querySelector('textarea')).toBe(persistentDraft)
+    expect(persistentDraft).toHaveValue('送信前の下書き')
+    // Re-closing exposes the list without moving focus; selecting a row auto-opens the sheet,
+    // while the detail remains in the below-map list and mounts only once.
+    await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+    const reopenedHandle = screen.getByRole('button', { name: '謎リストを縮める' })
+    await user.click(reopenedHandle)
+    expect(sheet).toHaveAttribute('data-snap', 'closed')
+    const listCard = container.querySelector<HTMLButtonElement>('.below-map-quests button[aria-label="博多の灯台の詳細を見る"]')!
+    await user.click(listCard)
+    rerender(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q2" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('博多の灯台')} />)
+    await waitFor(() => expect(sheet).toHaveAttribute('data-snap', 'half'))
+    expect(container.querySelector('.below-map-quests')).toBeInTheDocument()
+    expect(container.querySelector('.below-map-quests')).toContainElement(screen.getByRole('heading', { name: '博多の灯台' }))
+    expect(screen.getAllByRole('heading', { name: '博多の灯台' })).toHaveLength(1)
+    // A map pin explicitly returns detail ownership to the sheet, even while the below-map list is open.
+    await waitFor(() => expect(mapPinClicks.length).toBeGreaterThan(0))
+    act(() => mapPinClicks.at(-1)?.())
+    await waitFor(() => expect(container.querySelector('.below-map-quests')).not.toBeInTheDocument())
+    expect(sheet).toContainElement(screen.getByRole('heading', { name: '博多の灯台' }))
+
+    // A later sheet-card selection also exits below-map mode before the parent selection update.
+    await user.click(screen.getByRole('button', { name: '謎リストを縮める' }))
+    expect(container.querySelector('.below-map-quests')).toBeInTheDocument()
+    const sheetCard = sheet.querySelector<HTMLButtonElement>('[aria-label="港の時計台の詳細を見る"]')!
+    await user.click(sheetCard)
+    rerender(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q1" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('港の時計台')} />)
+    await waitFor(() => expect(sheet).toHaveAttribute('data-snap', 'half'))
+    expect(container.querySelector('.below-map-quests')).not.toBeInTheDocument()
+    expect(sheet).toContainElement(screen.getByRole('heading', { name: '港の時計台' }))
     HTMLElement.prototype.scrollIntoView = originalScrollIntoView
     unmount()
     delete window.google

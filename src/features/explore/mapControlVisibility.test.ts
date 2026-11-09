@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isMapControlCovered, isMapControlWithin, type ControlRect } from './mapControlVisibility'
+import { isMapControlFullyCovered, isMapControlWithin, type ControlRect } from './mapControlVisibility'
 
 const rect = (left: number, top: number, right: number, bottom: number): ControlRect => ({
   left, top, right, bottom, width: right - left, height: bottom - top,
@@ -8,16 +8,18 @@ const rect = (left: number, top: number, right: number, bottom: number): Control
 describe('map control sheet visibility', () => {
   const sheet = rect(0, 400, 360, 700)
 
-  it('marks even a one pixel vertical overlap unsafe', () => {
-    expect(isMapControlCovered(rect(300, 350, 344, 401), sheet)).toBe(true)
+  it('leaves a partly visible control active while the sheet intercepts its covered part', () => {
+    expect(isMapControlFullyCovered(rect(300, 350, 344, 401), sheet)).toBe(false)
+    expect(isMapControlFullyCovered(rect(300, 390, 344, 444), sheet)).toBe(false)
   })
 
-  it('does not cover a button that is horizontally outside the sheet', () => {
-    expect(isMapControlCovered(rect(370, 350, 414, 444), sheet)).toBe(false)
+  it('disables a button wholly behind the sheet', () => {
+    expect(isMapControlFullyCovered(rect(300, 410, 344, 454), sheet)).toBe(true)
   })
 
-  it('does not cover a button that only touches the sheet edge', () => {
-    expect(isMapControlCovered(rect(300, 350, 344, 400), sheet)).toBe(false)
+  it('does not disable a button horizontally outside the sheet or touching its edge', () => {
+    expect(isMapControlFullyCovered(rect(370, 410, 414, 454), sheet)).toBe(false)
+    expect(isMapControlFullyCovered(rect(300, 356, 344, 400), sheet)).toBe(false)
   })
 
   it('requires the whole button to remain inside the visible map shell', () => {

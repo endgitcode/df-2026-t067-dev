@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import {
   clampWithRubberBand,
   pickSnapFromRelease,
@@ -20,8 +20,6 @@ const SHEET_CLOSED_HEIGHT = 34
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
-// CSS places the reopen button 48px above the tab bar; taller sheets cover it.
-const REOPEN_BUTTON_BOTTOM = 48
 
 function snapHeights(stageHeight: number): Record<SheetSnap, number> {
   const half = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
@@ -32,18 +30,18 @@ function snapHeights(stageHeight: number): Record<SheetSnap, number> {
 // 地図の上に重なる引き上げ式シート。スナップは closed / peek / half / full の4段で、
 // ハンドルのドラッグとタップ（ボタン）の両方で開閉できる。シート本体が地図とは
 // 別の要素なので、シート上のスクロールやドラッグが地図へ伝わることはない。
-export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBrowseBelowMap }: {
+export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUserClosedChange }: {
   children: ReactNode
   /** 地域IDが新しく渡されたら、ハイライトされたカードが見える位置まで開く。 */
   openSignal?: string | null
   onHeightChange?: (height: number) => void
-  onBrowseBelowMap?: () => void
+  /** Reports user handle gestures only; automatic opens from map/list selection are not reported. */
+  onUserClosedChange?: (closed: boolean) => void
 }) {
   const sheetRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<HTMLButtonElement>(null)
-  const reopenRef = useRef<HTMLButtonElement>(null)
-  const focusAfterSnap = useRef<'body' | 'reopen' | null>(null)
+  const focusAfterSnap = useRef<'body' | 'handle' | null>(null)
   const [stageHeight, setStageHeight] = useState(FALLBACK_STAGE_HEIGHT)
   const [snap, setSnap] = useState<SheetSnap>('peek')
   const [dragHeight, setDragHeight] = useState<number | null>(null)
@@ -58,7 +56,6 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
     mq?.addEventListener?.('change', sync)
     return () => mq?.removeEventListener?.('change', sync)
   }, [])
-  const reopenGesture = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
   const lastOpenSignal = useRef<string | null>(null)
   const bodyId = useId()
 
@@ -97,21 +94,13 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
 
   const heights = snapHeights(stageHeight)
   const height = dragHeight ?? heights[snap]
-  const reopenVisible = height <= REOPEN_BUTTON_BOTTOM
-
   useEffect(() => { onHeightChange?.(height) }, [height, onHeightChange])
-
-  useEffect(() => {
-    if (!reopenVisible && document.activeElement === reopenRef.current) {
-      handleRef.current?.focus({ preventScroll: true })
-    }
-  }, [reopenVisible])
 
   useEffect(() => {
     const target = focusAfterSnap.current
     if (!target) return
     focusAfterSnap.current = null
-    const element = target === 'body' ? bodyRef.current : reopenRef.current
+    const element = target === 'body' ? bodyRef.current : handleRef.current
     if (target === 'body' && element) element.scrollTop = 0
     element?.focus({ preventScroll: true })
   }, [snap])
@@ -155,46 +144,19 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
         reducedMotion: reducedMotion.current,
       })
       setReleaseMs(releaseTransitionMs(velocityY, reducedMotion.current))
-      if (next === 'closed') focusAfterSnap.current = 'reopen'
+      onUserClosedChange?.(next === 'closed')
+      if (next === 'closed') focusAfterSnap.current = 'handle'
       setSnap(next)
     }
     setDragHeight(null)
   }
   const onClick = () => {
     if (suppressClick.current) { suppressClick.current = false; return }
-    if (snap === 'half' || snap === 'full') focusAfterSnap.current = 'reopen'
-    setSnap((current) => (current === 'closed' ? 'peek' : current === 'peek' ? 'half' : 'closed'))
+    const next = snap === 'closed' ? 'peek' : snap === 'peek' ? 'half' : 'closed'
+    onUserClosedChange?.(next === 'closed')
+    if (snap === 'half' || snap === 'full') focusAfterSnap.current = 'handle'
+    setSnap(next)
   }
-  const reopen = () => {
-    suppressClick.current = false
-    focusAfterSnap.current = 'body'
-    setSnap('half')
-  }
-  const onReopenClick = () => {
-    if (snap === 'closed' && onBrowseBelowMap) onBrowseBelowMap()
-    else reopen()
-  }
-  const reopenGestureProps = {
-    onPointerDownCapture: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      reopenGesture.current = event.pointerType === 'touch'
-        ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY, moved: false }
-        : null
-    },
-    onPointerMoveCapture: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      const gesture = reopenGesture.current
-      if (gesture?.pointerId === event.pointerId && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 8) gesture.moved = true
-    },
-    onPointerCancelCapture: () => { reopenGesture.current = null },
-    onClickCapture: (event: ReactMouseEvent<HTMLButtonElement>) => {
-      const gesture = reopenGesture.current
-      reopenGesture.current = null
-      if (gesture?.moved && event.detail !== 0) {
-        event.preventDefault()
-        event.stopPropagation()
-      }
-    },
-  }
-
   return <>
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap}
       style={{ height, ...(releaseMs != null && dragHeight === null ? { '--sheet-release-ms': `${releaseMs}ms` } as CSSProperties : {}) }}>
@@ -205,9 +167,5 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onBro
       </button>
       <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
     </div>
-    {snap === 'closed' && <button ref={reopenRef} type="button" className="explore-sheet-reopen" {...reopenGestureProps}
-      inert={!reopenVisible} aria-hidden={!reopenVisible} disabled={!reopenVisible}
-      {...(!onBrowseBelowMap ? { 'aria-expanded': false, 'aria-controls': bodyId } : {})}
-      onClick={onReopenClick}>問題を見る</button>}
   </>
 }

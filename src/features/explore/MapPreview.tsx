@@ -5,7 +5,7 @@ import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport, WIDE_VIEWPORT_QUERY } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
-import { mobileHeaderClearance, scrollBelowHeader } from './scrollBelowHeader'
+import { mobileHeaderClearance } from './scrollBelowHeader'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
@@ -14,7 +14,7 @@ import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, M
 import { boundsForFilter } from '../quests/prefectureBounds'
 import { getRegionAreas } from '../quests/areaHierarchy'
 import { areaPinPosition } from './viewportQuests'
-import { isMapControlCovered, isMapControlWithin } from './mapControlVisibility'
+import { isMapControlFullyCovered, isMapControlWithin } from './mapControlVisibility'
 
 // SSR has no portal target; the fixed toggle has the same screen coordinates inline.
 const createPortal = (node: ReactNode, target: HTMLElement | null) => target ? reactCreatePortal(node, target) : node
@@ -60,14 +60,6 @@ function clusterIcon(totalQuests: number, dimmed = false): { url: string } {
 }
 
 const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
-
-function focusQuestDestination(card: HTMLDivElement | null | undefined, list: HTMLElement | null) {
-  const destination = card?.querySelector<HTMLElement>('.quest-card-heading h3') ?? list
-  if (!destination) return
-  destination.tabIndex = -1
-  destination.focus({ preventScroll: true })
-  scrollBelowHeader(destination)
-}
 
 // 地域の公開ジオメトリから、フィットに使える全頂点を {lat, lng} で返す。閉じていない・
 // 範囲外の座標を含むリングは丸ごと除く（従来のフィットと同じ検証）。使える輪郭が無ければ null。
@@ -146,6 +138,26 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const dataLayer = useRef<DataLayer | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
   const mapShell = useRef<HTMLDivElement>(null)
+  const [browseBelowMap, setBrowseBelowMap] = useState(false)
+  const [detailLocation, setDetailLocation] = useState<'sheet' | 'belowMap'>('sheet')
+  const openQuestFromSheet = useCallback((questId: string) => {
+    setBrowseBelowMap(false)
+    setDetailLocation('sheet')
+    onOpenQuest?.(questId)
+  }, [onOpenQuest])
+  const openQuestFromBelowMap = useCallback((questId: string) => {
+    setDetailLocation('belowMap')
+    onOpenQuest?.(questId)
+  }, [onOpenQuest])
+  const selectMapArea = useCallback((areaId: string) => {
+    setBrowseBelowMap(false)
+    setDetailLocation('sheet')
+    onSelectArea?.(areaId)
+  }, [onSelectArea])
+  const onUserSheetClosedChange = useCallback((closed: boolean) => {
+    setBrowseBelowMap(closed)
+    if (!closed) setDetailLocation('sheet')
+  }, [])
   // PC幅（981px以上）ではボトムシートを使わず、左サイドバーのパネルに一覧を出す（D-34）。
   const wideViewport = useWideViewport()
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
@@ -301,7 +313,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         const rect = button.getBoundingClientRect()
         const label = button.getAttribute('aria-label') ?? ''
         const available = isMapControlWithin(rect, visibleBounds)
-        const covered = available && isMapControlCovered(rect, sheetRect)
+        const covered = available && isMapControlFullyCovered(rect, sheetRect)
         if (!available || covered) {
           if (document.activeElement === button) handle?.focus({ preventScroll: true })
           inactiveLabels.add(label)
@@ -555,7 +567,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         // 選択中の地域を、地図を動かした後にもう一度押したら、解除せずその地域へ寄せ直す。
         const instance = map.current
         if (instance && refitIfCameraMoved(instance, area)) return
-        setPinAreaId(null); onSelectArea?.(areaId)
+        setPinAreaId(null); selectMapArea(areaId)
       })
     } catch {
       active = false
@@ -563,7 +575,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       failArea()
     }
     return () => { active = false; window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; try { listener?.remove(); layer.setMap(null) } catch { /* SDK teardown is best effort. */ } }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly, refitIfCameraMoved])
+  }, [areas, selectedAreaId, selectMapArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly, refitIfCameraMoved])
 
   const clearMarkers = useCallback(() => {
     for (const entry of markersRef.current.values()) {
@@ -667,7 +679,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
           if (selected && refitIfCameraMoved(instance, area)) return
           setPinAreaId((current) => (current === area.areaId ? null : area.areaId))
           // 絞り込み外の薄いピンも、通常のピンと同じ onSelectArea で選択できる。
-          onSelectArea?.(area.areaId)
+          selectMapArea(area.areaId)
         }))
         // Google Maps のポインタイベントに任せ、PC・タッチ端末で共通の強調表示を行う。
         if (marker.setIcon) {
@@ -689,7 +701,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       if (initialFitDone.current !== instance && !fitAreaId) fitInitialAreas(instance)
     } catch { /* ピンは補助表示のため、失敗しても地図本体は使える状態を保つ。 */ }
 
-  }, [areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas, clearMarkers])
+  }, [areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, selectMapArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas, clearMarkers])
 
   useEffect(() => {
     const instance = map.current
@@ -795,6 +807,9 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
 
   // ピン以外（地域セレクト等）で別の地域が選ばれたら、ピンのハイライトは外れたものとして扱う。
   const effectivePinAreaId = pinAreaId && (!selectedAreaId || selectedAreaId === pinAreaId) ? pinAreaId : null
+  const sheetOpenSignal = effectivePinAreaId
+    ? `${effectivePinAreaId}:${selectedQuestId}`
+    : selectedQuestId ? `quest:${selectedQuestId}` : null
   const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
   // 地図上に小さく浮かせる地域名チップの対象。ピンのフォーカスを優先し、無ければ
   // フィット対象の地域（選択中の地域、または選択中の問題の所属地域）にする。
@@ -805,9 +820,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // シート表示は問題の件数に依存させない。絞り込みで0件になってもシートと全画面を維持し、空表示を出す。
   // （sheetMode／panelMode の定義は、フィット系のコールバックが使うため前方の
   // フィット共通処理の前に置く。）
-  const [browseBelowMap, setBrowseBelowMap] = useState(false)
   const belowMap = sheetMode && !panelMode && browseBelowMap
-  const belowMapList = useRef<HTMLElement>(null)
   const mapControlGesture = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null)
   const mapControlGestureProps = {
     onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => {
@@ -845,37 +858,23 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       window.removeEventListener('resize', update)
     }
   }, [sheetMode, panelMode, belowMap, updateMapScrollPosition])
-  useEffect(() => {
-    if (!belowMap) return
-    focusQuestDestination(questScrollTarget?.current, belowMapList.current)
-    updateMapScrollPosition()
-  }, [belowMap, questScrollTarget, updateMapScrollPosition])
-
   const returnToMap = () => {
     setBrowseBelowMap(false)
+    setDetailLocation('sheet')
     mapShell.current?.focus({ preventScroll: true })
     mapShell.current?.scrollIntoView?.({ block: 'start' })
   }
-  const browseQuests = () => {
-    if (!belowMap) {
-      setBrowseBelowMap(true)
-      return
-    }
-    focusQuestDestination(questScrollTarget?.current, belowMapList.current)
-    updateMapScrollPosition()
-  }
-
   // 詳細（questDetail）は一覧の選択中の行の直下にだけ差し込む。同時に2か所へは出さない
-  // （状態を持つ詳細が二重にマウントされるのを避けるため）。地図下の一覧を開いている間は
-  // そちらへ寄せ、「問題を見る」の着地（#70）が地図下の詳細になるようにする。
+  // （状態を持つ詳細が二重にマウントされるのを避けるため）。地図下一覧が表示中なら
+  // そちらへ寄せ、シートと地図下で詳細を二重にマウントしない。
   // 読み込み中の一覧（仮の行）は、最終的な置き場所であるシート／パネルの中でのみ出す。
   // 地図の読み込み中に通常フロー側へ先に出すと、地図の準備完了で置き場所が移り、
   // 一覧が作り直されて見た目が跳ねるため。
-  const renderQuestList = (scrollToHighlight = true, withDetail = false, inSheetOrPanel = false) => showPublicAreas && (sheetMode || quests.length > 0 || (inSheetOrPanel && questsLoading)) ? <ExploreQuestList areas={areas} quests={quests} loading={questsLoading}
+  const renderQuestList = (scrollToHighlight = true, withDetail = false, inSheetOrPanel = false, discardClosingDetail = false, openQuest = onOpenQuest) => showPublicAreas && (sheetMode || quests.length > 0 || (inSheetOrPanel && questsLoading)) ? <ExploreQuestList areas={areas} quests={quests} loading={questsLoading}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     scrollToHighlight={scrollToHighlight}
-    detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget}
-    onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} /> : null
+    detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget} discardClosingDetail={discardClosingDetail}
+    detailOwner={detailLocation} onOpenQuest={openQuest} onDeselectQuest={onDeselectQuest} /> : null
   // 境界データの出典表記（N03 の利用条件）。短い文言で、パネル／シートの一番下に小さく出す（D-46）。
   // 登録年度が公開応答に載っている地域があれば、その年度を出典に含める（D-71）。
   const boundaryYears = [...new Set(areas.flatMap((area) => area.boundary?.source === 'N03' ? [area.boundary.year] : []))].sort((a, b) => a - b)
@@ -889,13 +888,13 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     : null
   const mapControls = status === 'ready' ? <div className="map-controls" {...mapControlGestureProps}>
     <div className="map-zoom" aria-label="地図の表示操作">
-      <div className={'map-zoom-group' + (['地図を拡大', '地図を縮小', '地図の表示を戻す'].every((label) => inactiveMapControls.has(label)) ? ' is-hidden' : '')}>
-        <button type="button" className={inactiveMapControls.has('地図を拡大') ? 'is-hidden' : undefined} aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM || inactiveMapControls.has('地図を拡大')} inert={inactiveMapControls.has('地図を拡大')} aria-hidden={inactiveMapControls.has('地図を拡大')} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
-        <button type="button" className={inactiveMapControls.has('地図を縮小') ? 'is-hidden' : undefined} aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM || inactiveMapControls.has('地図を縮小')} inert={inactiveMapControls.has('地図を縮小')} aria-hidden={inactiveMapControls.has('地図を縮小')} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
-        <button type="button" className={inactiveMapControls.has('地図の表示を戻す') ? 'is-hidden' : undefined} aria-label="地図の表示を戻す" disabled={inactiveMapControls.has('地図の表示を戻す')} inert={inactiveMapControls.has('地図の表示を戻す')} aria-hidden={inactiveMapControls.has('地図の表示を戻す')} onClick={reset}><Icon name="reset" /></button>
+      <div className="map-zoom-group">
+        <button type="button" aria-label="地図を拡大" disabled={zoom >= MAX_ZOOM || inactiveMapControls.has('地図を拡大')} inert={inactiveMapControls.has('地図を拡大')} aria-hidden={inactiveMapControls.has('地図を拡大')} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
+        <button type="button" aria-label="地図を縮小" disabled={zoom <= MIN_ZOOM || inactiveMapControls.has('地図を縮小')} inert={inactiveMapControls.has('地図を縮小')} aria-hidden={inactiveMapControls.has('地図を縮小')} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
+        <button type="button" aria-label="地図の表示を戻す" disabled={inactiveMapControls.has('地図の表示を戻す')} inert={inactiveMapControls.has('地図の表示を戻す')} aria-hidden={inactiveMapControls.has('地図の表示を戻す')} onClick={reset}><Icon name="reset" /></button>
       </div>
     </div>
-    <button type="button" className={'map-locate-fab' + (inactiveMapControls.has('現在地へ戻る') ? ' is-hidden' : '')} aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating || inactiveMapControls.has('現在地へ戻る')} inert={inactiveMapControls.has('現在地へ戻る')} aria-hidden={inactiveMapControls.has('現在地へ戻る')} onClick={locate}><Icon name="locate" /></button>
+    <button type="button" className="map-locate-fab" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating || inactiveMapControls.has('現在地へ戻る')} inert={inactiveMapControls.has('現在地へ戻る')} aria-hidden={inactiveMapControls.has('現在地へ戻る')} onClick={locate}><Icon name="locate" /></button>
   </div> : null
 
   // 公開地図シェルの間は縁なし fullbleed にする（地図の ready 前から。ブートと形を揃える）。
@@ -1008,16 +1007,15 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
               <Icon name="panel" />
             </button>, typeof document === 'undefined' ? null : document.body)}
           </>
-          : <ExploreBottomSheet openSignal={effectivePinAreaId ?? (selectedQuestId ? `quest:${selectedQuestId}` : null)} onHeightChange={setSheetHeight}
-            onBrowseBelowMap={browseQuests}>{renderQuestList(true, !belowMap, true)}{boundaryCredit}</ExploreBottomSheet>
+          : <ExploreBottomSheet openSignal={sheetOpenSignal} onHeightChange={setSheetHeight}
+            onUserClosedChange={onUserSheetClosedChange}>{renderQuestList(true, detailLocation === 'sheet', true, detailLocation !== 'sheet', openQuestFromSheet)}{boundaryCredit}</ExploreBottomSheet>
         : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>
-    {sheetMode && !panelMode && (pastMap || sheetHeight > SHEET_PEEK_HEIGHT) && <button type="button" {...mapControlGestureProps}
-      className={'explore-sheet-reopen map-browse-shortcut' + (pastMap ? ' is-return-to-map' : '')}
-      inert={!pastMap && sheetHeight > 48} aria-hidden={!pastMap && sheetHeight > 48} disabled={!pastMap && sheetHeight > 48}
-      onClick={pastMap ? returnToMap : browseQuests}>{pastMap ? '地図に戻る' : '問題を見る'}</button>}
-    {belowMap && <section ref={belowMapList} className="below-map-quests" tabIndex={-1} aria-label="地図の下の問題一覧">
-      {renderQuestList(false, true)}
+    {sheetMode && !panelMode && pastMap && <button type="button" {...mapControlGestureProps}
+      className="explore-sheet-reopen map-browse-shortcut is-return-to-map"
+      onClick={returnToMap}>地図に戻る</button>}
+    {belowMap && <section className="below-map-quests" aria-label="地図の下の問題一覧">
+      {renderQuestList(false, detailLocation === 'belowMap', false, detailLocation !== 'belowMap', openQuestFromBelowMap)}
       {boundaryCredit}
     </section>}
   </>)
