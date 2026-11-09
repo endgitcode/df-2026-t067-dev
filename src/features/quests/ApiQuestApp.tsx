@@ -34,7 +34,7 @@ function parseListParam(params: URLSearchParams, key: string, legacyKey?: string
 }
 
 function readSelectionFromUrl() {
-  const params = new URLSearchParams(window.location.search)
+  const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search)
   return {
     areaId: params.get('area') ?? '',
     questId: params.get('quest') ?? '',

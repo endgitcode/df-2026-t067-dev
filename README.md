@@ -144,3 +144,7 @@ VITE_QUEST_DATA_SOURCE=durable-local npm run dev
   ## ライセンス
 
   [MIT License](LICENSE) です。ほかのライセンスにしたいときは、LICENSE を書き換えてください。
+
+### 起動時のHTML
+
+`npm run build` はReactの実コンポーネントから初期HTMLを生成し、必要なCSSとともに `dist/index.html` に埋め込みます。初期表示のマークアップやアイコンを別途手書きする必要はありません。PC／スマホの表示は既存の981px境界に合わせ、JS読込後は既存のReactルートが置き換えます。ビルド中はブラウザの認証・地図・カメラを起動しません。
