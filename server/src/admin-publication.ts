@@ -15,10 +15,11 @@ export function projectManagedQuest(quest: ManagedQuest, version: number, questN
   const hintAssetIds = (draft.hintAssetIds ?? [null, null, null]).map((assetId, index) =>
     assetId ?? (index === 0 ? hintAssetId : null))
   const conditions: string[] = []
-  if (materials.requiresBoat) conditions.push('船上・海上からの撮影が必要。')
-  if (materials.requiresPaidFacility) conditions.push('有料施設内での撮影が必要。')
-  if (materials.price.trim()) conditions.push('料金 ' + materials.price.trim())
-  if (materials.photoNote.trim()) conditions.push('撮影時の注意 ' + materials.photoNote.trim())
+  if (materials.requiresBoat) conditions.push('船上・海上')
+  if (materials.requiresPaidFacility) conditions.push('有料施設')
+  const price = materials.price.trim()
+  if (price && !/^未確認(?:：|$)/.test(price)) conditions.push('料金：' + price.replace(/^有料：/, ''))
+  if (materials.photoNote.trim()) conditions.push('注意：' + materials.photoNote.trim())
   const visible = parsePublicQuest({ questId, version, title: content.title.trim(), clue: content.question.trim(), areaId,
     ...(questNumber !== undefined ? { questNumber } : {}),
     visitConditions: conditions.join('\n'), hintCount: content.hints.length,

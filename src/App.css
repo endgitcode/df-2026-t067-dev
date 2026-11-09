@@ -1039,3 +1039,6 @@ body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; 
 .traveler-shell { --radius-l: 16px; }
 .traveler-shell .filter-chip,
 .traveler-shell .map-area-chip { border-radius: 12px; padding: 8px 12px; }
+.quest-details .sample-note {
+  white-space: pre-line;
+}

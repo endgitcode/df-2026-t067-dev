@@ -28,8 +28,8 @@ type Editor = { kind: 'draft'; initial: ManagedQuest | null } | { kind: 'areas';
 
 function Pager({ cursor, next, onMove }: { cursor?: string; next?: string | null; onMove: (cursor?: string) => void }) {
   return <div className="admin-list-actions">
-    {cursor && <button type="button" onClick={() => onMove()}>最初のページへ</button>}
-    {next && <button type="button" onClick={() => onMove(next)}>次のページへ</button>}
+    {cursor && <button type="button" onClick={() => onMove()}>最初へ</button>}
+    {next && <button type="button" onClick={() => onMove(next)}>次へ</button>}
   </div>
 }
 
@@ -45,8 +45,8 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
     ? api.listManagedQuests(member.orgId, { cursor, limit: 20 }, { signal })
     : api.listManagedReports(member.orgId, { cursor, limit: 20 }, { signal }), [api, member.orgId, cursor, section])
   const { result, retry } = useRemote<Page<ManagedQuest | ManagedReport>>(editor === null, read)
-  const heading = section === 'quests' ? '担当組織の問題' : '担当組織の報告'
-  // 実データ側（共有検証・永続）では、都道府県コードの無い地域は「未分類」として作成・公開できない（D-33）。
+  const heading = section === 'quests' ? '謎一覧' : '報告一覧'
+  // 実データ側では、都道府県コードの無い地域は「未分類」として作成・公開できない。
   // 開発用デモは地域の分類自体を持たないため対象外にする。
   const areaUnclassified = (teamPreview || durable) && !member.prefectureCode
   function select(next: typeof section) { setNotice(''); setCursor(undefined); setSection(next) }
@@ -80,7 +80,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
     const url = new URL(location.href); url.searchParams.set('step', 'publication'); history.replaceState(null, '', url)
     setEditor({ kind: 'draft', initial: item })
   }
-  function published() { setActedQuest(editor && 'initial' in editor ? editor.initial?.questId ?? new URLSearchParams(location.search).get('quest') : null); setPausedNotice(false); setNotice('公開しました。'); closeEditor() }
+  function published() { setActedQuest(editor && 'initial' in editor ? editor.initial?.questId ?? new URLSearchParams(location.search).get('quest') : null); setPausedNotice(false); setNotice('公開済み'); closeEditor() }
   function closeEditor() { const url = new URL(location.href); url.searchParams.delete('quest'); url.searchParams.delete('step'); history.replaceState(null, '', url); setEditor(null); retry() }
   if (editor?.kind === 'draft' && (durable || teamPreview)) return <AdminQuestWorkflow api={api} member={member} initial={editor.initial}
     teamPreview={teamPreview} photoTestSource={photoTestSource} areaUnclassified={areaUnclassified} onBack={closeEditor}
@@ -94,19 +94,19 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
   return <section className="form-section" aria-labelledby="org-workspace-title" ref={listRoot}>
     <h2 id="org-workspace-title" tabIndex={-1} ref={listHeading}>{heading}</h2>
     <p>{member.label}</p>
-    {areaUnclassified && <p role="alert">この組織の地域は都道府県コードが未設定（未分類）のため、新しい問題を作成できず、既存の下書きも公開できません。</p>}
-    {notice && <div role="status" className="admin-operation-notice">{notice}{pausedNotice && result.status === 'ready' && result.value.items.filter((item): item is ManagedQuest => 'draft' in item && item.questId === actedQuest).map(item => <button key={item.questId} type="button" onClick={() => republish(item)}>再公開へ</button>)}</div>}
+    {areaUnclassified && <p role="alert">地域未設定・作成不可・公開不可</p>}
+    {notice && <div role="status" className="admin-operation-notice">{notice}{pausedNotice && result.status === 'ready' && result.value.items.filter((item): item is ManagedQuest => 'draft' in item && item.questId === actedQuest).map(item => <button key={item.questId} type="button" onClick={() => republish(item)}>再公開</button>)}</div>}
     {member.role === 'publisher' && !teamPreview && <div className="admin-list-actions">
-      <button type="button" aria-pressed={section === 'quests'} onClick={() => select('quests')}>問題一覧</button>
-      <button type="button" aria-pressed={section === 'reports'} onClick={() => select('reports')}>問題報告</button>
+      <button type="button" aria-pressed={section === 'quests'} onClick={() => select('quests')}>謎一覧</button>
+      <button type="button" aria-pressed={section === 'reports'} onClick={() => select('reports')}>報告</button>
     </div>}
     {section === 'quests' && result.status === 'ready' && !areaUnclassified &&
-      <button type="button" onClick={() => setEditor({ kind: 'draft', initial: null })}>下書きを新規作成</button>}
-    {result.status === 'loading' && <p role="status">読み込んでいます…</p>}
-    {result.status === 'error' && <><p role="alert">{result.code === 'FORBIDDEN' ? 'この組織の操作権限を確認できません。'
-      : section === 'reports' && result.code === 'SYSTEM_ERROR' ? '報告の保存先に接続できません。'
-        : '一覧を読み込めませんでした。'}</p><button type="button" onClick={retry}>一覧を読み直す</button></>}
-    {result.status === 'ready' && (result.value.items.length === 0 ? <p>{section === 'quests' ? '問題はまだありません。' : '報告はまだありません。'}</p>
+      <button type="button" className="workflow-primary" onClick={() => setEditor({ kind: 'draft', initial: null })}>下書きを新規作成</button>}
+    {result.status === 'loading' && <p role="status">読込中</p>}
+    {result.status === 'error' && <><p role="alert">{result.code === 'FORBIDDEN' ? '組織の権限を確認'
+      : section === 'reports' && result.code === 'SYSTEM_ERROR' ? '報告の接続失敗'
+        : '一覧の読込失敗'}</p><button type="button" onClick={retry}>一覧を読み直す</button></>}
+    {result.status === 'ready' && (result.value.items.length === 0 ? <p>{section === 'quests' ? '謎なし' : '報告なし'}</p>
       : <ul className="admin-read-list">{result.value.items.map((item) => 'draft' in item
         ? <li key={item.questId} data-quest-id={item.questId} tabIndex={-1}>
           <p className="admin-quest-status-row">
@@ -114,34 +114,31 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
             {item.publishedVersion !== null && item.status !== 'published' && <span>公開版あり</span>}
             {item.questNumber && <span>No. {item.questNumber}</span>}
           </p>
-          <strong>{item.draft.content.title || '無題の下書き'}</strong>
-          <details><summary>詳細</summary>
-            <p>問題 {item.questId}</p>
-          </details>
-          <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>{teamPreview || durable ? '編集を続ける' : '下書きを編集'}</button>
-          {item.status === 'paused' && (teamPreview || durable) && <button type="button" onClick={() => republish(item)}>再公開へ</button>}
+          <strong>{item.draft.content.title || '無題'}</strong>
+          <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>{teamPreview || durable ? '編集' : '編集'}</button>
+          {item.status === 'paused' && (teamPreview || durable) && <button type="button" onClick={() => republish(item)}>再公開</button>}
           {(teamPreview || durable) ? item.status !== 'published' && <details className="workflow-remaining">
-            <summary>残りの作業（{remainingWork(item, true).length}件）</summary>
+            <summary>残りの作業 {remainingWork(item, true).length}件</summary>
             <ul>{remainingWork(item, true).map((work) => <li key={work}>{work}</li>)}</ul>
           </details> : <fieldset className="publish-prep"><legend>公開準備</legend>
-            <p>撮影できる範囲（非公開）：{item.shootingAreaStatus === 'configured' ? '設定済み' : '未設定'}</p>
-            {areaUnclassified && item.status !== 'published' && <p>この地域は未分類のため公開できません（都道府県コードが未設定です）。</p>}
-            {item.status === 'published' ? <p>公開中です。</p> : <>
+            <p>撮影範囲：{item.shootingAreaStatus === 'configured' ? '設定済み' : '未設定'}</p>
+            {areaUnclassified && item.status !== 'published' && <p>地域未設定・公開不可</p>}
+            {item.status === 'published' ? <p>公開中</p> : <>
               {remainingWork(item).length > 0
                 ? <><p>残りの作業</p><ul>{remainingWork(item).map((work) => <li key={work}>{work}</li>)}</ul></>
-                : <p>入力項目は揃っています。</p>}
-              <p>写真試験（一致・別対象）は「試験と公開確認」の画面で実施します。この一覧では実施状況を確認できません。</p>
+                : <p>入力済み</p>}
+
             </>}
             <div className="admin-list-actions">
               <button type="button" onClick={() => setEditor({ kind: 'areas', questId: item.questId })}>撮影範囲を設定</button>
               <button type="button" onClick={() => setEditor({ kind: 'hint', initial: item })}>ヒント画像を設定</button>
               {item.status !== 'published' &&
-                <button type="button" onClick={() => setEditor({ kind: 'publication', initial: item })}>試験と公開確認</button>}
+                <button type="button" onClick={() => setEditor({ kind: 'publication', initial: item })}>試験・公開</button>}
             </div>
           </fieldset>}
           {member.role === 'publisher' && item.status !== 'paused' && item.publishedVersion !== null &&
             <PausePublication key={item.publishedVersion} api={api} orgId={member.orgId} questId={item.questId} version={item.publishedVersion}
-              onReload={retry} onPaused={() => { setActedQuest(item.questId); setPausedNotice(true); setNotice('公開を休止しました。'); retry() }} />}
+              onReload={retry} onPaused={() => { setActedQuest(item.questId); setPausedNotice(true); setNotice('休止済み'); retry() }} />}
         </li>
         : <li key={item.reportId}><strong>{reportCategoryLabels[item.category]}</strong>
           <p>{item.text}</p>
@@ -162,11 +159,11 @@ function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiC
   const current = result.status === 'ready' ? result.value.items.find((member) => member.orgId === selected) ?? ((durable || teamPreview) && !cursor && !result.value.nextCursor && result.value.items.length === 1 ? result.value.items[0] : undefined) : undefined
   return <>
     <section hidden={editing} className="form-section" aria-labelledby="membership-title">
-      <h2 id="membership-title">所属する組織</h2>
-      {result.status === 'loading' && <p role="status">所属を確認しています…</p>}
-      {result.status === 'error' && <><p role="alert">所属を確認できませんでした。</p>
+      <h2 id="membership-title">所属</h2>
+      {result.status === 'loading' && <p role="status">所属確認中</p>}
+      {result.status === 'error' && <><p role="alert">所属の確認失敗</p>
         <button type="button" onClick={retry}>所属を確認し直す</button></>}
-      {result.status === 'ready' && (result.value.items.length === 0 ? <p>利用できる所属がありません。</p>
+      {result.status === 'ready' && (result.value.items.length === 0 ? <p>所属なし</p>
         : <ul className="admin-read-list">{result.value.items.map((member) => <li key={member.orgId}>
           <button type="button" aria-pressed={member.orgId === current?.orgId} onClick={() => { setSelected(member.orgId); try { sessionStorage.setItem('admin-selected-org', member.orgId) } catch { /* Selection still works without session storage. */ } }}>
             {member.label}
@@ -240,32 +237,32 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
       if (kind === 'login') await authClient.signInWithGoogle()
       else await authClient.signOut()
     } catch (cause) {
-      setError(cause instanceof AuthError ? cause.message : 'ログイン操作を完了できませんでした。')
+      setError(cause instanceof AuthError ? cause.message : 'ログイン失敗')
     } finally { action.current = false; setPending(false) }
   }
 
   return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '')}>
     <a className="admin-traveler-link" href="/">旅行者画面へ</a>
     <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header'}>
-      <h1>{teamPreview ? '自治体向け共有検証' : '自治体向けローカル管理'}</h1>
+      <h1>謎づくり</h1>
       {auth.status === 'signed-in'
         ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
         : null}
     </header>
-    {auth.status !== 'signed-in' && <p>招待された自治体の担当者だけが使えます</p>}
-    <p className="demo-notice">{teamPreview ? '公開した問題と公開ヒントは誰でも閲覧できます。'
-      : '' + (dataMode === 'durable-local' ? '下書きと報告は検証環境の保存先に保存されます。' : '下書きと報告は一時的な保存先に保存されます。')}</p>
+    {auth.status !== 'signed-in' && <p>招待制</p>}
+    <p className="demo-notice">{teamPreview ? '公開問題・ヒントは閲覧自由'
+      : '' + (dataMode === 'durable-local' ? '検証環境' : '一時保存')}</p>
     {(auth.status !== 'signed-in' || error) && <section className="form-section" aria-label="担当者ログイン">
       {auth.status === 'signed-out' && <button className="workflow-primary" type="button" disabled={pending} onClick={() => void authenticate('login')}>Googleログイン</button>}
-      {(pending || auth.status === 'checking') && <p role="status">ログイン状態を確認しています…</p>}
-      {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p>Googleログインの設定を確認してください。</p>}
+      {(pending || auth.status === 'checking') && <p role="status">ログイン確認中</p>}
+      {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p>Googleログイン設定を確認</p>}
       {error && <p role="alert">{error}</p>}
     </section>}
     {!pending && auth.status === 'signed-in' && (identity.result?.status === 'ready' ? <Memberships key={auth.user.uid} api={api} teamPreview={teamPreview} durable={dataMode === 'durable-local'} photoTestSource={photoTestSource} />
       : identity.result?.status === 'error' ? <div className="form-section"><p role="alert">{teamPreview && identity.result.code === 'FORBIDDEN'
-        ? 'このアカウントは共有検証に招待されていません。' : 'ログインを確認できませんでした。'}</p>
+        ? '共有検証の招待なし' : 'ログインの確認失敗'}</p>
         <button type="button" onClick={identity.retry}>ログインを確認し直す</button></div>
-        : <p role="status">サーバーでログインを確認しています…</p>)}
+        : <p role="status">ログイン確認中</p>)}
     {dataMode === 'demo' && <p><a href="/admin-demo">ログインなしで試せるフォームへ戻る</a></p>}
   </main>
 }
