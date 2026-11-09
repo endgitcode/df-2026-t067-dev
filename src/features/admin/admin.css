@@ -39,6 +39,24 @@
 .submit-button { color: white; background: var(--ui-ink); }
 .field-error { color: var(--ui-error); font-weight: var(--ui-weight-strong); }
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* Direct visits to the admin route load this sheet without the traveler map styles. */
+.admin-demo .capture-map {
+  height: auto;
+  min-height: 0;
+  margin-top: 12px;
+  overflow: hidden;
+  border: var(--ui-border-width) solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: var(--ui-soft);
+}
+.admin-demo .capture-map .google-map-canvas {
+  position: relative;
+  inset: auto;
+  height: clamp(260px, 52vh, 420px);
+}
+.admin-demo .capture-map > p,
+.admin-demo .capture-map > [role="alert"] { margin: 12px; }
 .summary dl { display: grid; grid-template-columns: minmax(150px, .7fr) 1fr; gap: 8px 16px; }
 .summary dt { font-weight: var(--ui-weight-strong); }
 .summary dd { margin: 0; overflow-wrap: anywhere; }
