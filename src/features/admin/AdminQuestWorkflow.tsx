@@ -76,7 +76,7 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
     url.searchParams.set('step', part)
     history.replaceState(null, '', url)
   }, [record?.questId, part])
-  const heading = useRef<HTMLHeadingElement>(null)
+  const heading = useRef<HTMLElement>(null)
   const root = useRef<HTMLElement>(null)
   const step = stepNumber[part]
   const questId = record?.questId
@@ -86,7 +86,6 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
   const remote = result.status === 'ready' ? result.value : undefined
   const readiness = remote?.quest.draftRevision === revision ? remote : undefined
   const newerVersion = remote && !readiness
-  const missing = readiness?.missing ?? localMissing(record)
 
   useEffect(() => {
     const id = focusField && inputTargets[focusField]
@@ -139,8 +138,7 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
         </li>
       })}
     </ol>
-    <header className="workflow-heading">
-      <h2 ref={heading} tabIndex={-1}>STEP {step}　{steps[step - 1]}</h2>
+    <header className="workflow-heading" ref={heading} tabIndex={-1} aria-label={`STEP ${step} ${steps[step - 1]}`}>
       <QuestStatusBadge status={record?.status ?? 'draft'} />
       {part !== 'publication' && <button type="button" disabled={busy} onClick={() => navigate('list')}>謎一覧へ</button>}
     </header>
@@ -158,8 +156,6 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
       <button type="button" disabled={busy} onClick={() => move(pending)}>保存せず移動</button>
       <button type="button" disabled={busy} onClick={() => { setPending(null); heading.current?.focus() }}>とどまる</button>
     </div>}
-    {part === 'conditions' && <p>撮影範囲・半径1km
-      {missing.includes('targetSpot') || missing.includes('shootingAreas') ? '・場所を保存' : '・設定済み'}</p>}
     {part === 'hints' && record ? <HintAssetEditor api={api} initial={record} member={member}
       onBack={() => navigate({ part: 'content' })} backLabel="問題文へ" onDirty={setDirty} onSaving={setBusy}
       onSaved={(updated) => saved(updated, false)} onContinue={(updated) => { setRecord(updated); if (!pending) move({ part: 'publication' }) }} />

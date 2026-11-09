@@ -430,8 +430,8 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} authClient={signedOutAuth()} />)
     expect(await screen.findByRole('button', { name: '一覧表示用タイトルを開く' })).toBeVisible()
     await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
-    expect(await screen.findByText('ログイン')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Googleでログイン' })).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Googleで続行' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Googleで続行' })).toBeVisible()
     expect(screen.queryByText(/記録を読み込めませんでした/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '記録を再読込' })).not.toBeInTheDocument()
     // 戻り導線はタブに一本化され、本文に重複した戻りボタンは置かない。
@@ -780,7 +780,7 @@ describe('APIから問題を表示', () => {
     expect(await screen.findByRole('heading', { name: '川辺の謎' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: '問題を見る' }))
     expect(screen.getByText('詳細版の手がかり')).toBeVisible()
-    expect(screen.getByText('川辺エリア')).toBeVisible()
+    expect(screen.queryByText('川辺エリア')).not.toBeInTheDocument()
     expect(api.listQuests).toHaveBeenCalledWith({ limit: 100, cursor: undefined }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
     expect(api.getQuest).toHaveBeenCalledWith('quest-a', expect.objectContaining({ signal: expect.any(AbortSignal) }))
     expect(api.listAreas).toHaveBeenCalled()
@@ -788,7 +788,7 @@ describe('APIから問題を表示', () => {
 
     await user.click(screen.getByRole('button', { name: '森の謎を開く' }))
     expect(await screen.findByRole('heading', { name: '森の謎' })).toBeVisible()
-    expect(screen.getByText('森エリア')).toBeVisible()
+    expect(screen.queryByText('森エリア')).not.toBeInTheDocument()
   })
 
   it('地域選択をサーバーへ渡し、地域変更で問題を選び直す', async () => {
@@ -1157,7 +1157,7 @@ describe('APIから問題を表示', () => {
     expect(screen.queryByText('詳細版の手がかり')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '問題を見る' }))
     expect(screen.getByText('新しい詳細本文')).toBeVisible()
-    expect(screen.getByText('新しい川辺エリア')).toBeVisible()
+    expect(screen.queryByText('新しい川辺エリア')).not.toBeInTheDocument()
     expect(new URLSearchParams(window.location.search).get('area') ?? '').toBe('area-a')
     expect(screen.getByRole('button', { name: '更新後の川辺の謎を開く' })).toHaveAttribute('aria-pressed', 'true')
     expect(window.location.search).toContain('other=keep')
@@ -1531,7 +1531,7 @@ describe('APIから問題を表示', () => {
     const { unmount } = render(<ApiQuestApp api={api} />)
     fireEvent.click(await screen.findByRole('button', { name: '森の謎を開く' }))
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
-    expect(screen.getByText('森エリア')).toBeVisible()
+    expect(screen.queryByText('森エリア')).not.toBeInTheDocument()
     expect(api.listQuests).toHaveBeenCalledWith({ limit: 100, cursor: 'next' }, expect.anything())
     unmount()
     const cyclic = apiFixture()

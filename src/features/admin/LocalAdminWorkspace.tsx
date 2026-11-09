@@ -1,3 +1,4 @@
+import { GoogleContinue } from '../../components/GoogleContinue'
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createApiClient } from '../../shared/api'
 import type { ApiClient, LocalApiDataMode, ManagedQuest, ManagedReport, OrgMembership, Page } from '../../shared/api'
@@ -243,17 +244,15 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
 
   return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '')}>
     <a className="admin-traveler-link" href="/">旅行者画面へ</a>
-    <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header'}>
+    <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header admin-login-heading'}>
       <h1>謎づくり</h1>
       {auth.status === 'signed-in'
         ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
         : null}
     </header>
-    {auth.status !== 'signed-in' && <p>招待制</p>}
-    <p className="demo-notice">{teamPreview ? '公開問題・ヒントは閲覧自由'
-      : '' + (dataMode === 'durable-local' ? '検証環境' : '一時保存')}</p>
-    {(auth.status !== 'signed-in' || error) && <section className="form-section" aria-label="担当者ログイン">
-      {auth.status === 'signed-out' && <button className="workflow-primary" type="button" disabled={pending} onClick={() => void authenticate('login')}>Googleログイン</button>}
+    {(auth.status !== 'signed-in' || error) && <section className="admin-login" aria-label="担当者ログイン">
+      {auth.status === 'signed-out' && <button className="google-continue" type="button" disabled={pending} onClick={() => void authenticate('login')}><GoogleContinue /></button>}
+      {auth.status === 'signed-out' && <p className="login-terms">続行すると利用規約に同意したものとみなします</p>}
       {(pending || auth.status === 'checking') && <p role="status">ログイン確認中</p>}
       {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p>Googleログイン設定を確認</p>}
       {error && <p role="alert">{error}</p>}
@@ -263,6 +262,7 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
         ? '共有検証の招待なし' : 'ログインの確認失敗'}</p>
         <button type="button" onClick={identity.retry}>ログインを確認し直す</button></div>
         : <p role="status">ログイン確認中</p>)}
+    {auth.status === 'signed-in' && !teamPreview && <p>{dataMode === 'demo' ? '一時保存' : '検証環境'}</p>}
     {dataMode === 'demo' && <p><a href="/admin-demo">ログインなしで試せるフォームへ戻る</a></p>}
   </main>
 }

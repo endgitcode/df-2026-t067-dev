@@ -1,3 +1,4 @@
+import { normalizePrice } from '../../shared/api/admin'
 import { PHOTO_UPLOAD_MAX_BYTES, PHOTO_UPLOAD_MIME_TYPES, PHOTO_UPLOAD_ACCEPT, DEMO_DRAFT_PHOTO_MAX_BYTES } from '../../shared/mediaLimits'
 import { useEffect, useRef, useState } from 'react'
 import type { SetStateAction } from 'react'
@@ -94,7 +95,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const [promoComment, setPromoComment] = useState(initial?.afterClear.promoComment ?? '')
   const [explanation, setExplanation] = useState(initial?.afterClear.explanation ?? '')
   const [spotInput, setSpotInput] = useState(() => initialSpotInput(initial?.afterClear.spot))
-  const [price, setPrice] = useState(initial?.materials.price ?? '')
+  const [price, setPrice] = useState(normalizePrice(initial?.materials.price ?? ''))
   const [photoNote, setPhotoNote] = useState(initial?.materials.photoNote ?? '')
   const [inputError, setInputError] = useState('')
   const [rightsReuseNeeded, setRightsReuseNeeded] = useState(false)
@@ -325,7 +326,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     const legacyHintAssetId = record?.draft.hintAssetId ?? null
     const hintAssetIds = record?.draft.hintAssetIds ?? (legacyHintAssetId ? [legacyHintAssetId, null, null] : undefined)
     void save({
-      materials: { name, evidence, requiresBoat, requiresPaidFacility, price, photoNote, photoRights: part && photo ? '' : photoRights },
+      materials: { name, evidence, requiresBoat, requiresPaidFacility, price: normalizePrice(price), photoNote, photoRights: part && photo ? '' : photoRights },
       content: draft, afterClear: { access, hours, promoComment, explanation, ...(spot ? { spot } : {}) }, referenceAssetId,
       hintAssetId: record?.draft.hintAssetIds ? legacyHintAssetId : null,
       ...(hintAssetIds ? { hintAssetIds } : {}),
@@ -368,7 +369,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       if (focused) { enterDraft(); return }
       if (validateHours() && validateMaterials()) setShowSummary(true)
     }}>
-      {part !== 2 && <><section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1}>{part ? '非公開' : '非公開'}</h2>
+      {part !== 2 && <><section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1} className={part ? "sr-only" : undefined}>非公開</h2>
 
         <label>撮るもの<small className="required-mark">必須</small><input aria-label="撮るもの" id="workflow-target-name" ref={nameRef} aria-required={Boolean(part) || !focused} aria-invalid={Boolean((requiredTarget || draftEntryError) && targetMissing)} aria-describedby={(draftEntryError || requiredTarget) && targetMissing ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {(draftEntryError || requiredTarget) && targetMissing && <p id="name-error" className="field-error">撮るものを入力</p>}
@@ -470,8 +471,6 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {saveState.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}>保存済み</p>}
       {saveState.status === 'error' && <p role="alert">{saveState.message}</p>}
       {inputError && <p role="alert">{inputError}</p>}
-      {((requiredTarget && (targetMissing || referenceMissing || !spot || spot === 'incomplete')) ||
-        (requiredContent && (contentMissing.length > 0 || featuresMissing))) && <p role="alert" className="field-error">必須項目を入力</p>}
       <div className="admin-list-actions admin-save-bar">
         <button type="button" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => {
           saveDraft()

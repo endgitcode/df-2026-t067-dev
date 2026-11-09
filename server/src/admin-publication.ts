@@ -1,3 +1,4 @@
+import { normalizePrice } from '../../src/shared/api/admin'
 import type { ManagedQuest } from '../../src/shared/api/admin'
 import { parsePublicQuest } from '../../src/shared/api/validation'
 
@@ -15,9 +16,7 @@ export function projectManagedQuest(quest: ManagedQuest, version: number, questN
   const hintAssetIds = (draft.hintAssetIds ?? [null, null, null]).map((assetId, index) =>
     assetId ?? (index === 0 ? hintAssetId : null))
   const conditions: string[] = []
-  if (materials.requiresBoat) conditions.push('船上・海上')
-  if (materials.requiresPaidFacility) conditions.push('有料施設')
-  const price = materials.price.trim()
+  const price = normalizePrice(materials.price).trim()
   if (price && !/^未確認(?:：|$)/.test(price)) conditions.push('料金：' + price.replace(/^有料：/, ''))
   if (materials.photoNote.trim()) conditions.push('注意：' + materials.photoNote.trim())
   const visible = parsePublicQuest({ questId, version, title: content.title.trim(), clue: content.question.trim(), areaId,

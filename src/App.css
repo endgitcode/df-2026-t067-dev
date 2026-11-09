@@ -1058,3 +1058,12 @@ body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; 
   body.explore-fullbleed .map-filter-flow .filter-accordion { max-height: max(44px, calc(100dvh - var(--mobile-tabbar-h) - env(safe-area-inset-top, 0px) - 300px)); }
   body.explore-fullbleed .map-preview-shell:has(> .map-filter-flow) { padding-bottom: var(--mobile-tabbar-h); }
 }
+
+.google-continue { position: relative; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 48px; background: #fff; color: #202124; border: 1px solid var(--ui-line); border-radius: 8px; padding: 12px 40px; cursor: pointer; }
+.google-continue svg { position: absolute; left: 16px; }
+.google-continue:disabled { opacity: .6; cursor: default; }
+.google-continue:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.login-terms { font-size: 12px; margin-top: 16px; }
+.owner-records > .google-continue, .owner-records > .login-terms { max-width: 400px; margin-inline: auto; }
+
+.owner-records.is-login > h1 { text-align: center; margin-top: clamp(40px, 12vh, 120px); }

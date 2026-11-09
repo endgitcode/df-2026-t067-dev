@@ -46,7 +46,7 @@ export default function DraftEditor({ draft, setDraft, materialChanged, sampleCo
   }
 
   return <section className="form-section draft-editor" aria-labelledby="draft-heading">
-    <h2 id="draft-heading" ref={headingRef} tabIndex={-1}>{workflow ? '問題文とヒント' : '文章編集'}</h2>
+    <h2 id="draft-heading" ref={headingRef} tabIndex={-1} className={workflow ? "sr-only" : undefined}>{workflow ? '問題文とヒント' : '文章編集'}</h2>
     {!workflow && <p className="demo-notice" role="note">非公開素材</p>}
     {materialChanged && <p className="field-error" role="status">素材が変更されています。下書きを確認してください。</p>}
     {allowSample && <div className="sample-actions">

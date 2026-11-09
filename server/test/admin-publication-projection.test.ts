@@ -1,3 +1,4 @@
+import { parseManagedQuestDraft } from '../../src/shared/api/admin'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ManagedQuest } from '../../src/shared/api/admin'
@@ -40,7 +41,7 @@ test('formats public conditions on separate lines without the paid category pref
     requiresBoat: true, price: '有料：大人500円', photoNote: '足元に注意',
   } } }
   assert.equal(projectManagedQuest(quest, 4).quest.visitConditions,
-    '船上・海上\n料金：大人500円\n注意：足元に注意')
+    '料金：大人500円\n注意：足元に注意')
 })
 
 test('does not publish unconfirmed prices or their unverified details', () => {
@@ -50,4 +51,16 @@ test('does not publish unconfirmed prices or their unverified details', () => {
   }
   const quest = { ...base, draft: { ...base.draft, materials: { ...base.draft.materials, price: '無料' } } }
   assert.equal(projectManagedQuest(quest, 4).quest.visitConditions, '料金：無料')
+})
+
+test('free prices omit legacy amounts from the public projection', () => {
+  for (const price of ['無料：500', ' 無料：大人500円 ']) {
+    const quest = { ...base, draft: { ...base.draft, materials: { ...base.draft.materials, price } } }
+    assert.equal(projectManagedQuest(quest, 4).quest.visitConditions, '料金：無料')
+  }
+})
+
+test('draft validation drops a free price amount before persistence', () => {
+  const draft = parseManagedQuestDraft({ ...base.draft, materials: { ...base.draft.materials, price: '無料：500' } })
+  assert.equal(draft.materials.price, '無料')
 })

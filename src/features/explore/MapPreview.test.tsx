@@ -1354,12 +1354,11 @@ describe('Google map panel', () => {
     const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
     await screen.findByRole('button', { name: '地図を拡大' })
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
-    // スコープ表示「全国の謎」は置かず、選択中地域のチップだけを出す。
+    // 地域名は絞り込み側に集約し、地図のチップでは繰り返さない。
     expect(container.querySelector('.map-scope')).not.toBeInTheDocument()
     expect(screen.queryByText('全国の謎')).not.toBeInTheDocument()
     const chip = container.querySelector('.map-area-chip')
-    expect(chip).not.toBeNull()
-    expect(chip).toHaveTextContent('A')
+    expect(chip).toBeNull()
     rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="" onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
     expect(container.querySelector('.map-area-chip')).not.toBeInTheDocument()
     unmount()

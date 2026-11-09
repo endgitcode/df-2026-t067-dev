@@ -151,8 +151,9 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).not.toContain('.explore-sheet.is-dragging { z-index:')
   })
 
-  it('stacks the area chip after the filter flow so one and two filter rows cannot overlap it', () => {
-    expect(mapPreview).toContain('<div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline">')
+  it('keeps the filter flow without a duplicate map area chip', () => {
+    expect(mapPreview).toContain('<div className="map-filter-overlay">{topOverlay}</div>')
+    expect(mapPreview).not.toContain('className="map-area-chip"')
     expect(css).toContain('.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;')
     expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top, 0px) + 68px); left: 12px; right: 12px; }')
     expect(css).not.toContain('body.explore-fullbleed .map-topline { top:')

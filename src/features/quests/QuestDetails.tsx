@@ -370,7 +370,7 @@ interface QuestDetailsProps {
   onOpenDiscovery?: (discoveryId: string) => void
 }
 
-export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, note, sourceLabel = '', detailsLabel = 'サンプル問題の詳細', feedback, onToggle, onStart, children, hideStartAction = false, hideToggle = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl, clearedDiscoveryId, onOpenDiscovery }: QuestDetailsProps) {
+export function QuestDetails({ quest, open, disabled, buttonLabel, note, sourceLabel = '', detailsLabel = 'サンプル問題の詳細', feedback, onToggle, onStart, children, hideStartAction = false, hideToggle = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl, clearedDiscoveryId, onOpenDiscovery }: QuestDetailsProps) {
   const wideViewport = useWideViewport()
   const handoffActive = wideViewport
   const detailsId = `quest-details-${useId().replaceAll(':', '')}`
@@ -398,7 +398,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
     <article className={'quest-card' + (open ? ' is-open' : '') + (hideToggle ? ' is-in-list' : '')} aria-labelledby={`${detailsId}-title`}>
       <header className="quest-card-heading">
         {hideToggle && sourceLabel && <span className="sample-label">{sourceLabel}</span>}
-        {!hideToggle && <div className="quest-meta"><span className="area-label"><Icon name="pin" />{areaLabel}</span>{quest.questNumber && <span className="quest-number-label">No. {quest.questNumber}</span>}{sourceLabel ? <span className="sample-label">{sourceLabel}</span> : null}</div>}
+        {!hideToggle && <div className="quest-meta">{quest.questNumber && <span className="quest-number-label">No. {quest.questNumber}</span>}{sourceLabel ? <span className="sample-label">{sourceLabel}</span> : null}</div>}
         <div className="quest-title-row">
           <h3 className={hideToggle ? 'sr-only' : undefined} id={`${detailsId}-title`}>{quest.title}</h3>
           <ShootingConditionIndicators conditions={quest.shootingConditions} />
@@ -417,7 +417,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
           <section id={detailsId} className="quest-details" aria-label={detailsLabel}>
             <h4>謎</h4>
             <p className="clue-text">{quest.clue}</p>
-            {quest.visitConditions.trim() && <p className="sample-note">{quest.visitConditions}</p>}
+            {quest.visitConditions.trim() && <p className="sample-note">{quest.visitConditions.replace(/^(料金[ ：]+無料)[：:][^\n]*$/gm, '$1')}</p>}
             <QuestHints key={`hints:${hintIdentity}`} quest={quest} getHint={getHint} getHintPhoto={getHintPhoto} stale={questStale} onVersionChanged={() => { setStaleHintIdentity(hintIdentity); onHintVersionChanged() }} onReloadNeeded={(index, needed) => setReloadNeededState(current => {
               const indexes = current.identity === hintIdentity && current.open === open ? new Set(current.indexes) : new Set<number>()
               if (needed) indexes.add(index); else indexes.delete(index)

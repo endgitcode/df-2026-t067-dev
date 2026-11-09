@@ -117,7 +117,7 @@ describe('explicit local API integration', () => {
     const { auth, user } = mount(fetcher)
     await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
     expect(fetcher.mock.calls.some(([path]) => String(path).includes('/me/discoveries'))).toBe(false)
-    await user.click(screen.getByRole('button', { name: 'Googleでログイン' }))
+    await user.click(screen.getByRole('button', { name: 'Googleで続行' }))
     await user.click(await screen.findByRole('button', { name: discovery.placeName }))
     const photo = await screen.findByRole('img', { name: '本人の記録写真' })
     await waitFor(() => expect(photo).toHaveAttribute('src', 'blob:owner-fixture'))

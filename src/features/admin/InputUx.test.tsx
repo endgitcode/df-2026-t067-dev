@@ -57,13 +57,14 @@ it('chooses paid or unconfirmed without dropping existing price detail and never
   await screen.findByText('保存済み')
   expect(save.mock.calls[0][2].draft.materials.price).toBe('未確認：大人800円／子供200円')
 })
-it('collapses the detail for a free price and restores it losslessly', async () => {
-  const save = setup('', '記念館は無料期間あり')
+it('discards paid amounts when choosing free', async () => {
+  const save = setup('', '有料：500円')
   fireEvent.change(screen.getByLabelText('料金の区分'), { target: { value: '無料' } })
-  expect(screen.getByLabelText('料金の補足')).toHaveValue('記念館は無料期間あり')
+  expect(screen.queryByLabelText('料金の補足')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('料金・円')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   await screen.findByText('保存済み')
-  expect(save.mock.calls[0][2].draft.materials.price).toBe('無料：記念館は無料期間あり')
+  expect(save.mock.calls[0][2].draft.materials.price).toBe('無料')
 })
 it('toggles stock closing phrases into the hours exceptions', async () => {
   const save = setup()
@@ -132,4 +133,12 @@ it('requires rights reuse even after removing the saved reference before selecti
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect(save).not.toHaveBeenCalled()
   expect(screen.getByRole('alert')).toHaveTextContent('差し替え写真')
+})
+
+it('does not display or save a legacy amount under free', async () => {
+  const save = setup('', '無料：500')
+  expect(screen.queryByDisplayValue(/500/)).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
+  await screen.findByText('保存済み')
+  expect(save.mock.calls[0][2].draft.materials.price).toBe('無料')
 })

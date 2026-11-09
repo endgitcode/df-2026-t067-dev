@@ -813,9 +813,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     ? `${effectivePinAreaId}:${selectedQuestId}`
     : selectedQuestId ? `quest:${selectedQuestId}` : null
   const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
-  // 地図上に小さく浮かせる地域名チップの対象。ピンのフォーカスを優先し、無ければ
-  // フィット対象の地域（選択中の地域、または選択中の問題の所属地域）にする。
-  const focusArea = highlightArea ?? areas.find((area) => area.areaId === fitAreaId)
   // 一覧は選択（地域・地方の絞り込み）だけに連動し、地図の表示範囲では変わらない（D-45）。
   // 絞り込みは呼び出し側が済ませた quests をそのまま並べる。
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
@@ -980,8 +977,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '') + (belowMap ? ' is-browsing-below-map' : '')}
       style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
-      {status === 'ready' && !panelMode && (topOverlay || focusArea) && <div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}</div>}
-      {status === 'ready' && panelMode && focusArea && <div className="map-topline is-sidebar"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}
+      {status === 'ready' && !panelMode && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className={'map-state' + (sheetMode && status === 'loading' ? ' is-boot-quiet' : '')} role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'} {...mapControlGestureProps}>
         {status === 'missing' ? <><strong>地図未設定</strong></> :

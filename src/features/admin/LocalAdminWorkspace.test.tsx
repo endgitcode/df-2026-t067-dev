@@ -20,9 +20,9 @@ const json = (body: unknown) => new Response(JSON.stringify(body), { headers: {
 } })
 const page = (items: unknown[]) => json({ items, nextCursor: null })
 
-it('shows team administrators who can see published content', () => {
+it('omits invitation and public-viewing notices', () => {
   render(<LocalAdminWorkspace dataMode="team-preview" />)
-  expect(screen.getByText(/公開問題・ヒントは閲覧自由/)).toBeVisible()
+  expect(screen.queryByText(/公開問題・ヒントは閲覧自由|招待制/)).not.toBeInTheDocument()
 })
 
 it('confirms durable identity and membership before saving a draft with an automatic shooting area', async () => {
@@ -76,7 +76,7 @@ it('confirms durable identity and membership before saving a draft with an autom
     await user.type(screen.getByLabelText('緯度'), '35')
     await user.type(screen.getByLabelText('経度'), '135')
     await user.click(next)
-    expect(await screen.findByRole('heading', { name: /STEP 2/ })).toBeVisible()
+    await waitFor(() => expect(screen.getByRole('button', { name: /STEP 2/ }).closest('li')).toHaveAttribute('aria-current', 'step'))
     expect(screen.queryByLabelText('地図で編集する範囲')).not.toBeInTheDocument()
     const writes = fetcher.mock.calls.filter(([, init]) => init?.method === 'PATCH')
     expect(writes).toHaveLength(1)
@@ -150,7 +150,7 @@ it('requires verified membership, cancels an old organization read, and shows re
   const apiClient = createApiClient({ fetch: fetcher, expectedDataMode: 'demo', getIdToken: authClient.getIdToken })
   render(<LocalAdminWorkspace authClient={authClient} apiClient={apiClient} />)
   expect(fetcher).not.toHaveBeenCalled()
-  await user.click(screen.getByRole('button', { name: 'Googleログイン' }))
+  await user.click(screen.getByRole('button', { name: 'Googleで続行' }))
   await user.click(await screen.findByRole('button', { name: /編集の架空自治体/ }))
   expect(screen.queryByRole('button', { name: '報告' })).not.toBeInTheDocument()
   await waitFor(() => expect(finishEditor).toBeTypeOf('function'))
@@ -304,7 +304,7 @@ it('publishes and pauses through durable session, membership and common HTTP con
     expect(fetcher.mock.calls[0][0]).toBe('/api/v1/session')
     for (const [, init] of fetcher.mock.calls) expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer publisher-token')
     await user.click(within(screen.getByRole('status')).getByRole('button', { name: '再公開' }))
-    expect(await screen.findByRole('heading', { name: /STEP 4/ })).toBeVisible()
+    await waitFor(() => expect(screen.getByRole('button', { name: /STEP 4/ }).closest('li')).toHaveAttribute('aria-current', 'step'))
     expect(screen.getByRole('button', { name: '公開を再開' })).toBeVisible()
   } finally { vi.unstubAllGlobals() }
 })
@@ -369,11 +369,11 @@ it('completes the shared four-step flow and guards inputs and evidence across na
     await user.type(screen.getByLabelText('緯度'), '35')
     await user.type(screen.getByLabelText('経度'), '135')
     await user.click(screen.getByRole('button', { name: '保存して次へ' }))
-    expect(await screen.findByRole('heading', { name: /STEP 2/ })).toBeVisible()
-    expect(screen.getByText(/半径1km/)).toBeVisible()
+    await waitFor(() => expect(screen.getByRole('button', { name: /STEP 2/ }).closest('li')).toHaveAttribute('aria-current', 'step'))
+    expect(screen.queryByText(/半径1km/)).not.toBeInTheDocument()
     expect(screen.queryByLabelText('地図で編集する範囲')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '保存して次へ' }))
-    expect(await screen.findByRole('heading', { name: /STEP 3/ })).toBeVisible()
+    await waitFor(() => expect(screen.getByRole('button', { name: /STEP 3/ }).closest('li')).toHaveAttribute('aria-current', 'step'))
     await user.click(screen.getByRole('button', { name: '保存して次へ' }))
     expect(screen.getByLabelText('問題文')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByLabelText('ヒント 3')).toHaveAttribute('aria-invalid', 'true')
@@ -389,7 +389,7 @@ it('completes the shared four-step flow and guards inputs and evidence across na
     await user.click(screen.getByRole('button', { name: '保存して次へ' }))
     await user.click(await screen.findByRole('button', { name: '試験・公開へ' }))
     await user.click(await screen.findByRole('button', { name: '正解の写真の入力へ' }))
-    expect(await screen.findByRole('heading', { name: /STEP 1/ })).toBeVisible()
+    await waitFor(() => expect(screen.getByRole('button', { name: /STEP 1/ }).closest('li')).toHaveAttribute('aria-current', 'step'))
     referenceAvailable = true
     await user.click(screen.getByRole('button', { name: /^STEP 4\s+写真試験と公開/ }))
     const trial = async (label: string, photo: string) => {
@@ -463,4 +463,21 @@ it('blocks creation and explains why publication is unavailable for an unclassif
     expect(screen.queryByRole('button', { name: '下書きを新規作成' })).not.toBeInTheDocument()
     expect(await screen.findByRole('button', { name: '編集' })).toBeVisible()
   } finally { vi.unstubAllGlobals() }
+})
+
+it('shows only a heading, Google continuation and terms in the login surface', async () => {
+  const signInWithGoogle = vi.fn()
+  const snapshot: AuthSnapshot = { status: 'signed-out', user: null }
+  render(<LocalAdminWorkspace dataMode="team-preview" authClient={{
+    getSnapshot: () => snapshot, subscribe: () => () => {}, signInWithGoogle,
+    signOut: async () => {}, getIdToken: async () => null,
+  }} />)
+  expect(screen.getByRole('heading', { name: '謎づくり' })).toBeVisible()
+  const button = screen.getByRole('button', { name: 'Googleで続行' })
+  expect(button).toHaveClass('google-continue')
+  expect(button.querySelectorAll('svg path')).toHaveLength(4)
+  expect(screen.queryByText(/招待制|閲覧自由/)).not.toBeInTheDocument()
+  expect(screen.getByText('続行すると利用規約に同意したものとみなします')).toBeVisible()
+  await userEvent.setup().click(button)
+  expect(signInWithGoogle).toHaveBeenCalledTimes(1)
 })

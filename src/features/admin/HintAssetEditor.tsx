@@ -55,15 +55,12 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
 
   return <section className="form-section" aria-labelledby="hint-asset-title">
     <h2 id="hint-asset-title">ヒント画像</h2>
-    <p>{current.draft.content.title || '無題'}</p>
-    <p>{onContinue ? '公開画像・各1枚' : '公開画像・各1枚'}</p>
     <button type="button" disabled={state.status === 'saving'} onClick={onBack}>{backLabel}</button>
     {current.draft.content.hints.map((hint, index) => {
       const number = index + 1
       const assetId = assets[index] ?? (number === 1 ? current.draft.hintAssetId : null)
       return <section className="form-section" key={number} aria-label={`ヒント ${number}`}>
         <h3>ヒント {number}</h3><p>{hint.trim() || '未入力'}</p>
-        <p>{assetId ? '画像あり' : '画像なし'}</p>
         {assetId && <button type="button" disabled={blocked} onClick={() => remove(number)}>ヒント {number}の画像を外す</button>}
       </section>
     })}

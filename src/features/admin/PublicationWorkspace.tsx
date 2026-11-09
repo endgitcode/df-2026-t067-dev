@@ -198,8 +198,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   }
 
   return <section className="form-section" aria-labelledby="publication-workspace-title">
-    <h2 id="publication-workspace-title">試験・公開</h2>
-    <p>{quest.draft.content.title || '無題'}</p>
+    <h2 id="publication-workspace-title" className={onFix ? "sr-only" : undefined}>試験・公開</h2>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {areaUnclassified && <p role="alert">地域未設定・公開不可</p>}
     {failure && <p role="alert">{failure.message}</p>}
@@ -211,7 +210,6 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
     </fieldset>}
     {missing.length > 0 && <div><p>不足項目</p><ul>{missing.map(item => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}の入力へ</button> : reviewLabels[item]}</li>)}</ul></div>}
     {approvedAssets ? <>
-      {realPhotoTest && <p>写真試験・2枚</p>}
       {!realPhotoTest && <p>合成写真限定<br /><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真</a> ・ <a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真</a></p>}
       <PhotoTrial expected="MATCH" disabled={trialDisabled} feedback={trialFeedback.MATCH} onTest={sendTrial} onSelection={resetTrial} />
       <PhotoTrial expected="WRONG_TARGET" disabled={trialDisabled} feedback={trialFeedback.WRONG_TARGET} onTest={sendTrial} onSelection={resetTrial} />

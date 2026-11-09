@@ -112,10 +112,10 @@ function MobileChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, on
   return <>
     {savedReceipt && !cameraOpen && !resume && <div><p role="status">判定中</p><button type="button" className="primary-button" onClick={() => setResume(true)}>判定を確認</button></div>}
     {savedReceipt && !cameraOpen && resume && <DemoAnswerSubmission context={{ api, challengeId: '', questId: quest.questId, questTitle: quest.title, placeName, storageKey, dataMode, onReloadQuest, onOpenDiscovery, onReturnToMap }} initialAttemptId={savedReceipt} onSubmissionResolved={() => setReceiptResolved(true)} disabled={false} onSubmissionStarted={() => {}} />}
-    <button type="button" className={savedReceipt && !receiptResolved ? "secondary-button" : "primary-button"} onClick={start}
+    {(!savedReceipt || receiptResolved) && <button type="button" className={savedReceipt && !receiptResolved ? "secondary-button" : "primary-button"} onClick={start}
       disabled={Boolean(savedReceipt && !receiptResolved) || state.status === 'starting' || cameraOpen || seconds > 0 || (state.status === 'error' && state.reload)}>
       {state.status === 'starting' ? '開始中' : cameraOpen ? '撮影中' : state.status === 'ready' ? '撮影を再開' : '挑戦する'}
-    </button>
+    </button>}
     {state.status === 'starting' && <button type="button" className="retry-button" onClick={() => { abort(); setState({ status: 'idle' }) }}>キャンセル</button>}
     {state.status === 'error' && <div className="auth-feedback">
       <p role="alert">{state.message}{seconds > 0 && ` ${seconds}秒後に再試行`}</p>

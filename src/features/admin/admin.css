@@ -118,7 +118,7 @@
 .traveler-preview > button { min-height: 40px; padding: 8px 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: white; color: var(--ui-ink); font: inherit; cursor: pointer; }
 
 /* The same theme, including A03, A04, A05 and their inline confirmation states. */
-.admin-header { align-items: start; padding-bottom: 24px; border-bottom: var(--ui-border-width) solid var(--ui-line); }
+.admin-header { align-items: start; padding-bottom: 24px; }
 .admin-demo h1, .admin-demo h2, .admin-demo h3 { font-weight: var(--ui-weight-display); letter-spacing: -.025em; }
 .admin-demo h1 { margin-top: 8px; font-size: clamp(1.6rem, 3.5vw, 2.3rem); line-height: 1.45; }
 .admin-demo .eyebrow, .admin-demo .helper, .admin-demo .private-setting small { color: var(--ui-muted); }
@@ -345,3 +345,8 @@
 .admin-demo .admin-traveler-link { height: 44px; line-height: 24px; white-space: nowrap; }
 .admin-read-list > li > .danger-button,
 .admin-read-list > li > button + button { margin-inline-start: 12px; }
+
+.admin-login-heading, .admin-login { width: min(100%, 400px); margin-inline: auto; }
+.admin-login-heading { margin-top: clamp(40px, 12vh, 120px); }
+
+.admin-demo .google-continue { padding: 12px 40px; background: #fff; border-width: 1px; border-radius: 8px; color: #202124; }

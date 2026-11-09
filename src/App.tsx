@@ -1,3 +1,4 @@
+import { GoogleContinue } from './components/GoogleContinue'
 import { questHandoffUrl } from './features/quests/questHandoffUrl'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
@@ -503,12 +504,12 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         {/* 記録画面と探索画面はどちらもアンマウントせず、hidden で切り替える。地図や
             パネルを再マウントするとカメラ・フィット記録・選択状態が初期化され、タブ
             往復の前後で表示が食い違うため（状態の保持は D-53）。 */}
-        {recordsVisited && <section className="owner-records view-enter" aria-labelledby="records-title" hidden={!showRecords}>
+        {recordsVisited && <section className={"owner-records view-enter" + (auth.status === 'signed-out' ? ' is-login' : '')} aria-labelledby="records-title" hidden={!showRecords}>
           <h1 id="records-title">自分の記録</h1>
           {auth.status === 'signed-out' && <>
-            <p>ログイン</p>
-            <button type="button" className="primary-button" disabled={visiblePending !== null}
-              onClick={() => void login()}>Googleでログイン</button>
+            <button type="button" className="google-continue" disabled={visiblePending !== null}
+              onClick={() => void login()}><GoogleContinue /></button>
+            <p className="login-terms">続行すると利用規約に同意したものとみなします</p>
           </>}
           {auth.status === 'checking' && <p role="status">ログイン確認中</p>}
           {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">ログイン</p>}

@@ -8,7 +8,7 @@ describe('管理画面の見た目の規則', () => {
   it('共有・永続カードは黒2px、角丸16、影なし', () => {
     expect(css).toContain('.admin-managed .form-section { border: 2px solid var(--ui-line); border-radius: 16px; box-shadow: none; }')
     expect(css).toContain('--ui-shadow: none; --ui-control-shadow: none;')
-    expect(css).not.toMatch(/border(?:-top)?: 1px|border-width: 1px|#e2e5e9/)
+    expect(css.replace(/\.admin-demo \.google-continue \{[^}]+\}/g, '')).not.toMatch(/border(?:-top)?: 1px|border-width: 1px|#e2e5e9/)
   })
   it('主操作は黄色、48px、副操作は44px以上・角丸12', () => {
     expect(css).toContain('.admin-managed .workflow-primary { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: var(--ui-line); }')

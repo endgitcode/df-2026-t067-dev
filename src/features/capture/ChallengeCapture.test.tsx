@@ -294,6 +294,7 @@ it('再読込後も本人・問題に対応する受付から再開し、POSTを
   const api = { ...createApiClient(), getAttempt, submitAnswer }
   render(<ChallengeCapture api={api} quest={quest} ownerKey="owner" dataMode="durable-local" onReloadQuest={vi.fn()} />)
   expect(screen.getByText('判定中')).toBeVisible()
+  expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
   await userEvent.setup().click(screen.getByRole('button', { name: '判定を確認' }))
   await waitFor(() => expect(getAttempt).toHaveBeenCalledWith('saved-attempt', { signal: expect.any(AbortSignal) }), { timeout: 3000 })
   expect(await screen.findByText(`${quest.title}：範囲内で撮り直す`)).toBeVisible()

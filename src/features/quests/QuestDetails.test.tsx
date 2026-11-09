@@ -32,7 +32,7 @@ it('reads a quest without auth and forwards the currently displayed id and versi
   expect(screen.getByRole('heading', { name: demoQuest.title })).toBeVisible()
   expect(screen.getByText(demoQuest.clue)).toBeVisible()
   expect(document.querySelector('.sample-note')).not.toBeInTheDocument()
-  expect(screen.getByText(props.areaLabel)).toBeVisible()
+  expect(screen.queryByText(props.areaLabel)).not.toBeInTheDocument()
   expect(onStart).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: '挑戦する' }))
   expect(onStart).toHaveBeenLastCalledWith({ questId: demoQuest.questId, expectedVersion: demoQuest.version })
@@ -568,4 +568,10 @@ it('一覧内の詳細は題名を読み上げ用に残し、番号と地域を�
   expect(screen.queryByText('架空の探索地域')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /閉じる|×/ })).not.toBeInTheDocument()
   expect(container.querySelector('.quest-meta')).toBeNull()
+})
+
+it('hides amounts in previously published free price conditions', () => {
+  render(<QuestDetails quest={{ ...demoQuest, visitConditions: '料金 無料：500\n注意：足元に注意' }} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" onToggle={vi.fn()} onStart={vi.fn()} />)
+  expect(screen.getByText(/料金 無料/)).not.toHaveTextContent('500')
+  expect(screen.getByText(/料金 無料/)).toHaveTextContent('注意：足元に注意')
 })

@@ -22,7 +22,7 @@ it('guards only dirty edits, restores URL step, and offers three focused navigat
   history.replaceState(null, '', '/?quest=q&step=target')
   const client = api(); const onBack = vi.fn()
   render(<AdminQuestWorkflow api={client} initial={initial} member={member} teamPreview={false} photoTestSource="mock" areaUnclassified={false} onBack={onBack} onPublished={vi.fn()} />)
-  expect(screen.getByRole('heading', { name: /STEP 1/ })).toBeVisible()
+  expect(screen.getByRole('button', { name: /STEP 1/ })).toBeVisible()
   expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true)
   fireEvent.change(screen.getByLabelText('撮るもの'), { target: { value: '変更' } })
   expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(false)
@@ -32,7 +32,7 @@ it('guards only dirty edits, restores URL step, and offers three focused navigat
   expect(screen.queryByRole('alertdialog')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'STEP 2 条件と案内' }))
   fireEvent.click(screen.getByRole('button', { name: '保存して移動' }))
-  await screen.findByRole('heading', { name: /STEP 2/ })
+  await waitFor(() => expect(screen.getByRole('button', { name: /STEP 2/ }).closest('li')).toHaveAttribute('aria-current', 'step'))
   expect(client.updateManagedQuest).toHaveBeenCalledTimes(1)
   expect(new URLSearchParams(location.search).get('step')).toBe('conditions')
   expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true)
@@ -87,7 +87,7 @@ it.each(['q&step=content', 'missing&step=target', 'q&step=unknown'])('restores o
     getSnapshot: () => snapshot, subscribe: () => () => {}, getIdToken: async () => 'test', signInWithGoogle: async () => {}, signOut: async () => {},
   }} />)
   if (value === 'q&step=content') {
-    expect(await screen.findByRole('heading', { name: /STEP 3/ })).toBeVisible()
+    expect(await screen.findByRole('button', { name: /STEP 3/ })).toBeVisible()
     expect(screen.getByLabelText('タイトル')).toHaveValue('問題')
     await waitFor(() => expect(screen.getByText('所属')).not.toBeVisible())
   } else {
@@ -104,7 +104,7 @@ it.each([
   const record = { ...initial, status }
   const client = { ...api(), getManagedQuestReadiness: vi.fn().mockResolvedValue({ quest: record, missing: [] }) }
   render(<AdminQuestWorkflow api={client} initial={record} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
-  expect(screen.getByText(label).closest('header')).toContainElement(screen.getByRole('heading', { name: /STEP 4/ }))
+  expect(screen.getByText(label).closest('header')).toHaveAttribute('aria-label', 'STEP 4 写真試験と公開')
   expect(screen.getByRole('button', { name: action })).toBeVisible()
   expect(screen.getAllByRole('button', { name: '謎一覧へ' })).toHaveLength(1)
   await waitFor(() => expect(client.getManagedQuestReadiness).toHaveBeenCalled())

@@ -140,7 +140,7 @@ describe('Google sign-in from the selected quest', () => {
     render(<App authClient={client} onStartChallenge={onStartChallenge} quest={quest} areaLabel="テスト地域" />)
     const { user } = await openQuest()
     expect(screen.getByRole('heading', { name: '更新された問題' })).toBeVisible()
-    expect(within(screen.getByRole('article', { name: '更新された問題' })).getByText('テスト地域')).toBeVisible()
+    expect(within(screen.getByRole('article', { name: '更新された問題' })).queryByText('テスト地域')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Googleでログイン' }))
     resolvePopup()
     await waitFor(() => expect(client.signInWithGoogle).toHaveResolved())

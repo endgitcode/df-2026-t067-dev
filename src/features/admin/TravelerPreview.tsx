@@ -1,3 +1,4 @@
+import { normalizePrice } from '../../shared/api/admin'
 import { useState, type RefObject } from 'react'
 import ClearExplanationPreview, { type ClearExplanationContent } from './ClearExplanationPreview'
 import type { ManagedQuestDraft, ShootingConditions } from '../../shared/api/admin'
@@ -33,7 +34,7 @@ function ChallengePreview({ content, areaLabel }: { content: ChallengePreviewCon
     <p>{shown(content.question)}</p>
     <section aria-labelledby="preview-area-heading"><h4 id="preview-area-heading">探索エリア</h4><p>{areaLabel ?? '青葉みらい市の行政区域'}</p></section>
     {(content.price.trim() || content.photoNote.trim()) && <section aria-labelledby="preview-conditions-heading"><h4 id="preview-conditions-heading">挑戦前の条件</h4>
-      <dl><dt>料金</dt><dd>{shown(content.price)}</dd><dt>撮影の注意</dt><dd>{shown(content.photoNote)}</dd></dl>
+      <dl><dt>料金</dt><dd>{shown(normalizePrice(content.price))}</dd><dt>撮影の注意</dt><dd>{shown(content.photoNote)}</dd></dl>
     </section>}
     <section aria-labelledby="preview-hints-heading"><h4 id="preview-hints-heading">ヒント</h4>
       {content.hints.map((hint, index) => (
