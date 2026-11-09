@@ -153,6 +153,17 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const locationTimer = useRef<number | undefined>(undefined)
   const [attempt, setAttempt] = useState(0)
   const [fitRequest, setFitRequest] = useState(0)
+  // カメラを寄せる対象の地域。地域が選択されていればその地域、そうでなければ選択中の
+  // 問題の所属地域（D-65）。問題を選んでも地域の選択状態は変わらないが、地図の寄せ
+  // （D-44）と選択直前カメラの復元は従来どおり問題の所属地域に対しても発生させる。
+  // 地域の塗り（D-29）・ピンの選択表示・ピンの再タップ判定は地域選択だけに連動する。
+  const selectedQuestAreaId = selectedQuestId ? quests.find((quest) => quest.questId === selectedQuestId)?.areaId ?? '' : ''
+  const fitAreaId = selectedAreaId || selectedQuestAreaId
+  // フィット対象の同一性。「問題経由で寄せた地域」と「地域として選んだ地域」は同じ
+  // 地域でも対象としては区別する：問題選択の後に同じ地域のピンを押したら、選択の
+  // 成立に合わせて寄せ直しが起きるようにするため（D-44 の「押したのに移行しない」
+  // への対応の考え方を、問題→地域の移行にも保つ）。
+  const fitKey = fitAreaId ? `${selectedAreaId ? 'area' : 'quest'}:${fitAreaId}` : ''
 
   useEffect(() => {
     const instance = map.current
@@ -188,7 +199,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 再フィットすると地図の中心が動いてしまうため（D-38）、フィット側の effect の
   // 依存には開閉状態を入れず、ref 経由で現在の値だけを読む。
   const sidebarCollapsedRef = useRef(false)
-  const lastViewportSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
+  // フィット済みの対象の記録。対象は「地域の選択」だけではなく「問題の選択」も含む
+  // ため、地域IDではなく対象キー（下記の fitKey）で持つ。
+  const lastViewportSelection = useRef<{ map: MapInstance; key: string } | null>(null)
   // 地域を選ぶ直前のカメラ（中心・ズーム）。選択を解除したら、初期表示ではなくこの状態へ戻す。
   const preSelectionCamera = useRef<{ map: MapInstance; center: { lat: number; lng: number }; zoom: number } | null>(null)
   const initialFitDone = useRef<MapInstance | null>(null)
@@ -394,8 +407,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     const created: MarkerInstance[] = []
     const listeners: Array<{ remove(): void }> = []
     try {
-      // 現在のズームで画面上重なるピンはクラスタにまとめる（D-52）。選択中の地域のピンは
-      // クラスタに隠さず常に対象外とする。まとめ直しはズームが変わるたびにこの効果が担う。
+      // 現在のズームで画面上重なるピンはクラスタにまとめる（D-52）。フィット対象の
+      // 地域（選択中の地域／選択中の問題の所属地域）のピンはクラスタに隠さず常に
+      // 対象外とする。まとめ直しはズームが変わるたびにこの効果が担う。
       const pinPoints = []
       const areaById = new Map<string, PublicArea>()
       for (const area of areas) {
@@ -405,7 +419,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         pinPoints.push({ areaId: area.areaId, lat: position.lat, lng: position.lng, questCount: area.publishedCount })
         areaById.set(area.areaId, area)
       }
-      for (const arrangement of arrangePins(pinPoints, zoom, selectedAreaId)) {
+      for (const arrangement of arrangePins(pinPoints, zoom, fitAreaId)) {
         if (arrangement.kind === 'cluster') {
           const marker = new google.Marker({
             position: { lat: arrangement.lat, lng: arrangement.lng }, map: instance,
@@ -464,7 +478,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         created.push(marker)
       }
       // 初期表示は、ピンが立つ地域全体が「実際に見えている領域」に収まるよう一度だけフィットする。
-      if (initialFitDone.current !== instance && !selectedAreaId && google.LatLngBounds) {
+      if (initialFitDone.current !== instance && !fitAreaId && google.LatLngBounds) {
         const bounds = new google.LatLngBounds()
         let fitted = false
         for (const area of areas) {
@@ -486,7 +500,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom])
+  }, [areas, selectedAreaId, fitAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom])
 
   useEffect(() => {
     const instance = map.current
@@ -494,8 +508,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     if (!API_KEY || !instance || !google || !showPublicAreas || status !== 'ready') return
     if (lastAreaSelection.current?.map === instance && lastAreaSelection.current.areaId !== selectedAreaId) cancelLocationRequest()
     lastAreaSelection.current = { map: instance, areaId: selectedAreaId }
-    if (lastViewportSelection.current?.map === instance && lastViewportSelection.current.areaId === selectedAreaId) return
-    if (!selectedAreaId) {
+    if (lastViewportSelection.current?.map === instance && lastViewportSelection.current.key === fitKey) return
+    if (!fitAreaId) {
       // 選択解除では初期表示へ戻さず、選択直前のカメラを復元する。選択後に手動で動かしていても、
       // 解除時は選択前の状態へ戻す（「選ぶ前の地図に戻る」を単純な仕様として採る）。
       const saved = preSelectionCamera.current
@@ -507,31 +521,32 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM)
       }
       fittedCamera.current = null
-      lastViewportSelection.current = { map: instance, areaId: '' }
+      lastViewportSelection.current = { map: instance, key: '' }
       return
     }
-    // 未選択から選択へ移る時だけ、フィット直前のカメラを覚える。地域A→Bの切替では上書きせず、
+    // フィット対象が無い状態から移る時だけ、フィット直前のカメラを覚える。対象の
+    // 切替（地域A→B、問題→別の問題、問題→その所属地域の選択）では上書きせず、
     // 解除時に「最初に選ぶ前」の状態へ戻れるようにする。
     const previousSelection = lastViewportSelection.current
-    if (!previousSelection || previousSelection.map !== instance || previousSelection.areaId === '') {
+    if (!previousSelection || previousSelection.map !== instance || previousSelection.key === '') {
       try {
         const center = instance.getCenter?.()
         if (center) preSelectionCamera.current = { map: instance, center: { lat: center.lat(), lng: center.lng() }, zoom: instance.getZoom() ?? INITIAL_ZOOM }
       } catch { /* カメラが読めない時は復元を諦め、解除時は従来どおり初期表示へ戻す。 */ }
     }
     try {
-      const area = areas.find((candidate) => candidate.areaId === selectedAreaId)
+      const area = areas.find((candidate) => candidate.areaId === fitAreaId)
       if (!area) return
       if (!fitToArea(instance, area)) return
       initialFitDone.current = instance
-      lastViewportSelection.current = { map: instance, areaId: selectedAreaId }
+      lastViewportSelection.current = { map: instance, key: fitKey }
     } catch { failArea() }
-  }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest, fitToArea])
+  }, [selectedAreaId, fitAreaId, fitKey, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest, fitToArea])
 
   // 地方・都道府県の絞り込みで地域の集合が変わったら、その範囲へ地図を寄せる（D-60）。
   // 絞っても地図が日本全体のままだと、絞った結果が空っぽに見えた。
   // 解除して全件に戻れば、初期表示と同じ全ピンの範囲へ戻る。読み込み中の一時的な
-  // 空は範囲変更として扱わない。地域選択中は選択フィットが優先する。
+  // 空は範囲変更として扱わない。地域・問題のいずれかが選択中は選択フィットが優先する。
   // 範囲は地域の境界形状から作り、寄せ過ぎは上限で抑える（D-60 追記）。
   const lastAreasKey = useRef<{ map: MapInstance; key: string } | null>(null)
   useEffect(() => {
@@ -541,7 +556,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     const previous = lastAreasKey.current
     lastAreasKey.current = { map: instance, key }
     if (!previous || previous.map !== instance || previous.key === key) return
-    if (selectedAreaId) return
+    if (fitAreaId) return
     const google = window.google?.maps
     if (!google?.LatLngBounds) return
     const bounds = new google.LatLngBounds()
@@ -564,7 +579,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     if (showPublicAreas) instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
     else instance.fitBounds(bounds)
     clampFitZoomOnIdle(instance)
-  }, [areas, selectedAreaId, status, showPublicAreas, wideViewport])
+  }, [areas, fitAreaId, status, showPublicAreas, wideViewport])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
@@ -610,8 +625,9 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // ピン以外（地域セレクト等）で別の地域が選ばれたら、ピンのハイライトは外れたものとして扱う。
   const effectivePinAreaId = pinAreaId && (!selectedAreaId || selectedAreaId === pinAreaId) ? pinAreaId : null
   const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
-  // 地図上に小さく浮かせる地域名チップの対象。ピンのフォーカスを優先し、無ければ選択中の地域。
-  const focusArea = highlightArea ?? areas.find((area) => area.areaId === selectedAreaId)
+  // 地図上に小さく浮かせる地域名チップの対象。ピンのフォーカスを優先し、無ければ
+  // フィット対象の地域（選択中の地域、または選択中の問題の所属地域）にする。
+  const focusArea = highlightArea ?? areas.find((area) => area.areaId === fitAreaId)
   // 一覧は選択（地域・地方の絞り込み）だけに連動し、地図の表示範囲では変わらない（D-45）。
   // 絞り込みは呼び出し側が済ませた quests をそのまま並べる。
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
@@ -729,12 +745,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       settledLayout.current = signature
       try { window.google?.maps?.event.trigger?.(instance, 'resize') } catch { /* サイズ再認識は補助であり、失敗しても地図は使える。 */ }
     }
-    const alreadyFitted = lastViewportSelection.current?.map === instance && lastViewportSelection.current.areaId === selectedAreaId
-    if (selectedAreaId && !alreadyFitted) {
+    const alreadyFitted = lastViewportSelection.current?.map === instance && lastViewportSelection.current.key === fitKey
+    if (fitAreaId && !alreadyFitted) {
       lastViewportSelection.current = null
       setFitRequest((value) => value + 1)
     }
-  }, [sheetMode, panelMode, selectedAreaId])
+  }, [sheetMode, panelMode, fitKey, fitAreaId])
 
   // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
   // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。
