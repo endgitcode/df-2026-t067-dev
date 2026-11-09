@@ -757,10 +757,14 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }
   body.explore-fullbleed .brand-mark .icon { width: 19px; height: 19px; }
   body.explore-fullbleed .brand-copy { font-size: 13px; }
-  /* 問題詳細を開いてシートをスクロールすると、浮きのロゴ／アカウントが
-     問題タイトルに重なる（実地目視）。詳細表示中は両者を隠し、閉じたら戻す。 */
+  /* 問題詳細を開いてスクロールすると、浮きのロゴ／アカウントが
+     問題タイトルに重なる（実地目視）。詳細表示中は両者を隠し、閉じたら戻す。
+     一覧内詳細（wrap.is-open）と、レール側の quest-card.is-open（狭い幅の
+     公開APIデモ等で panelArrangement がオフのとき）の両方を対象にする。 */
   body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,
-  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area {
+  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area,
+  body.explore-fullbleed:has(.quest-card.is-open) .brand,
+  body.explore-fullbleed:has(.quest-card.is-open) .account-area {
     visibility: hidden;
     pointer-events: none;
   }

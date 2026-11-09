@@ -223,17 +223,20 @@ describe('mobile fullbleed finish', () => {
 
   it('hides the floating brand and account while quest detail is open on mobile', () => {
     expect(css).toContain('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,')
-    expect(css).toContain('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area {')
+    expect(css).toContain('body.explore-fullbleed:has(.quest-card.is-open) .brand,')
+    expect(css).toContain('body.explore-fullbleed:has(.quest-card.is-open) .account-area {')
     expect(css).toContain(
       'body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,\n'
-      + '  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area {\n'
+      + '  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area,\n'
+      + '  body.explore-fullbleed:has(.quest-card.is-open) .brand,\n'
+      + '  body.explore-fullbleed:has(.quest-card.is-open) .account-area {\n'
       + '    visibility: hidden;\n'
       + '    pointer-events: none;\n'
       + '  }',
     )
     // スマホ幅メディアクエリ内に置く（max-width: 980px）。PC サイドバー規則の外。
     const mobileAt = css.indexOf('@media (max-width: 980px) {\n  /* ページ側の下部余白は持たない（D-73）')
-    const ruleAt = css.indexOf('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,')
+    const ruleAt = css.indexOf('body.explore-fullbleed:has(.quest-card.is-open) .brand,')
     expect(mobileAt).toBeGreaterThan(-1)
     expect(ruleAt).toBeGreaterThan(mobileAt)
   })
