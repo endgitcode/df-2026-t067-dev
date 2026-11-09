@@ -2,15 +2,15 @@
 
 .admin-demo { --ui-radius: 16px; --ui-line: #111; --ui-control-line: #111; --ui-surface: #fff; --ui-soft: #fff; --ui-tint: #fff; --ui-border-width: 2px; --ui-shadow: none; --ui-control-shadow: none; box-sizing: border-box; max-width: 1040px; margin: 0 auto; padding: 24px 24px 64px; color: var(--ui-ink); font-size: 16px; font-family: inherit; line-height: 1.75; }
 .admin-demo *, .admin-demo *::before, .admin-demo *::after { box-sizing: border-box; }
-.admin-demo h1 { margin: 4px 0 0; font-size: clamp(1.5rem, 5vw, 2rem); }
-.admin-demo h2 { margin: 0 0 16px; font-size: 1.2rem; }
+.admin-demo h1 { margin: 4px 0 0; font-size: 24px; }
+.admin-demo h2 { margin: 0 0 16px; font-size: 20px; }
 .admin-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.eyebrow, .helper, .private-setting small { color: var(--ui-muted); font-size: .88rem; }
-.demo-badge { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 4px 12px; color: var(--ui-muted); background: var(--ui-muted); font-size: .85rem; white-space: nowrap; }
+.eyebrow, .helper, .private-setting small { color: var(--ui-muted); font-size: 14px; }
+.demo-badge { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 4px 12px; color: var(--ui-muted); background: var(--ui-muted); font-size: 14px; white-space: nowrap; }
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 24px 0 16px; }
 .steps > div, .steps > button { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); color: inherit; font: inherit; text-align: left; }
 .steps > button { cursor: pointer; }
-.steps > div b, .steps > button b { color: var(--ui-ink); font-size: .82rem; }
+.steps > div b, .steps > button b { color: var(--ui-ink); font-size: 12px; }
 .steps .step-disabled { border-color: var(--ui-line); background: var(--ui-muted); color: var(--ui-muted); }
 .steps .step-disabled b { color: var(--ui-muted); }
 .demo-notice { border-left: 4px solid var(--ui-muted); padding: 12px 16px; background: var(--ui-muted); }
@@ -35,7 +35,7 @@
 .photo-preview { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 12px 0; padding: 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); }
 .photo-preview img { width: min(180px, 100%); max-height: 160px; object-fit: contain; }
 .photo-preview > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.photo-preview button, .submit-button { min-height: 40px; padding: 8px 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: white; color: var(--ui-ink); font: inherit; cursor: pointer; }
+.photo-preview button, .submit-button { min-height: 44px; padding: 8px 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: white; color: var(--ui-ink); font: inherit; cursor: pointer; }
 .submit-button { color: white; background: var(--ui-ink); }
 .field-error { color: var(--ui-error); font-weight: var(--ui-weight-strong); }
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -106,7 +106,7 @@
 .summary dt { font-weight: var(--ui-weight-strong); }
 .summary dd { margin: 0; overflow-wrap: anywhere; }
 .traveler-card { max-width: 640px; margin: 16px auto; padding: 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-shadow); }
-.traveler-card h3 { margin-top: 0; font-size: 1.35rem; }
+.traveler-card h3 { margin-top: 0; font-size: 20px; }
 .traveler-card h4 { margin-bottom: 8px; }
 .traveler-card h3, .traveler-card p, .traveler-card dd { white-space: pre-wrap; overflow-wrap: anywhere; }
 .traveler-card section { margin-top: 24px; }
@@ -114,13 +114,13 @@
 .traveler-card dt { font-weight: var(--ui-weight-strong); }
 .traveler-card dd { margin: 0; }
 .traveler-card .preview-hint { margin: 8px 0; padding: 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); }
-.preview-hint > button { min-height: 40px; cursor: pointer; font: inherit; font-weight: var(--ui-weight-strong); color: inherit; background: white; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 8px 12px; }
-.traveler-preview > button { min-height: 40px; padding: 8px 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: white; color: var(--ui-ink); font: inherit; cursor: pointer; }
+.preview-hint > button { min-height: 44px; cursor: pointer; font: inherit; font-weight: var(--ui-weight-strong); color: inherit; background: white; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); padding: 8px 12px; }
+.traveler-preview > button { min-height: 44px; padding: 8px 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: white; color: var(--ui-ink); font: inherit; cursor: pointer; }
 
 /* The same theme, including A03, A04, A05 and their inline confirmation states. */
 .admin-header { align-items: start; padding-bottom: 24px; }
 .admin-demo h1, .admin-demo h2, .admin-demo h3 { font-weight: var(--ui-weight-display); letter-spacing: -.025em; }
-.admin-demo h1 { margin-top: 8px; font-size: clamp(1.6rem, 3.5vw, 2.3rem); line-height: 1.45; }
+.admin-demo h1 { margin-top: 8px; font-size: 24px; line-height: 1.45; }
 .admin-demo .eyebrow, .admin-demo .helper, .admin-demo .private-setting small { color: var(--ui-muted); }
 .demo-badge { background: var(--ui-surface); color: var(--ui-ink); border: var(--ui-border-width) solid var(--ui-line); font-weight: var(--ui-weight-strong); }
 .steps { gap: 12px; }
@@ -132,9 +132,9 @@
 .form-section, .traveler-card { background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); box-shadow: var(--ui-shadow); padding: 24px; }
 .admin-demo label { font-weight: var(--ui-weight-strong); }
 .admin-demo input:not([type=checkbox]):not([type=file]):not([type=radio]), .admin-demo textarea, .admin-demo select { min-height: 44px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); color: var(--ui-ink); }
-.admin-demo input[type=file] { font-size: 14px; }
+.admin-demo input[type=file] { font-size: 16px; }
 .admin-demo input.reference-photo-input { font-size: 0; }
-.admin-demo input.reference-photo-input::file-selector-button { font-size: 14px; }
+.admin-demo input.reference-photo-input::file-selector-button { font-size: 16px; }
 .admin-demo input::file-selector-button { margin-right: 12px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); color: var(--ui-ink); font: inherit; font-weight: var(--ui-weight-control); cursor: pointer; }
 .admin-demo input[type=checkbox] { accent-color: var(--ui-ink); }
 .admin-demo :focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 5px; }
@@ -187,9 +187,9 @@
 /* Kindness pass: stock-phrase chips, radius slider, and grouped actions. */
 .phrase-chips { margin: 12px 0 4px; }
 .phrase-chips [role="group"] { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.phrase-chip { min-height: 36px; padding: 8px 12px; border-radius: var(--ui-radius); font-size: .9rem; cursor: pointer; }
+.phrase-chip { min-height: 44px; padding: 8px 12px; border-radius: var(--ui-radius); font-size: 14px; cursor: pointer; }
 .phrase-chip[aria-pressed="true"] { background: white; color: var(--ui-ink); text-decoration: underline; }
-.radius-control { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: end; }
+.radius-control { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: end; }
 .radius-control label { flex: 1 1 180px; }
 .admin-demo input[type="range"] { padding: 0; }
 .access-builder { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: end; margin-top: 4px; }
@@ -202,7 +202,7 @@
 .save-continue > summary { cursor: pointer; font-weight: var(--ui-weight-strong); padding: 8px 4px; }
 .save-continue .admin-list-actions { margin-top: 8px; }
 .publish-prep { margin: 12px 0; }
-.admin-read-list details > summary { cursor: pointer; color: var(--ui-muted); font-size: .9rem; }
+.admin-read-list details > summary { cursor: pointer; color: var(--ui-muted); font-size: 14px; }
 
 .admin-demo .admin-header-account { flex-direction: row; align-items: center; }
 .admin-header-account h1 { min-width: 0; }
@@ -218,7 +218,7 @@
   background: #bd3d1b;
   color: var(--ui-surface);
   box-shadow: none;
-  font-size: 1rem;
+  font-size: 16px;
   line-height: 1;
 }
 .admin-account-trigger img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -235,14 +235,14 @@
   border-radius: var(--ui-radius);
   background: var(--ui-surface);
   box-shadow: var(--ui-control-shadow);
-  font-size: .875rem;
+  font-size: 14px;
 }
 .admin-account-panel p { margin: 0; font-weight: var(--ui-weight-strong); overflow-wrap: anywhere; }
 .admin-account-panel a,
 .admin-demo .admin-account-panel button {
   display: grid;
   place-items: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 12px;
   border: var(--ui-border-width) solid var(--ui-line);
   border-radius: var(--ui-radius);
@@ -254,7 +254,7 @@
 }
 .admin-account-panel a:hover { text-decoration: underline; }
 
-.admin-quest-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: .85rem; }
+.admin-quest-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; }
 .admin-quest-status { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 2px solid var(--ui-line); border-radius: 12px; font-weight: var(--ui-weight-strong); background: var(--ui-surface); }
 .admin-quest-status[data-status="published"] { background: var(--role-done); }
 .admin-quest-status[data-status="review_pending"] { background: var(--role-off); }
@@ -337,9 +337,9 @@
 .admin-read-list > li > button + button { margin-inline-start: 12px; }
 
 .admin-login-heading, .admin-login { width: min(100%, 400px); margin-inline: auto; }
-.admin-login-heading { margin-top: clamp(40px, 12vh, 120px); }
+.admin-login-heading { margin-top: clamp(32px, 12vh, 64px); }
 
-.admin-demo .google-continue { padding: 12px 40px; background: #fff; border-width: 1px; border-radius: 8px; color: #202124; }
+.admin-demo .google-continue { padding: 12px 32px; background: #fff; border-width: 1px; border-radius: 8px; color: #202124; }
 
 /* 各工程の主操作をパネル幅にそろえ、保存などの副操作は残す。 */
 .admin-demo .workflow-primary,
