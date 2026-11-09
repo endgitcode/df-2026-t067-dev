@@ -213,3 +213,25 @@
 .admin-quest-status[data-status="published"] { background: var(--ui-tint); }
 .admin-quest-status[data-status="review_pending"] { background: var(--ui-soft); }
 .admin-quest-status[data-status="paused"] { background: var(--ui-disabled); }
+
+.admin-managed { max-width: 1120px; background: #fff; min-height: 100vh; }
+.admin-managed .form-section { border: 1px solid #e2e5e9; border-radius: 10px; box-shadow: none; }
+.admin-managed .admin-read-list { list-style: none; padding: 0; }
+.admin-managed .admin-read-list > li { border-top: 1px solid #e2e5e9; padding-block: 14px; }
+.admin-managed .admin-read-list > li > strong { display: block; margin: 8px 0; }
+.admin-managed button { box-shadow: none; border-width: 1px; }
+.admin-managed .workflow-primary { background: #174d87; color: #fff; border-color: #174d87; }
+.admin-managed .workflow-primary:disabled { background: #e9e8e2; color: #52524b; border-color: #ccc; }
+.admin-workflow .workflow-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; gap: 8px; list-style: none; }
+.workflow-steps li { display: grid; padding: 8px 10px; border-radius: 8px; background: #f5f6f8; line-height: 1.5; }
+.workflow-steps li[aria-current="step"] { color: #153f6f; background: #e8f2ff; outline: 2px solid #32689e; outline-offset: -2px; }
+.workflow-steps small { color: #4d5763; }
+.workflow-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-block: 14px; }
+.workflow-heading h2 { margin: 0; }
+.workflow-remaining { margin-block: 8px; }
+.admin-workflow fieldset { border-width: 1px; }
+.admin-workflow .form-section .form-section { box-shadow: none; }
+@media (max-width: 600px) {
+  .admin-workflow .workflow-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-workflow .form-section { padding: 12px; }
+}

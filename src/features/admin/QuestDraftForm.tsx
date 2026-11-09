@@ -68,7 +68,8 @@ function AccessInput({ value, onChange, builder }: { value: string; onChange: (v
 }
 
 export default function QuestDraftForm({ connection, teamPreview = false }: { connection?: LocalDraftConnection; teamPreview?: boolean } = {}) {
-  const focused = connection?.taskFocused === true
+  const part = connection?.workflowPart
+  const focused = connection?.taskFocused === true || part !== undefined
   const initial = connection?.initial?.draft
   const [name, setName] = useState(initial?.materials.name ?? '')
   // 対象理由の入力欄は廃止済み。保存済みの値は互換のため編集せずそのまま引き継ぐ。
@@ -101,7 +102,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const hadReference = useRef(Boolean(initial?.referenceAssetId))
   const [photoRights, setPhotoRights] = useState(initial?.materials.photoRights ?? '')
   const [showSummary, setShowSummary] = useState(false)
-  const [step, setStep] = useState<'A03' | 'A04' | 'A05'>('A03')
+  const [step, setStep] = useState<'A03' | 'A04' | 'A05'>(part === 3 ? 'A04' : 'A03')
   const [previewMode, setPreviewMode] = useState<PreviewMode>('challenge')
   const [draft, setDraft] = useState<DraftFields>(initial?.content ?? { title: '', question: '', hints: ['', '', ''], verifiedFeatures: '', draftingNotes: '' })
   const [draftEdit, setDraftEdit] = useState(0)
@@ -208,7 +209,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     try {
       const url = URL.createObjectURL(file)
       setPhotoLoadFailed(false)
-      if (focused && photoRights.trim() && (rightsPhotoRef.current || hadReference.current || referenceAssetId)) setRightsReuseNeeded(true)
+      if (!part && focused && photoRights.trim() && (rightsPhotoRef.current || hadReference.current || referenceAssetId)) setRightsReuseNeeded(true)
       rightsPhotoRef.current = file
       setPhoto({ file, url })
       return true
@@ -255,7 +256,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     markMaterialChange()
   }
 
-  function saveDraft(destination?: 'areas' | 'publication' | 1 | 2 | 3) {
+  function saveDraft(destination?: 'areas' | 'publication' | 1 | 2 | 3 | 'next') {
     if (!validateHours()) return
     if (!record && exploration?.source === 'unavailable') {
       setInputError('所属自治体の探索エリアを取得できません。自治体コードと行政区域の登録を運営に確認してください。')
@@ -274,11 +275,11 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       return
     }
     setInputError('')
-    if (photo && rightsReuseNeeded) {
+    if (!part && photo && rightsReuseNeeded) {
       setInputError('差し替えた写真に入力済みの権利文を適用できるか確認してください。')
       setStep('A03'); return
     }
-    if (photo && !photoRights.trim()) {
+    if (!part && photo && !photoRights.trim()) {
       setRightsError(true)
       setStep('A03')
       rightsRef.current?.focus()
@@ -288,14 +289,15 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     const legacyHintAssetId = record?.draft.hintAssetId ?? null
     const hintAssetIds = record?.draft.hintAssetIds ?? (legacyHintAssetId ? [legacyHintAssetId, null, null] : undefined)
     void save({
-      materials: { name, evidence, requiresBoat, requiresPaidFacility, price, photoNote, photoRights },
+      materials: { name, evidence, requiresBoat, requiresPaidFacility, price, photoNote, photoRights: part && photo ? '' : photoRights },
       content: draft, afterClear: { access, hours, promoComment, explanation, ...(spot ? { spot } : {}) }, referenceAssetId,
       hintAssetId: record?.draft.hintAssetIds ? legacyHintAssetId : null,
       ...(hintAssetIds ? { hintAssetIds } : {}),
     }, photo ? { file: photo.file, purpose: 'reference', photoRights } : undefined, (saved) => {
       setReferenceAssetId(saved.draft.referenceAssetId)
       clearPhoto()
-      if (destination !== undefined) connection?.onContinue?.(saved, destination)
+      connection?.onWorkflowSave?.(saved, destination === 'next')
+      if (destination !== undefined && destination !== 'next') connection?.onContinue?.(saved, destination)
     })
   }
 
@@ -305,28 +307,28 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
 
   const Root = connection ? 'section' : 'main'
   return <Root className={connection ? 'admin-editor' : 'admin-demo'}>
-    <header className="admin-header"><div><span className="eyebrow">自治体向け</span><h1>{step === 'A03' ? '問題の素材と場所を登録' : step === 'A04' ? '問題の下書きを編集' : '旅行者向け表示の確認'}</h1></div><span className="demo-badge">{connection ? '保存先：検証用' : '未ログイン'}</span></header>
+    {!part && <header className="admin-header"><div><span className="eyebrow">自治体向け</span><h1>{step === 'A03' ? '問題の素材と場所を登録' : step === 'A04' ? '問題の下書きを編集' : '旅行者向け表示の確認'}</h1></div><span className="demo-badge">{connection ? '保存先：検証用' : '未ログイン'}</span></header>}
     <div inert={saving}>
-    <nav className="steps" aria-label="登録手順">
+    {!part && <><nav className="steps" aria-label="登録手順">
       <button type="button" aria-current={step === 'A03' ? 'step' : undefined} onClick={() => setStep('A03')}><b>1/3</b><span>素材・場所登録</span></button><button type="button" aria-current={step === 'A04' ? 'step' : undefined} onClick={enterDraft}><b>2/3</b><span>下書き・編集（AIはまだ使えません）</span></button><button type="button" aria-current={step === 'A05' ? 'step' : undefined} onClick={enterPreview}><b>3/3</b><span>表示プレビュー（未公開）</span></button>
     </nav>
     <p className="demo-notice" role="note">{connection
       ? teamPreview ? '下書きはチームの検証用データとして保存されます。'
         : '下書きはこの検証環境の保存先に保存されます。'
-      : 'ログインしていないため、送信・保存はしていません。再読み込みで入力は消えます。AIによる入力補助・写真判定・公開はまだ使えません。'}</p>
+      : 'ログインしていないため、送信・保存はしていません。再読み込みで入力は消えます。AIによる入力補助・写真判定・公開はまだ使えません。'}</p></>}
 
     {step === 'A03' ? <form onSubmit={event => {
       event.preventDefault()
       if (focused) { enterDraft(); return }
       if (validateHours() && validateMaterials()) setShowSummary(true)
     }}>
-      <section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1}>1/3 素材と場所</h2>
-        <p className="helper">{focused ? '途中でも文章編集・保存できます。写真・権利などは公開までに必要です。' : '対象名は必須です。写真・権利などは公開までに必要で、下書きは未完成でも保存できます。'}</p>
+      {part !== 2 && <><section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1}>{part ? '対象と参考写真' : '1/3 素材と場所'}</h2>
+        {!part && <p className="helper">{focused ? '途中でも文章編集・保存できます。写真・権利などは公開までに必要です。' : '対象名は必須です。写真・権利などは公開までに必要で、下書きは未完成でも保存できます。'}</p>}
         <p className="helper">対象名は非公開です。</p>
         <span className="helper">{focused ? '公開までに必須' : '必須（次へ進むとき）'}</span><label>対象名<input ref={nameRef} aria-required={!focused} aria-invalid={Boolean(draftEntryError && !name.trim())} aria-describedby={draftEntryError && !name.trim() ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {draftEntryError && !name.trim() && <p id="name-error" className="field-error">対象名を入力してください。</p>}
-        <span className="helper">任意（後で登録可・非公開の照合用）</span><label className="file-label">参考写真（公開ヒントには自動流用しません）<input className="reference-photo-input" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
-        <p id="photo-help" className="helper">{connection ? 'JPEG / PNG / WebP、送信上限4 MiB。合成素材を使ってください。'
+        <span className="helper">{part ? '公開までに必須・非公開' : '任意（後で登録可・非公開の照合用）'}</span><label className="file-label">参考写真（公開ヒントには自動流用しません）<input className="reference-photo-input" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
+        <p id="photo-help" className="helper">{connection ? 'JPEG / PNG / WebP、送信上限4 MiB。' + (part ? '事前承認済みの画像を使ってください。' : '合成素材を使ってください。')
           : 'JPEG / PNG / WebP、選択上限5 MB。参考写真の選択・プレビューのみです。'}</p>
         {!photo && referenceAssetId && <p>保存済みの参考写真 <button type="button" onClick={() => {
           setReferenceAssetId(null); markMaterialChange()
@@ -335,11 +337,11 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         {photoLoadFailed && <p role="alert" className="field-error">画像を読み込めませんでした。もう一度選ぶか、画像を削除してください。</p>}
         {photo && <div className="photo-preview" role="region" aria-label="選択中の参考写真"><img src={photo.url} alt={`選択した参考写真：${photo.file.name}`} onError={() => setPhotoLoadFailed(true)} /><div><span>選択中：{photo.file.name}</span><button type="button" onClick={() => inputRef.current?.click()}>変更</button><button type="button" onClick={clearPhoto}>削除</button>{photoLoadFailed && <button type="button" onClick={() => inputRef.current?.click()}>再試行</button>}</div></div>}
       </section>
-      <section className="form-section" aria-labelledby="rights-heading"><h2 id="rights-heading">写真の権利</h2>
+      {!part && <section className="form-section" aria-labelledby="rights-heading"><h2 id="rights-heading">写真の権利</h2>
         <p className="helper">非公開。写真を添えて保存する時は必須です。写真なしの下書きは空欄でも保存できます（確認依頼までに記入）。</p>{connection ? <PhotoRightsInput key={photo?.url ?? "saved"} purpose="reference" label="写真の出典と利用権" textareaRef={rightsRef} invalid={rightsError && !photoRights.trim()} describedBy={rightsError && !photoRights.trim() ? "rights-error" : undefined} value={photoRights} onChange={value => { setPhotoRights(value); setRightsError(false); setRightsReuseNeeded(false); markMaterialChange() }} /> : <label>写真の出典と利用権<textarea ref={rightsRef} aria-invalid={rightsError && !photoRights.trim()} aria-describedby={rightsError && !photoRights.trim() ? "rights-error" : undefined} value={photoRights} onChange={event => { setPhotoRights(event.target.value); setRightsError(false); markMaterialChange() }} rows={2} placeholder="出典・撮影者・利用許諾など" /></label>}
         {focused && photo && rightsReuseNeeded && <label><input type="checkbox" checked={false} onChange={() => { setRightsReuseNeeded(false); setInputError('') }} />差し替えた写真を非公開照合に使う権利を確認し、入力済みの権利文を適用する</label>}
         {rightsError && !photoRights.trim() && <p id="rights-error" role="alert" className="field-error">写真の出典と利用権を入力してください。</p>}
-      </section>
+      </section>}
       <section className="form-section" aria-labelledby="area-heading"><h2 id="area-heading">公開する探索エリア</h2>
         {exploration?.source === 'N03' ? <>
           <p>所属自治体：{connection?.member.label}</p>
@@ -353,17 +355,18 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
           <p><strong>架空自治体：青葉みらい市（実在しません）</strong></p>
           <p>公開探索エリア：青葉みらい市の行政区域（架空エリア）。自治体の行政区域から自動設定する構想の表示で、実際の地図・区域データはまだ使えません。</p>
         </>}
-        <div className="private-setting"><strong>非公開の撮影地点・半径</strong><span>{areaStatus}</span><small>{connection ? '撮影可能範囲：中心から半径1km（固定）' : '安全上、値や入力欄を表示しません。'}</small></div>
+        {!part && <div className="private-setting"><strong>非公開の撮影地点・半径</strong><span>{areaStatus}</span><small>{connection ? '撮影可能範囲：中心から半径1km（固定）' : '安全上、値や入力欄を表示しません。'}</small></div>}
       </section>
       {connection && <section className="form-section" aria-label="対象スポット登録">
+        {part && <p className="helper">対象スポットの場所（任意）</p>}
         <SpotEditor input={spotInput} durable={connection.taskFocused || teamPreview} orgId={connection.member.orgId}
           canLookupSpotAddress={connection.api.canLookupSpotAddress} lookupSpotAddress={connection.api.lookupSpotAddress}
           onChange={(input) => { setSpotInput(input); setInputError(''); markMaterialChange() }} />
-      </section>}
-      <section className="form-section" aria-labelledby="conditions-heading"><h2 id="conditions-heading">挑戦前に伝える条件</h2><p className="helper">旅行者に公開されます。安全上の制約や必要な費用がある場合は必ず記載してください。</p>
+      </section>}</>}
+      {part !== 1 && <><section className="form-section" aria-labelledby="conditions-heading"><h2 id="conditions-heading">挑戦前に伝える条件</h2><p className="helper">旅行者に公開されます。安全上の制約や必要な費用がある場合は必ず記載してください。</p>
         <fieldset><legend>撮影に必要な条件</legend><div className="check-grid"><label className="check-option"><input type="checkbox" checked={requiresBoat} onChange={event => { setRequiresBoat(event.target.checked); markMaterialChange() }} />船上・海上での撮影が必要</label><label className="check-option"><input type="checkbox" checked={requiresPaidFacility} onChange={event => { setRequiresPaidFacility(event.target.checked); markMaterialChange() }} />有料施設内での撮影が必要</label></div><p className="helper">陸から撮影できる場合、船上・海上の条件は選びません。</p></fieldset>
         {connection ? <PriceInput value={price} onChange={value => { setPrice(value); markMaterialChange() }} /> : <label>料金<input value={price} onChange={event => { setPrice(event.target.value); markMaterialChange() }} placeholder="例：大人500円／無料／要確認" /></label>}
-        <label>撮影時の注意<textarea value={photoNote} onChange={event => { setPhotoNote(event.target.value); markMaterialChange() }} rows={2} placeholder="撮影できる時間や安全上の制約は、挑戦前にここへ記載" /></label>
+        <label>{part ? '撮影時の注意（該当する場合）' : '撮影時の注意'}<textarea value={photoNote} onChange={event => { setPhotoNote(event.target.value); markMaterialChange() }} rows={2} placeholder="撮影できる時間や安全上の制約は、挑戦前にここへ記載" /></label>
         {connection && <PhraseChips label="よくある注意" phrases={photoNotePhrases} value={photoNote} onChange={value => { setPhotoNote(value); markMaterialChange() }} />}
       </section>
       <details className="form-section" open={afterClearOpen} onToggle={event => setAfterClearOpen(event.currentTarget.open)}><summary>クリア後の紹介・解説（任意）</summary><p className="helper">クリアした旅行者に公開されます。</p>
@@ -386,25 +389,26 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         </fieldset>}
         <label>地域のおすすめコメント<textarea value={promoComment} onChange={event => { setPromoComment(event.target.value); markMaterialChange() }} rows={2} placeholder="例：地域で大切に受け継いできた風景です。" /></label>
         <label>解説<textarea value={explanation} onChange={event => { setExplanation(event.target.value); markMaterialChange() }} rows={3} placeholder="例：この建物が建てられた背景や、地域との関わり" /></label>
-      </details>
-      {draftEntryError && !name.trim() && <p tabIndex={-1} role="alert" className="field-error">{draftEntryError}</p>}
+      </details></>}
+      {!part && <>{draftEntryError && !name.trim() && <p tabIndex={-1} role="alert" className="field-error">{draftEntryError}</p>}
       <button className="submit-button" type="button" onClick={enterDraft}>下書き・編集へ</button>
       {!focused && <button className="submit-button" type="submit">入力内容を確認</button>}
       {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2>{!connection && <p>画面内の確認表示です。送信・保存はしていません。</p>}<dl><dt>架空自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市（架空）・青葉みらい市の行政区域（架空）'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影時の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用できる時間</dt><dd>{hours || '未入力'}</dd><dt>地域のおすすめコメント</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の出典と利用権</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影できる範囲（非公開）</dt><dd>{areaStatus}</dd></dl></section>}
+      </>}
     </form> : step === 'A04' ? <>
       <DraftEditor draft={draft} setDraft={editDraft} materialChanged={materialChanged} sampleConfirm={sampleConfirm}
-        setSampleConfirm={setSampleConfirm} onBack={() => setStep('A03')} onPreview={enterPreview} headingRef={a04HeadingRef} omitMemo={focused} allowSample={!connection} />
+        setSampleConfirm={setSampleConfirm} onBack={() => setStep('A03')} workflow={part === 3} onPreview={enterPreview} headingRef={a04HeadingRef} omitMemo={focused} allowSample={!connection} />
       {connection && record && <DraftCandidate key={record.draftRevision + ':' + draftEdit} api={connection.api} saved={record} current={draft} omitNotes={focused} onApply={next => setDraft(current => focused ? { ...next, draftingNotes: current.draftingNotes } : next)} />}
     </> : <>
       <section className="form-section" aria-label="公開までに足りないもの">
         <p><strong>公開までに足りないもの</strong></p>
         {materialMissing.length === 0 && contentMissing.length === 0
-          ? <p role="status">必須項目はそろっています。公開には別途、権利・安全・撮影範囲・試験の確認が必要です。</p>
+          ? <p role="status">必須項目はそろっています。公開条件は写真試験と公開のステップで確認できます。</p>
           : <>
             {materialMissing.length > 0 && <p>非公開の確認材料：{materialMissing.join('・')}が未入力です。</p>}
             {contentMissing.length > 0 && <p role="status">旅行者に公開する文章：{contentMissing.join('・')}が未入力です。</p>}
           </>}
-        <button type="button" onClick={() => setStep('A03')}>素材と場所を編集</button>
+        {!part && <button type="button" onClick={() => setStep('A03')}>素材と場所を編集</button>}
       </section>
       <TravelerPreview challengeContent={{ title: draft.title, question: draft.question, hints: draft.hints, requiresBoat, requiresPaidFacility, price, photoNote }} afterClearContent={{ access, hours, promoComment, explanation }} mode={previewMode} onModeChange={setPreviewMode} headingRef={a05HeadingRef} onEdit={() => { setVisitedDraft(true); setStep('A04') }} areaLabel={areaLabel} /></>}
     </div>
@@ -417,7 +421,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         <button type="button" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => {
           saveDraft()
         }}>{saving ? '保存しています…' : '下書きを保存'}</button>
-        {connection.onContinue && <details className="save-continue">
+        {part && <button type="button" className="workflow-primary" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('next')}>{part === 2 ? '保存して撮影範囲へ' : '保存して次へ'}</button>}
+        {!part && connection.onContinue && <details className="save-continue">
           <summary>保存して進む（進み先を選ぶ）</summary>
           <div className="admin-list-actions">
             <button type="button" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('areas')}>保存して撮影範囲へ</button>
@@ -425,7 +430,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
             <button type="button" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('publication')}>保存して試験・公開確認へ</button>
           </div>
         </details>}
-        <button type="button" disabled={saving} onClick={connection.onBack}>問題一覧へ戻る</button>
+        {!part && <button type="button" disabled={saving} onClick={connection.onBack}>問題一覧へ戻る</button>}
       </div>
     </section>}
   </Root>

@@ -10,19 +10,19 @@ function hasValidFeatures(value: string): boolean {
   return features.length >= 1 && features.length <= 20 && features.every((line) => line.length <= 300)
 }
 
-export function remainingWork(quest: ManagedQuest): string[] {
+export function remainingWork(quest: ManagedQuest, approvedAssets = false): string[] {
   if (quest.status === 'published') return []
   const { materials, content, referenceAssetId } = quest.draft
   const items: string[] = []
   if (!materials.name.trim()) items.push('対象名')
-  if (!materials.photoRights.trim()) items.push('写真の利用権')
+  if (!approvedAssets && !materials.photoRights.trim()) items.push('写真の利用権')
   if (!referenceAssetId) items.push('参考写真')
   if (quest.shootingAreaStatus !== 'configured') items.push('撮影できる範囲（非公開）')
   if (!content.title.trim()) items.push('問題タイトル')
   if (!content.question.trim()) items.push('問題文')
   if (content.hints.some((hint) => !hint.trim())) items.push('3本のヒント')
   if (!hasValidFeatures(content.verifiedFeatures)) items.push('現地で確かめた見た目の特徴')
-  if (quest.status === 'draft') items.push('確認依頼')
+  if (quest.status === 'draft') items.push(approvedAssets ? '写真試験と公開条件の確認' : '確認依頼')
   else if (quest.status === 'review_pending') items.push('公開前のチェックと公開')
   else if (quest.status === 'paused') items.push('再公開の条件確認と公開前のチェック')
   return items

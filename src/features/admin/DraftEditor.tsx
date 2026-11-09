@@ -12,6 +12,7 @@ type Props = {
   setSampleConfirm: (value: boolean) => void
   onBack: () => void
   onPreview: () => void
+  workflow?: boolean
   omitMemo?: boolean
   allowSample?: boolean
   headingRef: RefObject<HTMLHeadingElement | null>
@@ -25,11 +26,11 @@ const sample: DraftFields = {
   draftingNotes: '架空サンプルの例文。現地確認や事実確認を行った内容ではありません。',
 }
 
-export default function DraftEditor({ draft, setDraft, materialChanged, sampleConfirm, setSampleConfirm, onBack, onPreview, headingRef, omitMemo = false, allowSample = true }: Props) {
+export default function DraftEditor({ draft, setDraft, materialChanged, sampleConfirm, setSampleConfirm, onBack, onPreview, headingRef, workflow = false, omitMemo = false, allowSample = true }: Props) {
   const edited = Object.values(draft).some(value => Array.isArray(value) ? value.some(item => item !== '') : value !== '')
   const filledHints = draft.hints.filter(hint => hint.trim()).length
   const [revealedHints, setRevealedHints] = useState(1)
-  const visibleHints = Math.max(revealedHints, Math.min(3, filledHints + 1))
+  const visibleHints = workflow ? 3 : Math.max(revealedHints, Math.min(3, filledHints + 1))
   const [featureLine, setFeatureLine] = useState('')
   function loadSample() {
     setDraft(omitMemo ? { ...sample, draftingNotes: draft.draftingNotes } : sample)
@@ -43,8 +44,8 @@ export default function DraftEditor({ draft, setDraft, materialChanged, sampleCo
   }
 
   return <section className="form-section draft-editor" aria-labelledby="draft-heading">
-    <h2 id="draft-heading" ref={headingRef} tabIndex={-1}>2/3 問題の文章（AIはまだ使えません）</h2>
-    <p className="demo-notice" role="note">対象名や写真の情報は、旅行者向けの文章には入りません。</p>
+    <h2 id="draft-heading" ref={headingRef} tabIndex={-1}>{workflow ? '問題文とヒント' : '2/3 問題の文章（AIはまだ使えません）'}</h2>
+    {!workflow && <p className="demo-notice" role="note">対象名や写真の情報は、旅行者向けの文章には入りません。</p>}
     {materialChanged && <p className="field-error" role="status">素材が変更されています。下書きを確認してください。</p>}
     <p className="helper">ヒント画像は、参考写真から自動流用しません。</p>
     {allowSample && <div className="sample-actions">
@@ -65,6 +66,6 @@ export default function DraftEditor({ draft, setDraft, materialChanged, sampleCo
     </div>
     {!omitMemo && <label>下書きの根拠・人のメモ<textarea rows={3} value={draft.draftingNotes} onChange={event => setDraft(current => ({ ...current, draftingNotes: event.target.value }))} /></label>}
     <button className="submit-button" type="button" onClick={onPreview}>表示プレビューへ</button>
-    <button type="button" onClick={onBack}>素材・場所へ戻る</button>
+    {!workflow && <button type="button" onClick={onBack}>素材・場所へ戻る</button>}
   </section>
 }

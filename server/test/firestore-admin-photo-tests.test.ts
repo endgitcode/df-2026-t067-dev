@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { approveFixture } from './photo-approval-fixtures'
+import { photoApprovalDigest } from '../src/admin-photo-approvals'
 import { createHash } from 'node:crypto'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -34,6 +36,7 @@ test('durable photo tests deduplicate across servers and store evidence only for
     asset: { assetId, orgId, purpose: 'reference', photoRights: '架空', contentType: 'image/jpeg', width: reference.width,
       height: reference.height, byteLength: reference.bytes.length, source: 'real' } })
   await batch.commit()
+  await approveFixture(db, orgId, 'reference', 'a'.repeat(64))
 
   const fixture = await createFixturePhotoMatcher()
   let entered!: () => void
@@ -85,6 +88,10 @@ test('durable photo tests deduplicate across servers and store evidence only for
     idempotencyKey: 'photo-test-match', photo: new Blob([Uint8Array.from(syntheticPng)], { type: 'image/png' }) }
   await assert.rejects(second('traveler').testManagedQuest(orgId, questId, candidate), { code: 'FORBIDDEN' })
 
+  await assert.rejects(editor.testManagedQuest(orgId, questId, candidate), { code: 'PHOTO_APPROVAL_REQUIRED' })
+  assert.equal(matches, 0)
+  await approveFixture(db, orgId, 'photo_test', photoApprovalDigest(syntheticPng))
+  await approveFixture(db, orgId, 'photo_test', photoApprovalDigest(otherSyntheticPng))
   const pending = editor.testManagedQuest(orgId, questId, candidate)
   try {
     await Promise.race([started, pending.then(() => { throw new Error('Matcher was never called') })])

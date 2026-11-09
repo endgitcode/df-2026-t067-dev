@@ -47,7 +47,7 @@ function ZoneFields({ row, enableMap, onEdit, onRemove }: {
   </>
 }
 
-function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClient; initial: ManagedShootingAreas; onReload: () => void; enableMap: boolean }) {
+function ShootingAreasForm({ api, initial, onReload, enableMap, onContinue }: { api: ApiClient; initial: ManagedShootingAreas; onReload: () => void; enableMap: boolean; onContinue?: () => void }) {
   const [revision, setRevision] = useState(initial.draftRevision)
   const [rows, setRows] = useState(() => toInputs(initial.zones))
   const [selectedIndex, setSelectedIndex] = useState<number | null>(initial.zones.length ? 0 : null)
@@ -72,6 +72,7 @@ function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClie
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const advance = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'next'
     if (!input || state === 'conflict') return
     const operation = begin(() => setState('error'))
     if (!operation) return
@@ -82,6 +83,7 @@ function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClie
       setRows(toInputs(updated.zones))
       setRevision(updated.draftRevision)
       setState('saved')
+      if (advance) onContinue?.()
     } catch (cause) {
       if (operation.isCurrent()) setState(cause instanceof ApiError && cause.code === 'DRAFT_CONFLICT' ? 'conflict' : 'error')
     } finally { operation.finish() }
@@ -135,12 +137,13 @@ function ShootingAreasForm({ api, initial, onReload, enableMap }: { api: ApiClie
     <div className="admin-list-actions">
       <button type="button" disabled={saving || rows.length >= 10} onClick={() => { setSelectedIndex(rows.length); setExpandedIndex(rows.length); edit([...rows, { latitude: '', longitude: '', radiusMeters: String(CAPTURE_ZONE_RADIUS_METERS) }]) }}>範囲を追加</button>
       <button type="submit" disabled={saving || !input || state === 'conflict'}>{saving ? '保存しています…' : '撮影範囲を保存'}</button>
+      {onContinue && <button type="submit" value="next" className="workflow-primary" disabled={saving || !input || state === 'conflict'}>保存して次へ</button>}
       {state === 'conflict' && <button type="button" className="danger-button" onClick={onReload}>入力を破棄して最新版を確認</button>}
     </div>
   </form>
 }
 
-export function ShootingAreasEditor({ api, orgId, questId, onBack, backLabel = '問題一覧へ戻る', enableMap = false }: { api: ApiClient; orgId: string; questId: string; onBack: () => void; backLabel?: string; enableMap?: boolean }) {
+export function ShootingAreasEditor({ api, orgId, questId, onBack, backLabel = '問題一覧へ戻る', enableMap = false, onContinue }: { api: ApiClient; orgId: string; questId: string; onBack: () => void; backLabel?: string; enableMap?: boolean; onContinue?: () => void }) {
   const read = useCallback((signal: AbortSignal) => api.getShootingAreas(orgId, questId, { signal }), [api, orgId, questId])
   const { result, retry } = useRemote(true, read)
   return <section className="form-section" aria-labelledby="shooting-editor-title">
@@ -149,6 +152,6 @@ export function ShootingAreasEditor({ api, orgId, questId, onBack, backLabel = '
     <button type="button" onClick={onBack}>{backLabel}</button>
     {result.status === 'loading' && <p role="status">撮影範囲を読み込んでいます…</p>}
     {result.status === 'error' && <><p role="alert">撮影範囲を取得できませんでした。</p><button type="button" onClick={retry}>読み直す</button></>}
-    {result.status === 'ready' && <ShootingAreasForm api={api} initial={result.value} onReload={retry} enableMap={enableMap} />}
+    {result.status === 'ready' && <ShootingAreasForm api={api} initial={result.value} onReload={retry} enableMap={enableMap} onContinue={onContinue} />}
   </section>
 }

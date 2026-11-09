@@ -1,13 +1,15 @@
 import type { AssetPurpose, ManagedQuest, ReviewField } from '../../src/shared/api/admin'
 import { draftPhotoFeatures } from './photo-match'
 
-export function missingReviewFields(quest: ManagedQuest, assets: Record<AssetPurpose, boolean>): ReviewField[] {
+export function missingReviewFields(quest: ManagedQuest, assets: Record<AssetPurpose, boolean>, approval?: { reference: boolean; hints: boolean }): ReviewField[] {
   const { materials, content, referenceAssetId, hintAssetId } = quest.draft
   const missing: ReviewField[] = []
   if (!materials.name.trim()) missing.push('materials.name')
-  if (!materials.photoRights.trim()) missing.push('materials.photoRights')
+  if (!approval && !materials.photoRights.trim()) missing.push('materials.photoRights')
   if (!referenceAssetId || !assets.reference) missing.push('referenceAssetId')
   if (hintAssetId && !assets.public_hint) missing.push('hintAssetId')
+  if (assets.reference && approval && !approval.reference) missing.push('referenceApproval')
+  if (approval && !approval.hints) missing.push('hintApproval')
   if (quest.shootingAreaStatus !== 'configured') missing.push('shootingAreas')
   if (!content.title.trim()) missing.push('content.title')
   if (!content.question.trim()) missing.push('content.question')

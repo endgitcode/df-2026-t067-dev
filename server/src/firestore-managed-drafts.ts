@@ -3,6 +3,7 @@ import type { DocumentSnapshot, Firestore, Transaction } from 'firebase-admin/fi
 import { parseCaptureZones, parseManagedQuest, parseUpdateShootingAreas, shootingAreaStatus } from '../../src/shared/api/admin'
 import { isQuestNumber } from '../../src/shared/api/validation'
 import type { AssetPurpose, ManagedQuestDraft, ManagedShootingAreas, ReviewSubmission, UpdateManagedQuest, UpdateShootingAreas } from '../../src/shared/api/admin'
+import { isPhotoApproved, photoApprovalRequired } from './admin-photo-approvals'
 import { missingReviewFields } from './admin-review'
 import { HttpError, invalidInput } from './errors'
 import { answerTransaction, notFound, processingError } from './firestore-answer-data'
@@ -97,15 +98,28 @@ export class FirestoreManagedDraftStore {
       if (quest.draftRevision !== expectedRevision) throw new HttpError(409, 'DRAFT_CONFLICT', '下書きの版が変更されています。')
       if (quest.status === 'published') throw new HttpError(409, 'DRAFT_CONFLICT', 'この下書き版は公開済みです。')
       const { referenceAssetId, hintAssetId } = quest.draft
-      const [reference, hint] = await Promise.all([
-        this.hasAsset(tx, orgId, referenceAssetId, 'reference'),
-        this.hasAsset(tx, orgId, hintAssetId, 'public_hint'),
-      ])
-      const missing = missingReviewFields(quest, { reference, public_hint: hint })
+      const hintIds = [...new Set([hintAssetId, ...(quest.draft.hintAssetIds ?? [])].filter((id): id is string => id !== null))]
+      const reference = await this.readAsset(tx, orgId, referenceAssetId, 'reference')
+      const hintChecks = await Promise.all(hintIds.map(async (id) => {
+        const hint = await this.readAsset(tx, orgId, id, 'public_hint')
+        return { id, exists: Boolean(hint), approved: hint ? await isPhotoApproved(this.db, tx, orgId, 'public_hint', hint.approvalDigest) : false }
+      }))
+      const missing = missingReviewFields(quest, { reference: Boolean(reference), public_hint: hintChecks.some((hint) => hint.id === hintAssetId && hint.exists) }, {
+        reference: reference ? await isPhotoApproved(this.db, tx, orgId, 'reference', reference.approvalDigest) : false,
+        hints: hintChecks.every((hint) => hint.approved),
+      })
       const status = missing.length ? 'draft' : 'review_pending'
       if (status !== quest.status) tx.update(ref, { status })
       return { quest: { ...quest, status }, missing }
     })
+  }
+
+  async assertReferenceApproved(uid: string, orgId: string, questId: string, revision: number) {
+    await answerTransaction(this.db, async (tx) => {
+      const quest = await this.readAtRevision(tx, uid, orgId, questId, revision)
+      const asset = await this.readAsset(tx, orgId, quest.draft.referenceAssetId, 'reference')
+      if (!asset || !await isPhotoApproved(this.db, tx, orgId, 'reference', asset.approvalDigest)) throw photoApprovalRequired()
+    }, true)
   }
 
   async readOwned(tx: Transaction, uid: string, orgId: string, questId: string) {
@@ -121,9 +135,13 @@ export class FirestoreManagedDraftStore {
   }
 
   private async hasAsset(tx: Transaction, orgId: string, assetId: string | null, purpose: AssetPurpose) {
-    if (assetId === null) return false
+    return Boolean(await this.readAsset(tx, orgId, assetId, purpose))
+  }
+
+  private async readAsset(tx: Transaction, orgId: string, assetId: string | null, purpose: AssetPurpose) {
+    if (assetId === null) return null
     const record = readOrgAssetRecord(await tx.get(this.db.collection('orgAssets').doc(assetId)), orgId)
-    return Boolean(record?.generation && record.asset.purpose === purpose)
+    return record?.generation && record.asset.purpose === purpose ? record : null
   }
 
   private async reserveCapacity(tx: Transaction, orgId: string) {
