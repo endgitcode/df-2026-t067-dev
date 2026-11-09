@@ -56,7 +56,7 @@ export function DraftCandidate({ api, saved, current, omitNotes = false, onApply
   return <section className="form-section" aria-label="下書き案">
     <details>
       <summary>下書き案を取り込む</summary>
-      <h2>開発用の下書き案</h2>
+      <h2>検証用の下書き案</h2>
       <p>保存済みの下書き版 {saved.draftRevision} の合成素材を使います。</p>
       <button type="button" disabled={state.status === 'loading' || (state.status === 'error' && state.changed)}
         onClick={load}>{state.status === 'loading' ? '案を取得しています…' : '保存済み版の案を取得'}</button>

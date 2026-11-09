@@ -118,7 +118,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
   return <section className="form-section" aria-labelledby="publication-workspace-title">
     <h2 id="publication-workspace-title">写真試験と公開確認</h2>
     <p>{quest.draft.content.title || '無題の下書き'}・下書き版 {draftRevision}</p>
-    <p>{realPhotoTest ? '開発用の検証環境です。写真試験は実写真で照合します。' : '開発用の検証環境です。合成写真を使います。'}</p>
+    <p>{realPhotoTest ? '検証用の環境です。写真試験は実写真で照合します。' : '検証用の環境です。合成写真を使います。'}</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {areaUnclassified && <p role="alert">この地域は都道府県コードが未設定（未分類）のため、公開できません。地域の分類が完了するまで公開は止まります。</p>}
     {failure && <p role="alert">{failure.message}</p>}

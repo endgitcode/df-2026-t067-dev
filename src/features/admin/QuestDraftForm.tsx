@@ -305,15 +305,15 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
 
   const Root = connection ? 'section' : 'main'
   return <Root className={connection ? 'admin-editor' : 'admin-demo'}>
-    <header className="admin-header"><div><span className="eyebrow">自治体向け</span><h1>{step === 'A03' ? '問題の素材と場所を登録' : step === 'A04' ? '問題の下書きを編集' : '旅行者向け表示の確認'}</h1></div><span className="demo-badge">{connection ? '開発用保存' : '未認証・未接続'}</span></header>
+    <header className="admin-header"><div><span className="eyebrow">自治体向け</span><h1>{step === 'A03' ? '問題の素材と場所を登録' : step === 'A04' ? '問題の下書きを編集' : '旅行者向け表示の確認'}</h1></div><span className="demo-badge">{connection ? '保存先：検証用' : '未ログイン'}</span></header>
     <div inert={saving}>
     <nav className="steps" aria-label="登録手順">
-      <button type="button" aria-current={step === 'A03' ? 'step' : undefined} onClick={() => setStep('A03')}><b>1/3</b><span>素材・場所登録</span></button><button type="button" aria-current={step === 'A04' ? 'step' : undefined} onClick={enterDraft}><b>2/3</b><span>下書き・編集（AI未接続）</span></button><button type="button" aria-current={step === 'A05' ? 'step' : undefined} onClick={enterPreview}><b>3/3</b><span>表示プレビュー（未公開）</span></button>
+      <button type="button" aria-current={step === 'A03' ? 'step' : undefined} onClick={() => setStep('A03')}><b>1/3</b><span>素材・場所登録</span></button><button type="button" aria-current={step === 'A04' ? 'step' : undefined} onClick={enterDraft}><b>2/3</b><span>下書き・編集（AIはまだ使えません）</span></button><button type="button" aria-current={step === 'A05' ? 'step' : undefined} onClick={enterPreview}><b>3/3</b><span>表示プレビュー（未公開）</span></button>
     </nav>
     <p className="demo-notice" role="note">{connection
       ? teamPreview ? '下書きはチームの検証用データとして保存されます。'
-        : '下書きはローカルAPI経由で、起動モードの保存先に保存されます。'
-      : '未認証です。送信・保存はしていません。再読み込みで入力は消えます。AI・判定・公開は未接続です。'}</p>
+        : '下書きはこの検証環境の保存先に保存されます。'
+      : 'ログインしていないため、送信・保存はしていません。再読み込みで入力は消えます。AIによる入力補助・写真判定・公開はまだ使えません。'}</p>
 
     {step === 'A03' ? <form onSubmit={event => {
       event.preventDefault()
@@ -349,9 +349,9 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
           <p>所属自治体：{connection?.member.label}</p>
           <p role="alert">行政区域を確認できません。自治体コードとデータ登録を運営に確認してください。</p>
         </> : exploration?.source === 'fixture' ? <p>探索エリア：{exploration.name}（架空の検証用エリア）</p>
-          : areaLabel ? <p>開発用の所属と公開探索エリア：{areaLabel}</p> : <>
+          : areaLabel ? <p>検証用の所属と公開探索エリア：{areaLabel}</p> : <>
           <p><strong>架空自治体：青葉みらい市（実在しません）</strong></p>
-          <p>公開探索エリア：青葉みらい市の行政区域（架空エリア）。自治体の行政区域から自動設定する構想の表示で、実際の地図・区域データには未接続です。</p>
+          <p>公開探索エリア：青葉みらい市の行政区域（架空エリア）。自治体の行政区域から自動設定する構想の表示で、実際の地図・区域データはまだ使えません。</p>
         </>}
         <div className="private-setting"><strong>非公開の撮影地点・半径</strong><span>{areaStatus}</span><small>{connection ? '撮影可能範囲：中心から半径1km（固定）' : '安全上、値や入力欄を表示しません。'}</small></div>
       </section>
@@ -366,7 +366,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         {connection && <PhraseChips label="よくある注意" phrases={photoNotePhrases} value={photoNote} onChange={value => { setPhotoNote(value); markMaterialChange() }} />}
       </section>
       <details className="form-section" open={afterClearOpen} onToggle={event => setAfterClearOpen(event.currentTarget.open)}><summary>クリア後の紹介・解説（任意）</summary><p className="helper">クリアした旅行者に公開されます。</p>
-        {!focused && <p className="helper">AIによる自動入力は未接続です。</p>}
+        {!focused && <p className="helper">AIによる自動入力はまだ使えません。</p>}
         {focused && <p className="helper">AIによる紹介・解説の自動入力は未提供です。</p>}
         <AccessInput value={access} onChange={value => { setAccess(value); markMaterialChange() }} builder={Boolean(connection)} />
         {focused ? <HoursInput value={hours} onChange={value => { setHours(value); markMaterialChange() }} /> : <fieldset><legend>利用できる時間</legend>

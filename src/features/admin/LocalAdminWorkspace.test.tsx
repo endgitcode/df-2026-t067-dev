@@ -192,11 +192,11 @@ it.each(['demo', 'durable-local'] as const)('uses the selected %s API mode and d
   try {
     render(<LocalAdminWorkspace authClient={authClient} dataMode={dataMode} />)
     expect(await screen.findByText('利用できる所属がありません。')).toBeVisible()
-    expect(screen.getByText(dataMode === 'demo' ? /サーバーの一時領域に保存/ : /ローカル永続ストアに保存/)).toBeVisible()
+    expect(screen.getByText(dataMode === 'demo' ? /一時的な保存先に保存/ : /検証環境の保存先に保存/)).toBeVisible()
     if (dataMode === 'demo') {
-      expect(screen.getByRole('link', { name: /未認証・未接続の架空フォーム/ })).toHaveAttribute('href', '/admin-demo')
+      expect(screen.getByRole('link', { name: /ログインなしで試せる架空フォーム/ })).toHaveAttribute('href', '/admin-demo')
     } else {
-      expect(screen.queryByRole('link', { name: /未認証・未接続の架空フォーム/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /ログインなしで試せる架空フォーム/ })).not.toBeInTheDocument()
     }
   } finally { vi.unstubAllGlobals() }
 })
