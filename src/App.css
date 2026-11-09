@@ -2,6 +2,11 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
+/* 横方向のはみ出しはビューポートで切り、ページ全体の横スクロールバーを出さない（D-73）。
+   320px幅で一部の要素が僅かにはみ出すと、横スクロールバーが下部ナビに重なって出た
+   （実地目視）。clip は hidden と違いスクロールコンテナを作らないため、
+   position: sticky や固定配置の基準に影響しない。 */
+html, body { overflow-x: clip; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { font: inherit; cursor: pointer; }
 button:disabled { cursor: not-allowed; }
@@ -90,8 +95,11 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s; }
 .map-filter-chips-inner { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 0; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }
-.map-filter-chips { display: flex; gap: 8px; max-width: 100%; overflow-x: auto; padding: 2px; pointer-events: auto; scrollbar-width: none; }
-.map-filter-chips::-webkit-scrollbar { display: none; }
+/* 地域チップは折り返して全件見せる（D-73）。横スクロール前提だと狭幅で右端の
+   チップが途中で切れ、横に送れることも伝わらなかった（実地目視：390pxで「中…」、
+   320pxで「近畿」の途中）。開閉の高さアニメーション（grid-template-rows）が
+   折り返し後の高さにも追随する。 */
+.map-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; overflow: visible; padding: 2px; pointer-events: auto; }
 .filter-chip { flex: none; min-height: 40px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
 /* 開閉ボタンは押しやすい44px級にし、開状態の見た目とシェブロンで状態を返す（D-59）。 */
 .filter-toggle { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; transition: background-color 150ms var(--ease-out); }
@@ -576,7 +584,10 @@ body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-
 }
 
 @media (max-width: 980px) {
-  body.explore-fullbleed .page { padding-bottom: calc(var(--mobile-tabbar-h) + 24px); }
+  /* ページ側の下部余白は持たない（D-73）。100dvh のシェルにページ余白が乗ると文書が
+     ビューポートより縦に長くなり、シート内スクロールとは別の窓側スクロールバーが
+     もう1本出た（実地目視）。タブバーを避ける余白はレール側で確保する。 */
+  body.explore-fullbleed .page { padding-bottom: 0; }
   body.explore-fullbleed .site-header { padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }
   /* 上部は帯ではなく小さな浮きチップに留め、地図が周囲と上下に抜けて見えるようにする。 */
   body.explore-fullbleed .brand { padding: 4px 10px 4px 4px; gap: 8px; }
@@ -587,8 +598,13 @@ body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
   body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
-  body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); }
-  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); z-index: 3; }
+  /* 地図操作（ズーム・リセット等）は、閉じた見出し分（peek）のシートの上端より上に
+     置く（D-73）。固定オフセット（タブバー＋58px）ではリセットボタンが peek の
+     シート裏に半分隠れた（実地目視、320pxでも再現）。シートの高さ変数に追随させ、
+     上限は peek の高さに揃える：シートを half／full まで開いた時は、操作系は
+     従来どおりシートの裏で待つ（前面に出し続けない）。 */
+  body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); }
+  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); z-index: 3; }
   body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
   body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; }
   body.explore-fullbleed .map-browse-shortcut.is-return-to-map { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }
@@ -597,6 +613,8 @@ body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-
   body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
   /* フッター廃止（D-39）に伴い、レールの末尾の下部余白はレール側で確保する。 */
   body.explore-fullbleed .map-preview-shell:has(> .explore-sheet-reopen, + .map-browse-shortcut) .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 62px); }
-  body.explore-fullbleed .quest-rail { padding: 22px 16px calc(25px + env(safe-area-inset-bottom)); }
+  body.explore-fullbleed .quest-rail { padding: 22px 16px calc(var(--mobile-tabbar-h) + 25px); }
+  /* レールが空（共有検証のスマホ幅では中身が無い）なら、余白だけの帯を残さない（D-73）。 */
+  body.explore-fullbleed .quest-rail:empty { display: none; }
   body.explore-fullbleed .is-browsing-below-map ~ .quest-rail { min-height: 100svh; }
 }
