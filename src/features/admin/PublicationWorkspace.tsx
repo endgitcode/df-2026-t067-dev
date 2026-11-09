@@ -1,5 +1,5 @@
 import { PHOTO_UPLOAD_MAX_BYTES, PHOTO_UPLOAD_MIME_TYPES, PHOTO_UPLOAD_ACCEPT } from '../../shared/mediaLimits'
-import { useId, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError, parsePublishManagedQuest } from '../../shared/api'
 import type { ApiClient, ManagedQuest, PhotoDecision, PublishManagedQuest, ReviewField, ReviewSubmission } from '../../shared/api'
@@ -46,7 +46,6 @@ function PhotoTrial({ expected, disabled, feedback, onTest, onSelection }:   {
 }) {
   const [file, setFile] = useState<File | null>(null)
   const key = useRef<string | null>(null)
-  const inputId = useId()
   const label = expected === 'MATCH' ? '一致写真' : '別対象写真'
   const valid = file && file.size > 0 && file.size <= PHOTO_UPLOAD_MAX_BYTES && PHOTO_UPLOAD_MIME_TYPES.includes(file.type)
   return <form onSubmit={(event) => {
@@ -55,11 +54,11 @@ function PhotoTrial({ expected, disabled, feedback, onTest, onSelection }:   {
   }}>
     <fieldset disabled={disabled}>
       <legend>{label}</legend>
-      <label htmlFor={inputId}>{label}を選択</label><span className="photo-picker"><span aria-hidden="true">写真を選ぶ</span><input id={inputId} type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
+      <label>{label}を選択<input type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
         setFile(event.target.files?.[0] ?? null)
         key.current = null
         onSelection(expected)
-      }} /></span>
+      }} /></label>
       {file && !valid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
       <button type="submit" disabled={!valid}>{label}の試験を送信</button>
       <p role={feedback?.kind === 'error' ? 'alert' : 'status'}>{feedback?.message ?? '写真を選んで送信してください。'}</p>
@@ -220,12 +219,12 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
               <li><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真（match.png）をダウンロード</a></li>
               <li><a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真（other-target.png）をダウンロード</a></li>
             </ul></>}
-        <label htmlFor="publication-test-photo">試験写真</label><span className="photo-picker"><span aria-hidden="true">写真を選ぶ</span><input id="publication-test-photo" type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
+        <label>試験写真<input type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
           const next = event.target.files?.[0] ?? null
           if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
           if (next) previousPhoto.current = next
           setPhoto(next); key.current = null; setOutcome(null)
-        }} /></span>
+        }} /></label>
         {rightsAssist ? <PhotoRightsInput key={photo ? `${photo.name}:${photo.lastModified}` : 'empty'} purpose="test" label="試験写真の利用権" value={rights} onChange={(value) => {
           setRights(value); setReuseNeeded(false); key.current = null; setOutcome(null)
         }} /> : <label>試験写真の利用権<textarea value={rights} onChange={event => { setRights(event.target.value); key.current = null; setOutcome(null) }} /></label>}
@@ -241,15 +240,13 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
       <legend>{approvedAssets ? '公開' : '公開前のチェック'}</legend>
       {checkReason && <p>{checkReason}</p>}
       {approvedAssets && readinessFailed && <button type="button" onClick={onReadinessRetry}>保存状態を読み直す</button>}
+      {approvedAssets && missing[0] && onFix && <button type="button" onClick={() => onFix(missing[0])}>{reviewLabels[missing[0]]}の入力へ</button>}
       {!approvedAssets && confirmationLabels.map(([item, label]) => <label key={item} className="check-option">
         <input type="checkbox" disabled={!reviewed} checked={checked.includes(item)} onChange={(event) => {
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))
         }} />{label}
       </label>)}
-      <div className="admin-list-actions">
-        {approvedAssets && missing[0] && onFix && <button type="button" onClick={() => onFix(missing[0])}>{reviewLabels[missing[0]]}の入力へ</button>}
-        <button type="button" className="workflow-primary" disabled={!ready || areaUnclassified} onClick={publish}>この版を公開</button>
-      </div>
+      <button type="button" disabled={!ready || areaUnclassified} onClick={publish}>この版を公開</button>
     </fieldset>
   </section>
 }

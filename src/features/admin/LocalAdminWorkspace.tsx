@@ -91,12 +91,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
           <details><summary>詳細</summary>
             <p>問題 {item.questId}・下書き版 {item.draftRevision}{item.publishedVersion !== null && '・公開版 ' + item.publishedVersion}</p>
           </details>
-          <div className="admin-list-actions">
-            <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>{teamPreview || durable ? '編集を続ける' : '下書きを編集'}</button>
-            {member.role === 'publisher' && item.publishedVersion !== null &&
-              <PausePublication key={item.publishedVersion} api={api} orgId={member.orgId} questId={item.questId} version={item.publishedVersion}
-                onReload={retry} onPaused={() => { setNotice('公開を休止しました。'); retry() }} />}
-          </div>
+          <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>{teamPreview || durable ? '編集を続ける' : '下書きを編集'}</button>
           {(teamPreview || durable) ? item.status !== 'published' && <details className="workflow-remaining">
             <summary>残りの作業（{remainingWork(item, true).length}件）</summary>
             <ul>{remainingWork(item, true).map((work) => <li key={work}>{work}</li>)}</ul>
@@ -116,6 +111,9 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
                 <button type="button" onClick={() => setEditor({ kind: 'publication', initial: item })}>試験と公開確認</button>}
             </div>
           </fieldset>}
+          {member.role === 'publisher' && item.publishedVersion !== null &&
+            <PausePublication key={item.publishedVersion} api={api} orgId={member.orgId} questId={item.questId} version={item.publishedVersion}
+              onReload={retry} onPaused={() => { setNotice('公開を休止しました。'); retry() }} />}
         </li>
         : <li key={item.reportId}><strong>{reportCategoryLabels[item.category]}</strong>
           <p>{item.text}</p>
