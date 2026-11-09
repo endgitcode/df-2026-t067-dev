@@ -25,11 +25,11 @@ type TrialFeedback = { kind: 'pending' | 'success' | 'error'; message: string }
 function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
   const code = cause instanceof ApiError ? cause.code : undefined
   switch (code) {
-    case 'DRAFT_CONFLICT': return { message: '下書きの版が変わりました。一覧から最新版を確認してください。', stale: true }
+    case 'DRAFT_CONFLICT': return { message: '下書きが更新されました。一覧から最新の内容を確認してください。', stale: true }
     case 'FORBIDDEN': return { message: '担当組織の操作権限を確認できません。', stale: true }
     case 'PHOTO_APPROVAL_REQUIRED': return { message: '素材の事前承認が必要です。運営に承認を依頼するか、承認済みの写真を選んでください。' }
     case 'NETWORK_ERROR': return { message: '通信に失敗しました。通信状況を確認し、同じ写真で再送してください。' }
-    case 'PHOTO_TEST_REQUIRED': return { message: 'この版で異なる写真を使って一致・別対象の試験を確認してください。' }
+    case 'PHOTO_TEST_REQUIRED': return { message: '正解の写真とちがう物の写真で、もう一度テストしてください。' }
     case 'REVIEW_REQUIRED': return { message: '公開できませんでした。必要な入力と保存した写真を確認してください。' }
     case 'INVALID_INPUT': return { message: '試験写真の形式と保存済みの参考写真を確認してください。' }
     case 'RATE_LIMITED': return { message: '試験の受付上限に達しました。時間をおいて再試行してください。' }
@@ -46,7 +46,7 @@ function PhotoTrial({ expected, disabled, feedback, onTest, onSelection }:   {
 }) {
   const [file, setFile] = useState<File | null>(null)
   const key = useRef<string | null>(null)
-  const label = expected === 'MATCH' ? '一致写真' : '別対象写真'
+  const label = expected === 'MATCH' ? '① 正解の写真でテスト' : '② ちがう物の写真でテスト'
   const valid = file && file.size > 0 && file.size <= PHOTO_UPLOAD_MAX_BYTES && PHOTO_UPLOAD_MIME_TYPES.includes(file.type)
   return <form onSubmit={(event) => {
     event.preventDefault()
@@ -54,14 +54,14 @@ function PhotoTrial({ expected, disabled, feedback, onTest, onSelection }:   {
   }}>
     <fieldset disabled={disabled}>
       <legend>{label}</legend>
-      <label>{label}を選択<input type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
+      <label>{label}{expected === 'MATCH' ? '（同じ物を別の写真で）' : ''}<input type="file" accept={PHOTO_UPLOAD_ACCEPT} onChange={(event) => {
         setFile(event.target.files?.[0] ?? null)
         key.current = null
         onSelection(expected)
       }} /></label>
       {file && !valid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
-      <button type="submit" disabled={!valid}>{label}の試験を送信</button>
-      <p role={feedback?.kind === 'error' ? 'alert' : 'status'}>{feedback?.message ?? '写真を選んで送信してください。'}</p>
+      <button type="submit" disabled={!valid}>{label}を送信</button>
+      {feedback && <p role={feedback.kind === 'error' ? 'alert' : 'status'}>{feedback.message}</p>}
     </fieldset>
   </form>
 }
@@ -97,8 +97,8 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   const checkReason = areaUnclassified ? '地域の分類が完了するまで公開できません。'
     : approvedAssets && !readiness ? readinessFailed ? '下書きの保存状態を取得できませんでした。' : '下書きの保存状態を読み込んでいます。'
     : missing.length ? '不足項目を修正してください。'
-    : !approvedAssets && quest.status !== 'review_pending' ? 'この版の公開条件を確認してください。'
-    : !proofs.MATCH || !proofs.WRONG_TARGET ? 'この下書き版で一致・別対象の写真試験を完了してください。'
+    : !approvedAssets && quest.status !== 'review_pending' ? '公開条件を確認してください。'
+    : !proofs.MATCH || !proofs.WRONG_TARGET ? '保存した内容で、正解の写真とちがう物の写真をテストしてください。'
     : ''
   const trialDisabled = disabled || missing.length > 0 || (approvedAssets && !readiness)
   const reviewed = !checkReason
@@ -162,14 +162,14 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
       setChecked([])
       if (expected && result.outcome !== expected) {
         const message = result.outcome === 'IMAGE_UNCERTAIN' ? '判定できませんでした。対象がはっきり写った写真で再試験してください。'
-          : '想定した判定と一致しません。対象を確認し、別の写真で再試験してください。'
+          : 'AIの判定が予想と違いました。特徴の書き方か写真を見直してください。'
         report?.({ kind: 'error', message })
         return
       }
       if (result.outcome !== 'IMAGE_UNCERTAIN') {
         setProofs((current) => ({ ...current, [result.outcome]: result.testId }))
         onTrialConfirmed?.()
-        report?.({ kind: 'success', message: result.outcome === 'MATCH' ? '一致試験を確認しました。' : '別対象の試験を確認しました。' })
+        report?.({ kind: 'success', message: result.outcome === 'MATCH' ? '① 正解と判定されました ✓' : '② 不正解と判定されました ✓' })
       }
     }, report)
   }
@@ -200,20 +200,19 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   return <section className="form-section" aria-labelledby="publication-workspace-title">
     <h2 id="publication-workspace-title">写真試験と公開確認</h2>
     <p>{quest.draft.content.title || '無題の下書き'}</p>
-    <p>{realPhotoTest ? '検証用の環境です。写真試験は実写真で照合します。' : '検証用の環境です。合成写真を使います。'}</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {areaUnclassified && <p role="alert">この地域は都道府県コードが未設定（未分類）のため、公開できません。地域の分類が完了するまで公開は止まります。</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">操作結果を確認しています…</p>}
     {!approvedAssets && <fieldset disabled={disabled}>
       <legend>公開条件の確認</legend>
-      <button type="button" onClick={review}>この版の公開条件を確認</button>
+      <button type="button" onClick={review}>公開条件を確認</button>
       {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
       {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}を確認</button> : reviewLabels[item]}</li>)}</ul></>}
     </fieldset>}
     {missing.length > 0 && <div><p>不足項目をすべて修正すると写真試験を送信できます。</p><ul>{missing.map(item => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}の入力へ</button> : reviewLabels[item]}</li>)}</ul></div>}
     {approvedAssets ? <>
-      {realPhotoTest && <p>照合に使う許可がある写真を選んでください。送信ごとに回答と共用の送信枠を1回使います。</p>}
+      {realPhotoTest && <p>公開前に、AIが正しく判定できるか、利用許可のある写真2枚で試します（送信ごとに回答と共通の上限回数を1回使います）。</p>}
       {!realPhotoTest && <p>参考写真には一致用の合成写真を登録し、試験には次の2枚を使ってください。<br /><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真</a> ・ <a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真</a></p>}
       <PhotoTrial expected="MATCH" disabled={trialDisabled} feedback={trialFeedback.MATCH} onTest={sendTrial} onSelection={resetTrial} />
       <PhotoTrial expected="WRONG_TARGET" disabled={trialDisabled} feedback={trialFeedback.WRONG_TARGET} onTest={sendTrial} onSelection={resetTrial} />
@@ -241,8 +240,8 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
         <button type="submit" disabled={!photoValid || !rights.trim() || reuseNeeded}>写真試験を送信</button>
       </fieldset>
     </form>}
-    {!approvedAssets && proofs.MATCH && <p role="status">一致試験を確認しました。</p>}
-    {!approvedAssets && proofs.WRONG_TARGET && <p role="status">別対象の試験を確認しました。</p>}
+    {!approvedAssets && proofs.MATCH && <p role="status">① 正解と判定されました ✓</p>}
+    {!approvedAssets && proofs.WRONG_TARGET && <p role="status">② 不正解と判定されました ✓</p>}
     {!approvedAssets && outcome === 'IMAGE_UNCERTAIN' && <p role="status">{realPhotoTest ? '試験写真を確認できませんでした。対象がはっきり写った別の写真でお試しください。' : '試験写真を確認できませんでした。別の合成写真でお試しください。'}</p>}
     <fieldset disabled={disabled}>
       <legend>{approvedAssets ? '公開' : '公開前のチェック'}</legend>
@@ -253,7 +252,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))
         }} />{label}
       </label>)}
-      <button className="workflow-primary" type="button" disabled={!ready || areaUnclassified} ref={publishTrigger} onClick={() => setConfirmOpen(true)}>{initial.status === 'published' ? '修正版を公開' : initial.status === 'paused' ? '再公開' : 'この版を公開'}</button>
+      <button className="workflow-primary" type="button" disabled={!ready || areaUnclassified} ref={publishTrigger} onClick={() => setConfirmOpen(true)}>{initial.status === 'published' ? '修正を公開する' : initial.status === 'paused' ? '公開を再開する' : '公開する'}</button>
     </fieldset>
     {confirmOpen && <div role="dialog" aria-label="公開の確認" className="publication-confirm">
       <p>公開すると、この問題と公開ヒントを旅行者が見られるようになります。</p>

@@ -11,7 +11,7 @@ it('allows connected writing without reason or name and omits routine memo compo
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('問題タイトル')).toBeVisible()
   expect(screen.queryByLabelText('下書きの根拠・人のメモ')).not.toBeInTheDocument()
-  expect(screen.getByLabelText('現地で確かめた見た目の特徴')).toBeVisible()
+  expect(screen.getByLabelText('AIが見分けるための特徴（非公開）')).toBeVisible()
 })
 
 it('keeps legacy evidence and memo while saving before a hint shortcut, and never navigates on failure', async () => {

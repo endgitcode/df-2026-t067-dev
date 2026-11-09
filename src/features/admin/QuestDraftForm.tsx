@@ -56,7 +56,7 @@ function AccessInput({ value, onChange, builder }: { value: string; onChange: (v
     onChange(rest ? `${sentence}。${rest}` : sentence)
   }
   return <>
-    <label>行き方<textarea value={value} onChange={event => onChange(event.target.value)} rows={2} placeholder="例：駅から徒歩約10分" /></label>
+    <label>アクセス（行き方）<textarea value={value} onChange={event => onChange(event.target.value)} rows={2} placeholder="例：駅から徒歩約10分" /></label>
     {builder && <>
       <div className="access-builder">
         <label>交通手段<select value={means} onChange={event => setMeans(event.target.value)}>
@@ -370,11 +370,10 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     }}>
       {part !== 2 && <><section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1}>{part ? '対象と参考写真' : '1/3 素材と場所'}</h2>
         {!part && <p className="helper">{focused ? '途中でも文章編集・保存できます。写真・権利などは公開までに必要です。' : '対象名は必須です。写真・権利などは公開までに必要で、下書きは未完成でも保存できます。'}</p>}
-        <p className="helper">対象名は非公開です。</p>
-        <span className="helper">{focused ? '公開までに必須' : '必須（次へ進むとき）'}</span><label>対象名<small className="required-mark">必須</small><input aria-label="対象名" id="workflow-target-name" ref={nameRef} aria-required={Boolean(part) || !focused} aria-invalid={Boolean((requiredTarget || draftEntryError) && targetMissing)} aria-describedby={(draftEntryError || requiredTarget) && targetMissing ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
+        <label>撮る“もの”の名前（非公開）<small className="required-mark">必須</small><input aria-label="撮る“もの”の名前（非公開）" id="workflow-target-name" ref={nameRef} aria-required={Boolean(part) || !focused} aria-invalid={Boolean((requiredTarget || draftEntryError) && targetMissing)} aria-describedby={(draftEntryError || requiredTarget) && targetMissing ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {(draftEntryError || requiredTarget) && targetMissing && <p id="name-error" className="field-error">対象名を入力してください。</p>}
-        <span className="helper">{part ? '公開までに必須・非公開' : '任意（後で登録可・非公開）'}</span><label className="file-label">参考写真（旅行者には見せません）{part && <small className="required-mark">必須</small>}<input aria-label="参考写真（旅行者には見せません）" id="workflow-reference" className="reference-photo-input" ref={inputRef} type="file" accept={PHOTO_UPLOAD_ACCEPT} aria-required={Boolean(part)} aria-invalid={Boolean(photoError) || (requiredTarget && referenceMissing)} aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
-        <p id="photo-help" className="helper">{connection ? 'JPEG / PNG / WebP、送信上限4MBまで。' + (part ? '正解対象の確認に使う許可がある写真を選んでください。' : '合成素材を使ってください。')
+        <label className="file-label">正解の写真（AIの答え合わせ用・非公開）{part && <small className="required-mark">必須</small>}<input aria-label="正解の写真（AIの答え合わせ用・非公開）" id="workflow-reference" className="reference-photo-input" ref={inputRef} type="file" accept={PHOTO_UPLOAD_ACCEPT} aria-required={Boolean(part)} aria-invalid={Boolean(photoError) || (requiredTarget && referenceMissing)} aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
+        <p id="photo-help" className="helper">{connection ? '対象が大きく写った明るい写真を、人の顔や車のナンバーを避けて選んでください（JPEG・PNG・WebP、4MBまで、利用許可のある写真）。'
           : 'JPEG / PNG / WebP、選択上限5 MB。参考写真の選択・プレビューのみです。'}</p>
         {!photo && referenceAssetId && <p>保存済みの参考写真 <button type="button" onClick={() => {
           setReferenceAssetId(null); markMaterialChange()
@@ -390,14 +389,12 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       </section>}
       <section className="form-section" aria-labelledby="area-heading"><h2 id="area-heading">公開する探索エリア</h2>
         {exploration?.source === 'N03' ? <>
-          <p>所属自治体：{connection?.member.label}</p>
-          <p>探索エリア：{exploration.name}（自治体コード {exploration.municipalityCode}）</p>
-          <p>出典：国土交通省 国土数値情報「行政区域」{exploration.year}年版を加工</p>
+          <p>公開エリア：{exploration.name}</p>
         </> : exploration?.source === 'unavailable' ? <>
           <p>所属自治体：{connection?.member.label}</p>
           <p role="alert">行政区域を確認できません。自治体コードとデータ登録を運営に確認してください。</p>
-        </> : exploration?.source === 'fixture' ? <p>探索エリア：{exploration.name}</p>
-          : areaLabel ? <p>探索エリア：{areaLabel}</p> : <>
+        </> : exploration?.source === 'fixture' ? <p>公開エリア：{exploration.name}</p>
+          : areaLabel ? <p>公開エリア：{areaLabel}</p> : <>
           <p><strong>自治体：青葉みらい市</strong></p>
           <p>公開探索エリア：青葉みらい市の行政区域</p>
         </>}
@@ -419,9 +416,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         <label>{part ? '撮影時の注意（該当する場合）' : '撮影時の注意'}<textarea value={photoNote} onChange={event => { setPhotoNote(event.target.value); markMaterialChange() }} rows={2} placeholder="撮影できる時間や安全上の制約は、挑戦前にここへ記載" /></label>
         {connection && <PhraseChips label="よくある注意" phrases={photoNotePhrases} value={photoNote} onChange={value => { setPhotoNote(value); markMaterialChange() }} />}
       </section>
-      <details className="form-section" open={afterClearOpen} onToggle={event => setAfterClearOpen(event.currentTarget.open)}><summary>クリア後の紹介・解説（任意）</summary><p className="helper">クリアした旅行者に公開されます。</p>
+      <details className="form-section" open={afterClearOpen} onToggle={event => setAfterClearOpen(event.currentTarget.open)}><summary>クリア後に見せる案内（任意）</summary><p className="helper">クリアした旅行者に公開されます。</p>
         {!focused && <p className="helper">AIによる自動入力はまだ使えません。</p>}
-        {focused && <p className="helper">AIによる紹介・解説の自動入力は未提供です。</p>}
         <AccessInput value={access} onChange={value => { setAccess(value); markMaterialChange() }} builder={Boolean(connection)} />
         {focused ? <HoursInput onError={setTimeError} value={hours} onChange={value => { setHours(value); markMaterialChange() }} /> : <fieldset><legend>利用できる時間</legend>
           <div role="radiogroup" aria-label="利用できる時間の設定">
@@ -437,13 +433,13 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
           {hoursMode === 'supplement' && <label>時間の補足<input value={hoursSupplement} onChange={event => { setHoursSupplement(event.target.value); setHours(event.target.value); setShowSummary(false); markMaterialChange() }} placeholder="例：季節により異なります" /></label>}
           {hoursError && <p ref={hoursErrorRef} id="hours-error" role="alert" tabIndex={-1} className="field-error">{hoursError}</p>}
         </fieldset>}
-        <label>地域のおすすめコメント<textarea value={promoComment} onChange={event => { setPromoComment(event.target.value); markMaterialChange() }} rows={2} placeholder="例：地域で大切に受け継いできた風景です。" /></label>
+        <label>自治体からの紹介<textarea value={promoComment} onChange={event => { setPromoComment(event.target.value); markMaterialChange() }} rows={2} placeholder="例：地域で大切に受け継いできた風景です。" /></label>
         <label>解説<textarea value={explanation} onChange={event => { setExplanation(event.target.value); markMaterialChange() }} rows={3} placeholder="例：この建物が建てられた背景や、地域との関わり" /></label>
       </details></>}
       {!part && <>{draftEntryError && !name.trim() && <p tabIndex={-1} role="alert" className="field-error">{draftEntryError}</p>}
       <button className="submit-button" type="button" onClick={enterDraft}>下書き・編集へ</button>
       {!focused && <button className="submit-button" type="submit">入力内容を確認</button>}
-      {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2>{!connection && <p>画面内の確認表示です。送信・保存はしていません。</p>}<dl><dt>自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市・青葉みらい市の行政区域'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影時の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用できる時間</dt><dd>{hours || '未入力'}</dd><dt>地域のおすすめコメント</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の出典と利用権</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影できる範囲（非公開）</dt><dd>{areaStatus}</dd></dl></section>}
+      {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2>{!connection && <p>画面内の確認表示です。送信・保存はしていません。</p>}<dl><dt>自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市・青葉みらい市の行政区域'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影時の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用できる時間</dt><dd>{hours || '未入力'}</dd><dt>自治体からの紹介</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の出典と利用権</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影できる範囲（非公開）</dt><dd>{areaStatus}</dd></dl></section>}
       </>}
     </form> : step === 'A04' ? <>
       <DraftEditor draft={draft} setDraft={editDraft} materialChanged={materialChanged} sampleConfirm={sampleConfirm}
@@ -470,6 +466,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       </section>}
       <TravelerPreview challengeContent={{ title: draft.title, question: draft.question, hints: draft.hints, requiresBoat, requiresPaidFacility, price, photoNote }} afterClearContent={{ access, hours, promoComment, explanation }} mode={previewMode} onModeChange={setPreviewMode} headingRef={a05HeadingRef} onEdit={() => { setVisitedDraft(true); setStep('A04') }} areaLabel={areaLabel} /></>}
     </div>
+    {part === 1 && exploration?.source === 'N03' && <footer className="helper">出典：国土交通省 国土数値情報「行政区域」{exploration.year}年版を加工</footer>}
     {connection && <section className="form-section" aria-label="下書きの保存">
       {saveState.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}>下書きを保存しました。</p>}
       {saveState.status === 'error' && <p role="alert">{saveState.message}</p>}

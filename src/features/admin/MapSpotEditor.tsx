@@ -69,14 +69,14 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
       <p><strong>地図の候補（参考）</strong> <span translate="no">Google Maps</span></p>
       {candidate.name && <p>名称候補：{candidate.name}</p>}
       {candidate.address && <p>住所候補：{candidate.address}</p>}
+      <button type="button" onClick={() => edit({ name: candidate.name ?? input.name, address: candidate.address ?? input.address })}>この名前と住所を使う</button>
     </div>}
-    <p id="spot-registration-help" className="helper">保存する名称と住所は、自治体で確認した情報を下の欄に入力してください。</p>
-    <label>スポット名・施設名<small className="required-mark">必須</small><input aria-describedby={invalid && !input.name.trim() ? "spot-name-error" : undefined} aria-label="スポット名・施設名" value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
-       placeholder="自治体の名称を入力" onChange={(event) => edit({ name: event.target.value })} /></label>
-    {invalid && !input.name.trim() && <p id="spot-name-error" className="field-error">スポット名・施設名を入力してください。</p>}
-    <label>確認済み住所<small className="required-mark">必須</small><input aria-describedby={invalid && !input.address.trim() ? "spot-address-error" : undefined} aria-label="確認済み住所" value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
-       placeholder="自治体の住所を入力" onChange={(event) => edit({ address: event.target.value })} /></label>
-    {invalid && !input.address.trim() && <p id="spot-address-error" className="field-error">確認済み住所を入力してください。</p>}
+    <label>場所の名前（クリア後に表示）<small className="required-mark">必須</small><input aria-describedby={invalid && !input.name.trim() ? "spot-name-error" : undefined} aria-label="場所の名前（クリア後に表示）" value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
+       placeholder="例：風見の丘公園" onChange={(event) => edit({ name: event.target.value })} /></label>
+    {invalid && !input.name.trim() && <p id="spot-name-error" className="field-error">場所の名前（クリア後に表示）を入力してください。</p>}
+    <label>住所（クリア後に表示）<small className="required-mark">必須</small><input aria-describedby={invalid && !input.address.trim() ? "spot-address-error" : undefined} aria-label="住所（クリア後に表示）" value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
+       placeholder="例：青葉みらい市風見1-2-3" onChange={(event) => edit({ address: event.target.value })} /></label>
+    {invalid && !input.address.trim() && <p id="spot-address-error" className="field-error">住所（クリア後に表示）を入力してください。</p>}
     <div className="field-pair">
       <label>スポットの緯度<small className="required-mark">必須</small><input aria-describedby={(latitudeInvalid || (invalid && !input.latitude.trim())) ? "spot-latitude-error" : undefined} inputMode="decimal" aria-label="スポットの緯度" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={(latitudeInvalid || (invalid && !input.latitude.trim()))}
         onChange={(event) => edit({ latitude: event.target.value })} /></label>

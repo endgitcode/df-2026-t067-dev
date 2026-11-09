@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { ApiError, createApiClient } from '../../shared/api'
@@ -26,7 +26,7 @@ it('publishes only after both saved-version photo tests, review, and explicit co
   const api = { ...createApiClient(), testManagedQuest, submitManagedQuestReview, publishManagedQuest }
   const published = vi.fn()
   render(<PublicationWorkspace api={api} initial={initial} onBack={vi.fn()} onPublished={published} />)
-  const publish = screen.getByRole('button', { name: 'この版を公開' })
+  const publish = screen.getByRole('button', { name: '公開する' })
   expect(publish).toBeDisabled()
   const match = new File(['match'], 'match.png', { type: 'image/png' })
   const other = new File(['other'], 'other-target.png', { type: 'image/png' })
@@ -34,14 +34,14 @@ it('publishes only after both saved-version photo tests, review, and explicit co
   await user.upload(screen.getByLabelText('試験写真'), match)
   expect(testManagedQuest).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
-  expect(await screen.findByText('一致試験を確認しました。')).toBeVisible()
+  expect(await screen.findByText('① 正解と判定されました ✓')).toBeVisible()
   expect(publish).toBeDisabled()
   await user.upload(screen.getByLabelText('試験写真'), other)
   await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
-  expect(await screen.findByText('別対象の試験を確認しました。')).toBeVisible()
+  expect(await screen.findByText('② 不正解と判定されました ✓')).toBeVisible()
   expect(testManagedQuest.mock.calls.map((call) => call[2].expectedDraftRevision)).toEqual([4, 4])
   expect(testManagedQuest.mock.calls[0][2].idempotencyKey).not.toEqual(testManagedQuest.mock.calls[1][2].idempotencyKey)
-  await user.click(screen.getByRole('button', { name: 'この版の公開条件を確認' }))
+  await user.click(screen.getByRole('button', { name: '公開条件を確認' }))
   expect(await screen.findByText('この下書きは確認待ちです。')).toBeVisible()
   expect(publish).toBeDisabled()
   for (const field of screen.getAllByRole('checkbox')) await user.click(field)
@@ -53,7 +53,7 @@ it('publishes only after both saved-version photo tests, review, and explicit co
   await user.click(screen.getByRole('button', { name: 'やめる' }))
   expect(publish).toHaveFocus()
   await user.click(publish)
-  await user.click(screen.getByRole('button', { name: '公開する' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '公開する' }))
   expect(publishManagedQuest).toHaveBeenCalledExactlyOnceWith(org.orgId, initial.questId, {
     expectedDraftRevision: 4, matchTestId: 'match-test', mismatchTestId: 'other-test',
     confirmations: { fictionalData: true, visitConditions: true, photoRights: true, shootingArea: true, testCases: true },
@@ -66,11 +66,11 @@ it('keeps publishing unavailable without verification and stops work on an old d
   const submitManagedQuestReview = vi.fn().mockRejectedValue(new ApiError('DRAFT_CONFLICT'))
   const api = { ...createApiClient(), submitManagedQuestReview }
   render(<PublicationWorkspace api={api} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
-  expect(screen.getByRole('button', { name: 'この版を公開' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '公開する' })).toBeDisabled()
   for (const checkbox of screen.getAllByRole('checkbox')) expect(checkbox).toBeDisabled()
-  const review = screen.getByRole('button', { name: 'この版の公開条件を確認' })
+  const review = screen.getByRole('button', { name: '公開条件を確認' })
   await user.click(review)
-  expect(await screen.findByRole('alert')).toHaveTextContent('下書きの版が変わりました')
+  expect(await screen.findByRole('alert')).toHaveTextContent('下書きが更新されました')
   expect(review).toBeDisabled()
   expect(screen.getByRole('button', { name: '写真試験を送信' })).toBeDisabled()
 })
@@ -106,13 +106,13 @@ it('guides real-photo tests and accepts real results in answer-trial photo test 
   const testManagedQuest = vi.fn().mockResolvedValue({ orgId: org.orgId, questId: initial.questId, draftRevision: 4, source: 'real', testId: 'real-match', outcome: 'MATCH' })
   const api = { ...createApiClient(), testManagedQuest }
   render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
-  expect(screen.getByText(/写真試験は実写真で照合します/)).toBeVisible()
+  expect(screen.queryByText(/検証用の環境です/)).not.toBeInTheDocument()
   expect(screen.getByText(/回答と共用の送信枠（上限20回）を1回消費します/)).toBeVisible()
   expect(screen.queryByRole('link', { name: /合成写真/ })).not.toBeInTheDocument()
   await user.type(screen.getByLabelText('試験写真の利用権'), '自作の対象を自分で撮影した写真')
   await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.jpg', { type: 'image/jpeg' }))
   await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
-  expect(await screen.findByText('一致試験を確認しました。')).toBeVisible()
+  expect(await screen.findByText('① 正解と判定されました ✓')).toBeVisible()
 })
 
 it('rejects a mock result in real photo test mode', async () => {
@@ -124,7 +124,7 @@ it('rejects a mock result in real photo test mode', async () => {
   await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.jpg', { type: 'image/jpeg' }))
   await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('結果を確認できませんでした')
-  expect(screen.queryByText('一致試験を確認しました。')).not.toBeInTheDocument()
+  expect(screen.queryByText('① 正解と判定されました ✓')).not.toBeInTheDocument()
 })
 
 it('explains a system error in real photo test mode without fixture wording', async () => {

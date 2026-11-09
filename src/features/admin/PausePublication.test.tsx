@@ -13,7 +13,7 @@ it('prefixes the pause reason with the chosen category and keeps the detail', as
   await user.click(screen.getByRole('button', { name: '公開を休止' }))
   await user.selectOptions(screen.getByLabelText('休止の種類'), '安全上の問題')
   await user.type(screen.getByLabelText('休止理由'), '足場が崩れている')
-  await user.click(screen.getByRole('button', { name: 'この公開版を休止する' }))
+  await user.click(screen.getByRole('button', { name: '公開を休止する' }))
   expect(pauseManagedQuest).toHaveBeenCalledExactlyOnceWith('org', 'q',
     { expectedPublishedVersion: 2, reason: '安全上の問題：足場が崩れている' }, { signal: expect.any(AbortSignal) })
   expect(onPaused).toHaveBeenCalledOnce()
@@ -26,9 +26,9 @@ it('requires a detail when the category is other, and sends detail-only reasons 
     onPaused={vi.fn()} onReload={vi.fn()} />)
   await user.click(screen.getByRole('button', { name: '公開を休止' }))
   await user.selectOptions(screen.getByLabelText('休止の種類'), 'その他')
-  expect(screen.getByRole('button', { name: 'この公開版を休止する' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '公開を休止する' })).toBeDisabled()
   await user.type(screen.getByLabelText('休止理由'), '個別の事情')
-  await user.click(screen.getByRole('button', { name: 'この公開版を休止する' }))
+  await user.click(screen.getByRole('button', { name: '公開を休止する' }))
   expect(pauseManagedQuest.mock.calls[0][2].reason).toBe('その他：個別の事情')
 })
 

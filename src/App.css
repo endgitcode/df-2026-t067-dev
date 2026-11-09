@@ -987,3 +987,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 .quest-detail-close { display: block; margin: 0 0 8px auto; min-width: 44px; min-height: 44px; padding: 8px 12px; border: 2px solid #000; border-radius: 12px; background: #fff; color: #000; cursor: pointer; }
 .explore-sheet[data-snap="closed"] .explore-sheet-handle { height: 64px; }
 .explore-sheet-count { font-size: 16px; }
+
+.quest-details .sample-note {
+  white-space: pre-line;
+}

@@ -24,13 +24,13 @@ it('guards only dirty edits, restores URL step, and offers three focused navigat
   render(<AdminQuestWorkflow api={client} initial={initial} member={member} teamPreview={false} photoTestSource="mock" areaUnclassified={false} onBack={onBack} onPublished={vi.fn()} />)
   expect(screen.getByRole('heading', { name: /STEP 1/ })).toBeVisible()
   expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true)
-  fireEvent.change(screen.getByLabelText('対象名'), { target: { value: '変更' } })
+  fireEvent.change(screen.getByLabelText('撮る“もの”の名前（非公開）'), { target: { value: '変更' } })
   expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(false)
-  fireEvent.click(screen.getByRole('button', { name: 'STEP 2 撮影条件' }))
+  fireEvent.click(screen.getByRole('button', { name: 'STEP 2 条件と案内' }))
   expect(screen.getByRole('alertdialog')).toHaveFocus()
   fireEvent.click(screen.getByRole('button', { name: 'とどまる' }))
   expect(screen.queryByRole('alertdialog')).toBeNull()
-  fireEvent.click(screen.getByRole('button', { name: 'STEP 2 撮影条件' }))
+  fireEvent.click(screen.getByRole('button', { name: 'STEP 2 条件と案内' }))
   fireEvent.click(screen.getByRole('button', { name: '保存して移動' }))
   await screen.findByRole('heading', { name: /STEP 2/ })
   expect(client.updateManagedQuest).toHaveBeenCalledTimes(1)
@@ -40,7 +40,7 @@ it('guards only dirty edits, restores URL step, and offers three focused navigat
 it('blocks reversed hours and negative or fractional prices, then resets success on failed save', async () => {
   const client = api()
   render(<QuestDraftForm connection={{ api: client, initial, member, taskFocused: true, onBack: vi.fn() }} />)
-  fireEvent.click(screen.getByText('クリア後の紹介・解説（任意）'))
+  fireEvent.click(screen.getByText('クリア後に見せる案内（任意）'))
   fireEvent.click(screen.getByRole('radio', { name: '時間を指定' }))
   fireEvent.change(screen.getByLabelText('開始時刻'), { target: { value: '18:00' } })
   fireEvent.change(screen.getByLabelText('終了時刻'), { target: { value: '09:00' } })
@@ -70,7 +70,7 @@ it('never creates an empty draft and discards only after choosing to leave witho
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect(client.createManagedQuest).not.toHaveBeenCalled()
   expect(screen.getByText('下書きを保存するには対象名または問題タイトルを入力してください。')).toBeVisible()
-  fireEvent.change(screen.getByLabelText('対象名'), { target: { value: '未保存' } })
+  fireEvent.change(screen.getByLabelText('撮る“もの”の名前（非公開）'), { target: { value: '未保存' } })
   fireEvent.click(screen.getByRole('button', { name: '問題一覧へ戻る' }))
   expect(onBack).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: '保存せず移動' }))
@@ -98,7 +98,7 @@ it.each(['q&step=content', 'missing&step=target', 'q&step=unknown'])('restores o
 })
 
 it.each([
-  ['draft', '下書き', 'この版を公開'], ['published', '公開中', '修正版を公開'], ['paused', '休止中', '再公開'],
+  ['draft', '下書き', '公開する'], ['published', '公開中', '修正を公開する'], ['paused', '休止中', '公開を再開する'],
 ] as const)('shows %s status beside the workflow heading and names the publication action', async (status, label, action) => {
   history.replaceState(null, '', '/?quest=q&step=publication')
   const record = { ...initial, status }
@@ -114,9 +114,9 @@ it('lists every missing field, disables both photo trials, and focuses the selec
   history.replaceState(null, '', '/?quest=q&step=publication')
   const client = { ...api(), getManagedQuestReadiness: vi.fn().mockResolvedValue({ quest: initial, missing: ['materials.name', 'referenceAssetId', 'content.question', 'content.hints'] }) }
   render(<AdminQuestWorkflow api={client} initial={initial} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
-  for (const label of ['対象名', '参考写真', '問題文', '3本のヒント']) expect(await screen.findByRole('button', { name: label + 'の入力へ' })).toBeVisible()
-  expect(screen.getByLabelText('一致写真を選択')).toBeDisabled()
-  expect(screen.getByLabelText('別対象写真を選択')).toBeDisabled()
+  for (const label of ['撮る“もの”の名前（非公開）', '正解の写真', '問題文', '3本のヒント']) expect(await screen.findByRole('button', { name: label + 'の入力へ' })).toBeVisible()
+  expect(screen.getByLabelText('① 正解の写真でテスト（同じ物を別の写真で）')).toBeDisabled()
+  expect(screen.getByLabelText('② ちがう物の写真でテスト')).toBeDisabled()
   expect(screen.getByText('不足項目をすべて修正すると写真試験を送信できます。')).toBeVisible()
   fireEvent.click(screen.getByRole('button', { name: '3本のヒントの入力へ' }))
   expect(screen.getByLabelText('ヒント 1')).toHaveFocus()

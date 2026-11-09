@@ -14,7 +14,7 @@ vi.mock('./ShootingAreasMap', () => ({
   </>,
 }))
 
-it('shows only the latest map candidates and keeps provider text out of saved spot values', async () => {
+it('uses only the latest map candidates after explicit confirmation', async () => {
   const user = userEvent.setup()
   let finishFirst!: (value: MapPlaceDetails) => void
   mock.first.mockReturnValue(new Promise((resolve) => { finishFirst = resolve }))
@@ -32,13 +32,33 @@ it('shows only the latest map candidates and keeps provider text out of saved sp
   await user.click(screen.getByRole('button', { name: '地図の場所B' }))
   expect(await screen.findByText('名称候補：地図の名称候補')).toBeVisible()
   expect(screen.getByText('住所候補：地図の住所候補')).toBeVisible()
-  expect(screen.getByLabelText('確認済み住所')).toHaveValue('')
+  expect(screen.getByLabelText('住所（クリア後に表示）')).toHaveValue('')
   await act(() => finishFirst({ name: '古い候補' }))
   expect(screen.queryByText(/古い候補/)).not.toBeInTheDocument()
   expect(screen.getByTestId('spot')).toHaveTextContent('incomplete')
-  await user.type(screen.getByLabelText('スポット名・施設名'), '自治体の名称')
-  await user.type(screen.getByLabelText('確認済み住所'), '自治体の住所')
+  await user.click(screen.getByRole('button', { name: 'この名前と住所を使う' }))
+  expect(screen.getByLabelText('場所の名前（クリア後に表示）')).toHaveValue('地図の名称候補')
+  expect(screen.getByLabelText('住所（クリア後に表示）')).toHaveValue('地図の住所候補')
   expect(JSON.parse(screen.getByTestId('spot').textContent ?? '')).toEqual({
-    name: '自治体の名称', address: '自治体の住所', position: { latitude: 36, longitude: 136 }, googlePlaceId: 'new',
+    name: '地図の名称候補', address: '地図の住所候補', position: { latitude: 36, longitude: 136 }, googlePlaceId: 'new',
   })
+})
+
+it('keeps manually entered values when a map candidate omits them', async () => {
+  const user = userEvent.setup()
+  mock.first.mockResolvedValue({ address: '候補の住所' })
+  function Harness() {
+    const [input, setInput] = useState(initialSpotInput)
+    return <MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={setInput} />
+  }
+  render(<Harness />)
+  await user.click(screen.getByRole('button', { name: '地図を開いて場所を選ぶ' }))
+  await user.click(screen.getByRole('button', { name: '地図の場所A' }))
+  await screen.findByText('住所候補：候補の住所')
+  await user.type(screen.getByLabelText('場所の名前（クリア後に表示）'), '手入力の場所')
+  await user.click(screen.getByRole('button', { name: 'この名前と住所を使う' }))
+  expect(screen.getByLabelText('場所の名前（クリア後に表示）')).toHaveValue('手入力の場所')
+  expect(screen.getByLabelText('住所（クリア後に表示）')).toHaveValue('候補の住所')
+  expect(screen.getByLabelText('スポットの緯度')).toHaveValue('35')
+  expect(screen.getByLabelText('スポットの経度')).toHaveValue('135')
 })

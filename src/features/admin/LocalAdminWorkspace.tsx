@@ -115,9 +115,6 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
             {item.questNumber && <span>No. {item.questNumber}</span>}
           </p>
           <strong>{item.draft.content.title || '無題の下書き'}</strong>
-          <details><summary>詳細</summary>
-            <p>問題 {item.questId}</p>
-          </details>
           <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>{teamPreview || durable ? '編集を続ける' : '下書きを編集'}</button>
           {item.status === 'paused' && (teamPreview || durable) && <button type="button" onClick={() => republish(item)}>再公開へ</button>}
           {(teamPreview || durable) ? item.status !== 'published' && <details className="workflow-remaining">
@@ -247,7 +244,7 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
   return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '')}>
     <a className="admin-traveler-link" href="/">旅行者画面へ</a>
     <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header'}>
-      <h1>{teamPreview ? '自治体向け共有検証' : '自治体向けローカル管理'}</h1>
+      <h1>謎づくり（自治体向け）</h1>
       {auth.status === 'signed-in'
         ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
         : null}

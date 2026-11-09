@@ -8,7 +8,7 @@ import { PublicationWorkspace } from './PublicationWorkspace'
 
 type Part = 'target' | 'conditions' | 'content' | 'hints' | 'publication'
 type Destination = { part: Part; field?: ReviewField } | 'list'
-const steps = ['対象と参考写真', '撮影条件', '問題とヒント', '写真試験と公開']
+const steps = ['対象と参考写真', '条件と案内', '問題とヒント', '写真試験と公開']
 const defaultParts: Part[] = ['target', 'conditions', 'content', 'publication']
 const stepNumber: Record<Part, number> = { target: 1, conditions: 2, content: 3, hints: 3, publication: 4 }
 const inputTargets: Partial<Record<ReviewField, string>> = {
@@ -168,11 +168,11 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
         api, initial: record, member, onBack, onWorkflowSave: saved, onDirty: setDirty, onSaving: setBusy,
       }} />}
     {part === 'publication' && !record && <p>STEP 1〜3のいずれかで下書きを保存すると、公開準備を始められます。</p>}
-    {part === 'publication' && newerVersion && <p role="alert">別の操作で下書きの版が更新されました。
-      <button type="button" disabled={busy} onClick={() => setRecord(remote.quest)}>最新版を読み込む</button>
+    {part === 'publication' && newerVersion && <p role="alert">別の操作で下書きが更新されました。
+      <button type="button" disabled={busy} onClick={() => setRecord(remote.quest)}>最新の内容を読み込む</button>
     </p>}
     {part === 'publication' && lastTrialRevision !== null && lastTrialRevision !== revision &&
-      <p role="status">下書きの版が変わったため、以前の写真試験は使えません。この版で再試験してください。</p>}
+      <p role="status">内容を変えたので、もう一度テストしてください。</p>}
     {record && openedPublication && <div hidden={part !== 'publication'}>
       <PublicationWorkspace key={revision} api={api} initial={record} approvedAssets photoTestSource={photoTestSource}
         areaUnclassified={areaUnclassified} onBack={() => navigate('list')} backLabel="問題一覧へ戻る"

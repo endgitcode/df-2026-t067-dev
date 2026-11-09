@@ -12,7 +12,7 @@ function setup(hours = '', price = '', referenceAssetId: string | null = null) {
   } }
   const updateManagedQuest = vi.fn(async (_org, _id, input) => ({ ...initial, draftRevision: 3, draft: input.draft }))
   render(<QuestDraftForm connection={{ taskFocused: true, initial, api: { ...createApiClient(), uploadOrgAsset: vi.fn().mockResolvedValue({ assetId: 'synthetic' }), updateManagedQuest }, member: { orgId: 'org', areaId: 'area', label: '架空', role: 'editor' }, onBack: vi.fn() }} />)
-  fireEvent.click(screen.getByText('クリア後の紹介・解説（任意）'))
+  fireEvent.click(screen.getByText('クリア後に見せる案内（任意）'))
   return updateManagedQuest
 }
 it('saves minute hours with weekday exceptions without changing photography hours', async () => {
@@ -111,7 +111,7 @@ it('preserves structured hours when switching to free text and keeps legacy note
 it('requires explicit rights reuse when replacing an existing reference photo', async () => {
   vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:synthetic', revokeObjectURL: vi.fn() })
   const save = setup()
-  const field = screen.getByLabelText(/参考写真（/)
+  const field = screen.getByLabelText(/正解の写真（/)
   fireEvent.change(field, { target: { files: [new File(['a'], 'a.png', { type: 'image/png' })] } })
   fireEvent.change(field, { target: { files: [new File(['b'], 'b.png', { type: 'image/png' })] } })
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
@@ -128,7 +128,7 @@ it('requires rights reuse even after removing the saved reference before selecti
   vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:synthetic', revokeObjectURL: vi.fn() })
   const save = setup('', '', 'old-reference')
   fireEvent.click(screen.getByRole('button', { name: '参照を外す' }))
-  fireEvent.change(screen.getByLabelText(/参考写真（/), { target: { files: [new File(['b'], 'b.png', { type: 'image/png' })] } })
+  fireEvent.change(screen.getByLabelText(/正解の写真（/), { target: { files: [new File(['b'], 'b.png', { type: 'image/png' })] } })
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect(save).not.toHaveBeenCalled()
   expect(screen.getByRole('alert')).toHaveTextContent('差し替えた写真')
