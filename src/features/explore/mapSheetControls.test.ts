@@ -6,6 +6,7 @@ const readCss = (path: string) => readFileSync(resolve(process.cwd(), path), 'ut
 const css = readCss('src/App.css')
 const PLAIN_FIXED = '.map-preview-shell.has-sheet .map-controls { bottom: 72px; }'
 const mapPreview = readFileSync(resolve(process.cwd(), 'src/features/explore/MapPreview.tsx'), 'utf8')
+const bottomSheet = readFileSync(resolve(process.cwd(), 'src/features/explore/ExploreBottomSheet.tsx'), 'utf8')
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
 // 右下の地図操作系はシートの高さに追随せず、同じ場所に固定する。
@@ -35,6 +36,27 @@ describe('map controls placement with the bottom sheet', () => {
   })
 })
 
+describe('mobile map control swipe handling', () => {
+  it('prevents page scrolling from map controls throughout the mobile-width range while leaving the sheet and lists scrollable', () => {
+    const touchRule = '.map-controls, .explore-sheet-reopen, .map-state button { touch-action: none; overscroll-behavior: none; }'
+    const mobileWidthAt = css.indexOf('@media (max-width: 980px)')
+    const phoneWidthAt = css.indexOf('@media (max-width: 640px)')
+    expect(mobileWidthAt).toBeGreaterThan(-1)
+    expect(phoneWidthAt).toBeGreaterThan(mobileWidthAt)
+    expect(css.indexOf(touchRule)).toBeGreaterThan(mobileWidthAt)
+    expect(css.indexOf(touchRule)).toBeLessThan(phoneWidthAt)
+    expect(css).not.toContain('.explore-sheet { touch-action: none;')
+    expect(css).not.toContain('.explore-quest-list { touch-action: none;')
+    expect(mapPreview).toContain('const mapControlGestureProps = {')
+    expect(mapPreview).toContain('onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => {')
+    expect(mapPreview).toContain('if (gesture?.moved && event.detail !== 0) {')
+    expect(mapPreview).toContain('<div className="map-controls" {...mapControlGestureProps}>')
+    expect(mapPreview).toContain('<button type="button" {...mapControlGestureProps}')
+    expect(bottomSheet).toContain('className="explore-sheet-reopen" {...reopenGestureProps}')
+    expect(bottomSheet).toContain('if (gesture?.moved && event.detail !== 0) {')
+  })
+})
+
 describe('bottom sheet close visibility timing', () => {
   it('delays hiding through the 300ms close and removes that delay for reduced motion', () => {
     expect(css).toContain('.explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; transition: visibility 0s linear 300ms; }')
@@ -60,7 +82,7 @@ describe('mobile bottom tab bar (D-32)', () => {
 
   it('keeps the mobile map controls fixed behind the sheet and the sheet above the tab bar', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + 58px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); z-index: 3; }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
     const reopenRule = 'body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px;'
     expect(css).toContain(reopenRule)
@@ -309,5 +331,47 @@ describe('panel single scroll and in-list detail (D-70)', () => {
   it('raises the sheet for quest selection and fits selections above the raised sheet', () => {
     expect(mapPreview).toContain("selectedQuestId ? `quest:${selectedQuestId}` : null")
     expect(mapPreview).toContain('Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))')
+  })
+})
+
+// シートの高さ・はみ出し・チップの折り返し（D-73）。CSS の実測は jsdom ではできないため、
+// 規則の文字列と定数で担保する。
+describe('sheet peek height and overflow guards (D-73)', () => {
+  it('clears the mobile map controls above the peek sheet via the sheet height variable', () => {
+    expect(css).toContain('body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); }')
+    expect(css).not.toContain('bottom: calc(var(--mobile-tabbar-h) + 58px)')
+  })
+
+  it('keeps the full-bleed page free of phantom vertical growth and puts the clearance on the rail', () => {
+    expect(css).toContain('body.explore-fullbleed .page { padding-bottom: 0; }')
+    expect(css).toContain('body.explore-fullbleed .quest-rail { padding: 22px 16px calc(var(--mobile-tabbar-h) + 25px); }')
+    expect(css).toContain('body.explore-fullbleed .quest-rail:empty { display: none; }')
+  })
+
+  it('clips horizontal overflow at the viewport and wraps the region chips', () => {
+    expect(css).toContain('html, body { overflow-x: clip; }')
+    expect(css).toContain('.map-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; overflow: visible; padding: 2px; pointer-events: auto; }')
+    expect(css).not.toContain('.map-filter-chips::-webkit-scrollbar')
+  })
+})
+
+// ボタンの尺と記録画面の統一（D-74）。CSS の実測は jsdom ではできないため、
+// 規則の文字列と置き場所で担保する。
+describe('button widths and records alignment (D-74)', () => {
+  it('stretches the hint buttons across their frame', () => {
+    expect(css).toContain('.hint-item > button, .hint-item [role="alert"] button, .hint-version-changed button { width: 100%; min-height: 44px;')
+    expect(css).toContain('.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 44px;')
+  })
+
+  it('keeps the PC handoff emphasis on the direct start and widens the records body column', () => {
+    expect(css).toContain('.quest-handoff-toggle { width: 100%; min-height: 44px;')
+    expect(css).not.toContain('.quest-handoff-direct')
+    expect(css).toContain('.owner-records { display: grid; gap: 16px; max-width: 1080px; }')
+  })
+
+  it('gives the mobile records header the same transparent floating look as explore', () => {
+    const mediaAt = css.indexOf('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand')
+    expect(mediaAt).toBeGreaterThan(-1)
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { background: transparent; border-bottom: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }')
   })
 })

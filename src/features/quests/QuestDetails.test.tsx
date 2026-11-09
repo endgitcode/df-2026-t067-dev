@@ -334,7 +334,7 @@ it('fetches each public hint only on explicit request, retries failures, and giv
   ])
 })
 
-it('centers hint actions without the sequential fine-print note', async () => {
+it('keeps full-width hint actions without the sequential fine-print note', async () => {
   const user = userEvent.setup()
   const quest = { ...demoQuest, hintCount: 2 }
   const getHint = vi.fn(async ({ index }: { index: number }) => ({
@@ -344,7 +344,6 @@ it('centers hint actions without the sequential fine-print note', async () => {
   const button = screen.getByRole('button', { name: 'ヒント1を見る' })
   expect(button).toBeVisible()
   expect(screen.queryByText('ヒントは順番に開けます。最終案内は含みません。')).not.toBeInTheDocument()
-  expect(button.parentElement).toHaveClass('hint-item')
   await user.click(button)
   expect(await screen.findByText('hint-1')).toBeVisible()
 })
@@ -513,16 +512,18 @@ describe('広い画面でのスマホ受け渡し', () => {
   }
   afterEach(() => { vi.unstubAllGlobals() })
 
-  it('主導線が「スマホで挑戦する」になりQRが出て、元の挑戦は副次的に残る', async () => {
+  it('主導線はこの場の挑戦（primary）で、「スマホで挑戦する」はQRの副次導線として残る（D-74）', async () => {
     stubViewport(true)
     const user = userEvent.setup()
     const onStart = vi.fn()
     render(<QuestDetails quest={demoQuest} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" note="注記" onToggle={vi.fn()} onStart={onStart} handoffUrl={handoffUrl} />)
     const handoffButton = screen.getByRole('button', { name: 'スマホで挑戦する' })
     expect(handoffButton).toHaveAttribute('aria-expanded', 'true')
+    expect(handoffButton).toHaveClass('quest-handoff-toggle')
+    expect(handoffButton).not.toHaveClass('primary-button')
     expect(screen.getByRole('img', { name: /QRコード/ })).toBeVisible()
     const direct = screen.getByRole('button', { name: '挑戦する' })
-    expect(direct).toHaveClass('quest-handoff-direct')
+    expect(direct).toHaveClass('primary-button')
     await user.click(direct)
     expect(onStart).toHaveBeenCalledWith({ questId: demoQuest.questId, expectedVersion: demoQuest.version })
     await user.click(handoffButton)
