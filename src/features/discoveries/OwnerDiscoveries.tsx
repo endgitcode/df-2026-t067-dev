@@ -157,7 +157,7 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
   </dialog>
 }
 
-export function OwnerDiscoveries({ api, initialId, visit = 0, active = true }: { api: ApiClient; initialId?: string; visit?: number; active?: boolean }) {
+export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onExplore }: { api: ApiClient; onExplore: () => void; initialId?: string; visit?: number; active?: boolean }) {
   const [selected, setSelected] = useState<string | null>(initialId ?? null)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   const [deleted, setDeleted] = useState(false)
@@ -194,7 +194,10 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true }: {
   return <>
     {detail}
     {confirmation}
-    {items.length === 0 ? <p>自分の記録はまだありません。</p> : <table className="record-table" aria-label="自分の記録一覧">
+    {items.length === 0 ? <>
+      <p>まだ記録がありません</p>
+      <button type="button" className="primary-button" onClick={onExplore}>謎を探しに行く</button>
+    </> : <table className="record-table" aria-label="自分の記録一覧">
       <thead><tr><th scope="col">写真</th><th scope="col">スポット名</th><th scope="col">日付</th></tr></thead>
       <tbody>{items.map((record) => {
         const open = () => { setDeleted(false); setSelected(record.discoveryId) }
@@ -210,9 +213,9 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true }: {
         </tr>
       })}</tbody>
     </table>}
-    <div className="camera-actions">
+    {(firstPage || nextCursor) && <div className="camera-actions">
       {firstPage}
       {nextCursor && <button type="button" className="secondary-button" onClick={() => setCursor(nextCursor)}>次の記録</button>}
-    </div>
+    </div>}
   </>
 }
