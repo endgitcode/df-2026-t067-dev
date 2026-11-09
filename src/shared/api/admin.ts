@@ -64,7 +64,7 @@ export interface PublishManagedQuest {
   expectedDraftRevision: number
   matchTestId: string
   mismatchTestId: string
-  confirmations: Record<Exclude<typeof PUBLISH_CONFIRMATIONS[number], 'photoRights'>, true> & { photoRights?: true }
+  confirmations?: Record<Exclude<typeof PUBLISH_CONFIRMATIONS[number], 'photoRights'>, true> & { photoRights?: true }
 }
 export interface PauseManagedQuest { expectedPublishedVersion: number; reason: string }
 
@@ -248,16 +248,17 @@ export function parsePublicationReadiness(input: unknown): ReviewSubmission {
   }
   return { quest, missing }
 }
-export function parsePublishManagedQuest(input: unknown, approvedAssets = false): PublishManagedQuest {
+export function parsePublishManagedQuest(input: unknown, durable = false): PublishManagedQuest {
   const d = fields(input, ['expectedDraftRevision', 'matchTestId', 'mismatchTestId', 'confirmations'], 'publish')
-  const confirmations = fields(d.confirmations, PUBLISH_CONFIRMATIONS, 'publish.confirmations')
-  if (PUBLISH_CONFIRMATIONS.some((key) => confirmations[key] !== true &&
-    !(approvedAssets && key === 'photoRights' && confirmations[key] === undefined))) throw new ContractError('publish.confirmations')
+  const confirmations = durable && d.confirmations === undefined ? undefined
+    : fields(d.confirmations, PUBLISH_CONFIRMATIONS, 'publish.confirmations')
+  if (confirmations && PUBLISH_CONFIRMATIONS.some((key) => confirmations[key] !== true &&
+    !(durable && key === 'photoRights' && confirmations[key] === undefined))) throw new ContractError('publish.confirmations')
   const matchTestId = identifier(d.matchTestId, 'matchTestId')
   const mismatchTestId = identifier(d.mismatchTestId, 'mismatchTestId')
   if (matchTestId === mismatchTestId) throw new ContractError('publish.testIds')
   return { expectedDraftRevision: revision(d.expectedDraftRevision), matchTestId, mismatchTestId,
-    confirmations: { ...confirmations } as PublishManagedQuest['confirmations'] }
+    ...(confirmations ? { confirmations: { ...confirmations } as NonNullable<PublishManagedQuest['confirmations']> } : {}) }
 }
 export function parsePauseManagedQuest(input: unknown): PauseManagedQuest {
   const d = fields(input, ['expectedPublishedVersion', 'reason'], 'pause')

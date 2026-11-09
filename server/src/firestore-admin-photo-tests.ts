@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto'
 import type { DocumentData, DocumentReference, Firestore, Transaction } from 'firebase-admin/firestore'
 import { parsePhotoTestResult } from '../../src/shared/api/admin'
 import type { PhotoTestResult } from '../../src/shared/api/admin'
-import { isPhotoApproved, photoApprovalRequired } from './admin-photo-approvals'
 import { photoTestKey } from './admin-photo-tests'
 import type { PhotoTestRequest, PhotoTestWork } from './admin-photo-tests'
 import { HttpError, invalidInput } from './errors'
@@ -80,11 +79,6 @@ export class FirestorePhotoTestStore {
     const ref = this.db.collection('orgAssets').doc(referenceAssetId)
     const asset = readOrgAssetRecord(await tx.get(ref), input.orgId)
     if (!asset?.generation || asset.asset.purpose !== 'reference') invalidInput()
-    const [referenceApproved, trialApproved] = await Promise.all([
-      isPhotoApproved(this.db, tx, input.orgId, 'reference', asset.approvalDigest),
-      isPhotoApproved(this.db, tx, input.orgId, 'photo_test', input.approvalDigest),
-    ])
-    if (!referenceApproved || !trialApproved) throw photoApprovalRequired()
     return { referenceAssetId, referenceGeneration: asset.generation }
   }
 

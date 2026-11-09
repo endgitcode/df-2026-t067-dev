@@ -48,7 +48,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
   return <section className="form-section" aria-labelledby="hint-asset-title">
     <h2 id="hint-asset-title">ヒント画像</h2>
     <p>{current.draft.content.title || '無題の下書き'}・下書き版 {current.draftRevision}</p>
-    <p>{onContinue ? '任意。各ヒントに事前承認済みの画像を1枚設定できます。' : '各ヒントに公開用画像を1枚設定できます。'}</p>
+    <p>{onContinue ? '任意。各ヒントに公開してよい画像を1枚設定できます。' : '各ヒントに公開用画像を1枚設定できます。'}</p>
     <button type="button" disabled={state.status === 'saving'} onClick={onBack}>{backLabel}</button>
     {current.draft.content.hints.map((hint, index) => {
       const number = index + 1

@@ -261,10 +261,9 @@ it('publishes and pauses through durable session, membership and common HTTP con
       expect(publish).toBeDisabled()
     }
     await user.click(screen.getByRole('button', { name: 'この版の公開条件を確認' }))
-    expect(await screen.findByText('この下書きは確認待ちです。')).toBeVisible()
-    expect(publish).toBeDisabled()
-    await waitFor(() => expect(screen.getAllByRole('checkbox')[0]).toBeEnabled())
-    for (const checkbox of screen.getAllByRole('checkbox')) await user.click(checkbox)
+    expect(await screen.findByText('この版の入力条件を確認しました。')).toBeVisible()
+    expect(screen.queryByRole('group', { name: '公開前のチェック' })).not.toBeInTheDocument()
+    await waitFor(() => expect(publish).toBeEnabled())
     await user.click(publish)
     expect(await screen.findByText('公開しました。')).toBeVisible()
     expect(await screen.findByText('公開中')).toBeVisible()
@@ -277,9 +276,8 @@ it('publishes and pauses through durable session, membership and common HTTP con
     expect(screen.queryByRole('button', { name: '公開を休止' })).not.toBeInTheDocument()
     const writes = fetcher.mock.calls.filter(([, init]) => init?.method === 'POST')
     expect(writes.map(([path]) => String(path).split('/').at(-1))).toEqual(['test', 'test', 'submit-review', 'publish', 'pause'])
-    expect(JSON.parse(String(writes[3][1]?.body))).toMatchObject({ expectedDraftRevision: 2,
-      matchTestId: 'match-test', mismatchTestId: 'other-test',
-      confirmations: { fictionalData: true, visitConditions: true, shootingArea: true, testCases: true } })
+    expect(JSON.parse(String(writes[3][1]?.body))).toEqual({ expectedDraftRevision: 2,
+      matchTestId: 'match-test', mismatchTestId: 'other-test' })
     expect(JSON.parse(String(writes[4][1]?.body))).toEqual({ expectedPublishedVersion: 1, reason: '合成試験終了' })
     expect(fetcher.mock.calls[0][0]).toBe('/api/v1/session')
     for (const [, init] of fetcher.mock.calls) expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer publisher-token')
@@ -295,7 +293,7 @@ it('completes the shared four-step flow and guards inputs and evidence across na
   }
   let shared: ManagedQuest = { ...quest, source: 'real', status: 'draft', publishedVersion: null, shootingAreaStatus: 'unconfigured',
     draft: { ...quest.draft, referenceAssetId: 'ref' } }
-  let referenceApproved = false
+  let referenceAvailable = false
   let trialCount = 0
   let releaseMatch!: () => void
   const pendingMatch = new Promise<void>((resolve) => { releaseMatch = resolve })
@@ -313,7 +311,7 @@ it('completes the shared four-step flow and guards inputs and evidence across na
       expect(update.deriveShootingArea).toBe(true)
       body = shared = { ...shared, status: 'draft', draftRevision: shared.draftRevision + 1, draft: update.draft,
         shootingAreaStatus: update.draft.afterClear.spot ? 'configured' : 'unconfigured' }
-    } else if (path.endsWith('/readiness')) body = { quest: shared, missing: referenceApproved ? [] : ['referenceApproval'] }
+    } else if (path.endsWith('/readiness')) body = { quest: shared, missing: referenceAvailable ? [] : ['referenceAssetId'] }
     else if (path.endsWith('/submit-review')) {
       shared = { ...shared, status: 'review_pending' }
       body = { quest: shared, missing: [] }
@@ -321,7 +319,7 @@ it('completes the shared four-step flow and guards inputs and evidence across na
       trialCount++
       const form = init?.body as FormData
       expect(JSON.parse(String(form.get('metadata')))).toEqual({ expectedDraftRevision: shared.draftRevision })
-      if (trialCount === 1) return new Response(JSON.stringify({ error: { code: 'PHOTO_APPROVAL_REQUIRED', message: 'denied', retryable: false } }), { status: 403, headers })
+      if (trialCount === 1) return new Response(JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'invalid', retryable: false } }), { status: 400, headers })
       if (trialCount === 3) throw new Error('network offline')
       if (trialCount === 4) await pendingMatch
       const outcome = [2, 5, 7].includes(trialCount) ? 'WRONG_TARGET' : 'MATCH'
@@ -329,7 +327,7 @@ it('completes the shared four-step flow and guards inputs and evidence across na
         testId: 'test-' + trialCount, outcome }
     } else if (path.endsWith('/publish')) {
       const submitted = JSON.parse(String(init?.body))
-      expect(submitted).toMatchObject({ expectedDraftRevision: shared.draftRevision, matchTestId: 'test-6', mismatchTestId: 'test-7' })
+      expect(submitted).toEqual({ expectedDraftRevision: shared.draftRevision, matchTestId: 'test-6', mismatchTestId: 'test-7' })
       body = shared = { ...shared, status: 'published', publishedVersion: 1 }
     } else if (path.startsWith('/api/v1/orgs/' + quest.orgId + '/quests?')) body = { items: [shared], nextCursor: null }
     else throw new Error('Unexpected preview request: ' + path)
@@ -362,9 +360,9 @@ it('completes the shared four-step flow and guards inputs and evidence across na
     expect(screen.getByLabelText('問題文')).toHaveValue('確認用の問題文')
     await user.click(screen.getByRole('button', { name: '保存して次へ' }))
     await user.click(await screen.findByRole('button', { name: '写真試験と公開へ' }))
-    await user.click(await screen.findByRole('button', { name: '参考写真の事前承認を確認' }))
+    await user.click(await screen.findByRole('button', { name: '参考写真を確認' }))
     expect(await screen.findByRole('heading', { name: /STEP 1/ })).toBeVisible()
-    referenceApproved = true
+    referenceAvailable = true
     await user.click(screen.getByRole('button', { name: 'STEP 4へ移動' }))
     const trial = async (label: string, photo: string) => {
       await user.upload(screen.getByLabelText(label + 'を選択'), new File([photo], photo + '.png', { type: 'image/png' }))
@@ -372,7 +370,7 @@ it('completes the shared four-step flow and guards inputs and evidence across na
     }
     const matchCard = () => within(screen.getByRole('group', { name: '一致写真' }))
     await trial('一致写真', 'match')
-    expect(await matchCard().findByRole('alert')).toHaveTextContent('運営に承認を依頼')
+    expect(await matchCard().findByRole('alert')).toHaveTextContent('試験写真の形式と保存済みの参考写真')
     await trial('一致写真', 'other')
     expect(await matchCard().findByRole('alert')).toHaveTextContent('想定した判定と一致しません')
     await trial('一致写真', 'match')
@@ -400,9 +398,10 @@ it('completes the shared four-step flow and guards inputs and evidence across na
     const review = screen.getByRole('button', { name: 'この版の公開条件を確認' })
     await waitFor(() => expect(review).toBeEnabled())
     await user.click(review)
-    await waitFor(() => expect(screen.getAllByRole('checkbox')[0]).toBeEnabled())
-    for (const checkbox of screen.getAllByRole('checkbox')) await user.click(checkbox)
-    await user.click(screen.getByRole('button', { name: 'この版を公開' }))
+    expect(screen.queryByRole('group', { name: '公開前のチェック' })).not.toBeInTheDocument()
+    const publish = screen.getByRole('button', { name: 'この版を公開' })
+    await waitFor(() => expect(publish).toBeEnabled())
+    await user.click(publish)
     expect(await screen.findByText('公開しました。')).toBeVisible()
     expect(fetcher.mock.calls.some(([path]) => String(path).endsWith('/shooting-areas'))).toBe(false)
   } finally { vi.unstubAllGlobals() }

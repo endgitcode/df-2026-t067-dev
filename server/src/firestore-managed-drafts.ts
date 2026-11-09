@@ -134,17 +134,15 @@ export class FirestoreManagedDraftStore {
   }
 
   private async missingForReview(tx: Transaction, orgId: string, quest: ManagedQuest) {
-      const { referenceAssetId, hintAssetId } = quest.draft
-      const hintIds = [...new Set([hintAssetId, ...(quest.draft.hintAssetIds ?? [])].filter((id): id is string => id !== null))]
-      const reference = await this.readAsset(tx, orgId, referenceAssetId, 'reference')
-      const hintChecks = await Promise.all(hintIds.map(async (id) => {
-        const hint = await this.readAsset(tx, orgId, id, 'public_hint')
-        return { id, exists: Boolean(hint), approved: hint ? await isPhotoApproved(this.db, tx, orgId, 'public_hint', hint.approvalDigest) : false }
-      }))
-      return missingReviewFields(quest, { reference: Boolean(reference), public_hint: hintChecks.some((hint) => hint.id === hintAssetId && hint.exists) }, {
-        reference: reference ? await isPhotoApproved(this.db, tx, orgId, 'reference', reference.approvalDigest) : false,
-        hints: hintChecks.every((hint) => hint.approved),
-      })
+    const { referenceAssetId, hintAssetId } = quest.draft
+    const hintIds = [...new Set([hintAssetId, ...(quest.draft.hintAssetIds ?? [])].filter((id): id is string => id !== null))]
+    const [reference, ...hints] = await Promise.all([
+      this.readAsset(tx, orgId, referenceAssetId, 'reference'),
+      ...hintIds.map((id) => this.readAsset(tx, orgId, id, 'public_hint')),
+    ])
+    return missingReviewFields(quest, { reference: Boolean(reference), public_hint: Boolean(hints[hintIds.indexOf(hintAssetId ?? '')]) }, {
+      requirePhotoRights: false, hintsAvailable: hints.every(Boolean),
+    })
   }
 
   async assertReferenceApproved(uid: string, orgId: string, questId: string, revision: number) {

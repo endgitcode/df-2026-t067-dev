@@ -206,8 +206,8 @@ Firestore / Storage、写真判定・本人記録・自治体API・クラウド�
 開発サーバーの架空データ専用。`demo` と `durable-local` で使える。自組織の`publisher`のみ実行でき、本文の受信後にも所属と役割を確認する。両操作は200で`ManagedQuest`を返す。
 
 - `GET /orgs/:orgId/quests/:questId/readiness` は、同じ組織の有効な所属に下書きと現在の不足項目を返す。撮影範囲が対象位置と一致するかも確認する。確認待ちへの変更・保存は行わない。
-- 永続側と共有検証では、写真の権利文を[事前承認記録](admin-photo-approvals.md)に置き換える。素材アップロードと写真試験の `photoRights`、公開の `confirmations.photoRights` は省略できる。承認の有無はサーバーが照合し、未承認の試験は `PHOTO_APPROVAL_REQUIRED` で拒否する。確認応答には参考写真の `referenceApproval` とヒント画像の `hintApproval` を追加する。旧デモでは従来の契約を使う。
-- `publishManagedQuest(orgId, questId, input)` は`expectedDraftRevision`、`matchTestId`、`mismatchTestId`と`confirmations`を送る。確認項目は `fictionalData`、`visitConditions`、`shootingArea`、`testCases` がすべて `true`。旧デモでは `photoRights` も必須。自組織に有効な所属がある担当者が架空データ・訪問条件・画像の権利と公開範囲・撮影範囲・試験ケースを確認する。公開処理は所属と下書き版を再確認する。
+- 永続側と共有検証では、素材アップロードと写真試験の `photoRights` を省略できる。写真試験と公開に素材の事前承認登録は不要。素材の用途・所属と写真試験の結果はサーバーで照合する。[写真利用と公開手順](admin-photo-approvals.md)を参照。
+- `publishManagedQuest(orgId, questId, input)` は `expectedDraftRevision`、`matchTestId`、`mismatchTestId` を送る。永続側の `confirmations` は省略でき、旧クライアントが送る場合も受け付ける。旧デモでは `fictionalData`、`visitConditions`、`shootingArea`、`testCases`、`photoRights` がすべて `true` の `confirmations` が必須。公開処理は所属と下書き版を再確認する。
 - 現在の確認待ち下書きと、同じ組織・問題・下書き版でサーバーが記録した`MATCH`と`WRONG_TARGET`が必要。正規化後に同じ画像の試験は使えない。版違いは409 `DRAFT_CONFLICT`、確認不足は409 `REVIEW_REQUIRED`、試験不足は409 `PHOTO_TEST_REQUIRED`。任意の公開ヒント画像は同組織の`public_hint`素材で、参考写真と同じ正規化画像は拒否する。
 - 公開時に問題文、訪問条件、段階ヒント、任意のヒント画像を版へ固定する。撮影範囲、参考素材ID、確認済み特徴も同じ版へ固定し、公開中の版を指定したサーバー内の照合条件取得に限って参照できる。旅行者の一覧・詳細に返す`shootingConditions`は`requiresBoat`と`requiresPaidFacility`のbooleanだけを持つ。料金と撮影注意は`visitConditions`で読める。ヒント画像は公開中の版を指定した`GET /quests/:questId/hint-image?expectedVersion=...`でJPEGを取得する。下書き編集後も旅行者は旧公開版を使い、再公開時に新しい版へ切り替わる。
 - `pauseManagedQuest(orgId, questId, {expectedPublishedVersion, reason})` は空白を除いた1〜1000文字の理由を記録する。休止中は公開GETから外し、新規挑戦・回答受付は409 `QUEST_UNAVAILABLE`。同じ版・理由の再送は重ねて休止しない。初回の休止でdraftRevisionを進めるため、再公開には新しい版の確認依頼と写真試験が必要。再公開後、旧版の挑戦での回答は409 `QUEST_CHANGED`。
