@@ -361,6 +361,9 @@ button.traveler-list-row { cursor: pointer; }
   .map-preview { height: 420px; }
   .map-preview-shell.has-sheet { height: max(520px, calc(100svh - 224px)); min-height: 520px; }
   .map-filter-overlay { top: 74px; }
+  /* 開いている間だけ一覧シート（7）の手前へ。閉じると通常の重なり順に戻す。 */
+  .map-filter-overlay:has(.filter-toggle[aria-expanded="true"]) { z-index: 8; }
+  .map-filter-overlay .filter-accordion { padding: 8px; border: 2px solid var(--ui-line); border-radius: 16px; background: var(--ui-surface); box-shadow: none; }
   .quest-card { display: block; }
   .demo-note { max-width: 570px; }
   /* フッター廃止（D-39）に伴い、下部タブバーと重ならないための余白はページ側で確保する。 */

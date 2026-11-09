@@ -11,6 +11,18 @@ const bottomSheet = readFileSync(resolve(process.cwd(), 'src/features/explore/Ex
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
 // 右下の地図操作系はシートの高さに追随せず、シェル内の同じ場所に置く。
 describe('map controls placement with the bottom sheet', () => {
+  it('スマホ幅では開いた場所フィルターを一覧シートより手前に置く', () => {
+    // jsdom は重なりを描画しないため、390pxに適用されるCSSと開状態の条件を検証する。
+    const mobileCss = css.slice(css.indexOf('@media (max-width: 980px)'), css.indexOf('@media (max-width: 640px)'))
+    const openFilter = mobileCss.match(/\.map-filter-overlay:has\(\.filter-toggle\[aria-expanded="true"\]\)\s*\{\s*z-index:\s*(\d+);\s*\}/)
+    const sheet = css.match(/\.explore-sheet \{ left: 0; right: 0; bottom: 0; z-index: (\d+);/)
+    expect(openFilter).not.toBeNull()
+    expect(sheet).not.toBeNull()
+    expect(Number(openFilter?.[1])).toBeGreaterThan(Number(sheet?.[1]))
+    // フィルターが開いていない時は既存の順序に戻る。
+    expect(css).toContain('.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3;')
+  })
+
   it('keeps controls at a constant shell position across the mobile range', () => {
     expect(css.split(MOBILE_CONTROL_RULE).length - 1).toBe(1)
     const mediaAt = css.indexOf('@media (max-width: 980px)')
