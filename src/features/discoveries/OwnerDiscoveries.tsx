@@ -88,6 +88,13 @@ export function OwnerDiscoveries({ api, initialId, visit = 0 }: { api: ApiClient
   const [selected, setSelected] = useState<string | null>(initialId ?? null)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   const [deleted, setDeleted] = useState(false)
+  const [destination, setDestination] = useState({ initialId, visit })
+  // 常駐中の明示遷移を反映する。同じIDでも再訪時は詳細を開き直す。
+  if (destination.initialId !== initialId || destination.visit !== visit) {
+    setDestination({ initialId, visit })
+    if (initialId) { setSelected(initialId); setDeleted(false) }
+  }
+
   const read = useCallback((signal: AbortSignal) => api.listDiscoveries({ limit: 20, cursor }, { signal }), [api, cursor])
   const { result, retry } = useRemote(selected === null, read)
   // 記録画面は一度開くとアンマウントせず隠して常駐させる（D-53）ため、この部品も
@@ -100,7 +107,7 @@ export function OwnerDiscoveries({ api, initialId, visit = 0 }: { api: ApiClient
     mountedVisit.current = visit
     retry()
   }, [visit, retry])
-  if (selected !== null) return <DiscoveryDetail api={api} id={selected} onBack={() => { setSelected(null); retry() }}
+  if (selected !== null) return <DiscoveryDetail key={selected} api={api} id={selected} onBack={() => { setSelected(null); retry() }}
     onDeleted={() => { setDeleted(true); setSelected(null); setCursor(undefined); retry() }} />
   const confirmation = deleted && <p role="status">記録と写真の削除が完了しました。</p>
   if (result.status === 'loading') return <>{confirmation}<p role="status">記録を読み込んでいます…</p></>
