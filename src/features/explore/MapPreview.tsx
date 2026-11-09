@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
@@ -379,6 +379,8 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
           center: JAPAN, zoom: INITIAL_ZOOM, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM,
           disableDefaultUI: true, mapTypeControl: false, streetViewControl: false,
           fullscreenControl: false, clickableIcons: false, gestureHandling: 'greedy',
+          // Maps の初期灰色キャンバスを挟まないよう、ブート／殻と同じ水色で塗る。
+          backgroundColor: '#c5e8f5',
           styles: MAP_STYLES,
         }) as MapInstance
         if (authFailed) return
@@ -807,7 +809,8 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // 公開地図シェルの間は縁なし fullbleed にする（地図の ready 前から。ブートと形を揃える）。
   // シェル側（ヘッダー・下部ナビ等）の浮動配置は App.css がこのクラスとメディアクエリで切り替える。
   // 記録画面の表示中（viewActive でない間）は探索が前面にないため付けない。
-  useEffect(() => {
+  // useLayoutEffect：最初の描画前にクラスを付け、ブート→React でトップヘッダー型が一瞬出るのを防ぐ。
+  useLayoutEffect(() => {
     if (!sheetMode || !viewActive) return
     document.body.classList.add('explore-fullbleed')
     return () => { document.body.classList.remove('explore-fullbleed') }
@@ -818,9 +821,12 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // （記録画面や、フォールバックが本文になる永続側）でピッカーが消えたままにならないため。
   const sheetModeChangeRef = useRef(onSheetModeChange)
   useEffect(() => { sheetModeChangeRef.current = onSheetModeChange }, [onSheetModeChange])
-  // 一覧ピッカーの出し分け（D-43）は「地図で選べる」＝ready のときだけ true。
-  // 殻の fullbleed は sheetMode（showPublicAreas）で先に出すが、ピッカーを隠す合図は ready 後。
-  useEffect(() => { sheetModeChangeRef.current?.(sheetMode && mapReady && viewActive) }, [sheetMode, mapReady, viewActive])
+  // 一覧の置き場を殻側へ渡す合図。loading／ready のあいだは true にして、呼び出し側の
+  // 大きな読み込みカードや全件ピッカーを抑え、パネル／シートのスケルトンを一本化する。
+  // missing／error／auth-error では false に戻し、地図が使えない画面ではピッカーを出す（D-43）。
+  // 殻の fullbleed 自体は sheetMode（showPublicAreas）で先に出す。
+  const listShellActive = sheetMode && viewActive && (status === 'loading' || status === 'ready')
+  useLayoutEffect(() => { sheetModeChangeRef.current?.(listShellActive) }, [listShellActive])
   useEffect(() => () => { sheetModeChangeRef.current?.(false) }, [])
 
   // 隠れていた探索が前面に戻ったら、地図コンテナの大きさが戻る。Google Maps は
@@ -870,7 +876,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
   // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。
   // 記録画面でも同じ開閉状態と操作を使う。トグルは hidden な探索画面の外へ出す。
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!panelMode) return
     sidebarCollapsedRef.current = sidebarCollapsed
     document.body.classList.toggle('explore-sidebar-collapsed', sidebarCollapsed)
@@ -884,9 +890,9 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       {status === 'ready' && !panelMode && (topOverlay || focusArea) && <div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}</div>}
       {status === 'ready' && panelMode && focusArea && <div className="map-topline is-sidebar"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
-      {status !== 'ready' && <div className="map-state" role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'} {...mapControlGestureProps}>
+      {status !== 'ready' && <div className={'map-state' + (sheetMode && status === 'loading' ? ' is-boot-quiet' : '')} role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'} {...mapControlGestureProps}>
         {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。問題の閲覧は続けられます。</span></> :
-          status === 'loading' ? <span>地図を読み込んでいます…</span> :
+          status === 'loading' ? <span className={sheetMode ? 'sr-only' : undefined}>地図を読み込んでいます…</span> :
             <><strong>地図を読み込めませんでした</strong><span>問題の閲覧は続けられます。</span>{status === 'auth-error'
               ? <><span>地図の設定を確認して、このページを再読み込みしてください。</span><button type="button" onClick={() => window.location.reload()}>ページを再読み込み</button></>
               : <button type="button" onClick={() => { setStatus('loading'); setAttempt((value) => value + 1) }}>地図を再試行</button>}</>}
