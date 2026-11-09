@@ -91,7 +91,7 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).toContain('body.explore-fullbleed .map-browse-shortcut[inert] { visibility: hidden; pointer-events: none; }')
     // 詳細末尾が「地図に戻る」に隠れないよう、表示中だけ下部余白を足す
     expect(css).toContain('body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .quest-rail {')
-    expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h) + 80px);')
+    expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h) + 120px);')
     expect(css).toContain('body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .below-map-quests {')
     expect(css).not.toContain('bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6;')
     // 同じ固定位置のまま、通常時・ドラッグ中ともシート（z-index 7）の背面に残す。
@@ -439,5 +439,15 @@ describe('PC sidebar stacking', () => {
     expect(css).toContain('z-index: 20;')
     expect(css).toContain('body.explore-fullbleed .site-header {')
     expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 32;')
+  })
+})
+
+describe('records body and mobile return clearance', () => {
+  it('uses only the sidebar separator and aligns records at the top', () => {
+    const recordsRule = css.slice(css.indexOf('body:has(.owner-records:not([hidden])) .owner-records {')).split('}')[0]
+    expect(recordsRule).not.toContain('border-left:')
+    expect(recordsRule).toContain('padding-top: 24px;')
+    expect(recordsRule).toContain('align-content: start;')
+    expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h, 70px) + 120px);')
   })
 })

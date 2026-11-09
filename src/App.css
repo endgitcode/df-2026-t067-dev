@@ -92,7 +92,6 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
    透明度で開閉する。出し入れで下の一覧がガクッと押し下げられず、なめらかに場所が空く。
    閉じている間の非表示への切り替えは、シートと同じく遷移の終わりに遅らせる。 */
 .map-filter-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: auto; }
-.map-filter-count { font-size: 14px; color: var(--ui-muted); }
 .filter-stage-label { margin: 4px 2px 0; font-size: 14px; font-weight: 600; }
 .map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }
 .map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s; }
@@ -479,7 +478,7 @@ button.explore-quest-card { cursor: pointer; }
 .hint-step.is-current { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: var(--ui-line); font-weight: var(--ui-weight-strong); }
 .hint-step:disabled { opacity: .45; cursor: default; }
 .hint-step-total { color: var(--ui-muted); font-size: 12px; margin-left: 2px; }
-.hint-back, .hint-cancel {
+.hint-cancel {
   min-height: 36px; padding: 6px 12px; border: var(--ui-border-width) solid var(--ui-line);
   border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-size: 13px; cursor: pointer;
 }
@@ -743,7 +742,8 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     margin-left: var(--pc-sidebar-w);
     max-width: none;
     padding-left: 28px;
-    border-left: 1px solid color-mix(in srgb, var(--ui-line) 28%, transparent);
+    padding-top: 24px;
+    align-content: start;
     min-height: 100svh;
     background: var(--ui-bg);
   }
@@ -801,10 +801,10 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* 「地図に戻る」は tabbar+10 に高さ約44pxで浮く。既存の rail 余白 tabbar+25 では
      詳細末尾の「問題を報告」に重なる（実地目視）。浮きボタン表示中だけ余白を足す。 */
   body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .quest-rail {
-    padding-bottom: calc(var(--mobile-tabbar-h) + 80px);
+    padding-bottom: calc(var(--mobile-tabbar-h) + 120px);
   }
   body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .below-map-quests {
-    padding-bottom: calc(var(--mobile-tabbar-h, 70px) + 80px);
+    padding-bottom: calc(var(--mobile-tabbar-h, 70px) + 120px);
   }
   /* レールが空（共有検証のスマホ幅では中身が無い）なら、余白だけの帯を残さない（D-73）。 */
   body.explore-fullbleed .quest-rail:empty { display: none; }

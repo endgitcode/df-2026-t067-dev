@@ -349,6 +349,50 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('keeps outside-filter markers dimmed and selectable, with full opacity on hover', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const made: Array<{ title: string; icon: { url: string }; zIndex: number; listeners: Record<string, () => void> }> = []
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker {
+      item: typeof made[number]
+      constructor(options: Omit<typeof made[number], 'listeners'>) { this.item = { ...options, listeners: {} }; made.push(this.item) }
+      setMap() {}
+      setIcon(icon: { url: string }) { this.item.icon = icon }
+      addListener(name: string, callback: () => void) { this.item.listeners[name] = callback; return { remove() {} } }
+    }
+    window.google = { maps: { Map: class { constructor() { return { ...mapInstance, fitBounds() {} } } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const inside: PublicArea = { ...areas[0], areaId: 'hokkaido', label: '北海道の地域', prefectureCode: '01', publicGeometry: { type: 'Polygon', coordinates: [[[141, 43], [142, 43], [142, 44], [141, 44], [141, 43]]] } }
+    const outside: PublicArea = { ...areas[0], prefectureCode: '13' }
+    const select = vi.fn()
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={[inside, outside]} filterRegion="北海道" onSelectArea={select} />)
+    await waitFor(() => expect(made.length).toBeGreaterThanOrEqual(2))
+    const outer = made.findLast((marker) => marker.title.startsWith('Aの探索'))!
+    const inner = made.findLast((marker) => marker.title.startsWith('北海道の地域'))!
+    expect(decodeURIComponent(outer.icon.url)).toContain('opacity="0.3"')
+    expect(decodeURIComponent(inner.icon.url)).toContain('opacity="1"')
+    expect(inner.zIndex).toBeGreaterThan(outer.zIndex)
+    act(() => outer.listeners.mouseover())
+    expect(decodeURIComponent(outer.icon.url)).toContain('opacity="1"')
+    act(() => outer.listeners.mouseout())
+    expect(decodeURIComponent(outer.icon.url)).toContain('opacity="0.3"')
+    act(() => outer.listeners.click())
+    expect(select).toHaveBeenCalledWith('area-a')
+    const neighbor = { ...outside, areaId: 'outside-neighbor' }
+    made.length = 0
+    rerender(<ConfiguredMapPreview areas={[inside, outside, neighbor]} filterRegion="北海道" onSelectArea={select} />)
+    await waitFor(() => expect(made.some((marker) => marker.title.startsWith('重なっている2地域'))).toBe(true))
+    const cluster = made.findLast((marker) => marker.title.startsWith('重なっている2地域'))!
+    expect(decodeURIComponent(cluster.icon.url)).toContain('opacity="0.3"')
+    made.length = 0
+    rerender(<ConfiguredMapPreview areas={[inside, outside, { ...neighbor, prefectureCode: '01' }]} filterRegion="北海道" onSelectArea={select} />)
+    await waitFor(() => expect(made.some((marker) => marker.title.startsWith('重なっている2地域'))).toBe(true))
+    expect(decodeURIComponent(made.findLast((marker) => marker.title.startsWith('重なっている2地域'))!.icon.url)).toContain('opacity="1"')
+    unmount()
+    delete window.google
+  })
+
   it('refits when the filtered area set changes and returns to all areas when cleared', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
@@ -363,11 +407,11 @@ describe('Google map panel', () => {
     const both = [...areas, areaB]
     const { rerender, unmount } = render(<ConfiguredMapPreview areas={both} />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
-    // 地方で絞る（地域の集合が減る）と、その範囲へ寄せる（D-60）。
-    rerender(<ConfiguredMapPreview areas={[areaB]} />)
+    // ピン集合は全件のまま、場所フィルタの変更で北海道全体へ寄せる（D-60）。
+    rerender(<ConfiguredMapPreview areas={both} filterRegion="北海道" filterPrefecture="北海道" />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(2))
-    // 同じ集合のままでは寄せ直さない。
-    rerender(<ConfiguredMapPreview areas={[areaB]} />)
+    // 同じフィルタのままでは寄せ直さない。
+    rerender(<ConfiguredMapPreview areas={both} filterRegion="北海道" filterPrefecture="北海道" />)
     expect(fitBounds).toHaveBeenCalledTimes(2)
     // 絞り込みを解除すると全地域の範囲へ戻る。
     rerender(<ConfiguredMapPreview areas={both} />)
@@ -376,7 +420,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('fits a single filtered area to its boundary shape and caps the zoom instead of diving to street level', async () => {
+  it('fits a single filtered pin to the whole prefecture and caps the zoom instead of diving to street level', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     let zoom = 5
@@ -399,13 +443,13 @@ describe('Google map panel', () => {
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
     act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
     fitBounds.mockClear(); setZoom.mockClear(); boundsSeen.length = 0
-    // 北海道だけに絞る（対象は1地域）。範囲はピンの1点ではなく境界形状から作り、
+    // 北海道のピンが1つでも、範囲は都道府県全体の静的 bbox から作り、
     // 完了後の倍率も上限までに留める（D-60 追記）。
-    rerender(<ConfiguredMapPreview areas={[areaB]} />)
+    rerender(<ConfiguredMapPreview areas={both} filterRegion="北海道" filterPrefecture="北海道" />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
-    expect(boundsSeen[0].points).toHaveLength(5)
-    expect(boundsSeen[0].points).toContainEqual({ lat: 43, lng: 141 })
-    expect(boundsSeen[0].points).toContainEqual({ lat: 44, lng: 142 })
+    expect(boundsSeen[0].points).toHaveLength(4)
+    expect(boundsSeen[0].points).toContainEqual({ lat: 41.3, lng: 139.3 })
+    expect(boundsSeen[0].points).toContainEqual({ lat: 45.6, lng: 145.9 })
     act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
     expect(setZoom).toHaveBeenCalledWith(12)
     expect(zoom).toBe(12)

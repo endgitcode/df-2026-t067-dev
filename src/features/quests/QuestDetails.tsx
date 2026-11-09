@@ -118,7 +118,6 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
   if (!getHint) return null
   if (!hintCount) return <p className="hints-note">この問題には通常ヒントがありません。</p>
 
-  const canGoBack = opened && currentIndex > 1
 
   return <div className="quest-hints" aria-label="段階ヒント">
     <h4>段階ヒント</h4>
@@ -137,7 +136,6 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
           })}
           <span className="hint-step-total">/ {hintCount}</span>
         </div>
-        {canGoBack && <button type="button" className="hint-back" disabled={state.status === 'loading'} onClick={() => void load(currentIndex - 1)}>戻る</button>}
       </div>
       {state.status === 'loading' && <>
         <p role="status">ヒントを取得しています。</p>

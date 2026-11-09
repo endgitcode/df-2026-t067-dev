@@ -41,6 +41,8 @@ type AppProps = {
   authClient?: AuthClient
   onStartChallenge?: (selection: ChallengeSelection) => void | Promise<unknown>
   quest?: PublicQuest
+  filterRegion?: string
+  filterPrefecture?: string
   mapAreas?: PublicArea[]
   mapQuests?: PublicQuest[]
   /** 問題一覧の読み込み中。一覧に「0件／空です」を一瞬出さないために MapPreview へ渡す。 */
@@ -107,7 +109,7 @@ function waitForSignedIn(authClient: AuthClient, signal: AbortSignal): Promise<b
   })
 }
 
-export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, mapAreas = [], mapQuests = [], mapQuestsLoading = false, onOpenQuest, onDeselectQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, onMapSheetModeChange, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
+export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, filterRegion = '', filterPrefecture = '', mapAreas = [], mapQuests = [], mapQuestsLoading = false, onOpenQuest, onDeselectQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, onMapSheetModeChange, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
   const [openState, setOpenState] = useState<{ quest?: PublicQuest; open: boolean }>({ open: false })
   const [openedRequest, setOpenedRequest] = useState<typeof openQuestRequest>()
   if (openQuestRequest && openQuestRequest !== openedRequest && externalQuest?.questId === openQuestRequest.questId) {
@@ -491,6 +493,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             往復の前後で表示が食い違うため（状態の保持は D-53）。 */}
         {recordsVisited && <section className="owner-records view-enter" aria-labelledby="records-title" hidden={!showRecords}>
           <h1 id="records-title">自分の記録</h1>
+          <p>クリアした問題の写真と初回クリア日を確認できます。</p>
           {auth.status === 'signed-out' && <>
             <p>自分の記録を見るにはログインが必要です。クリアした問題の写真と日付は、ログインした本人だけが見られます。</p>
             <button type="button" className="primary-button" disabled={visiblePending !== null}
@@ -516,7 +519,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview || apiMode} quests={mapQuests} questsLoading={mapQuestsLoading} onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} selectedQuestId={quest?.questId ?? ''} clearedQuestIds={clearedQuestIds} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
+            <MapPreview filterRegion={filterRegion} filterPrefecture={filterPrefecture} areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview || apiMode} quests={mapQuests} questsLoading={mapQuestsLoading} onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} selectedQuestId={quest?.questId ?? ''} clearedQuestIds={clearedQuestIds} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
 
 {!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>
