@@ -507,7 +507,9 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             </div>
           ) : (
             <button type="button" className="account-icon-button" aria-label="ログイン"
-              disabled={visiblePending !== null || auth.status !== 'signed-out'} onClick={() => void login()}>
+              disabled={visiblePending !== null || auth.status === 'checking'}
+              aria-disabled={auth.status !== 'signed-out' || visiblePending !== null}
+              onClick={() => { if (auth.status === 'signed-out' && visiblePending === null) void login() }}>
               <Icon name="user" />
             </button>
           )}

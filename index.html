@@ -21,26 +21,26 @@
       @keyframes boot-pulse { from { transform: scale(.7); opacity: .5; } to { transform: scale(1); opacity: 1; } }
       @keyframes boot-skeleton-pulse { from { opacity: .45; } to { opacity: 1; } }
       @media (prefers-reduced-motion: reduce) { .boot-dot, .boot-skeleton { animation: none; } }
-      .boot-icon { flex: none; width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .boot-icon { flex: none; width: 18px; height: 18px; display: block; }
 
       /* スマホ：全画面地図色＋浮きブランド＋下部シート＋タブバー */
       .boot-frame-pc { display: none; }
       .boot-account {
         position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); right: 10px; z-index: 3;
-        width: 44px; height: 44px; box-sizing: border-box;
+        width: 44px; height: 44px; box-sizing: border-box; padding: 0; overflow: hidden;
         border: 2px solid #1d1d1b; border-radius: 50%; background: #ffffff;
-        display: grid; place-items: center; color: #1d1d1b;
+        display: inline-flex; align-items: center; justify-content: center; color: #1d1d1b;
       }
       .boot-account .boot-icon { width: 20px; height: 20px; }
-      .boot-brand-chip { position: absolute; top: 12px; left: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 16px; background: #ffffff; border: 2px solid #1d1d1b; font-size: 13px; font-weight: 700; }
+      .boot-brand-chip { position: absolute; top: 12px; left: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 16px; background: #ffffff; border: 2px solid #1d1d1b; font-size: 13px; font-weight: 800; }
       .boot-brand-mark { width: 30px; height: 30px; border-radius: 12px; background: #c7ed93; border: 2px solid #1d1d1b; color: #1d1d1b; display: grid; place-items: center; box-sizing: border-box; }
       .boot-brand-mark .boot-icon { width: 18px; height: 18px; }
       .boot-sheet { position: absolute; left: 0; right: 0; bottom: 70px; height: 196px; box-sizing: border-box; padding: 12px 16px; background: #ffffff; border-top: 2px solid #1d1d1b; border-radius: 24px 24px 0 0; }
       .boot-handle { width: 44px; height: 5px; margin: 0 auto 14px; border-radius: 999px; background: #1d1d1b; opacity: .25; }
       .boot-row { height: 44px; margin-top: 10px; border-radius: 16px; }
-      .boot-tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 70px; box-sizing: border-box; display: flex; gap: 8px; padding: 8px 12px; background: #ffffff; border-top: 2px solid #1d1d1b; }
-      .boot-tab { flex: 1; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: #52524b; background: #f3f2ec; }
-      .boot-tab.is-active { background: #e9e8e2; color: #1d1d1b; font-weight: 800; }
+      .boot-tabbar { position: absolute; left: 0; right: 0; bottom: 0; box-sizing: border-box; display: flex; align-items: stretch; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)); background: #ffffff; border-top: 2px solid #1d1d1b; }
+      .boot-tab { flex: 1; box-sizing: border-box; border: 2px solid transparent; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 4px 6px; font-size: 12px; line-height: 1.2; color: #52524b; background: transparent; }
+      .boot-tab.is-active { background: #ffe66b; border: 2px solid #1d1d1b; color: #1d1d1b; font-weight: 700; box-shadow: 3px 3px 0 #1d1d1b; }
       .boot-tab .boot-icon { width: 20px; height: 20px; }
 
       /* PC：左 280px フラットサイドバー＋右地図（Cursor Web 風、App.css と同寸） */
@@ -49,13 +49,14 @@
         .boot-frame-pc { display: block; }
         .boot-account { top: 10px; right: 20px; }
         .boot-sidebar { position: absolute; top: 0; left: 0; bottom: 0; width: 280px; background: #ffffff; border-right: 1px solid color-mix(in srgb, #1d1d1b 28%, transparent); box-sizing: border-box; }
-        .boot-brand { display: flex; align-items: center; gap: 8px; width: 232px; height: 52px; padding: 0 8px; box-sizing: border-box; border-bottom: 1px solid color-mix(in srgb, #1d1d1b 22%, transparent); font-size: 13px; font-weight: 700; overflow: hidden; }
+        .boot-brand { display: flex; align-items: center; gap: 8px; width: 232px; height: 52px; padding: 0 8px; box-sizing: border-box; border-bottom: 0; font-size: 13px; font-weight: 800; overflow: hidden; }
         .boot-brand-mark-pc { flex: none; width: 32px; height: 32px; border-radius: 12px; background: #c7ed93; border: 2px solid #1d1d1b; color: #1d1d1b; display: grid; place-items: center; box-sizing: border-box; }
         .boot-brand-mark-pc .boot-icon { width: 20px; height: 20px; }
-        .boot-toggle { position: absolute; top: 4px; left: 232px; width: 44px; height: 44px; display: grid; place-items: center; color: #1d1d1b; }
-        .boot-toggle .boot-icon { width: 20px; height: 20px; }
+        .boot-toggle { position: fixed; top: 4px; left: 232px; z-index: 37; width: 44px; height: 44px; border: 0; border-radius: 10px; padding: 0; display: grid; place-items: center; background: #ffffff; color: #1d1d1b; }
+        .boot-toggle .boot-icon { width: 24px; height: 24px; }
+        .boot-nav .boot-icon { width: 18px; height: 18px; }
         .boot-nav { display: flex; flex-direction: column; gap: 2px; height: 96px; padding: 4px 8px; box-sizing: border-box; border-bottom: 1px solid color-mix(in srgb, #1d1d1b 22%, transparent); }
-        .boot-nav span { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; border-radius: 10px; font-size: 14px; color: #52524b; box-sizing: border-box; }
+        .boot-nav span { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; border-radius: 10px; font-size: 14px; color: #52524b; background: transparent; box-sizing: border-box; }
         .boot-nav .is-active { background: #e9e8e2; color: #1d1d1b; font-weight: 800; }
         .boot-panel { position: absolute; top: 148px; left: 0; right: 0; bottom: 0; padding: 10px 10px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
         .boot-pill { flex: none; width: 132px; height: 36px; border-radius: 999px; }
@@ -69,12 +70,12 @@
     <div id="root">
       <div class="boot-shell" role="status" aria-label="アプリを読み込み中">
         <div class="boot-account" aria-hidden="true">
-          <svg class="boot-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 7.5a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/><path d="M5 20v-1.2a7 7 0 0 1 14 0V20"/></svg>
+          <svg class="boot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 7.5a4 4 0 1 1-8 0 4 4 0 0 1 8 0"/><path d="M5 20v-1.2a7 7 0 0 1 14 0V20"/></svg>
         </div>
         <div class="boot-frame-mobile" aria-hidden="true">
           <span class="boot-brand-chip">
             <span class="boot-brand-mark">
-              <svg class="boot-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17"/><path d="m15.8 8.2-1.7 5.1-5.1 1.7 1.7-5.1 5.1-1.7Z"/></svg>
+              <svg class="boot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17"/><path d="m15.8 8.2-1.7 5.1-5.1 1.7 1.7-5.1 5.1-1.7Z"/></svg>
             </span>
             全国観光謎アプリ
           </span>
@@ -86,11 +87,11 @@
           </div>
           <div class="boot-tabbar">
             <div class="boot-tab is-active">
-              <svg class="boot-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5.2a5.8 5.8 0 1 0 0 11.6 5.8 5.8 0 0 0 0-11.6"/><path d="m20.2 20.2-4-4"/></svg>
+              <svg class="boot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5.2a5.8 5.8 0 1 0 0 11.6 5.8 5.8 0 0 0 0-11.6"/><path d="m20.2 20.2-4-4"/></svg>
               謎を探す
             </div>
             <div class="boot-tab">
-              <svg class="boot-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h5.2c.9 0 1.8.7 1.8 1.6 0-.9.9-1.6 1.8-1.6H19V19h-5.2c-.9 0-1.8.5-1.8 1.2 0-.7-.9-1.2-1.8-1.2H5V5.5Z"/><path d="M12 7.2v12.2"/></svg>
+              <svg class="boot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5.5h5.2c.9 0 1.8.7 1.8 1.6 0-.9.9-1.6 1.8-1.6H19V19h-5.2c-.9 0-1.8.5-1.8 1.2 0-.7-.9-1.2-1.8-1.2H5V5.5Z"/><path d="M12 7.2v12.2"/></svg>
               自分の記録
             </div>
           </div>
@@ -99,20 +100,20 @@
           <div class="boot-sidebar">
             <div class="boot-brand">
               <span class="boot-brand-mark-pc">
-                <svg class="boot-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17"/><path d="m15.8 8.2-1.7 5.1-5.1 1.7 1.7-5.1 5.1-1.7Z"/></svg>
+                <svg class="boot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17"/><path d="m15.8 8.2-1.7 5.1-5.1 1.7 1.7-5.1 5.1-1.7Z"/></svg>
               </span>
               全国観光謎アプリ
             </div>
             <div class="boot-toggle" aria-hidden="true">
-              <svg class="boot-icon" viewBox="0 0 24 24"><path d="M5.5 6.2c0-.9.7-1.6 1.6-1.6h9.8c.9 0 1.6.7 1.6 1.6v11.6c0 .9-.7 1.6-1.6 1.6H7.1c-.9 0-1.6-.7-1.6-1.6V6.2Z"/><path d="M9.5 4.6v14.8"/></svg>
+              <svg class="boot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 6.2c0-.9.7-1.6 1.6-1.6h9.8c.9 0 1.6.7 1.6 1.6v11.6c0 .9-.7 1.6-1.6 1.6H7.1c-.9 0-1.6-.7-1.6-1.6V6.2Z"/><path d="M9.5 4.6v14.8"/></svg>
             </div>
             <div class="boot-nav">
               <span class="is-active">
-                <svg class="boot-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5.2a5.8 5.8 0 1 0 0 11.6 5.8 5.8 0 0 0 0-11.6"/><path d="m20.2 20.2-4-4"/></svg>
+                <svg class="boot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5.2a5.8 5.8 0 1 0 0 11.6 5.8 5.8 0 0 0 0-11.6"/><path d="m20.2 20.2-4-4"/></svg>
                 謎を探す
               </span>
               <span>
-                <svg class="boot-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h5.2c.9 0 1.8.7 1.8 1.6 0-.9.9-1.6 1.8-1.6H19V19h-5.2c-.9 0-1.8.5-1.8 1.2 0-.7-.9-1.2-1.8-1.2H5V5.5Z"/><path d="M12 7.2v12.2"/></svg>
+                <svg class="boot-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5.5h5.2c.9 0 1.8.7 1.8 1.6 0-.9.9-1.6 1.8-1.6H19V19h-5.2c-.9 0-1.8.5-1.8 1.2 0-.7-.9-1.2-1.8-1.2H5V5.5Z"/><path d="M12 7.2v12.2"/></svg>
                 自分の記録
               </span>
             </div>

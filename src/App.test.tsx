@@ -10,9 +10,12 @@ describe('未接続の起動画面', () => {
 
     expect(screen.getByRole('main')).toBeVisible()
     expect(screen.getByRole('heading', { level: 1 })).toBeVisible()
-    // ヘッダーにログイン状態の常時表示は無く、未接続時はログインアイコンが無効のままスロットに残る。
+    // ヘッダーにログイン状態の常時表示は無く、未接続時はログインアイコンがスロットに残る。
+    // disabled だと --ui-disabled で色が落ちて boot→React でチラつくので aria-disabled で操作だけ塞ぐ。
     expect(screen.queryByRole('status', { name: 'ログイン状態' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'ログイン' })).toBeDisabled()
+    const login = screen.getByRole('button', { name: 'ログイン' })
+    expect(login).toHaveAttribute('aria-disabled', 'true')
+    expect(login).toBeEnabled()
     expect(screen.queryByRole('button', { name: 'アカウントメニュー' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '問題を見てみる' })).toBeEnabled()
     expect(screen.queryByRole('region', { name: 'サンプル問題の詳細' })).not.toBeInTheDocument()
