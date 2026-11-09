@@ -674,6 +674,43 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('shows the registered boundary year in the credit when an area carries one', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const map = { ...mapInstance, setCenter: vi.fn(), setZoom: vi.fn(), fitBounds: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker: class { setMap() {} addListener() { return { remove() {} } } }, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const withYear: PublicArea[] = [{ ...areas[0], boundary: { source: 'N03', year: 2025 } }]
+    const { unmount } = render(<ConfiguredMapPreview areas={withYear} quests={[]} showBoundaryCredit />)
+    expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
+    // 登録年度が分かる地域がある場合は、出典に年度まで含める（D-71）。
+    expect(screen.getByText('境界データ：国土数値情報N03-2025（国土交通省）')).toBeInTheDocument()
+    unmount()
+    delete window.google
+  })
+
+  it('passes every polygon of a MultiPolygon, including holes and exclaves, to the map layer', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const addGeoJson = vi.fn()
+    class Data { setMap() {} addGeoJson = addGeoJson; setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const multi: PublicArea = { areaId: 'area-multi', label: 'M', publishedCount: 1, marker: { latitude: 35, longitude: 139 },
+      publicGeometry: { type: 'MultiPolygon', coordinates: [
+        [[[139, 35], [140, 35], [140, 36], [139, 36], [139, 35]], [[139.2, 35.2], [139.3, 35.2], [139.3, 35.3], [139.2, 35.3], [139.2, 35.2]]],
+        [[[141, 37], [142, 37], [142, 38], [141, 38], [141, 37]]],
+      ] } }
+    const { unmount } = render(<ConfiguredMapPreview areas={[multi]} />)
+    expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeVisible()
+    await waitFor(() => expect(addGeoJson).toHaveBeenCalledWith(expect.objectContaining({ features: [expect.objectContaining({
+      geometry: { type: 'MultiPolygon', coordinates: multi.publicGeometry.coordinates },
+    })] })))
+    unmount()
+    delete window.google
+  })
+
   it('fills only the selected area when fillSelectedAreaOnly is on, and keeps the legacy fill otherwise', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
