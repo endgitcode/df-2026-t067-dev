@@ -339,7 +339,7 @@ interface QuestDetailsProps {
   open: boolean
   disabled: boolean
   buttonLabel: string
-  note: string
+  note?: string
   sourceLabel?: string
   detailsLabel?: string
   feedback?: { error: boolean; text: string } | null
@@ -438,14 +438,14 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
                 <QuestQrCode value={handoffUrl!} label={`${quest.title}をスマートフォンで開くQRコード`} />
                 <p className="handoff-caption">スマートフォンで読み取ると、この問題の詳細を開けます。</p>
               </div>}
-              <button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={`${detailsId}-note`}>
+              <button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={note ? `${detailsId}-note` : undefined}>
                 {buttonLabel}
               </button>
-              <p id={`${detailsId}-note`} className="unavailable-note">{note}</p>
-            </div> : <><button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={`${detailsId}-note`}>
+              {note ? <p id={`${detailsId}-note`} className="unavailable-note">{note}</p> : null}
+            </div> : <><button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={note ? `${detailsId}-note` : undefined}>
               {buttonLabel}
             </button>
-            <p id={`${detailsId}-note`} className="unavailable-note">{note}</p></>)}
+            {note ? <p id={`${detailsId}-note`} className="unavailable-note">{note}</p> : null}</>)}
             {children}
             {feedback && <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
           </section>
