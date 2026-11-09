@@ -9,7 +9,7 @@ const rule = (selector: string) => css.slice(css.indexOf(`${selector} {`)).split
 describe('共通Googleログインの表示', () => {
   it('画面固有のCSSに依存せず、全幅と中央配置を指定する', () => {
     expect(readFileSync('src/components/GoogleContinue.tsx', 'utf8')).toContain("import './GoogleContinue.css'")
-    for (const declaration of ['width: 100%;', 'display: flex;', 'align-items: center;', 'justify-content: center;', 'gap: 12px;']) {
+    for (const declaration of ['width: 100%;', 'display: flex;', 'align-items: center;', 'justify-content: center;', 'gap: var(--sp-12);']) {
       expect(rule('.google-continue')).toContain(declaration)
     }
     expect(rule('.google-continue svg')).toContain('flex: none;')
@@ -17,7 +17,7 @@ describe('共通Googleログインの表示', () => {
   })
 
   it('規約は12pxの補助色、管理ログインは中央の最大400pxに収める', () => {
-    expect(rule('.login-terms')).toContain('font-size: 12px;')
+    expect(rule('.login-terms')).toContain('font-size: var(--fs-12);')
     expect(rule('.login-terms')).toContain('color: var(--ui-muted);')
     const adminCss = readFileSync('src/features/admin/admin.css', 'utf8')
     expect(adminCss).toContain('.admin-login-heading, .admin-login { width: min(100%, 400px); margin-inline: auto; }')

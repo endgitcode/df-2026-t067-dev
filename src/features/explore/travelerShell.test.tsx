@@ -40,19 +40,19 @@ describe('旅行者の共通シェル', () => {
     expect(css).toContain('body:has(.traveler-shell) .brand,')
     expect(css).toContain('body:has(.traveler-shell) .desktop-nav,')
     expect(css).toContain('--pc-sidebar-open-w: 280px;')
-    expect(css).toContain('body:has(.traveler-shell) .explore-view { margin-left: var(--pc-sidebar-w); padding: 24px; }')
-    expect(css).toContain('margin: calc(var(--account-slot-top) + var(--account-slot-size) + 24px) 24px 24px calc(var(--pc-sidebar-w) + 24px);')
+    expect(css).toContain('body:has(.traveler-shell) .explore-view { margin-left: var(--pc-sidebar-w); padding: var(--sp-24); }')
+    expect(css).toContain('margin: calc(var(--account-slot-top) + var(--account-slot-size) + var(--sp-24)) var(--sp-24) var(--sp-24) calc(var(--pc-sidebar-w) + var(--sp-24));')
     expect(css).not.toContain('body:has(.traveler-shell) .sidebar-toggle { display: none; }')
   })
 
   it('PCのブランド行は左16px・開閉ボタンは右16pxで両タブ共通にする', () => {
-    expect(css).toContain('body:has(.traveler-shell) .brand { width: calc(var(--pc-sidebar-w) - 60px); padding-inline: 16px; }')
+    expect(css).toContain('body:has(.traveler-shell) .brand { width: calc(var(--pc-sidebar-w) - 60px); padding-inline: var(--sp-16); }')
     expect(css).toContain('body:has(.traveler-shell) .sidebar-toggle { display: grid; left: calc(var(--pc-sidebar-open-w) - 60px); }')
   })
 
   it('PCとスマホの記録カードはアカウント下端から16px以上離す', () => {
-    expect(css).toContain('margin: calc(var(--account-slot-top) + var(--account-slot-size) + 24px) 24px 24px calc(var(--pc-sidebar-w) + 24px);')
-    expect(css).toContain('margin: calc(80px + env(safe-area-inset-top)) 16px')
+    expect(css).toContain('margin: calc(var(--account-slot-top) + var(--account-slot-size) + var(--sp-24)) var(--sp-24) var(--sp-24) calc(var(--pc-sidebar-w) + var(--sp-24));')
+    expect(css).toContain('margin: calc(80px + env(safe-area-inset-top)) var(--sp-16)')
     // スマホ: 上6px + 高さ44px、カード上80pxなので間隔30px。
     expect(80 - (6 + 44)).toBeGreaterThanOrEqual(16)
   })
