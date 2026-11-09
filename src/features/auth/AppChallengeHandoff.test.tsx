@@ -39,9 +39,10 @@ describe('Google sign-in from the selected quest', () => {
       '三角屋根の下にある、丸い文字盤が目印です。(仮)',
       '船の出入りとともに、街へ時を知らせる時計のある建物です。(仮)',
     ]
+    await user.click(within(details).getByRole('button', { name: 'ヒントを見る' }))
     for (let index = 1; index <= hints.length; index++) {
-      await user.click(within(details).getByRole('button', { name: `ヒント${index}を見る` }))
       expect(await within(details).findByText(hints[index - 1])).toBeVisible()
+      if (index < hints.length) await user.click(within(details).getByRole('button', { name: '次へ' }))
     }
   })
 

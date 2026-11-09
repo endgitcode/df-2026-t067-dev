@@ -59,7 +59,7 @@ input, textarea, select { accent-color: var(--ui-ink); }
 input::placeholder, textarea::placeholder { color: var(--ui-muted); opacity: 1; }
 /* 中身の操作要素にオフセットシャドウは付けない（D-66）。影は地図上に浮く
    要素（チップ・メニュー等）の区別だけに残し、ボタン類は枠線だけで示す。 */
-:where(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .optional-hint-toggle) {
+:where(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .hint-open, .hint-next, .optional-hint-toggle) {
   border: var(--ui-border-width) solid var(--ui-line);
   border-radius: var(--ui-radius);
   box-shadow: none;
@@ -69,27 +69,27 @@ input::placeholder, textarea::placeholder { color: var(--ui-muted); opacity: 1; 
   font-weight: var(--ui-weight-control);
   transition: transform 100ms ease-out, box-shadow 100ms ease-out, background-color 140ms ease-out;
 }
-:is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .optional-hint-toggle):disabled {
+:is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .hint-open, .hint-next, .optional-hint-toggle):disabled {
   background: var(--ui-disabled);
   color: var(--ui-muted);
   border-color: var(--ui-disabled-line);
   box-shadow: none;
   opacity: 1;
 }
-:is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .optional-hint-toggle):enabled:active {
+:is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .hint-open, .hint-next, .optional-hint-toggle):enabled:active {
   transform: translate(var(--ui-press), var(--ui-press)) scale(var(--ui-press-scale));
   box-shadow: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  :is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .optional-hint-toggle):enabled:hover { transform: translate(var(--ui-hover-shift), var(--ui-hover-shift)); box-shadow: none; }
-  :is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .optional-hint-toggle):enabled:active { transform: translate(var(--ui-press), var(--ui-press)) scale(var(--ui-press-scale)); box-shadow: none; }
+  :is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .hint-open, .hint-next, .optional-hint-toggle):enabled:hover { transform: translate(var(--ui-hover-shift), var(--ui-hover-shift)); box-shadow: none; }
+  :is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .hint-open, .hint-next, .optional-hint-toggle):enabled:active { transform: translate(var(--ui-press), var(--ui-press)) scale(var(--ui-press-scale)); box-shadow: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  :is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .optional-hint-toggle):is(:hover, :active) { transform: none !important; transition: none !important; }
+  :is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .hint-open, .hint-next, .optional-hint-toggle):is(:hover, :active) { transform: none !important; transition: none !important; }
   .map-canvas { transition: none !important; }
 }
 
-:is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .optional-hint-toggle) { border-color: var(--ui-control-line); }
+:is(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .hint-open, .hint-next, .optional-hint-toggle) { border-color: var(--ui-control-line); }
 
 /* Destructive actions (pause / delete): error red instead of the accent, so they never read as a normal submit. */
 .danger-button, .admin-demo .danger-button { background: var(--ui-error); color: var(--ui-surface); }
