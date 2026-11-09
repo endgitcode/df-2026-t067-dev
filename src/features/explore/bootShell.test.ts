@@ -13,12 +13,9 @@ describe('boot shell chrome (F5 stable)', () => {
     expect(html).toContain('全国観光謎アプリ')
     expect(html).toContain('謎を探す')
     expect(html).toContain('自分の記録')
-    // 緑のロゴ下地（本物の brand-mark と同じ --ui-tint）
     expect(html).toContain('#c7ed93')
-    // 地図面は最初から水色（Maps の灰色を挟まない）
     expect(html).toContain('.boot-map')
     expect(html).toMatch(/\.boot-map[^}]*background: #c5e8f5/)
-    // 仮カードをパネル内に置き、ナビ文言と「読み込み中」を重ねない
     expect(html).toMatch(/boot-panel[\s\S]*boot-status[\s\S]*読み込み中/)
     expect(html).toMatch(/boot-nav[\s\S]*自分の記録[\s\S]*boot-panel/)
     expect(html).toContain('boot-skeleton')
@@ -28,5 +25,40 @@ describe('boot shell chrome (F5 stable)', () => {
 describe('side panel skeleton visibility (F5 stable)', () => {
   it('keeps tinted skeleton rows inside the flat side panel', () => {
     expect(css).toMatch(/explore-side-panel \.explore-quest-skeleton[^}]*background: var\(--ui-tint\)/)
+  })
+})
+
+describe('boot chrome icon sizes match hydrated fullbleed chrome', () => {
+  it('keeps PC brand mark at 32px / 20px glyph and mobile at 30px / 18px on both sides', () => {
+    expect(html).toMatch(/\.boot-brand-mark-pc\s*\{[^}]*width: 32px; height: 32px/)
+    expect(html).toMatch(/\.boot-brand-mark-pc \.boot-icon \{ width: 20px; height: 20px; \}/)
+    expect(html).toMatch(/\.boot-brand-mark\s*\{[^}]*width: 30px; height: 30px/)
+    expect(html).toMatch(/\.boot-brand-mark \.boot-icon \{ width: 18px; height: 18px; \}/)
+    expect(css).toMatch(/explore-fullbleed \.brand-mark[^}]*width: 32px; height: 32px/)
+    expect(css).toMatch(/explore-fullbleed \.brand-mark \.icon \{ width: 20px; height: 20px; \}/)
+    expect(css).toMatch(/body\.explore-fullbleed \.brand-mark \{ width: 30px; height: 30px; border-radius: 12px; \}/)
+    expect(css).toMatch(/body\.explore-fullbleed \.brand-mark \.icon \{ width: 18px; height: 18px; \}/)
+  })
+
+  it('keeps brand-mark corners at 12px (not the 16px surface radius) on both sides', () => {
+    expect(html).toMatch(/\.boot-brand-mark[^{]*\{[^}]*border-radius: 12px/)
+    expect(html).toMatch(/\.boot-brand-mark-pc\s*\{[^}]*border-radius: 12px/)
+    expect(css).toMatch(/explore-fullbleed \.brand-mark[^}]*border-radius: 12px/)
+  })
+
+  it('keeps account / toggle / nav glyph sizes identical to boot', () => {
+    expect(html).toMatch(/\.boot-account \.boot-icon \{ width: 20px; height: 20px; \}/)
+    expect(html).toMatch(/\.boot-toggle \.boot-icon \{ width: 20px; height: 20px; \}/)
+    expect(html).toMatch(/\.boot-icon \{[^}]*width: 18px; height: 18px/)
+    expect(html).toMatch(/\.boot-tab \.boot-icon \{ width: 20px; height: 20px; \}/)
+    expect(css).toMatch(/\.account-icon-button \.icon \{ width: 20px; height: 20px; \}/)
+    expect(css).toMatch(/explore-fullbleed \.sidebar-toggle \.icon \{ width: 20px; height: 20px; \}/)
+    expect(css).toMatch(/explore-fullbleed \.desktop-nav \.icon \{ width: 18px; height: 18px; \}/)
+    expect(css).toMatch(/\.mobile-nav \.icon \{ width: 20px; height: 20px; \}/)
+  })
+
+  it('does not put an offset shadow on the boot brand chip (matches React D-66)', () => {
+    expect(html).toMatch(/\.boot-brand-chip \{[^}]*border: 2px solid #1d1d1b/)
+    expect(html).not.toMatch(/\.boot-brand-chip \{[^}]*box-shadow:/)
   })
 })
