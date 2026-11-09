@@ -171,7 +171,7 @@
   padding: 0;
   border-radius: 50%;
   overflow: hidden;
-  background: #bd3d1b;
+  background: var(--ui-action);
   color: var(--ui-surface);
   box-shadow: none;
   font-size: 1rem;
@@ -216,21 +216,21 @@
 .admin-quest-status[data-status="review_pending"] { background: var(--ui-soft); }
 .admin-quest-status[data-status="paused"] { background: var(--ui-disabled); }
 
-.admin-managed { max-width: 1120px; background: #fff; min-height: 100vh; }
-.admin-managed .form-section { border: 1px solid #e2e5e9; border-radius: 10px; box-shadow: none; }
+.admin-managed { max-width: 1120px; background: var(--ui-bg); min-height: 100vh; }
+.admin-managed .form-section { border: 1px solid var(--ui-line); border-radius: var(--ui-radius); box-shadow: none; }
 .admin-managed .admin-read-list { list-style: none; padding: 0; }
-.admin-managed .admin-read-list > li { border-top: 1px solid #e2e5e9; padding-block: 14px; }
+.admin-managed .admin-read-list > li { border-top: 1px solid var(--ui-line); padding-block: 14px; }
 .admin-managed .admin-read-list > li > strong { display: block; margin: 8px 0; }
 .admin-managed button { box-shadow: none; border-width: 1px; }
-.admin-managed .workflow-primary { background: #174d87; color: #fff; border-color: #174d87; }
-.admin-managed .workflow-primary:disabled { background: #e9e8e2; color: #52524b; border-color: #ccc; }
+.admin-managed .workflow-primary { background: var(--ui-action); color: var(--ui-action-ink); border-color: var(--ui-action); }
+.admin-managed .workflow-primary:disabled { background: var(--ui-disabled); color: var(--ui-muted); border-color: var(--ui-disabled-line); }
 .admin-workflow .workflow-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; gap: 8px; list-style: none; }
-.workflow-steps li { display: grid; padding: 8px 10px; border-radius: 8px; background: #f5f6f8; line-height: 1.5; }
-.workflow-steps li[aria-current="step"] { color: #153f6f; background: #e8f2ff; outline: 2px solid #32689e; outline-offset: -2px; }
-.workflow-steps small { color: #4d5763; }
+.workflow-steps li { display: grid; padding: 8px 10px; border-radius: 8px; background: var(--ui-soft); line-height: 1.5; }
+.workflow-steps li[aria-current="step"] { color: var(--ui-ink); background: var(--ui-accent); outline: 1px solid var(--ui-action); outline-offset: -2px; }
+.workflow-steps small { color: var(--ui-muted); }
 .admin-managed .workflow-steps li { padding: 0; }
 .admin-managed .workflow-steps button { display: grid; height: 100%; min-width: 0; padding: 8px 10px; text-align: start; background: transparent; color: inherit; border-color: transparent; border-radius: 8px; }
-.admin-managed .workflow-steps button:hover { border-color: #32689e; }
+.admin-managed .workflow-steps button:hover { border-color: var(--ui-action); }
 .workflow-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-block: 14px; }
 .workflow-heading h2 { margin: 0; }
 .workflow-remaining { margin-block: 8px; }
@@ -240,3 +240,25 @@
   .admin-workflow .workflow-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-workflow .form-section { padding: 12px; }
 }
+
+/* Shared atlas theme for durable administration and existing fallback screens. */
+.admin-demo h1, .admin-demo h2, .admin-demo h3 {
+  font-family: var(--ui-font-heading);
+  font-weight: var(--ui-weight-display);
+  letter-spacing: .025em;
+}
+.admin-demo label { font-weight: var(--ui-weight-control); }
+.admin-demo .submit-button {
+  background: var(--ui-action);
+  color: var(--ui-action-ink);
+  border-color: var(--ui-action);
+}
+.admin-demo .submit-button:enabled:hover, .admin-managed .workflow-primary:enabled:hover {
+  background: var(--ui-action-hover);
+  color: var(--ui-action-ink);
+}
+.admin-demo input:not([type=checkbox]):not([type=file]):not([type=radio]),
+.admin-demo textarea, .admin-demo select { border-radius: var(--radius-s); }
+.admin-demo input[type=checkbox], .admin-demo input[type=radio],
+.admin-demo input[type=range] { accent-color: var(--ui-action); }
+.admin-demo .form-section .form-section { background: var(--ui-soft); }

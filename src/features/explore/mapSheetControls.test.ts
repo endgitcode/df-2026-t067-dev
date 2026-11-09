@@ -202,9 +202,9 @@ describe('rounded corner scale (D-35)', () => {
   const themeCss = readCss('src/theme.css')
 
   it('defines a three-step radius scale and keeps --ui-radius as the middle alias', () => {
-    expect(themeCss).toContain('--radius-s: 10px;')
-    expect(themeCss).toContain('--radius-m: 16px;')
-    expect(themeCss).toContain('--radius-l: 24px;')
+    expect(themeCss).toContain('--radius-s: 8px;')
+    expect(themeCss).toContain('--radius-m: 12px;')
+    expect(themeCss).toContain('--radius-l: 20px;')
     expect(themeCss).toContain('--ui-radius: var(--radius-m);')
   })
 

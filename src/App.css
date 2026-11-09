@@ -1,7 +1,7 @@
 @import "./theme.css";
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; background: var(--ui-blue, #c5e8f5); }
+body { margin: 0; min-width: 320px; background: var(--ui-bg); }
 /* 横方向のはみ出しはビューポートで切り、ページ全体の横スクロールバーを出さない（D-73）。
    320px幅で一部の要素が僅かにはみ出すと、横スクロールバーが下部ナビに重なって出た
    （実地目視）。clip は hidden と違いスクロールコンテナを作らないため、
@@ -430,7 +430,7 @@ button.explore-quest-card { cursor: pointer; }
 .map-bottomline { color: var(--ui-ink); flex-wrap: wrap; background: var(--ui-surface); padding: 6px 8px; border-radius: var(--ui-radius); }
 .pin-halo { border: 0; background: transparent; border-radius: 50%; }
 /* ピンの色は Google Maps 側（features/explore/mapStyles.ts の MAP_PIN_COLOR）と同値に揃える。 */
-.pin-face { border: var(--ui-border-width) solid var(--ui-line); border-radius: 50% 50% 50% 8px; background: #4eb8d0; box-shadow: -3px 3px 0 var(--ui-ink); }
+.pin-face { border: var(--ui-border-width) solid var(--ui-line); border-radius: 50% 50% 50% 8px; background: #4eb8d0; box-shadow: none; }
 .pin-face .icon { color: var(--ui-accent-ink); }
 .pin-caption { color: var(--ui-ink); background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
 .map-zoom-group { background: var(--ui-surface); box-shadow: var(--ui-control-shadow); }
@@ -903,7 +903,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 .answer-waiting p { margin: 0 0 10px; color: var(--ui-ink, #1d1d1b); font-weight: var(--ui-weight-strong, 700); }
 /* 不定バー: % や時間の偽進捗は出さない。トラックとバーは白カード上でも暗い写真上でも見えるコントラスト（WCAG AA目安）。 */
 .answer-waiting-progress { position: relative; overflow: hidden; height: 10px; margin: 0 auto 14px; max-width: 240px; border-radius: 999px; border: 2px solid var(--ui-ink, #1d1d1b); background: var(--ui-disabled, #e9e8e2); box-sizing: border-box; }
-.answer-waiting-progress-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: inherit; background: var(--ui-accent, #ffe66b); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-ink, #1d1d1b) 35%, transparent); animation: answer-waiting-indeterminate 1.25s ease-in-out infinite; }
+.answer-waiting-progress-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: inherit; background: var(--ui-accent, #ffe66b); box-shadow: none; animation: answer-waiting-indeterminate 1.25s ease-in-out infinite; }
 @keyframes answer-waiting-indeterminate {
   0% { transform: translateX(-120%); }
   100% { transform: translateX(280%); }
@@ -928,7 +928,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     position: relative; z-index: 1; flex: 0 0 auto; padding: 8px 12px; margin: 0; border-radius: var(--ui-radius, 16px);
     border: var(--ui-border-width, 2px) solid var(--ui-line, #1d1d1b);
     background: var(--ui-surface, #ffffff); color: var(--ui-ink, #1d1d1b);
-    box-shadow: var(--ui-control-shadow, 3px 3px 0 #1d1d1b);
+    box-shadow: var(--ui-control-shadow, none);
   }
   .camera-overlay > p.camera-status { color: var(--ui-ink, #1d1d1b); }
   .camera-overlay > p.sample-note { color: var(--ui-ink, #1d1d1b); background: var(--ui-surface, #ffffff); }
@@ -937,7 +937,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     position: relative; z-index: 1; flex: 0 0 auto; padding: 10px; border-radius: var(--ui-radius, 16px);
     border: var(--ui-border-width, 2px) solid var(--ui-line, #1d1d1b);
     background: var(--ui-surface, #ffffff); color: var(--ui-ink, #1d1d1b);
-    box-shadow: var(--ui-control-shadow, 3px 3px 0 #1d1d1b);
+    box-shadow: var(--ui-control-shadow, none);
   }
   .camera-overlay > .camera-actions:last-child { margin-top: auto; }
   .camera-overlay .answer-waiting { background: transparent; border: 0; box-shadow: none; padding: 8px 4px; }
@@ -952,4 +952,44 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     width: 100%; object-fit: contain;
   }
   .camera-panel > .camera-actions { flex: 0 0 auto; }
+}
+
+/* 旅のアトラス — the existing screen geometry and motion remain in place. */
+.brand-copy, .explore-heading h1, .owner-records h1,
+.quest-card h3, .record-dialog-heading h2, .clear-screen-card h2 {
+  font-family: var(--ui-font-heading);
+  font-weight: var(--ui-weight-display);
+  letter-spacing: .025em;
+}
+.primary-button, .api-load-state > button {
+  background: var(--ui-action);
+  color: var(--ui-action-ink);
+  border-color: var(--ui-action);
+}
+.primary-button:hover:not(:disabled), .api-load-state > button:hover:not(:disabled) {
+  background: var(--ui-action-hover);
+  color: var(--ui-action-ink);
+  border-color: var(--ui-action-hover);
+}
+.quest-card-heading { background: var(--ui-soft); }
+.quest-card-content { line-height: 1.8; }
+.hint-card, .hint-item, .hint-version-changed { background: var(--ui-soft); }
+.hint-step.is-current { border-color: var(--ui-action); }
+.quest-report-form textarea, .quest-report-form select {
+  padding: var(--ui-space-1);
+  border: var(--ui-border-width) solid var(--ui-control-line);
+  border-radius: var(--radius-s);
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+}
+.record-table th { background: var(--ui-soft); color: var(--ui-muted); font-weight: var(--ui-weight-control); }
+.record-table td { padding-block: var(--ui-space-2); }
+.map-boundary-credit { color: var(--ui-muted); }
+@media (min-width: 981px) {
+  body.explore-fullbleed .explore-side-panel .explore-quest-card.is-selected,
+  body.explore-fullbleed .explore-side-panel button.explore-quest-card.is-selected:hover {
+    background: var(--ui-accent);
+    color: var(--ui-ink);
+  }
+  body.explore-fullbleed .explore-side-panel .map-boundary-credit { opacity: 1; }
 }

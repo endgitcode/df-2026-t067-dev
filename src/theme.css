@@ -1,27 +1,34 @@
-/* neobrutalism: UI presentation only; no application state or API changes. */
+/* 旅のアトラス: quiet paper surfaces and pine actions; presentation only. */
 :root {
-  --ui-bg: #faf8f1;
+  --ui-bg: #f5f4ee;
   --ui-surface: #ffffff;
-  --ui-ink: #1d1d1b;
-  --ui-muted: #52524b;
-  --ui-control-line: #1d1d1b;
-  --ui-line: #1d1d1b;
-  --ui-accent: #ffe66b;
-  --ui-accent-ink: #1d1d1b;
-  --ui-accent-hover: #ffde3d;
-  --ui-tint: #c7ed93;
+  --ui-ink: #243d35;
+  --ui-muted: #5b6962;
+  --ui-control-line: #87978c;
+  --ui-line: #d5dcd3;
+  --ui-action: #285440;
+  --ui-action-hover: #1e4332;
+  --ui-action-ink: #ffffff;
+  --ui-font-heading: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", serif;
+  --ui-space-1: 8px;
+  --ui-space-2: 16px;
+  --ui-space-3: 24px;
+  --ui-accent: #e1eadf;
+  --ui-accent-ink: #243d35;
+  --ui-accent-hover: #d2dfd0;
+  --ui-tint: #edf2e9;
   --ui-blue: #c5e8f5;
-  --ui-badge: #f7b6b3;
-  --ui-soft: #fff3bb;
-  --ui-disabled: #e9e8e2;
-  --ui-disabled-line: #8b8b82;
-  --ui-focus: #244ed8;
+  --ui-badge: #f2e5dc;
+  --ui-soft: #f2f3ec;
+  --ui-disabled: #e9ece5;
+  --ui-disabled-line: #a4aea3;
+  --ui-focus: #29634e;
   --ui-error: #a12626;
   /* Corner scale (D-35): surfaces pick from these three steps; --ui-radius
      stays as the alias of the middle step so existing rules round together. */
-  --radius-s: 10px;
-  --radius-m: 16px;
-  --radius-l: 24px;
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 20px;
   --ui-radius: var(--radius-m);
   /* Motion tokens (D-42): strong custom curves — the built-in easings are too
      weak. Entering/exiting = --ease-out, on-screen movement = --ease-in-out,
@@ -29,17 +36,17 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --ui-border-width: 2px;
-  --ui-shadow: 6px 6px 0 #1d1d1b;
-  --ui-control-shadow: 3px 3px 0 #1d1d1b;
-  --ui-hover-shadow: 4px 4px 0 #1d1d1b;
-  --ui-hover-shift: -1px;
-  --ui-press: 3px;
+  --ui-border-width: 1px;
+  --ui-shadow: none;
+  --ui-control-shadow: none;
+  --ui-hover-shadow: none;
+  --ui-hover-shift: 0px;
+  --ui-press: 0px;
   --ui-press-scale: 1;
-  --ui-weight-display: 800;
+  --ui-weight-display: 600;
   --ui-weight-strong: 700;
-  --ui-weight-control: 700;
-  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --ui-weight-control: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
   color: var(--ui-ink);
   background: var(--ui-bg);
   font-synthesis: none;
@@ -49,7 +56,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; min-height: 100dvh; background: var(--ui-blue, #c5e8f5); }
+body { margin: 0; min-width: 320px; min-height: 100dvh; background: var(--ui-bg); }
 html:has(body.explore-fullbleed) { background: var(--ui-blue, #c5e8f5); }
 button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
@@ -58,8 +65,7 @@ button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 5px; }
 input, textarea, select { accent-color: var(--ui-ink); }
 input::placeholder, textarea::placeholder { color: var(--ui-muted); opacity: 1; }
-/* 中身の操作要素にオフセットシャドウは付けない（D-66）。影は地図上に浮く
-   要素（チップ・メニュー等）の区別だけに残し、ボタン類は枠線だけで示す。 */
+/* All app surfaces and controls are shadow-free, including floating map UI. */
 :where(.primary-button, .danger-button, .quest-toggle, .retry-button, .account-icon-button, .secondary-button, .api-load-state > button, .admin-demo button, .hint-item > button, .hint-open, .hint-step, .optional-hint-toggle) {
   border: var(--ui-border-width) solid var(--ui-line);
   border-radius: var(--ui-radius);
@@ -97,3 +103,6 @@ input::placeholder, textarea::placeholder { color: var(--ui-muted); opacity: 1; 
 @media (hover: hover) and (pointer: fine) {
   .danger-button:enabled:hover, .admin-demo .danger-button:enabled:hover { background: #8c1f1f; }
 }
+
+/* Tabular numerals keep dates, counts and workflow revisions aligned. */
+body { font-variant-numeric: tabular-nums; }
