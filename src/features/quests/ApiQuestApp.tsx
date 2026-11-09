@@ -220,7 +220,12 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
 
   const current = result?.api === api && result.selection === selectedId && result.areaSelection === selectedAreaId && result.retry === retry ? result : null
   const state = current?.state ?? 'loading'
-  const choices = current?.choices ?? []
+  // 選択の変更や再試行で新しい結果がまだ届いていない間は、直前の結果の一覧を
+  // そのまま表示に残す（D-75）。一覧を空へ倒すと、行の連打や再取得のたびに
+  // スケルトンと「読み込み中」がちらつく。新しい結果が届いたら差し替わり、
+  // 失敗した場合は fail() が現在の条件にエラー結果を置くため、従来どおり
+  // エラー表示へ切り替わる（前のデータは残らない）。
+  const choices = current?.choices ?? (result?.api === api ? result.choices : [])
   const availableAreas = result?.api === api ? result.areas : emptyAreas
   const regionAreas = useMemo(() => getRegionAreas(availableAreas, activeRegion, activePrefecture), [availableAreas, activeRegion, activePrefecture])
   const prefOptions = REGIONS.find((item) => item.name === activeRegion)?.prefectures ?? []
@@ -382,7 +387,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       {!mapSheetMode && refreshControl}
       {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode !== 'team-preview' && filterControls}{!mapSheetMode && picker}</>}
     </section> : undefined
-  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={regionAreas} mapQuests={visibleChoices} mapQuestsLoading={state === 'loading'} onOpenQuest={openQuestFromMap} onDeselectQuest={deselectQuest} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
+  return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={regionAreas} mapQuests={visibleChoices} mapQuestsLoading={state === 'loading' && visibleChoices.length === 0} onOpenQuest={openQuestFromMap} onDeselectQuest={deselectQuest} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
     areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
     questPicker={mapSheetMode ? undefined : <>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} onMapSheetModeChange={setMapSheetMode} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}

@@ -124,6 +124,15 @@ describe('ExploreQuestList', () => {
     expect(container.querySelectorAll('.explore-quest-skeleton')).toHaveLength(5)
   })
 
+  it('再取得中に行があれば「読み込み中」に切り替えず、件数と行を残す（D-75）', () => {
+    const { container } = render(<ExploreQuestList areas={areas} quests={quests} loading />)
+    expect(screen.getByText('2件')).toBeVisible()
+    expect(screen.queryByText('読み込み中')).not.toBeInTheDocument()
+    expect(screen.getByText('港の時計台')).toBeVisible()
+    expect(screen.getByText('博多の灯台')).toBeVisible()
+    expect(container.querySelectorAll('.explore-quest-skeleton')).toHaveLength(0)
+  })
+
   it('読み込み完了後に0件なら空メッセージを出す（D-54）', () => {
     render(<ExploreQuestList areas={areas} quests={[]} />)
     expect(screen.getByText('0件')).toBeVisible()
