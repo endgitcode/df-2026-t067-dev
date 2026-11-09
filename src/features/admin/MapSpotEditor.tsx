@@ -1,0 +1,87 @@
+import { useEffect, useRef, useState } from 'react'
+import type { SpotAddressInput, SpotAddressLookup } from '../../shared/api/admin-spot-address'
+import { initialSpotInput, spotPosition } from './mapsSpotLink'
+import type { SpotInput } from './mapsSpotLink'
+import { ShootingAreasMap } from './ShootingAreasMap'
+import type { MapPlaceDetails } from './ShootingAreasMap'
+
+type Lookup = (orgId: string, input: SpotAddressInput, call: { signal: AbortSignal }) => Promise<SpotAddressLookup>
+
+export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
+  input: SpotInput; invalid: boolean; orgId: string; lookup?: Lookup; onChange: (input: SpotInput) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [candidate, setCandidate] = useState<MapPlaceDetails>({})
+  const [message, setMessage] = useState('')
+  const request = useRef<AbortController | null>(null)
+  const point = spotPosition(input.latitude, input.longitude)
+
+  useEffect(() => () => request.current?.abort(), [])
+
+  function cancelLookup() {
+    request.current?.abort()
+    request.current = null
+  }
+
+  function edit(changes: Partial<SpotInput>) {
+    if ('latitude' in changes || 'longitude' in changes) {
+      cancelLookup()
+      setCandidate({})
+      setMessage('')
+    }
+    onChange({ ...input, ...changes, ...('latitude' in changes || 'longitude' in changes ? { googlePlaceId: undefined } : {}) })
+  }
+
+  async function select(latitude: number, longitude: number, place?: { id: string; loadDetails?: () => Promise<MapPlaceDetails> }) {
+    cancelLookup()
+    setCandidate({})
+    const position = { latitude, longitude }
+    onChange({ ...initialSpotInput(), latitude: String(latitude), longitude: String(longitude), googlePlaceId: place?.id })
+    const controller = new AbortController()
+    request.current = controller
+    setMessage('地図の場所情報を取得しています…')
+    let details: MapPlaceDetails = {}
+    try {
+      if (place?.loadDetails) details = await place.loadDetails().catch(() => ({}))
+      if (controller.signal.aborted) return
+      if (!details.address && lookup) {
+        const result = await lookup(orgId, { position, ...(place ? { googlePlaceId: place.id } : {}) }, { signal: controller.signal })
+        if (result.orgId === orgId && result.status === 'candidate') details = { ...details, address: result.address }
+      }
+    } catch {
+      // The selected coordinates remain available when the lookup fails.
+    }
+    if (controller.signal.aborted) return
+    setCandidate(details)
+    setMessage(details.name && details.address ? '地図の候補を表示しました。登録する名称・住所は自治体の情報を入力してください。'
+      : details.address ? '住所の候補を表示しました。登録する名称・住所は自治体の情報を入力してください。'
+      : '場所情報を取得できませんでした。登録する名称・住所を入力してください。')
+    request.current = null
+  }
+
+  return <fieldset>
+    <legend>対象スポットの位置・住所</legend>
+    <p>必須。保存した位置を中心に、半径1kmの撮影範囲を設定します。</p>
+    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? '地図を閉じる' : '地図を開いて場所を選ぶ'}</button>
+    {open && <ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} spot={point} pickPlace onSelect={select} />}
+    {message && <p role="status">{message}</p>}
+    {(candidate.name || candidate.address) && <p className="helper" translate="no">Google Maps</p>}
+    <label>スポット名・施設名<input value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
+      placeholder={candidate.name ?? '自治体の名称を入力'} onChange={(event) => edit({ name: event.target.value })} /></label>
+    <label>確認済み住所<input value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
+      placeholder={candidate.address ?? '自治体の住所を入力'} onChange={(event) => edit({ address: event.target.value })} /></label>
+    <div className="field-pair">
+      <label>スポットの緯度<input inputMode="decimal" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={invalid && !point}
+        onChange={(event) => edit({ latitude: event.target.value })} /></label>
+      <label>スポットの経度<input inputMode="decimal" value={input.longitude} maxLength={32} aria-required="true" aria-invalid={invalid && !point}
+        onChange={(event) => edit({ longitude: event.target.value })} /></label>
+    </div>
+    {(input.name || input.address || input.latitude || input.longitude) &&
+      <button type="button" className="spot-clear-button" onClick={() => {
+        cancelLookup()
+        setCandidate({})
+        setMessage('')
+        onChange(initialSpotInput())
+      }}>スポットの入力を消す</button>}
+  </fieldset>
+}

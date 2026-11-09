@@ -32,7 +32,7 @@ it('confirms durable identity and membership before saving a draft with an autom
     getSnapshot: () => snapshot, subscribe: () => () => {},
     signInWithGoogle: async () => {}, signOut: async () => {}, getIdToken: async () => 'test-token',
   }
-  const saved = { ...quest, source: 'real', shootingAreaStatus: 'unconfigured' }
+  const saved = { ...quest, source: 'real', shootingAreaStatus: 'unconfigured', draft: { ...quest.draft, referenceAssetId: 'ref' } }
   const fetcher = vi.fn<typeof fetch>(async (input, init) => {
     const path = String(input)
     let body: unknown
@@ -56,7 +56,21 @@ it('confirms durable identity and membership before saving a draft with an autom
     expect(screen.getByRole('button', { name: /永続の架空自治体/ })).toBeVisible()
     await user.click(screen.getByRole('button', { name: '編集を続ける' }))
     expect(screen.queryByLabelText('写真の出典と利用権')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '保存して次へ' }))
+    expect(screen.queryByLabelText('Google Maps共有URL')).not.toBeInTheDocument()
+    const next = screen.getByRole('button', { name: '保存して次へ' })
+    const target = screen.getByRole('textbox', { name: /^対象名$/ })
+    expect(target).toHaveAttribute('aria-invalid', 'false')
+    await user.click(next)
+    expect(target).toHaveAttribute('aria-invalid', 'true')
+    expect(target).toHaveFocus()
+    expect(screen.getByLabelText('確認済み住所')).toHaveAttribute('aria-invalid', 'true')
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
+    await user.type(target, '架空の時計')
+    await user.type(screen.getByLabelText('スポット名・施設名'), '架空の広場')
+    await user.type(screen.getByLabelText('確認済み住所'), '架空住所')
+    await user.type(screen.getByLabelText('スポットの緯度'), '35')
+    await user.type(screen.getByLabelText('スポットの経度'), '135')
+    await user.click(next)
     expect(await screen.findByRole('heading', { name: /STEP 2/ })).toBeVisible()
     expect(screen.queryByLabelText('地図で編集する範囲')).not.toBeInTheDocument()
     const writes = fetcher.mock.calls.filter(([, init]) => init?.method === 'PATCH')
@@ -258,10 +272,9 @@ it('publishes and pauses through durable session, membership and common HTTP con
       await user.upload(screen.getByLabelText(label + 'を選択'), new File([label], 'test.png', { type: 'image/png' }))
       await user.click(screen.getByRole('button', { name: label + 'の試験を送信' }))
       expect(await screen.findByText(message)).toBeVisible()
-      expect(publish).toBeDisabled()
+      if (label === '一致写真') expect(publish).toBeDisabled()
     }
-    await user.click(screen.getByRole('button', { name: 'この版の公開条件を確認' }))
-    expect(await screen.findByText('この版の入力条件を確認しました。')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'この版の公開条件を確認' })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: '公開前のチェック' })).not.toBeInTheDocument()
     await waitFor(() => expect(publish).toBeEnabled())
     await user.click(publish)
@@ -349,6 +362,9 @@ it('completes the shared four-step flow and guards inputs and evidence across na
     expect(screen.queryByLabelText('地図で編集する範囲')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '保存して次へ' }))
     expect(await screen.findByRole('heading', { name: /STEP 3/ })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '保存して次へ' }))
+    expect(screen.getByLabelText('問題文')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('ヒント 3')).toHaveAttribute('aria-invalid', 'true')
     await user.type(screen.getByLabelText('問題文'), '確認用の問題文')
     await user.type(screen.getByLabelText('ヒント 1'), '一')
     await user.type(screen.getByLabelText('ヒント 2'), '二')
@@ -360,7 +376,7 @@ it('completes the shared four-step flow and guards inputs and evidence across na
     expect(screen.getByLabelText('問題文')).toHaveValue('確認用の問題文')
     await user.click(screen.getByRole('button', { name: '保存して次へ' }))
     await user.click(await screen.findByRole('button', { name: '写真試験と公開へ' }))
-    await user.click(await screen.findByRole('button', { name: '参考写真を確認' }))
+    await user.click(await screen.findByRole('button', { name: '参考写真の入力へ' }))
     expect(await screen.findByRole('heading', { name: /STEP 1/ })).toBeVisible()
     referenceAvailable = true
     await user.click(screen.getByRole('button', { name: 'STEP 4へ移動' }))
@@ -395,9 +411,7 @@ it('completes the shared four-step flow and guards inputs and evidence across na
     expect(await matchCard().findByText('一致試験を確認しました。')).toBeVisible()
     await trial('別対象写真', 'other')
     expect(await screen.findByText('別対象の試験を確認しました。')).toBeVisible()
-    const review = screen.getByRole('button', { name: 'この版の公開条件を確認' })
-    await waitFor(() => expect(review).toBeEnabled())
-    await user.click(review)
+    expect(screen.queryByRole('button', { name: 'この版の公開条件を確認' })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: '公開前のチェック' })).not.toBeInTheDocument()
     const publish = screen.getByRole('button', { name: 'この版を公開' })
     await waitFor(() => expect(publish).toBeEnabled())

@@ -13,6 +13,8 @@ type Props = {
   onBack: () => void
   onPreview: () => void
   workflow?: boolean
+  requiredErrors?: boolean
+  featuresInvalid?: boolean
   omitMemo?: boolean
   allowSample?: boolean
   headingRef: RefObject<HTMLHeadingElement | null>
@@ -26,7 +28,7 @@ const sample: DraftFields = {
   draftingNotes: '',
 }
 
-export default function DraftEditor({ draft, setDraft, materialChanged, sampleConfirm, setSampleConfirm, onBack, onPreview, headingRef, workflow = false, omitMemo = false, allowSample = true }: Props) {
+export default function DraftEditor({ draft, setDraft, materialChanged, sampleConfirm, setSampleConfirm, onBack, onPreview, headingRef, workflow = false, requiredErrors = false, featuresInvalid = false, omitMemo = false, allowSample = true }: Props) {
   const edited = Object.values(draft).some(value => Array.isArray(value) ? value.some(item => item !== '') : value !== '')
   const filledHints = draft.hints.filter(hint => hint.trim()).length
   const [revealedHints, setRevealedHints] = useState(1)
@@ -52,14 +54,15 @@ export default function DraftEditor({ draft, setDraft, materialChanged, sampleCo
       <button type="button" onClick={() => edited ? setSampleConfirm(true) : loadSample()}>サンプルを読み込む（AI未使用）</button>
       {sampleConfirm && <div className="confirm-inline" role="group" aria-label="サンプル置換の確認"><p>現在の下書きをサンプルで置き換えますか？</p><button type="button" onClick={() => setSampleConfirm(false)}>キャンセル</button><button type="button" onClick={loadSample}>置き換える</button></div>}
     </div>}
-    <p className="helper">旅行者に公開する文章。タイトル・問題文・ヒント3つは確認依頼までに必要です。</p><label>問題タイトル<input id="workflow-title" value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></label>
-    <label>問題文<textarea id="workflow-question" rows={4} value={draft.question} onChange={event => setDraft(current => ({ ...current, question: event.target.value }))} /></label>
+    <p className="helper">旅行者に公開する文章。タイトル・問題文・ヒント3つは確認依頼までに必要です。</p><label>問題タイトル<input id="workflow-title" aria-required={workflow} aria-invalid={requiredErrors && !draft.title.trim()} value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></label>
+    <label>問題文<textarea id="workflow-question" aria-required={workflow} aria-invalid={requiredErrors && !draft.question.trim()} rows={4} value={draft.question} onChange={event => setDraft(current => ({ ...current, question: event.target.value }))} /></label>
     <fieldset><legend id="workflow-hints" tabIndex={-1}>段階ヒント（3段階）</legend>
-      {draft.hints.slice(0, visibleHints).map((hint, index) => <label key={index}>ヒント {index + 1}<textarea rows={2} value={hint} onChange={event => setDraft(current => ({ ...current, hints: current.hints.map((item, itemIndex) => itemIndex === index ? event.target.value : item) as DraftFields['hints'] }))} /></label>)}
+      {draft.hints.slice(0, visibleHints).map((hint, index) => <label key={index}>ヒント {index + 1}<textarea id={'workflow-hint-' + index} aria-required={workflow} aria-invalid={requiredErrors && !hint.trim()} rows={2} value={hint} onChange={event => setDraft(current => ({ ...current, hints: current.hints.map((item, itemIndex) => itemIndex === index ? event.target.value : item) as DraftFields['hints'] }))} /></label>)}
       <p className="helper">ヒントは {filledHints}/3 入力済みです。</p>
       {visibleHints < 3 && <button type="button" onClick={() => setRevealedHints(visibleHints + 1)}>次のヒントを書く</button>}
     </fieldset>
-    <p className="helper">非公開。確認依頼までに必須です（今は空欄可）。</p><label>現地で確かめた見た目の特徴<textarea id="workflow-features" rows={3} value={draft.verifiedFeatures} onChange={event => setDraft(current => ({ ...current, verifiedFeatures: event.target.value }))} /></label>
+    <p className="helper">非公開。確認依頼までに必須です（今は空欄可）。</p><label>現地で確かめた見た目の特徴<textarea id="workflow-features" aria-required={workflow} aria-invalid={requiredErrors && featuresInvalid} rows={3} value={draft.verifiedFeatures} onChange={event => setDraft(current => ({ ...current, verifiedFeatures: event.target.value }))} /></label>
+    {requiredErrors && featuresInvalid && <p className="field-error">特徴を1〜20行で、1行300文字以内で入力してください。</p>}
     <div className="feature-line-builder">
       <label>特徴を1行で追加<input value={featureLine} onChange={event => setFeatureLine(event.target.value)} placeholder="例：赤い三角屋根がある" /></label>
       <button type="button" disabled={!featureLine.trim()} onClick={addFeatureLine}>特徴を追加</button>
