@@ -229,6 +229,118 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('disables partly sheet-covered controls, restores them, and exits focus to the sheet handle', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia')
+    const originalInnerWidth = Object.getOwnPropertyDescriptor(window, 'innerWidth')
+    const originalInnerHeight = Object.getOwnPropertyDescriptor(window, 'innerHeight')
+    const originalRect = HTMLElement.prototype.getBoundingClientRect
+    let sheetTop = 500
+    let sheetBottom = 700
+    let sheetRight = 360
+    let shellRight = 360
+    let shellBottom = 700
+    let shortLandscape = false
+    Object.defineProperty(window, 'matchMedia', { configurable: true, writable: true, value: (query: string) => ({
+      matches: query === '(max-width: 980px)',
+      addEventListener() {}, removeEventListener() {},
+    }) })
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('map-preview-shell')) return { left: 0, top: 0, right: shellRight, bottom: shellBottom, width: shellRight, height: shellBottom } as DOMRect
+      if (this.classList.contains('explore-sheet')) return { left: 0, top: sheetTop, right: sheetRight, bottom: sheetBottom, width: sheetRight, height: sheetBottom - sheetTop } as DOMRect
+      const label = this.getAttribute('aria-label')
+      const positions: Record<string, [number, number]> = {
+        '地図を拡大': [320, 364], '地図を縮小': [390, 434], '地図の表示を戻す': [440, 484], '現在地へ戻る': [465, 513],
+      }
+      const landscapePositions: Record<string, [number, number, number]> = {
+        '地図を拡大': [310, 44, 44], '地図を縮小': [354, 44, 44], '地図の表示を戻す': [398, 44, 44], '現在地へ戻る': [456, 48, 48],
+      }
+      const position = label ? positions[label] : undefined
+      if (shortLandscape && label && landscapePositions[label]) {
+        const [left, width, height] = landscapePositions[label]
+        return { left, top: 0, right: left + width, bottom: height, width, height } as DOMRect
+      }
+      if (position) return { left: 300, top: position[0], right: 344, bottom: position[1], width: 44, height: position[1] - position[0] } as DOMRect
+      return originalRect.call(this)
+    })
+    const setZoom = vi.fn()
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return { ...mapInstance, getZoom: () => 5, setZoom } } }, Data, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    try {
+      const { container } = render(<ConfiguredMapPreview />)
+      const reset = await screen.findByRole('button', { name: '地図の表示を戻す' })
+      const zoomIn = screen.getByRole('button', { name: '地図を拡大' })
+      const locate = container.querySelector<HTMLButtonElement>('.map-locate-fab')!
+      reset.focus()
+      sheetTop = 430
+      act(() => { fireEvent.scroll(window) })
+      expect(reset).toBeDisabled()
+      expect(reset).toHaveAttribute('inert')
+      expect(reset).toHaveAttribute('aria-hidden', 'true')
+      expect(document.activeElement).toHaveAttribute('aria-label', '謎リストを広げる')
+      fireEvent.click(reset)
+      expect(setZoom).not.toHaveBeenCalled()
+      expect(zoomIn).toBeEnabled()
+
+      sheetTop = 500
+      act(() => { fireEvent.scroll(window) })
+      expect(reset).toBeEnabled()
+      expect(reset).not.toHaveAttribute('inert')
+      expect(reset).toHaveAttribute('aria-hidden', 'false')
+      const zoomGroup = reset.closest('.map-zoom-group')
+      sheetTop = 310
+      act(() => { fireEvent.scroll(window) })
+      expect(zoomGroup).toHaveClass('is-hidden')
+      expect(reset).toBeDisabled()
+      expect(locate).toBeDisabled()
+      expect(locate).toHaveClass('is-hidden')
+      const { userEvent } = await import('@testing-library/user-event')
+      sheetTop = 500
+      act(() => { fireEvent.scroll(window) })
+      expect(zoomGroup).not.toHaveClass('is-hidden')
+      await userEvent.setup().click(zoomIn)
+      expect(setZoom).toHaveBeenCalledWith(6)
+
+      // Even with the sheet closed, a button beyond the visible shell edge is unavailable.
+      shellRight = 320
+      act(() => { fireEvent.scroll(window) })
+      expect(zoomIn).toBeDisabled()
+      expect(zoomIn).toHaveClass('is-hidden')
+      shellRight = 360
+      act(() => { fireEvent.scroll(window) })
+      expect(zoomIn).toBeEnabled()
+      expect(zoomIn).not.toHaveClass('is-hidden')
+
+      // At 280px high the peek sheet can cover the row, but closing it restores all 44px+ targets on-screen.
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 568 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 280 })
+      shellRight = 568
+      shellBottom = 280
+      sheetRight = 568
+      sheetTop = 42
+      sheetBottom = 210
+      shortLandscape = true
+      act(() => { fireEvent.resize(window) })
+      expect(zoomIn).toBeDisabled()
+      expect(locate).toBeDisabled()
+      sheetTop = 176
+      act(() => { fireEvent.scroll(window) })
+      expect(zoomIn).toBeEnabled()
+      expect(locate).toBeEnabled()
+      expect(zoomIn.getBoundingClientRect().height).toBe(44)
+      expect(locate.getBoundingClientRect().height).toBe(48)
+    } finally {
+      delete window.google
+      if (originalMatchMedia) Object.defineProperty(window, 'matchMedia', originalMatchMedia)
+      else Reflect.deleteProperty(window, 'matchMedia')
+      if (originalInnerWidth) Object.defineProperty(window, 'innerWidth', originalInnerWidth)
+      if (originalInnerHeight) Object.defineProperty(window, 'innerHeight', originalInnerHeight)
+      vi.restoreAllMocks()
+    }
+  })
+
   it('does not draw any veil polygon over the map', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()

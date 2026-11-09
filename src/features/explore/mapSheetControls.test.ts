@@ -4,22 +4,70 @@ import { describe, expect, it } from 'vitest'
 
 const readCss = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8').replace(/\r\n?/g, '\n')
 const css = readCss('src/App.css')
-const PLAIN_FIXED = '.map-preview-shell.has-sheet .map-controls { bottom: 72px; }'
+const MOBILE_CONTROL_RULE = '.map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h, 70px) + 180px); z-index: 3; }'
 const mapPreview = readFileSync(resolve(process.cwd(), 'src/features/explore/MapPreview.tsx'), 'utf8')
 const bottomSheet = readFileSync(resolve(process.cwd(), 'src/features/explore/ExploreBottomSheet.tsx'), 'utf8')
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
-// 右下の地図操作系はシートの高さに追随せず、同じ場所に固定する。
+// 右下の地図操作系はシートの高さに追随せず、シェル内の同じ場所に置く。
 describe('map controls placement with the bottom sheet', () => {
-  it('keeps controls fixed in the full-width sheet range', () => {
-    expect(css.split(PLAIN_FIXED).length - 1).toBe(1)
-    const mediaAt = css.indexOf('@media (max-width: 640px)')
+  it('keeps controls at a constant shell position across the mobile range', () => {
+    expect(css.split(MOBILE_CONTROL_RULE).length - 1).toBe(1)
+    const mediaAt = css.indexOf('@media (max-width: 980px)')
     expect(mediaAt).toBeGreaterThan(-1)
-    expect(css.indexOf(PLAIN_FIXED)).toBeGreaterThan(mediaAt)
+    const phoneAt = css.indexOf('@media (max-width: 640px)')
+    expect(css.indexOf(MOBILE_CONTROL_RULE)).toBeGreaterThan(mediaAt)
+    expect(css.indexOf(MOBILE_CONTROL_RULE)).toBeLessThan(phoneAt)
+    expect(css).toContain('.map-controls button.is-hidden { visibility: hidden; pointer-events: none; }')
   })
 
   it('keeps the wide-layout controls at their fixed bottom position', () => {
     expect(css).toContain('.map-controls { position: absolute; right: 17px; bottom: 52px;')
+  })
+
+  it('fits the single-row controls above a peek sheet in a 568 by 320 landscape viewport', () => {
+    const viewportWidth = 568
+    const viewportHeight = 320
+    const tabBarHeight = 70
+    const peekHeight = 168
+    const controlsHeight = 48
+    const bottomOffset = Math.min(tabBarHeight + 169, viewportHeight - controlsHeight)
+    const controlsTop = viewportHeight - bottomOffset - controlsHeight
+    const controlsBottom = viewportHeight - bottomOffset
+    const peekSheetTop = viewportHeight - tabBarHeight - peekHeight
+    const controlsWidth = 194
+    const controlsRight = viewportWidth - 64
+    const controlsLeft = controlsRight - controlsWidth
+    const accountLeft = 514
+    expect(css).toContain('@media (orientation: landscape)')
+    expect(css).toContain('.map-preview-shell.has-sheet .map-zoom-group { display: flex; flex-direction: row; }')
+    expect(css).toContain('bottom: min(calc(var(--mobile-tabbar-h, 70px) + 169px), calc(100dvh - 48px));')
+    expect(css).toContain('right: 64px;')
+    expect(controlsTop).toBe(33)
+    expect(controlsBottom).toBe(81)
+    expect(controlsTop).toBeGreaterThanOrEqual(0)
+    expect(controlsBottom).toBeLessThan(peekSheetTop)
+    expect(controlsRight).toBe(504)
+    expect(controlsLeft).toBe(310)
+    expect(controlsRight).toBeLessThan(accountLeft)
+  })
+
+  it('keeps full-size landscape targets on-screen at 280px and usable with a closed sheet', () => {
+    const viewportHeight = 280
+    const tabBarHeight = 70
+    const peekHeight = 168
+    const controlsHeight = 48
+    const bottomOffset = Math.min(tabBarHeight + 169, viewportHeight - controlsHeight)
+    const controlsTop = viewportHeight - bottomOffset - controlsHeight
+    const controlsBottom = viewportHeight - bottomOffset
+    const peekSheetTop = viewportHeight - tabBarHeight - peekHeight
+    const closedSheetTop = viewportHeight - tabBarHeight - 34
+    expect(css).toContain('bottom: min(calc(var(--mobile-tabbar-h, 70px) + 169px), calc(100dvh - 48px));')
+    expect(css).toContain('.map-zoom button { width: 44px; height: 44px; }')
+    expect(controlsTop).toBe(0)
+    expect(controlsBottom).toBe(48)
+    expect(controlsBottom).toBeGreaterThan(peekSheetTop)
+    expect(controlsBottom).toBeLessThan(closedSheetTop)
   })
 
   it('puts controls above the closed mobile handle and the sheet above controls while open or dragging', () => {
@@ -50,7 +98,7 @@ describe('mobile map control swipe handling', () => {
     expect(mapPreview).toContain('const mapControlGestureProps = {')
     expect(mapPreview).toContain('onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => {')
     expect(mapPreview).toContain('if (gesture?.moved && event.detail !== 0) {')
-    expect(mapPreview).toContain('<div className="map-controls" {...mapControlGestureProps}>')
+    expect(mapPreview).toContain('isMapControlWithin(rect, visibleBounds)')
     expect(mapPreview).toContain('<button type="button" {...mapControlGestureProps}')
     expect(bottomSheet).toContain('className="explore-sheet-reopen" {...reopenGestureProps}')
     expect(bottomSheet).toContain('if (gesture?.moved && event.detail !== 0) {')
@@ -80,9 +128,13 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).not.toContain('body.explore-fullbleed .mobile-nav {')
   })
 
-  it('keeps the mobile map controls fixed behind the sheet and the sheet above the tab bar', () => {
+  it('keeps the mobile map controls at a constant position behind the sheet and the sheet above the tab bar', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 180px); z-index: 3; }')
+    expect(mapPreview).toContain('isMapControlCovered(rect, sheetRect)')
+    expect(mapPreview).toContain("inert={inactiveMapControls.has('地図を拡大')}")
+    expect(mapPreview).toContain('new ResizeObserver(update)')
+    expect(css).toContain('.map-preview-shell.has-sheet .map-controls { right: 64px; bottom: min(calc(var(--mobile-tabbar-h, 70px) + 169px), calc(100dvh - 48px)); flex-direction: row; }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
     const reopenRule = 'body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px;'
     expect(css).toContain(reopenRule)
@@ -378,7 +430,7 @@ describe('panel single scroll and in-list detail (D-70)', () => {
 // 規則の文字列と定数で担保する。
 describe('sheet peek height and overflow guards (D-73)', () => {
   it('clears the mobile map controls above the peek sheet via the sheet height variable', () => {
-    expect(css).toContain('body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); }')
+    expect(css).toContain('body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 180px); z-index: 3; }')
     expect(css).not.toContain('bottom: calc(var(--mobile-tabbar-h) + 58px)')
   })
 

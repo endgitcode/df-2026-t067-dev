@@ -211,11 +211,15 @@ button.explore-quest-card { cursor: pointer; }
 .pin-face .icon { transform: rotate(45deg); color: var(--ui-surface); width: 21px; height: 21px; }
 .pin-caption { margin-top: 4px; padding: 5px 10px; color: var(--ui-muted); background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); font-size: 12px; font-weight: var(--ui-weight-strong); white-space: nowrap; box-shadow: var(--ui-shadow); }
 .map-controls { position: absolute; right: 17px; bottom: 52px; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.map-controls { pointer-events: none; }
+.map-controls button { pointer-events: auto; }
 .map-locate-fab { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%; background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); cursor: pointer; }
 .map-locate-fab:hover:not(:disabled) { background: var(--ui-tint); }
 .map-locate-fab:disabled { color: var(--ui-muted); background: var(--ui-disabled); cursor: not-allowed; }
 .map-locate-fab .icon { width: 20px; height: 20px; }
-.map-zoom-group { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); }
+.map-zoom-group { border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); pointer-events: none; }
+.map-zoom-group button { pointer-events: auto; }
+.map-zoom-group.is-hidden { visibility: hidden; pointer-events: none; }
 .map-zoom button { display: grid; place-items: center; width: 43px; height: 43px; padding: 0; border: 0; background: var(--ui-surface); color: var(--ui-muted); }
 .map-zoom button + button { border-top: var(--ui-border-width) solid var(--ui-line); }
 .map-zoom button:hover:not(:disabled) { background: var(--ui-muted); }
@@ -338,6 +342,8 @@ button.explore-quest-card { cursor: pointer; }
   .explore-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .map-preview-shell { position: relative; top: 0; }
   .map-controls, .explore-sheet-reopen, .map-state button { touch-action: none; overscroll-behavior: none; }
+  .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h, 70px) + 180px); z-index: 3; }
+  .map-controls button.is-hidden { visibility: hidden; pointer-events: none; }
   .map-preview { height: 420px; }
   .map-preview-shell.has-sheet { height: max(520px, calc(100svh - 224px)); min-height: 520px; }
   .map-filter-overlay { top: 74px; }
@@ -373,8 +379,6 @@ button.explore-quest-card { cursor: pointer; }
   .map-location-status.is-floating { left: 12px; margin: 0; max-width: calc(100% - 84px); }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
   .map-controls { right: 11px; bottom: 72px; }
-  /* スマホでは右下の地図操作をシートの高さと無関係な位置に固定する。 */
-  .map-preview-shell.has-sheet .map-controls { bottom: 72px; }
   .map-zoom button { width: 44px; height: 44px; }
   .map-preview-shell.has-sheet { height: max(480px, calc(100svh - 224px)); min-height: 480px; }
   .map-filter-overlay { top: 112px; left: 12px; right: 12px; }
@@ -841,13 +845,10 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
   body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
-  /* 地図操作（ズーム・リセット等）は、閉じた見出し分（peek）のシートの上端より上に
-     置く（D-73）。固定オフセット（タブバー＋58px）ではリセットボタンが peek の
-     シート裏に半分隠れた（実地目視、320pxでも再現）。シートの高さ変数に追随させ、
-     上限は peek の高さに揃える：シートを half／full まで開いた時は、操作系は
-     従来どおりシートの裏で待つ（前面に出し続けない）。 */
-  body.explore-fullbleed .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); }
-  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h) + min(var(--sheet-h, 0px), 168px) + 12px); z-index: 3; }
+  /* 地図操作はシートの高さに関係なくシェル内の一定位置に置く。シートに覆われた
+     ボタンは MapPreview が実矩形で判定し、個別に操作不能にする。 */
+  body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 180px); z-index: 3; }
+  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 180px); z-index: 3; }
   body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px; padding: 8px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-control-shadow); font-size: 12px; font-weight: var(--ui-weight-strong); cursor: pointer; }
   body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; }
   body.explore-fullbleed .map-browse-shortcut.is-return-to-map { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }
@@ -868,6 +869,12 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* レールが空（共有検証のスマホ幅では中身が無い）なら、余白だけの帯を残さない（D-73）。 */
   body.explore-fullbleed .quest-rail:empty { display: none; }
   body.explore-fullbleed .is-browsing-below-map ~ .quest-rail { min-height: 100svh; }
+  @media (orientation: landscape) {
+    .map-preview-shell.has-sheet .map-controls { right: 64px; bottom: min(calc(var(--mobile-tabbar-h, 70px) + 169px), calc(100dvh - 48px)); flex-direction: row; }
+    .map-preview-shell.has-sheet .map-zoom-group { display: flex; flex-direction: row; }
+    .map-preview-shell.has-sheet .map-zoom button + button { border-top: 0; border-left: var(--ui-border-width) solid var(--ui-line); }
+    body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { right: 64px; bottom: min(calc(var(--mobile-tabbar-h) + 169px), calc(100dvh - 48px)); flex-direction: row; }
+  }
 }
 
 .answer-waiting { flex-basis: 100%; padding: 16px; border: var(--ui-border-width) solid var(--ui-line, #1d1d1b); border-radius: var(--ui-radius, 16px); background: var(--ui-surface, #ffffff); color: var(--ui-ink, #1d1d1b); text-align: center; }
