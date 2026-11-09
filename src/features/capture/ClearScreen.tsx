@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ClearCelebration } from './ClearCelebration'
 
 // 初回クリア確定（CORRECT）のときだけ、アプリ全体を覆って出すクリア画面（D-63）。
@@ -11,6 +12,7 @@ export function ClearScreen({ questTitle, photo, onViewRecord, onReturnToMap }: 
   onViewRecord?: () => void
   onReturnToMap?: () => void
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   // 送信した写真の表示用 URL はマウント時に1回だけ作り、アンマウントで破棄する。
   const [photoUrl] = useState<string | null>(() => {
@@ -22,10 +24,21 @@ export function ClearScreen({ questTitle, photo, onViewRecord, onReturnToMap }: 
     if (!photoUrl) return
     return () => URL.revokeObjectURL(photoUrl)
   }, [photoUrl])
-  useEffect(() => { headingRef.current?.focus() }, [])
+  useEffect(() => {
+    const previousFocus = document.activeElement
+    const background = Array.from(document.body.children)
+      .filter((element): element is HTMLElement => element instanceof HTMLElement && element !== dialogRef.current)
+      .map(element => ({ element, inert: element.hasAttribute('inert') }))
+    background.forEach(({ element }) => { element.setAttribute('inert', '') })
+    headingRef.current?.focus()
+    return () => {
+      background.forEach(({ element, inert }) => { element.toggleAttribute('inert', inert) })
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus()
+    }
+  }, [])
   const dateLabel = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }).format(clearedDate)
-  return (
-    <div className="clear-screen" role="dialog" aria-modal="true" aria-labelledby="clear-screen-title">
+  return createPortal(
+    <div ref={dialogRef} onPointerDown={event => event.stopPropagation()} onTouchStart={event => event.stopPropagation()} className="clear-screen" role="dialog" aria-modal="true" aria-labelledby="clear-screen-title">
       <div className="clear-screen-card">
         <ClearCelebration large />
         <h2 id="clear-screen-title" className="clear-screen-title" ref={headingRef} tabIndex={-1}>クリア！</h2>
@@ -37,6 +50,6 @@ export function ClearScreen({ questTitle, photo, onViewRecord, onReturnToMap }: 
           {onReturnToMap && <button type="button" className="secondary-button" onClick={onReturnToMap}>地図に戻る</button>}
         </div>
       </div>
-    </div>
+    </div>, document.body
   )
 }

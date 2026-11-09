@@ -44,7 +44,7 @@ function pinIcon(color: string, count: number, emphasized = false, dimmed = fals
     : '<circle cx="18" cy="17" r="7" fill="#ffffff"/>'
   // ピンの色は青と赤だけ。ホバー／フォーカス中は赤くし、選択中も呼び出し側が同じ赤を渡す。
   const fill = emphasized ? PIN_ACTIVE_COLOR : color
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="0 0 36 44" opacity="${dimmed && !emphasized ? 0.3 : 1}"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="-2 -2 40 48" opacity="${dimmed && !emphasized ? 0.3 : 1}"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
@@ -136,6 +136,9 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
 }) {
   const target = useRef<HTMLDivElement>(null)
   const map = useRef<MapInstance | null>(null)
+  const markersRef = useRef(new Map<string, { marker: MarkerInstance; listeners: Array<{ remove(): void }> }>())
+  const markerMapRef = useRef<MapInstance | null>(null)
+  const locationMarkerRef = useRef<MarkerInstance | null>(null)
   const dataLayer = useRef<DataLayer | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error' | 'auth-error'>(API_KEY ? 'loading' : 'missing')
   // PC幅（981px以上）ではボトムシートを使わず、左サイドバーのパネルに一覧を出す（D-34）。
@@ -181,7 +184,12 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     const Marker = window.google?.maps?.Marker
     if (!instance || !Marker || status !== 'ready' || !currentLocation) return
     try {
-      const marker = new Marker({
+      if (locationMarkerRef.current?.setPosition) {
+        locationMarkerRef.current.setPosition(currentLocation)
+        return
+      }
+      locationMarkerRef.current?.setMap(null)
+      locationMarkerRef.current = new Marker({
         map: instance,
         position: currentLocation,
         title: '現在地',
@@ -197,9 +205,12 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
           scale: 1.4,
         },
       })
-      return () => { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     } catch { /* 現在地マークが表示できなくても地図は利用できる。 */ }
   }, [currentLocation, status, attempt])
+  useEffect(() => () => {
+    try { locationMarkerRef.current?.setMap(null) } catch { /* SDK teardown is best effort. */ }
+    locationMarkerRef.current = null
+  }, [status, attempt])
   const [areaAttempt, setAreaAttempt] = useState(0)
   const [areaFailed, setAreaFailed] = useState(false)
   const [pinAreaId, setPinAreaId] = useState<string | null>(null)
@@ -457,13 +468,45 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     return () => { active = false; window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; try { listener?.remove(); layer.setMap(null) } catch { /* SDK teardown is best effort. */ } }
   }, [areas, selectedAreaId, onSelectArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly, refitIfCameraMoved])
 
+  const clearMarkers = useCallback(() => {
+    for (const entry of markersRef.current.values()) {
+      for (const listener of entry.listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
+      try { entry.marker.setMap(null) } catch { /* SDK teardown is best effort. */ }
+    }
+    markersRef.current.clear()
+    markerMapRef.current = null
+  }, [])
+  // 同期effectの再実行では撤去しない。地図の終了・非表示時だけ全撤去する。
+  useEffect(() => clearMarkers, [clearMarkers, status, showPublicAreas, attempt])
+
   useEffect(() => {
     const instance = map.current
     const google = window.google?.maps
     if (!API_KEY || !instance || !google?.Marker || !showPublicAreas || status !== 'ready') return
-    let active = true
-    const created: MarkerInstance[] = []
-    const listeners: Array<{ remove(): void }> = []
+    if (markerMapRef.current !== instance) {
+      clearMarkers()
+      markerMapRef.current = instance
+    }
+    const desiredKeys = new Set<string>()
+    const syncMarker = (key: string, options: Record<string, unknown>) => {
+      desiredKeys.add(key)
+      const previous = markersRef.current.get(key)
+      let marker = previous?.marker
+      for (const listener of previous?.listeners ?? []) listener.remove()
+      if (marker?.setOptions) marker.setOptions(options)
+      else if (marker?.setIcon && marker.setPosition && marker.setTitle && marker.setZIndex) {
+        marker.setIcon(options.icon as { url: string })
+        marker.setPosition(options.position as { lat: number; lng: number })
+        marker.setTitle(options.title as string)
+        marker.setZIndex(options.zIndex as number)
+      } else {
+        marker?.setMap(null)
+        marker = new google.Marker!(options)
+      }
+      const listeners: Array<{ remove(): void }> = []
+      markersRef.current.set(key, { marker, listeners })
+      return { marker, listeners }
+    }
     try {
       // 現在のズームで画面上重なるピンはクラスタにまとめる（D-52）。フィット対象の
       // 地域（選択中の地域／選択中の問題の所属地域）のピンはクラスタに隠さず常に
@@ -478,10 +521,11 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         pinPoints.push({ areaId: area.areaId, lat: position.lat, lng: position.lng, questCount: area.publishedCount })
         areaById.set(area.areaId, area)
       }
-      for (const arrangement of arrangePins(pinPoints, zoom, fitAreaId)) {
+      for (const arrangement of arrangePins(pinPoints, instance.getZoom() ?? zoom, fitAreaId)) {
         if (arrangement.kind === 'cluster') {
           const dimmed = arrangement.points.every((point) => !emphasizedIds.has(point.areaId))
-          const marker = new google.Marker({
+          const key = `cluster:${arrangement.points.map((point) => point.areaId).sort().join(',')}`
+          const { marker, listeners } = syncMarker(key, {
             position: { lat: arrangement.lat, lng: arrangement.lng }, map: instance,
             title: `重なっている${arrangement.points.length}地域のピン（合計${arrangement.totalQuests}問）`,
             icon: clusterIcon(arrangement.totalQuests, dimmed),
@@ -489,7 +533,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
             zIndex: dimmed ? 0 : 1,
           })
           listeners.push(marker.addListener('click', () => {
-            if (!active || !google.LatLngBounds) return
+            if (markersRef.current.get(key)?.marker !== marker || !google.LatLngBounds) return
             // クラスタを押したら、中の地域がバラけて見える位置・ズームへ寄せる（対象地域群へのフィット）。
             const bounds = new google.LatLngBounds()
             let fitted = false
@@ -501,7 +545,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
             }
             if (fitted) { instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current)); clampFitZoomOnIdle(instance) }
           }))
-          created.push(marker)
           continue
         }
         const area = areaById.get(arrangement.point.areaId)
@@ -511,7 +554,8 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         const dimmed = !selected && !emphasizedIds.has(area.areaId)
         // 選択中のピンもホバーと同じ赤にする（ピン本体に黄色は使わない。黄色は地域の塗りだけ）。
         const pinColor = selected ? PIN_ACTIVE_COLOR : PIN_COLOR
-        const marker = new google.Marker({
+        const key = `pin:${area.areaId}`
+        const { marker, listeners } = syncMarker(key, {
           position, map: instance,
           title: `${area.label}の探索エリア（${area.publishedCount}問）`,
           icon: pinIcon(pinColor, area.publishedCount, false, dimmed),
@@ -519,7 +563,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
           zIndex: selected ? 3 : dimmed ? 0 : 2,
         })
         listeners.push(marker.addListener('click', () => {
-          if (!active) return
+          if (markersRef.current.get(key)?.marker !== marker) return
           // 選択中のピンをもう一度押した時、カメラがフィット位置から動いていれば解除せず
           // その地域へ寄せ直す（押したのに移行しない、への対応）。フィット位置にいる時だけ
           // 従来どおり選択解除として扱う（ハイライトを外し、解除は呼び出し側が担う）。
@@ -531,23 +575,24 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         // Google Maps のポインタイベントに任せ、PC・タッチ端末で共通の強調表示を行う。
         if (marker.setIcon) {
           listeners.push(marker.addListener('mouseover', () => {
-            if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, true))
+            if (markersRef.current.get(key)?.marker === marker) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, true))
           }))
           listeners.push(marker.addListener('mouseout', () => {
-            if (active) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, false, dimmed))
+            if (markersRef.current.get(key)?.marker === marker) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, false, dimmed))
           }))
         }
-        created.push(marker)
+      }
+      for (const [key, entry] of markersRef.current) {
+        if (desiredKeys.has(key)) continue
+        for (const listener of entry.listeners) listener.remove()
+        entry.marker.setMap(null)
+        markersRef.current.delete(key)
       }
       // 初期表示は、ピンが立つ地域全体が「実際に見えている領域」に収まるよう一度だけフィットする。
       if (initialFitDone.current !== instance && !fitAreaId) fitInitialAreas(instance)
     } catch { /* ピンは補助表示のため、失敗しても地図本体は使える状態を保つ。 */ }
-    return () => {
-      active = false
-      for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
-      for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
-    }
-  }, [areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas])
+
+  }, [areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas, clearMarkers])
 
   useEffect(() => {
     const instance = map.current

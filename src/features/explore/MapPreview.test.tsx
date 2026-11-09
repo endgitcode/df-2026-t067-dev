@@ -356,6 +356,9 @@ describe('Google map panel', () => {
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
     class Marker {
       item: typeof made[number]
+      setPosition() {}
+      setTitle(title: string) { this.item.title = title }
+      setZIndex(zIndex: number) { this.item.zIndex = zIndex }
       constructor(options: Omit<typeof made[number], 'listeners'>) { this.item = { ...options, listeners: {} }; made.push(this.item) }
       setMap() {}
       setIcon(icon: { url: string }) { this.item.icon = icon }
@@ -380,12 +383,10 @@ describe('Google map panel', () => {
     act(() => outer.listeners.click())
     expect(select).toHaveBeenCalledWith('area-a')
     const neighbor = { ...outside, areaId: 'outside-neighbor' }
-    made.length = 0
     rerender(<ConfiguredMapPreview areas={[inside, outside, neighbor]} filterRegion="北海道" onSelectArea={select} />)
     await waitFor(() => expect(made.some((marker) => marker.title.startsWith('重なっている2地域'))).toBe(true))
     const cluster = made.findLast((marker) => marker.title.startsWith('重なっている2地域'))!
     expect(decodeURIComponent(cluster.icon.url)).toContain('opacity="0.3"')
-    made.length = 0
     rerender(<ConfiguredMapPreview areas={[inside, outside, { ...neighbor, prefectureCode: '01' }]} filterRegion="北海道" onSelectArea={select} />)
     await waitFor(() => expect(made.some((marker) => marker.title.startsWith('重なっている2地域'))).toBe(true))
     expect(decodeURIComponent(made.findLast((marker) => marker.title.startsWith('重なっている2地域'))!.icon.url)).toContain('opacity="1"')
@@ -1005,6 +1006,9 @@ describe('Google map panel', () => {
     const instances: Marker[] = []
     class Marker {
       options: Record<string, unknown>
+      setPosition(position: unknown) { this.options.position = position }
+      setTitle(title: string) { this.options.title = title }
+      setZIndex(zIndex: number) { this.options.zIndex = zIndex }
       setMap = vi.fn()
       removeListener = vi.fn()
       click?: () => void
@@ -1029,6 +1033,7 @@ describe('Google map panel', () => {
     expect(instances[0].options.position).toEqual({ lat: 35.5, lng: 139.5 })
     expect(instances[0].options.title).toBe('Aの探索エリア（2問）')
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
+    expect(iconUrl).toContain('viewBox="-2 -2 40 48"')
     expect(iconUrl).toContain('#4eb8d0')
     expect(iconUrl).toContain('>2<')
     // 連動リストには地図下に問題カードが並ぶ（代表点の注記は置かない、D-39）。
@@ -1069,6 +1074,9 @@ describe('Google map panel', () => {
     const instances: Marker[] = []
     class Marker {
       options: Record<string, unknown>
+      setPosition(position: unknown) { this.options.position = position }
+      setTitle(title: string) { this.options.title = title }
+      setZIndex(zIndex: number) { this.options.zIndex = zIndex }
       setMap = vi.fn()
       click?: () => void
       constructor(options: Record<string, unknown>) { this.options = options; instances.push(this) }
@@ -1086,6 +1094,7 @@ describe('Google map panel', () => {
     await waitFor(() => expect(instances).toHaveLength(1))
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
     // 選択中のピンもホバーと同じ赤。ピン本体に黄色（#f6d84a）は使わない（黄色は地域の塗りだけ）。
+    expect(iconUrl).toContain('viewBox="-2 -2 40 48"')
     expect(iconUrl).toContain('fill="#e7473f"')
     expect(iconUrl).not.toContain('#f6d84a')
     expect(iconUrl).not.toContain('>1<')
@@ -1333,6 +1342,9 @@ describe('Google map panel', () => {
     const markers: Array<{ options: Record<string, unknown>; listeners: Map<string, () => void>; icons: Array<{ url: string }> }> = []
     class Marker {
       options: Record<string, unknown>
+      setPosition(position: unknown) { this.options.position = position }
+      setTitle(title: string) { this.options.title = title }
+      setZIndex(zIndex: number) { this.options.zIndex = zIndex }
       listeners = new Map<string, () => void>()
       icons: Array<{ url: string }> = []
       constructor(options: Record<string, unknown>) { this.options = options; markers.push(this) }
@@ -1357,6 +1369,7 @@ describe('Google map panel', () => {
     marker.listeners.get('mouseover')?.()
     const hoverIcon = decodeURIComponent(marker.icons.at(-1)?.url ?? '')
     expect(hoverIcon).toContain('width="42"')
+    expect(hoverIcon).toContain('viewBox="-2 -2 40 48"')
     expect(hoverIcon).toContain('fill="#e7473f" stroke=')
     marker.listeners.get('mouseout')?.()
     const baseIcon = decodeURIComponent(marker.icons.at(-1)?.url ?? '')
@@ -1365,6 +1378,87 @@ describe('Google map panel', () => {
     unmount()
     delete window.google
     vi.unstubAllGlobals()
+  })
+
+  
+  it('reports that a window resize does not recreate unchanged pin markers (count only)', async () => {
+    // t154u ついで: リサイズでピンが作り直されるか軽く数える（直す必要なし、結果の固定）。
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const markers: unknown[] = []
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker {
+      options: Record<string, unknown>
+      setPosition(position: unknown) { this.options.position = position }
+      setTitle(title: string) { this.options.title = title }
+      setZIndex(zIndex: number) { this.options.zIndex = zIndex }
+      setMap = vi.fn()
+      setIcon(icon: { url: string }) { this.options.icon = icon }
+      addListener() { return { remove: vi.fn() } }
+      constructor(options: Record<string, unknown>) { this.options = options; markers.push(this) }
+    }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} />)
+    await waitFor(() => expect(markers.length).toBeGreaterThanOrEqual(1))
+    const before = markers.length
+    act(() => { window.dispatchEvent(new Event('resize')) })
+    expect(markers).toHaveLength(before)
+    unmount()
+    delete window.google
+  })
+
+  it('reuses markers through repeated camera controls, location updates and area updates', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let zoom = 5
+    const listeners = new Map<string, () => void>()
+    const map = { ...mapInstance, fitBounds: vi.fn(), getZoom: () => zoom,
+      setZoom(value: number) { zoom = value; listeners.get('zoom_changed')?.() },
+      addListener(name: string, callback: () => void) { listeners.set(name, callback); return { remove() { listeners.delete(name) } } },
+    }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const markers: Marker[] = []
+    class Marker {
+      options: Record<string, unknown>
+      setPosition(position: unknown) { this.options.position = position }
+      setTitle(title: string) { this.options.title = title }
+      setZIndex(zIndex: number) { this.options.zIndex = zIndex }
+      setMap = vi.fn()
+      setIcon(icon: { url: string }) { this.options.icon = icon }
+      addListener() { return { remove: vi.fn() } }
+      constructor(options: Record<string, unknown>) { this.options = options; markers.push(this) }
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition(success: PositionCallback) {
+      success({ coords: { latitude: 35, longitude: 139 } } as GeolocationPosition)
+    } } })
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={areas} onSelectArea={vi.fn()} />)
+    try {
+      await screen.findByRole('button', { name: '地図を拡大' })
+      expect(markers).toHaveLength(1)
+      // 初回の現在地表示を含めて2個。以後の連打でも2個のまま。
+      fireEvent.click(screen.getByRole('button', { name: '現在地へ戻る' }))
+      expect(markers).toHaveLength(2)
+      for (let i = 0; i < 3; i++) {
+        for (const name of ['地図を拡大', '地図を縮小', '地図の表示を戻す', '現在地へ戻る']) {
+          act(() => { fireEvent.click(screen.getByRole('button', { name })) })
+        }
+      }
+      expect(markers).toHaveLength(2)
+      expect(markers[0].setMap).not.toHaveBeenCalled()
+      rerender(<ConfiguredMapPreview areas={[{ ...areas[0], label: '更新', publishedCount: 3, marker: { latitude: 36, longitude: 140 } }]} onSelectArea={vi.fn()} filterRegion="関東" />)
+      expect(markers).toHaveLength(2)
+      expect(markers[0].options.title).toBe('更新の探索エリア（3問）')
+      expect(markers[0].options.position).toEqual({ lat: 35.5, lng: 139.5 })
+      rerender(<ConfiguredMapPreview areas={[]} />)
+      expect(markers[0].setMap).toHaveBeenCalledWith(null)
+    } finally {
+      unmount()
+      delete window.google
+      vi.unstubAllGlobals()
+    }
   })
 
   it('clusters overlapping pins into one marker with the total quest count and fits to them on tap (D-52)', async () => {
@@ -1376,6 +1470,9 @@ describe('Google map panel', () => {
     const markers: Array<{ options: Record<string, unknown>; listeners: Map<string, () => void> }> = []
     class Marker {
       options: Record<string, unknown>
+      setPosition(position: unknown) { this.options.position = position }
+      setTitle(title: string) { this.options.title = title }
+      setZIndex(zIndex: number) { this.options.zIndex = zIndex }
       listeners = new Map<string, () => void>()
       constructor(options: Record<string, unknown>) { this.options = options; markers.push(this) }
       setMap() {}
@@ -1403,7 +1500,7 @@ describe('Google map panel', () => {
     // 選択中の地域のピンはクラスタに隠さない（D-52）。
     markers.length = 0
     rerender(<ConfiguredMapPreview areas={clusterAreas} quests={[]} selectedAreaId="close-a" onSelectArea={vi.fn()} />)
-    await waitFor(() => expect(markers.length).toBe(3))
+    await waitFor(() => expect(markers.length).toBe(2))
     expect(markers.some((marker) => String(marker.options.title).includes('合計'))).toBe(false)
     unmount()
     delete window.google

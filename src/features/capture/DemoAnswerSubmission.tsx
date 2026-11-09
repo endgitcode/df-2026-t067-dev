@@ -202,6 +202,8 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     }
   }
 
+  const waiting = pending || (real && !!receipt?.canCheck && !failure && !pollLimit)
+
   return <div className="camera-actions" aria-label="開発用の回答受付">
     {showClearScreen && <ClearScreen questTitle={context.questTitle} photo={photo}
       onViewRecord={viewRecord} onReturnToMap={returnToMap} />}
@@ -216,7 +218,10 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
           : failure ? '同じ回答を再送' : dataMode === 'durable-local' ? '写真と位置をテスト送信'
             : dataMode === 'team-preview' ? '写真と位置を送信' : '写真と位置をデモ送信'}
       </button>}
-    {pending && <button type="button" className="secondary-button" onClick={() => cancel(receipt
-      ? '受付状態の確認を中止しました。' : '送信を中止しました。受付済みか確認できませんでした。')}>受付の確認をキャンセル</button>}
+    {waiting && <div className="answer-waiting" role="status" aria-label="写真の判定待ち">
+      <p>{real ? '写真を判定しています…' : '回答の受付を確認しています…'}</p>
+      <button type="button" className="secondary-button" onClick={() => cancel(receipt
+      ? '受付状態の確認を中止しました。' : '送信を中止しました。受付済みか確認できませんでした。')}>受付の確認をキャンセル</button>
+    </div>}
   </div>
 }

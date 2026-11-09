@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useWideViewport } from '../quests/useWideViewport'
 import { parseCaptureMetadata } from '../../shared/api'
 import type { CaptureMetadata } from '../../shared/api/types'
 import { DemoAnswerSubmission } from './DemoAnswerSubmission'
@@ -7,6 +9,7 @@ import { CaptureLocationMap } from './CaptureLocationMap'
 import { isCaptureLocationMapDebugEnabled } from './captureMapDebug'
 
 export function CameraPreview({ onClose, answer }: { onClose: () => void; answer?: DemoAnswerContext }) {
+  const wide = useWideViewport()
   const showCaptureLocationMapDebug = isCaptureLocationMapDebugEnabled(import.meta.env.DEV, import.meta.env.VITE_CAPTURE_LOCATION_MAP_DEBUG)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -219,8 +222,8 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
     }
   }
 
-  return (
-    <section className="camera-panel" aria-label="写真撮影と確認">
+  const panel = (
+    <section className={wide ? "camera-panel" : "camera-panel camera-overlay"} aria-label="写真撮影と確認">
       <h4>{photoUrl ? '写真を確認' : '写真を撮影'}</h4>
       <p className="sample-note">{answer
         ? answer.dataMode === 'durable-local'
@@ -261,4 +264,5 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
       </div>
     </section>
   )
+  return wide ? panel : createPortal(panel, document.body)
 }

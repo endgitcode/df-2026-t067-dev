@@ -54,6 +54,25 @@ async function loadFrame(stream: MediaStream, width = 640, height = 480) {
 }
 
 describe('local camera preview', () => {
+  it('places the mobile fullscreen camera outside the transformed sheet', () => {
+    const media = setup()
+    const { container } = render(<CameraPreview onClose={media.onClose} />)
+    const camera = screen.getByRole('region', { name: '写真撮影と確認' })
+    expect(camera).toHaveClass('camera-overlay')
+    expect(camera.parentElement).toBe(document.body)
+    expect(container).not.toContainElement(camera)
+  })
+
+  it('keeps the desktop camera inside its existing panel', () => {
+    const media = setup()
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const { container } = render(<CameraPreview onClose={media.onClose} />)
+    const camera = screen.getByRole('region', { name: '写真撮影と確認' })
+    expect(camera).toHaveClass('camera-panel')
+    expect(camera).not.toHaveClass('camera-overlay')
+    expect(container).toContainElement(camera)
+  })
+
   it('shows a disabled preparation submit action in the normal photo flow', async () => {
     const media = setup()
     render(<CameraPreview onClose={media.onClose} />)
