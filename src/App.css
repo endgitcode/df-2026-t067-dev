@@ -843,28 +843,44 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .is-browsing-below-map ~ .quest-rail { min-height: 100svh; }
 }
 
-.answer-waiting { flex-basis: 100%; padding: 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); text-align: center; }
-.answer-waiting-stage { margin: 0 0 12px; font-weight: var(--ui-weight-strong); }
-.answer-waiting p { margin: 0 0 10px; font-weight: var(--ui-weight-strong); }
-/* 不定バー: 残り時間が分からないので % や時間経過の偽段階は使わない（t163u）。 */
-.answer-waiting-progress { position: relative; overflow: hidden; height: 4px; margin: 0 auto 14px; max-width: 220px; border-radius: 999px; background: color-mix(in srgb, var(--ui-line) 80%, transparent); }
-.answer-waiting-progress-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 36%; border-radius: inherit; background: var(--ui-accent); animation: answer-waiting-indeterminate 1.25s ease-in-out infinite; }
+.answer-waiting { flex-basis: 100%; padding: 16px; border: var(--ui-border-width) solid var(--ui-line, #1d1d1b); border-radius: var(--ui-radius, 16px); background: var(--ui-surface, #ffffff); color: var(--ui-ink, #1d1d1b); text-align: center; }
+.answer-waiting-stage { margin: 0 0 12px; color: var(--ui-ink, #1d1d1b); font-size: 16px; font-weight: var(--ui-weight-strong, 700); }
+.answer-waiting p { margin: 0 0 10px; color: var(--ui-ink, #1d1d1b); font-weight: var(--ui-weight-strong, 700); }
+/* 不定バー: % や時間の偽進捗は出さない。トラックとバーは白カード上でも暗い写真上でも見えるコントラスト（WCAG AA目安）。 */
+.answer-waiting-progress { position: relative; overflow: hidden; height: 10px; margin: 0 auto 14px; max-width: 240px; border-radius: 999px; border: 2px solid var(--ui-ink, #1d1d1b); background: var(--ui-disabled, #e9e8e2); box-sizing: border-box; }
+.answer-waiting-progress-bar { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: inherit; background: var(--ui-accent, #ffe66b); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-ink, #1d1d1b) 35%, transparent); animation: answer-waiting-indeterminate 1.25s ease-in-out infinite; }
 @keyframes answer-waiting-indeterminate {
   0% { transform: translateX(-120%); }
-  100% { transform: translateX(380%); }
+  100% { transform: translateX(280%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .answer-waiting-progress-bar { animation: none; width: 100%; opacity: 0.55; transform: none; }
+  /* アニメは止めるが、バーの形（塗りつぶし）は残して進み具合UIだと分かるようにする。 */
+  .answer-waiting-progress-bar { animation: none; width: 100%; opacity: 1; transform: none; }
 }
-.answer-waiting-cancel { display: inline; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ui-muted); font-size: 13px; font-weight: var(--ui-weight-control); text-decoration: underline; box-shadow: none; cursor: pointer; }
+.answer-waiting-cancel { display: inline; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ui-ink, #1d1d1b); font-size: 13px; font-weight: var(--ui-weight-control, 600); text-decoration: underline; text-underline-offset: 2px; box-shadow: none; cursor: pointer; }
 .camera-actions.is-waiting { animation: none; }
 
 @media (max-width: 980px) {
-  .camera-panel.camera-overlay { position: fixed; inset: 0; z-index: 70; isolation: isolate; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; background: #1d1d1b; animation: none; }
+  .camera-panel.camera-overlay { position: fixed; inset: 0; z-index: 70; isolation: isolate; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; background: #1d1d1b; color: var(--ui-ink, #1d1d1b); animation: none; }
   /* z-index:-1 だと isolation 内でパネル背景の裏に回り写真が見えない。absolute+0 で映像を前面に。 */
   .camera-overlay .camera-video, .camera-overlay .photo-preview { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; object-fit: contain; background: #111; }
-  .camera-overlay > h4, .camera-overlay > p, .camera-overlay > .camera-map-reference, .camera-overlay > .camera-error { position: relative; z-index: 1; padding: 8px 12px; margin: 0; border-radius: var(--ui-radius); background: var(--ui-surface); }
-  .camera-overlay > .camera-actions { position: relative; z-index: 1; padding: 10px; border-radius: var(--ui-radius); background: var(--ui-surface); }
+  /* 暗い映像の上でも読めるよう、文言・操作は不透明な白カード＋インク色（フォールバック付き）。 */
+  .camera-overlay > h4, .camera-overlay > p, .camera-overlay > .camera-map-reference, .camera-overlay > .camera-error {
+    position: relative; z-index: 1; padding: 8px 12px; margin: 0; border-radius: var(--ui-radius, 16px);
+    border: var(--ui-border-width, 2px) solid var(--ui-line, #1d1d1b);
+    background: var(--ui-surface, #ffffff); color: var(--ui-ink, #1d1d1b);
+    box-shadow: var(--ui-control-shadow, 3px 3px 0 #1d1d1b);
+  }
+  .camera-overlay > p.camera-status { color: var(--ui-ink, #1d1d1b); }
+  .camera-overlay > p.sample-note { color: var(--ui-ink, #1d1d1b); background: var(--ui-surface, #ffffff); }
+  .camera-overlay > p.camera-error { color: var(--ui-error, #a12626); }
+  .camera-overlay > .camera-actions {
+    position: relative; z-index: 1; padding: 10px; border-radius: var(--ui-radius, 16px);
+    border: var(--ui-border-width, 2px) solid var(--ui-line, #1d1d1b);
+    background: var(--ui-surface, #ffffff); color: var(--ui-ink, #1d1d1b);
+    box-shadow: var(--ui-control-shadow, 3px 3px 0 #1d1d1b);
+  }
   .camera-overlay > .camera-actions:last-child { margin-top: auto; }
+  .camera-overlay .answer-waiting { background: transparent; border: 0; box-shadow: none; padding: 8px 4px; }
   .camera-overlay .primary-button { min-height: 64px; width: 100%; font-size: 18px; }
 }

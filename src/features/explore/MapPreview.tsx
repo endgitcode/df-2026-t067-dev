@@ -254,7 +254,11 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // 左サイドバーのパネルへ同じ一覧を出す（panelMode、D-34）。全画面化の扱いはシートと同じ。
   // フィット系のコールバック（fitInitialAreas）がレイアウトシグネチャの算出に使うため、
   // この位置で定義する。
-  const sheetMode = status === 'ready' && showPublicAreas
+  // 公開地図シェルが必要な画面では、SDK の成否に関係なく fullbleed 殻を先に出す。
+  // ready 待ちだとブート（サイドバー／シート）からヘッダー付き通常シェルへ一瞬戻って崩れる（t165u）。
+  // showPublicAreas が無い（地図なし閲覧）は従来どおり通常シェル。
+  const mapReady = status === 'ready'
+  const sheetMode = showPublicAreas
   const panelMode = sheetMode && wideViewport
   // 地域の範囲へ地図をフィットさせる共通処理。選択時フィットと、再タップ時の再フィットで使う。
   // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
@@ -800,7 +804,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     <button type="button" className="map-locate-fab" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={locating} onClick={locate}><Icon name="locate" /></button>
   </div> : null
 
-  // シート表示の間は、スマホ幅で探索画面を画面全体（縁なし）にするための目印を付ける。
+  // 公開地図シェルの間は縁なし fullbleed にする（地図の ready 前から。ブートと形を揃える）。
   // シェル側（ヘッダー・下部ナビ等）の浮動配置は App.css がこのクラスとメディアクエリで切り替える。
   // 記録画面の表示中（viewActive でない間）は探索が前面にないため付けない。
   useEffect(() => {
@@ -814,7 +818,9 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // （記録画面や、フォールバックが本文になる永続側）でピッカーが消えたままにならないため。
   const sheetModeChangeRef = useRef(onSheetModeChange)
   useEffect(() => { sheetModeChangeRef.current = onSheetModeChange }, [onSheetModeChange])
-  useEffect(() => { sheetModeChangeRef.current?.(sheetMode && viewActive) }, [sheetMode, viewActive])
+  // 一覧ピッカーの出し分け（D-43）は「地図で選べる」＝ready のときだけ true。
+  // 殻の fullbleed は sheetMode（showPublicAreas）で先に出すが、ピッカーを隠す合図は ready 後。
+  useEffect(() => { sheetModeChangeRef.current?.(sheetMode && mapReady && viewActive) }, [sheetMode, mapReady, viewActive])
   useEffect(() => () => { sheetModeChangeRef.current?.(false) }, [])
 
   // 隠れていた探索が前面に戻ったら、地図コンテナの大きさが戻る。Google Maps は
@@ -836,7 +842,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // サイドバーの開閉はフローティング化（D-38）でコンテナの大きさが変わらなくなったため、
   // ここでの対象に含めない（開閉では resize も再フィットもしない）。
   useEffect(() => {
-    if (!sheetMode) return
+    if (!sheetMode || !mapReady) return
     const instance = map.current
     if (!instance) return
     const signature = `${sheetMode}:${panelMode}`
@@ -859,7 +865,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       // シグネチャでフィット済みなら何もしない（利用者の操作を邪魔しない）。
       fitInitialAreas(instance)
     }
-  }, [sheetMode, panelMode, fitKey, fitAreaId, fitInitialAreas, areas])
+  }, [sheetMode, mapReady, panelMode, fitKey, fitAreaId, fitInitialAreas, areas])
 
   // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
   // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。

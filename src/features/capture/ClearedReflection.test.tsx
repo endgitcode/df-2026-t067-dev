@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import App from '../../App'
@@ -83,7 +83,8 @@ it('shows the quest as cleared right after clearing, without a reload', async ()
   // 初回クリアでは全画面のクリア画面（D-63）が出る。ここでは「地図に戻る」で
   // 詳細へ戻る退出を選び、戻った先がその場でクリア済み表示になることを見る。
   expect(await screen.findByRole('heading', { name: 'クリア！' })).toBeVisible()
-  await user.click(screen.getByRole('button', { name: '地図に戻る' }))
+  // fullbleed 殻が常駐するため「地図に戻る」が複数候補になり得る。クリア画面のダイアログ内だけを押す。
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '地図に戻る' }))
 
   expect(screen.getByText('クリア済み')).toBeVisible()
   expect(screen.getByText(/再挑戦はできません/)).toBeVisible()

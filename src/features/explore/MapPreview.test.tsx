@@ -16,15 +16,16 @@ describe('Google map panel', () => {
     render(<MapPreview />)
     expect(screen.queryByRole('button', { name: /謎を地図から見る/ })).not.toBeInTheDocument()
   })
-  it('keeps the full quest list in normal flow without a sheet when the map is unavailable', () => {
+  it('keeps the full quest list in the public-map shell when the map key is missing', () => {
     const quests: PublicQuest[] = [
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
+    // 公開地図シェル要求中はキー無しでも fullbleed／has-sheet を維持し、一覧は殻の中に出す（t165u）。
     const { container } = render(<MapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    expect(document.body).toHaveClass('explore-fullbleed')
+    expect(container.querySelector('.map-preview-shell')).toHaveClass('has-sheet')
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
-    expect(container.querySelector('.explore-sheet')).not.toBeInTheDocument()
-    expect(container.querySelector('.map-preview-shell')).not.toHaveClass('has-sheet')
   })
   it('keeps authentication failure visible when it occurs during map creation', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
@@ -550,6 +551,8 @@ describe('Google map panel', () => {
     expect(closeToggle).toHaveAttribute('aria-expanded', 'true')
     expect(container.querySelector('.explore-side-panel')).not.toBeNull()
     expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
+    // 殻が ready 前から付くため、初回の resize が findByRole 後に遅れても来る。開閉検証前に吐き切す。
+    await waitFor(() => expect(trigger).toHaveBeenCalled())
     trigger.mockClear()
     fitBounds.mockClear()
     setCenter.mockClear()
@@ -1152,9 +1155,18 @@ describe('Google map panel', () => {
     const quests: PublicQuest[] = [
       { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
     ]
-    render(<MapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} onSheetModeChange={onSheetModeChange} />)
+    render(<MapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} onSheetModeChange={onSheetModeChange} showPublicAreas={false} />)
     expect(onSheetModeChange).toHaveBeenCalledWith(false)
     expect(onSheetModeChange).not.toHaveBeenCalledWith(true)
+  })
+
+  it('keeps fullbleed shell when the public map is required but the key is missing', () => {
+    const onSheetModeChange = vi.fn()
+    render(<MapPreview areas={areas} showPublicAreas onSheetModeChange={onSheetModeChange} />)
+    expect(document.body).toHaveClass('explore-fullbleed')
+    // ピッカー制御の sheetMode 通知は ready 後だけ true（殻は先に出す）。
+    expect(onSheetModeChange).toHaveBeenCalledWith(false)
+    expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
   })
 
   it('keeps the sheet and full-bleed layout with a filter-empty message when filtering leaves no quests', async () => {
@@ -1182,13 +1194,10 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('does not mark the page as full-bleed when the map is unavailable', () => {
-    const quests: PublicQuest[] = [
-      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
-    ]
-    render(<MapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
-    expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
+  it('does not mark the page as full-bleed when the public map shell is not requested', () => {
+    render(<MapPreview areas={areas} showPublicAreas={false} />)
     expect(document.body).not.toHaveClass('explore-fullbleed')
+    expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
   })
 
   it('shows the selected area as a small chip on the map and hides it without a selection', async () => {
@@ -1407,6 +1416,17 @@ describe('Google map panel', () => {
     unmount()
     delete window.google
   })
+
+  it('applies explore-fullbleed shell even when the map key is missing so boot and hydrate share the chrome', () => {
+    // キー無し＝missing。公開地図シェルを要求している画面では殻を維持する（t165u）。
+    const { container, unmount } = render(<MapPreview areas={areas} showPublicAreas />)
+    expect(document.body).toHaveClass('explore-fullbleed')
+    expect(container.querySelector('.map-preview-shell')).toHaveClass('has-sheet')
+    expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
+    unmount()
+    expect(document.body).not.toHaveClass('explore-fullbleed')
+  })
+
 
   it('reuses markers through repeated camera controls, location updates and area updates', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
