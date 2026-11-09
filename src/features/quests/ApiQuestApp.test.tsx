@@ -408,12 +408,24 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} authClient={signedOutAuth()} />)
     expect(await screen.findByRole('button', { name: '一覧表示用タイトルを開く' })).toBeVisible()
     await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
-    expect(await screen.findByText('自分の記録を見るにはログインが必要です。クリアした問題の写真と日付は、ログインした本人だけが見られます。')).toBeVisible()
+    expect(await screen.findByText('ログインすると記録が見られます')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Googleログインして記録を見る' })).toBeVisible()
     expect(screen.queryByText(/記録を読み込めませんでした/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '記録を読み直す' })).not.toBeInTheDocument()
     // 戻り導線はタブに一本化され、本文に重複した戻りボタンは置かない。
     expect(screen.queryByRole('button', { name: '地図へ戻る' })).not.toBeInTheDocument()
+  })
+
+  it.each(['unconfigured', 'unavailable'] as const)('ログイン設定が使えない記録画面でも案内を表示する (%s)', async (status) => {
+    const user = userEvent.setup()
+    const snapshot = { status, user: null, message: 'ログインを利用できません' }
+    const authClient = { ...signedOutAuth(), getSnapshot: () => snapshot }
+    render(<ApiQuestApp api={apiFixture()} authClient={authClient} />)
+    await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
+    const records = within(screen.getByRole('region', { name: '自分の記録' }))
+    expect(records.getByText('ログインすると記録が見られます')).toBeVisible()
+    expect(records.queryByRole('button', { name: 'Googleログインして記録を見る' })).not.toBeInTheDocument()
+    expect(records.queryByText(/ログインなしで閲覧|クリアした問題の写真/)).not.toBeInTheDocument()
   })
 
   it('一覧の中の詳細に閉じるボタンは無く、再タップで選択解除まで完了する（D-65）', async () => {

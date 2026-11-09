@@ -458,11 +458,11 @@ describe('button widths and records alignment (D-74)', () => {
     expect(css).toContain('.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 52px;')
   })
 
-  it('widens the records body column', () => {
+  it('limits the records card to a readable column (D-82)', () => {
     const recordsRule = css.match(/^\.owner-records\s*\{([^}]+)\}/m)?.[1] ?? ''
     expect(recordsRule).toMatch(/\bdisplay:\s*grid\s*;/)
     expect(recordsRule).toMatch(/\bgap:\s*16px\s*;/)
-    expect(recordsRule).toMatch(/\bmax-width:\s*1080px\s*;/)
+    expect(recordsRule).toMatch(/\bmax-width:\s*720px\s*;/)
     expect(recordsRule).toMatch(/\bgrid-template-columns:\s*minmax\(0,\s*1fr\)\s*;/)
   })
 
@@ -502,11 +502,11 @@ describe('PC sidebar stacking', () => {
 })
 
 describe('records body and mobile return clearance', () => {
-  it('uses only the sidebar separator and aligns records at the top', () => {
+  it('aligns the records card after the sidebar (D-82)', () => {
     const recordsRule = css.slice(css.indexOf('body:has(.owner-records:not([hidden])) .owner-records {')).split('}')[0]
     expect(recordsRule).not.toContain('border-left:')
-    expect(recordsRule).toContain('padding-top: 24px;')
-    expect(recordsRule).toContain('align-content: start;')
+    expect(recordsRule).toContain('margin-left: var(--pc-sidebar-w);')
+    expect(recordsRule).toContain('max-width: 720px;')
     expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h, 70px) + 120px);')
   })
 })

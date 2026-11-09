@@ -3,7 +3,7 @@ import type { ApiClient, ApiErrorCode, Discovery } from '../../shared/api'
 import { useRemote } from '../../shared/useRemote'
 import { DiscoveryDeletion } from './DiscoveryDeletion'
 
-const localDate = new Intl.DateTimeFormat('ja-JP', { dateStyle: 'long', timeZone: 'Asia/Tokyo' })
+const localDate = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Tokyo' })
 
 function RecordDate({ date }: { date: string }) {
   return <time dateTime={date}>{localDate.format(new Date(date))}</time>
@@ -29,7 +29,7 @@ function RecordPhoto({ blob }: { blob: Blob }) {
     target.src = url
     return () => { target.removeAttribute('src'); URL.revokeObjectURL(url) }
   }, [blob])
-  return <img ref={image} className="photo-preview" alt="本人の記録写真" />
+  return <img ref={image} className="record-photo" alt="本人の記録写真" />
 }
 
 function RecordThumbnail({ api, id, active }: { api: ApiClient; id: string; active: boolean }) {
@@ -107,11 +107,12 @@ function RecordMetadata({ api, record }: { api: ApiClient; record: Discovery }) 
   const spot = record.afterClear?.spot
   const title = result.status === 'loading' ? '読み込み中…'
     : (result.status === 'ready' && result.value) || 'クリア時の問題名を取得できません'
+  const spotName = (spot?.name ?? record.placeName).trim()
   return <dl className="record-guidance">
-    <div><dt>スポット名</dt><dd>{spot?.name ?? record.placeName}</dd></div>
+    {spotName && <div><dt>スポット名</dt><dd>{spotName}</dd></div>}
     <div><dt>日付</dt><dd><RecordDate date={record.firstClearedAt} /></dd></div>
-    <div><dt>問題の名前</dt><dd>{title}</dd></div>
-    <div><dt>住所</dt><dd>{spot?.address || '住所情報なし'}</dd></div>
+    {title.trim() !== spotName && <div><dt>問題の名前</dt><dd>{title}</dd></div>}
+    {spot?.address.trim() && <div><dt>住所</dt><dd>{spot.address}</dd></div>}
   </dl>
 }
 

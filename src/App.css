@@ -474,35 +474,47 @@ button.explore-quest-card { cursor: pointer; }
 .quest-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .quest-title-row h3 { min-width: 0; overflow-wrap: anywhere; }
 /* 記録画面の列は中央に寄せず、探索画面と同じ左のラインに揃える（D-60）。幅の上限は読みやすさのために残す。 */
-/* 記録の本文列は 1080px まで使う（D-74）。720px では PC 幅で左に細く寄り、
-   右側の大半が空白になった（実地目視）。読み物の行長としては上限を残す。 */
-.owner-records { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 1080px; }
+/* D-82: PC・スマホとも白いカードに収め、本文列は720pxを上限とする。 */
+.owner-records { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; max-width: 720px; padding: 20px; align-content: start; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); box-shadow: none; }
 /* 記録画面と探索画面は hidden で切り替える（アンマウントしない）。display を
    指定している要素では hidden が負けるため、明示的に打ち消す。 */
 .owner-records[hidden], .explore-view[hidden] { display: none; }
+.owner-records > h1 { font-size: 24px; line-height: 1.4; font-weight: var(--ui-weight-strong); }
 .owner-records > button { justify-self: start; }
-.record-table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: start; }
-.record-table th, .record-table td { padding: 8px; border-bottom: var(--ui-border-width) solid var(--ui-line); text-align: start; }
+.owner-records, .record-dialog { --ui-hover-shift: 0px; --ui-press: 0px; }
+.record-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0 8px; text-align: start; }
+.record-table th, .record-table td { padding: 8px; text-align: start; }
+.record-table th { color: var(--ui-muted); font-size: 12px; font-weight: 400; padding-top: 0; padding-bottom: 0; }
+.record-table td { border-block: var(--ui-border-width) solid var(--ui-line); }
+.record-table td:first-child { border-left: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius) 0 0 var(--ui-radius); }
+.record-table td:last-child { border-right: var(--ui-border-width) solid var(--ui-line); border-radius: 0 var(--ui-radius) var(--ui-radius) 0; color: var(--ui-muted); font-size: 12px; }
 .record-table th:first-child { width: 72px; }
-.record-table th:last-child { width: 9em; }
+.record-table th:last-child { width: 88px; }
 .record-table th, .record-table td { overflow-wrap: anywhere; }
-@media (max-width: 480px) {
-  .record-table th:last-child { width: 6.5em; }
+.record-table tbody tr { cursor: pointer; transition: background-color 150ms var(--ease-out); }
+.record-table tbody tr:focus-within { background: var(--ui-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .record-table tbody tr:hover { background: var(--ui-soft); }
 }
-.record-table tbody tr { cursor: pointer; }
-.record-table tbody tr:hover, .record-table tbody tr:focus-within { background: var(--ui-tint); }
-.record-open { min-height: 44px; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: start; overflow-wrap: anywhere; cursor: pointer; }
-.record-thumbnail, .record-thumbnail-placeholder { display: grid; width: 56px; height: 56px; flex: 0 0 56px; place-items: center; border-radius: 8px; object-fit: cover; background: var(--ui-tint); color: var(--ui-muted); }
+.record-table time, .record-guidance time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.record-photo { display: block; max-width: 100%; max-height: 62vh; margin-inline: auto; object-fit: contain; border-radius: var(--ui-radius); }
+.record-dialog .secondary-button { padding: 9px 12px; font-weight: var(--ui-weight-control); }
+.record-detail > .record-delete { justify-self: start; color: var(--ui-error); border-color: var(--ui-error); background: var(--ui-surface); }
+.record-open { min-height: 44px; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: var(--ui-weight-strong); text-align: start; overflow-wrap: anywhere; cursor: pointer; }
+.record-thumbnail, .record-thumbnail-placeholder { display: grid; width: 56px; height: 56px; flex: 0 0 56px; place-items: center; border-radius: var(--radius-s); object-fit: cover; background: var(--ui-disabled); color: var(--ui-muted); }
 .record-thumbnail-placeholder { font-size: 10px; }
-.record-detail { display: grid; gap: 12px; overflow-wrap: anywhere; }
+.record-detail { display: grid; gap: 16px; overflow-wrap: anywhere; }
 .record-dialog { box-sizing: border-box; width: min(560px, calc(100% - 24px)); max-height: calc(100dvh - 24px); padding: 16px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); overscroll-behavior: contain; }
 .record-dialog::backdrop { background: rgb(0 0 0 / 45%); }
 .record-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.record-dialog-heading h2 { margin: 0; }
+.record-dialog-heading h2 { margin: 0; font-size: 20px; font-weight: var(--ui-weight-strong); }
 .record-guidance { display: grid; gap: 12px; margin: 0; }
-.record-spot-link { margin: 12px 0 0; }
-.record-guidance dt { font-weight: var(--ui-weight-strong); }
-.record-guidance dd { margin: 0; white-space: pre-wrap; }
+.record-spot-link { margin: 0; }
+.record-spot-link a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; text-underline-offset: 4px; }
+.record-guidance dt { color: var(--ui-muted); font-size: 12px; }
+.record-guidance dd { margin: 4px 0 0; white-space: pre-wrap; }
+.record-deletion { display: grid; gap: 12px; padding-top: 16px; border-top: var(--ui-border-width) solid var(--ui-line); }
+.record-deletion .camera-actions { margin: 0; }
 .quest-report-form, .quest-report-form label { display: grid; gap: 8px; }
 .quest-report-form { margin-top: 12px; }
 .quest-report-form textarea, .quest-report-form select { font: inherit; }
@@ -822,12 +834,8 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 @media (min-width: 981px) {
   body:has(.owner-records:not([hidden])) .owner-records {
     margin-left: var(--pc-sidebar-w);
-    max-width: none;
-    padding-inline: 28px;
-    padding-top: 24px;
-    align-content: start;
-    min-height: 100svh;
-    background: var(--ui-bg);
+    width: calc(100% - var(--pc-sidebar-w));
+    max-width: 720px;
   }
 }
 

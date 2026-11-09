@@ -22,21 +22,6 @@ import { useWideViewport } from './features/quests/useWideViewport'
 import { AuthError, createFirebaseAuthClient } from './features/auth/firebaseAuth'
 import './App.css'
 
-function connectionNotice(auth: AuthSnapshot, _durableLocal: boolean): { title: string; description: string } {
-  switch (auth.status) {
-    case 'unconfigured':
-      return { title: 'ログインできません', description: '問題はログインなしで閲覧できます。' }
-    case 'unavailable':
-      return { title: 'Googleログインを利用できません', description: auth.message }
-    case 'checking':
-      return { title: 'ログイン状態を確認中', description: '問題はそのまま閲覧できます。しばらくお待ちください。' }
-    case 'signed-out':
-      return { title: 'ゲストで閲覧中', description: '問題はログインなしで閲覧できます。' }
-    case 'signed-in':
-      return { title: 'Googleログイン済み', description: (auth.user.displayName ?? 'Googleアカウント') + 'でログインしています。' }
-  }
-}
-
 type AppProps = {
   authClient?: AuthClient
   onStartChallenge?: (selection: ChallengeSelection) => void | Promise<unknown>
@@ -239,7 +224,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const selectedQuest = useRef(quest)
   const openRef = useRef(isQuestOpen)
   const visiblePending = pending?.client === authClient ? pending.kind : null
-  const notice = connectionNotice(auth, durableLocal || teamPreview)
   // 本人のクリア済み問題（questId → 記録ID）。クリアは1人1問につき1回だけで、
   // クリア済みの問題は再挑戦できない（D-64）。詳細の開始導線の置き換えと一覧の
   // バッジに使う表示専用の情報であり、再挑戦の最終的な防止はサーバー側が担う。
@@ -519,14 +503,13 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             往復の前後で表示が食い違うため（状態の保持は D-53）。 */}
         {recordsVisited && <section className="owner-records view-enter" aria-labelledby="records-title" hidden={!showRecords}>
           <h1 id="records-title">自分の記録</h1>
-          <p>クリアした問題の写真と初回クリア日を確認できます。</p>
           {auth.status === 'signed-out' && <>
-            <p>自分の記録を見るにはログインが必要です。クリアした問題の写真と日付は、ログインした本人だけが見られます。</p>
+            <p>ログインすると記録が見られます</p>
             <button type="button" className="primary-button" disabled={visiblePending !== null}
               onClick={() => void login()}>Googleログインして記録を見る</button>
           </>}
           {auth.status === 'checking' && <p role="status">ログイン状態を確認しています…</p>}
-          {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">{notice.description}</p>}
+          {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">ログインすると記録が見られます</p>}
           {uid !== null && visiblePending === null && (serverIdentity.result?.status === 'ready'
             ? <OwnerDiscoveries key={uid} api={api} visit={recordsVisit} active={showRecords} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
             : serverIdentity.result?.status === 'error'
