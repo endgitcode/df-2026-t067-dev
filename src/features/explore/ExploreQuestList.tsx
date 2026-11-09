@@ -6,10 +6,10 @@ import type { PublicArea, PublicQuest } from '../../shared/api/types'
 // 絞り込み）で絞った問題だけであり、地図の表示範囲では変わらない（D-45）。問題の選択
 // 自体は一覧を絞らない（D-65）：選んだ行の直下に詳細が開くだけで、他の問題は残る。
 // 地図が使えない場合も同じ。
-// 行はタイトルだけの簡素な形にし、選んだ行の直下に詳細（QuestDetails）を開く
+// 行は題名と地域名・番号の2行にし、選んだ行の直下に詳細（QuestDetails）を開く
 // アコーディオンにする（D-46）。詳細を別枠で下に置くと、タイトルが一覧と詳細で
 // 二重に出てパネル／シートが煩雑になるため。
-export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false, discardClosingDetail = false, detailOwner }: {
+export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false, discardClosingDetail = false, detailOwner }: {
   areas: PublicArea[]
   quests: PublicQuest[]
   highlightArea?: PublicArea
@@ -157,8 +157,10 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
             const closing = !expanded && closingDetail?.questId === quest.questId
             const content = <>
               <span className="explore-quest-title traveler-row-title">{quest.title}</span>
-              {cleared && <span className="explore-quest-cleared">クリア済み</span>}
-              {quest.questNumber && <span className="explore-quest-number traveler-row-meta">No. {quest.questNumber}</span>}
+              <span className="traveler-row-secondary">
+                <span className="traveler-row-meta">{[areas.find((area) => area.areaId === quest.areaId)?.label, quest.questNumber && `No. ${quest.questNumber}`].filter(Boolean).join(' · ')}</span>
+                {cleared && <span className="explore-quest-cleared">クリア済み</span>}
+              </span>
             </>
             return <li key={quest.questId} data-area-id={quest.areaId} className={highlightArea?.areaId === quest.areaId ? 'is-highlighted' : undefined}>
               {onOpenQuest

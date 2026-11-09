@@ -19,19 +19,36 @@ describe('ExploreQuestList', () => {
   it('shows the quest number on the card only when one is assigned', () => {
     const numbered: PublicQuest[] = [{ ...quests[0], questNumber: '14-01' }, quests[1]]
     render(<ExploreQuestList areas={areas} quests={numbered} onOpenQuest={() => {}} />)
-    expect(screen.getByText('No. 14-01')).toHaveClass('traveler-row-meta')
+    expect(screen.getByText('横浜 · No. 14-01')).toHaveClass('traveler-row-meta')
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toHaveClass('traveler-list-row')
     expect(screen.getByText('港の時計台')).toHaveClass('traveler-row-title')
     expect(screen.queryByText(/No\. 40-/)).not.toBeInTheDocument()
   })
-  it('renders title-only rows without clue, area name or thumbnail', () => {
+  it('opens and closes from title, metadata and the row button', async () => {
+    const user = userEvent.setup()
+    const open = vi.fn()
+    const props = { areas, quests: [{ ...quests[0], questNumber: '14-01' }], onOpenQuest: open, detailContent: <h3>詳細本文</h3> }
+    const { rerender } = render(<ExploreQuestList {...props} />)
+    const row = screen.getByRole('button', { name: '港の時計台の詳細を見る' })
+    expect(row.children).toHaveLength(2)
+    expect(row.querySelectorAll('button')).toHaveLength(0)
+    await user.click(screen.getByText('横浜 · No. 14-01'))
+    expect(open).toHaveBeenCalledWith('q1')
+    rerender(<ExploreQuestList {...props} selectedQuestId="q1" />)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    await user.click(screen.getByText('港の時計台'))
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    await user.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+  })
+  it('renders title and area metadata without clue or thumbnail', () => {
     render(<ExploreQuestList areas={areas} quests={quests} onOpenQuest={() => {}} />)
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'この範囲の謎' })).not.toBeInTheDocument()
     expect(screen.getByText('2件')).toBeVisible()
     expect(screen.getByText('港の時計台')).toBeVisible()
-    // 行はタイトルだけ（D-46）。地域名・本文の抜粋・サムネイルは行に出さず、詳細側で出す。
-    expect(screen.queryByText('横浜')).not.toBeInTheDocument()
+    // 地域名は2行目。本文の抜粋・写真は追加しない。
+    expect(screen.getByText('横浜')).toHaveClass('traveler-row-meta')
     expect(screen.queryByText('大きな時計が見える場所')).not.toBeInTheDocument()
     expect(screen.queryByText('ピンは地域の代表点です。問題の場所そのものではありません。')).not.toBeInTheDocument()
     const card = screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('.explore-quest-card')

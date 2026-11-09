@@ -271,11 +271,11 @@ describe('UI motion (D-42)', () => {
 })
 
 describe('mobile fullbleed finish', () => {
-  it('keeps the peek sheet compact: rows are title-only at every snap (D-46)', () => {
-    // 行そのものがタイトルだけの形になったため、peek 専用の抜粋・サムネイル隠しは不要になった。
+  it('keeps the peek sheet compact: two-line rows keep the same sheet height', () => {
+    // 2行化しても抜粋・サムネイルは追加しない。
     expect(css).not.toContain('.explore-quest-clue')
     expect(css).not.toContain('.explore-quest-card > img')
-    expect(css).toContain('.explore-quest-detail { margin-top: 10px; }')
+    expect(css).toContain('.explore-quest-detail { margin-top: 16px; }')
   })
 
   it('hides the floating brand and account while quest detail is open on mobile', () => {
@@ -416,8 +416,8 @@ describe('panel single scroll and in-list detail (D-70)', () => {
 
   it('drops the detail card frame inside the list accordion', () => {
     expect(css).toContain('.quest-card.is-in-list { border: 0; border-radius: 0; background: transparent; box-shadow: none; }')
-    expect(css).toContain('.quest-card.is-in-list .quest-card-heading { padding: 14px 16px 0; border-bottom: 0; background: transparent; }')
-    expect(css).toContain('.quest-card.is-in-list .quest-card-content { padding: 12px 16px 16px; }')
+    expect(css).toContain('.quest-card.is-in-list .quest-card-heading { padding: 0 16px; border-bottom: 0; background: transparent; }')
+    expect(css).toContain('.quest-card.is-in-list .quest-card-content { padding: 0 16px 16px; }')
   })
 
   it('raises the sheet for quest selection and fits selections above the raised sheet', () => {

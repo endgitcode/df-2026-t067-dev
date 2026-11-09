@@ -162,8 +162,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 @keyframes skeleton-pulse { from { opacity: .45; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .explore-quest-skeleton { animation: none; opacity: .7; } }
 .explore-quest-list > li { min-width: 0; }
-/* 一覧の行はタイトルだけの簡素な形にする（D-46）。本文の抜粋・地域名・サムネイルは
-   行には出さず、詳細は選択中の行の直下にアコーディオンで開く。 */
+/* 探索行は題名と地域名・番号の2行。詳細は選択中の行の直下に開く。 */
 /* 一覧の行にオフセットシャドウは付けない（D-54）。中身とパネル本体の影は
    D-66 で全廃し、影は地図上に浮く要素（チップ・メニュー等）だけに残す。 */
 /* 探索・本人記録の共通行。枠は行に一重だけ持たせる。 */
@@ -179,10 +178,15 @@ button.traveler-list-row { cursor: pointer; }
 .traveler-list-row.is-selected .traveler-row-title { color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
 .traveler-row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; min-width: 0; font-size: 14px; line-height: 20px; font-weight: 500; }
 .explore-quest-title { flex: 1; }
+.explore-quest-list .traveler-list-row { flex-direction: column; align-items: stretch; gap: 4px; min-height: 60px; }
+.explore-quest-list .traveler-row-title { -webkit-line-clamp: 1; }
+.traveler-row-secondary { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.explore-quest-list .traveler-row-meta { min-width: 0; margin-left: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+.traveler-row-secondary .explore-quest-cleared { margin-left: auto; }
 .traveler-row-meta { flex: none; margin-left: auto; text-align: right; white-space: nowrap; font-size: 12px; line-height: 16px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--ui-muted); }
 .quest-number-label { color: var(--ui-muted); border-left: var(--ui-border-width) solid var(--ui-line); padding-left: 8px; font-size: 12px; font-weight: var(--ui-weight-strong); }
 .explore-quest-cleared { flex: none; padding: 0; font-size: 12px; font-weight: 400; }
-.explore-quest-detail { margin-top: 10px; }
+.explore-quest-detail { margin-top: 16px; }
 /* アコーディオンの押し広げも高さで滑らせる（D-59）。「場所で絞る」と同じ
    grid-template-rows 方式で、閉じる時は visibility の切り替えを遷移の終わりに遅らせる。 */
 .explore-quest-detail-wrap { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 280ms var(--ease-out), visibility 0s linear 280ms; }
@@ -194,8 +198,9 @@ button.traveler-list-row { cursor: pointer; }
    PCパネルではパネルの枠と合わせて三重になり、見出し・本文の二重のパディングで
    本文幅も削られる。詳細は行の続きとして読ませ、余白も一覧の尺に寄せる。 */
 .quest-card.is-in-list { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.quest-card.is-in-list .quest-card-heading { padding: 14px 16px 0; border-bottom: 0; background: transparent; }
-.quest-card.is-in-list .quest-card-content { padding: 12px 16px 16px; }
+.quest-card.is-in-list .quest-card-heading { padding: 0 16px; border-bottom: 0; background: transparent; }
+.quest-card.is-in-list .quest-card-content { padding: 0 16px 16px; }
+.quest-card.is-in-list .quest-details { margin-top: 0; padding-top: 0; }
 .explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); transition: height var(--sheet-release-ms, 300ms) var(--ease-drawer), visibility 0s; }
 .explore-sheet.is-dragging { transition: none; }
 .explore-sheet-reopen { display: none; }
@@ -208,7 +213,7 @@ button.traveler-list-row { cursor: pointer; }
 .explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; overscroll-behavior: none; touch-action: pan-x; }
 .explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; transition: visibility 0s linear 300ms; }
 .explore-sheet .explore-list { margin: 0; border: 0; box-shadow: none; padding-top: 2px; }
-/* 一覧の行はタイトルだけの形（D-46）なので、peek でも追加の要約化はしない。 */
+/* 2行化してもシートは広げず、peek では先頭行と次の行の一部を見せる。 */
 .explore-sheet .explore-quest-list { max-height: none; overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .explore-sheet { transition: height 120ms linear, visibility 0s; } .explore-sheet.is-dragging { transition: none; } .explore-sheet-body { transition: none !important; } }
 .demo-map-label { padding: 4px 7px; font-size: 12px; color: var(--ui-muted); background: var(--ui-muted); border-radius: var(--ui-radius); }
@@ -1078,3 +1083,7 @@ body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; 
 /* 撮影操作は中央下。左右は補助操作のために空ける。 */
 .camera-overlay .camera-shutter-controls { display: grid; grid-template-columns: 1fr 76px 1fr; align-items: center; }
 .camera-overlay .camera-shutter { grid-column: 2; justify-self: center; width: 76px; height: 76px; min-height: 76px; padding: 0; border-radius: 50%; border: 3px solid var(--ui-ink); box-shadow: inset 0 0 0 5px var(--ui-surface); }
+
+/* 一覧内は共通カードの上paddingを重ねない。条件表示・再読込は残す。 */
+.traveler-shell .quest-card.is-in-list .quest-card-heading { padding: 0 16px; }
+.traveler-shell .quest-card.is-in-list .quest-card-content { padding: 0 16px 16px; }
