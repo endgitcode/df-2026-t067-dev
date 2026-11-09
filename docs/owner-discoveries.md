@@ -55,7 +55,7 @@ const status = await api.getDeletion(receipt.deletionId)
 
 ### 一覧・詳細・写真
 
-一覧は初回日時の新しい順、同日時はID順。`areaId/cursor/limit`に対応し、limitは既定20・上限100。cursorは本人と地域の組み合わせに限定し、削除等で参照先がなくなった場合は一覧を取得し直す。0件・読込中・通信失敗・保存先未接続を区別する。
+一覧は `areaId/cursor/limit/sort` に対応し、limitは既定20・上限100。`sort` は `cleared-desc`（既定：初回クリア日時降順・ID降順）、`cleared-asc`（日時昇順・ID昇順）、`prefecture-asc`（都道府県コード01→47）、`prefecture-desc`（47→01）。県順の同値は日時降順・ID降順で、不明県は両方向とも末尾。県は記録時点の `areaId` から解決し、一覧・詳細の `prefectureCode` は既知の場合だけ返す。cursorは本人・地域・sortの組み合わせに限定し、削除等で参照先がなくなった場合は一覧を取得し直す。0件・読込中・通信失敗・保存先未接続を区別する。
 
 他人の記録/写真は存在しないIDと同じ404。自治体の編集/公開役でも取得できない。過去記録の取得は現在の公開問題に依存せず、問題の休止や改版で本人のsnapshotを消さない。
 

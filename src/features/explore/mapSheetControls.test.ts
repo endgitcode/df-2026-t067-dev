@@ -502,7 +502,7 @@ describe('PC sidebar stacking', () => {
 })
 
 describe('records body and mobile return clearance', () => {
-  it('spaces the records card from the sidebar and viewport edges (D-83)', () => {
+  it('spaces the records card from the sidebar and viewport edges (D-84)', () => {
     const recordsRule = css.slice(css.indexOf('body:has(.owner-records:not([hidden])) .owner-records {')).split('}')[0]
     expect(recordsRule).not.toContain('border-left:')
     expect(recordsRule).toContain('margin: 32px 32px 32px calc(var(--pc-sidebar-w) + 32px);')

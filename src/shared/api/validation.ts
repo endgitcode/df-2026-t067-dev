@@ -241,8 +241,10 @@ function parseConfirmedSpot(input: unknown): NonNullable<AfterClearContent['spot
 
 export function parseDiscovery(input: unknown): Discovery {
   const d = object(input, ['discoveryId', 'placeId', 'questId', 'questVersion', 'firstClearedAt',
-    'placeName', 'descriptionSnapshot', 'ownerPhoto', 'revealedLocation', 'afterClear'], 'Discovery')
+    'placeName', 'descriptionSnapshot', 'ownerPhoto', 'revealedLocation', 'afterClear', 'prefectureCode'], 'Discovery')
+  if (d.prefectureCode !== undefined && !isPrefectureCode(d.prefectureCode)) throw new ContractError('Discovery.prefectureCode')
   return {
+    ...(d.prefectureCode === undefined ? {} : { prefectureCode: d.prefectureCode as string }),
     discoveryId: text(d.discoveryId, 'discoveryId'), placeId: text(d.placeId, 'placeId'),
     questId: text(d.questId, 'questId'), questVersion: integer(d.questVersion, 'questVersion', 1),
     firstClearedAt: utcDate(d.firstClearedAt, 'firstClearedAt'), placeName: text(d.placeName, 'placeName'),

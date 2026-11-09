@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '../../components/Icon'
 import type { CaptureZone } from '../../shared/api'
 import type { Position } from '../../shared/api/types'
 import type { GoogleMapsApi, MapInstance } from '../explore/googleMapsLoader'
@@ -7,6 +8,9 @@ import { useRequestAction } from '../../shared/useRequestAction'
 import { MAP_PIN_COLOR, MAP_PIN_SELECTED_COLOR, MAP_STYLES } from '../explore/mapStyles'
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
+const overview = { lat: 36, lng: 138 }
+const minZoom = 5
+const maxZoom = 20
 
 export type MapPlaceDetails = { name?: string; address?: string }
 
@@ -26,6 +30,7 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
   const [loaded, setLoaded] = useState<{ google: GoogleMapsApi; map: MapInstance } | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [currentLocation, setCurrentLocation] = useState<Position | null>(null)
+  const [zoom, setZoom] = useState(minZoom)
   const [locating, setLocating] = useState(false)
   const [locationStatus, setLocationStatus] = useState('')
   const beginLocation = useRequestAction()
@@ -44,8 +49,9 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
       const current = latest.current
       const first = current.spot ?? (current.selectedIndex === null ? null : current.zones[current.selectedIndex]) ?? current.zones.find((zone) => zone !== null)
       const map = new google.Map(target.current, {
-        center: first ? { lat: first.latitude, lng: first.longitude } : { lat: 36, lng: 138 },
-        zoom: first ? (spotMode ? 17 : 14) : 5, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, clickableIcons: pickPlace,
+        center: first ? { lat: first.latitude, lng: first.longitude } : overview,
+        zoom: first ? (spotMode ? 17 : 14) : minZoom,
+        ...(pickPlace ? { minZoom, maxZoom, zoomControl: false } : {}), mapTypeControl: false, streetViewControl: false, fullscreenControl: false, clickableIcons: pickPlace,
         styles: pickPlace ? undefined : MAP_STYLES,
       })
       const listener = google.event.addListener(map, 'click', (event) => {
@@ -97,6 +103,26 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
     loaded.map.setZoom(17)
   }, [loaded, currentLocation])
 
+  useEffect(() => {
+    if (!pickPlace || !loaded) return
+    const updateZoom = () => setZoom(loaded.map.getZoom?.() ?? minZoom)
+    updateZoom()
+    const listener = loaded.google.event.addListener(loaded.map, 'zoom_changed', updateZoom)
+    return () => listener.remove()
+  }, [loaded, pickPlace])
+
+  function changeZoom(delta: number) {
+    if (!loaded) return
+    const nextZoom = Math.max(minZoom, Math.min(maxZoom, Math.round(loaded.map.getZoom?.() ?? zoom) + delta))
+    loaded.map.setZoom(nextZoom)
+  }
+
+  function resetView() {
+    if (!loaded) return
+    loaded.map.setCenter(spot ? { lat: spot.latitude, lng: spot.longitude } : overview)
+    loaded.map.setZoom(spot ? 17 : minZoom)
+  }
+
   function locate() {
     const geolocation = navigator.geolocation
     if (!geolocation?.getCurrentPosition) {
@@ -131,11 +157,18 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
   }
 
   return <div className="capture-map" aria-label={spotMode ? '対象スポットの確認地図' : '非公開の撮影範囲の地図'}>
-    {pickPlace && status === 'ready' && <div className="spot-location-actions">
-      <button type="button" disabled={disabled || locating} onClick={locate}>現在地へ移動</button>
-      {locationStatus && <p role="status">{locationStatus}</p>}
+    {API_KEY && <div className="spot-map-viewport">
+      <div ref={target} className="google-map-canvas" aria-label={spotMode ? '対象スポットを選ぶGoogleマップ' : '撮影の立ち位置を選ぶGoogleマップ'} />
+      {pickPlace && status === 'ready' && <div className="spot-map-controls" role="group" aria-label="地図の表示操作">
+        <div className="spot-map-zoom">
+          <button type="button" aria-label="地図を拡大" title="地図を拡大" disabled={disabled || zoom >= maxZoom} onClick={() => changeZoom(1)}><Icon name="plus" /></button>
+          <button type="button" aria-label="地図を縮小" title="地図を縮小" disabled={disabled || zoom <= minZoom} onClick={() => changeZoom(-1)}><Icon name="minus" /></button>
+          <button type="button" aria-label="地図の表示を戻す" title="地図の表示を戻す" disabled={disabled} onClick={resetView}><Icon name="reset" /></button>
+        </div>
+        <button type="button" className="spot-map-locate" aria-label="現在地へ戻る" title="現在地へ戻る" disabled={disabled || locating} onClick={locate}><Icon name="locate" /></button>
+      </div>}
     </div>}
-    {API_KEY && <div ref={target} className="google-map-canvas" aria-label={spotMode ? '対象スポットを選ぶGoogleマップ' : '撮影の立ち位置を選ぶGoogleマップ'} />}
+    {pickPlace && locationStatus && <p role="status">{locationStatus}</p>}
     {status === 'missing' && <p>地図の設定がないため、下の数値入力で設定できます。</p>}
     {status === 'loading' && <p role="status">地図を読み込んでいます…</p>}
     {status === 'error' && <div role="alert"><p>地図を読み込めませんでした。入力は保持されています。数値入力で設定できます。</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>地図を再試行</button></div>}
