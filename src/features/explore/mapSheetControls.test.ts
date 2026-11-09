@@ -185,8 +185,9 @@ describe('PC sidebar layout integrity', () => {
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace')
     expect(css).toContain('body.explore-fullbleed .sidebar-toggle {')
     expect(css).toContain('width: 44px; height: 44px;')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
-    expect(css).toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
+    expect(css).toContain('left: calc(var(--pc-sidebar-open-w) - 48px)')
+    expect(css).not.toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
+    expect(css).not.toMatch(/explore-sidebar-collapsed \.sidebar-toggle[^}]*left: 6px/)
   })
 })
 
@@ -346,7 +347,8 @@ describe('chrome consistency (D-66)', () => {
     expect(css).toContain('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-content; padding: 4px 10px 4px 4px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
     expect(css).toContain('body:has(.owner-records:not([hidden])) .brand,\n  body.explore-fullbleed .brand {')
     expect(css).toContain('body:has(.owner-records:not([hidden]))::before,\n  body.explore-fullbleed::before {')
-    expect(css).toContain('body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .sidebar-toggle,\n  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
+    expect(css).toContain('left: calc(var(--pc-sidebar-open-w) - 48px)')
+    expect(css).not.toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
   })
 })
 
@@ -426,9 +428,10 @@ describe('PC sidebar containment and collapsed rail', () => {
   it('keeps brand mark, toggle and nav icons on the collapsed ~56px rail', () => {
     expect(css).toContain('--pc-sidebar-rail-w: 56px;')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 32px; height: 32px; }')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 22px; height: 22px; flex: none; }')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
-    expect(css).toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 18px; height: 18px; flex: none; }')
+    expect(css).toContain('left: calc(var(--pc-sidebar-open-w) - 48px)')
+    expect(css).not.toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
+    expect(css).not.toMatch(/explore-sidebar-collapsed \.sidebar-toggle[^}]*left: 6px/)
   })
 })
 
