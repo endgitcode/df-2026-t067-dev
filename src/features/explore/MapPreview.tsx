@@ -867,7 +867,7 @@ export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectA
             <button type="button" className="sidebar-toggle" aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
               onClick={() => setSidebarCollapsed((value) => !value)}>
-              <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
+              <Icon name="panel" />
             </button>
           </>
           : <ExploreBottomSheet openSignal={effectivePinAreaId ?? (selectedQuestId ? `quest:${selectedQuestId}` : null)} onHeightChange={setSheetHeight}
