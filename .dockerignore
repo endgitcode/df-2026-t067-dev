@@ -7,6 +7,8 @@
 !tsconfig*.json
 !scripts
 !scripts/prerender.mjs
+!public
+!public/**
 !src
 !src/**
 !server
