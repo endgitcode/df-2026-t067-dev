@@ -219,10 +219,11 @@ describe('look and spacing (D-54)', () => {
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-gap) + 8px); }')
   })
 
-  it('stretches the panel list to the bottom with a faded lower edge and stable scrollbar gutters', () => {
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 1 1 auto; min-height: 0;')
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: 1 1 auto; min-height: 0; max-height: none; padding-bottom: 18px; }')
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list::after')
+  it('keeps a single panel scroller with a stable gutter (D-70 supersedes the D-54 list scroller)', () => {
+    // スクロールはパネル本体だけが担い、一覧リスト側は伸縮もスクロールもしない。
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 0 0 auto;')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: none; max-height: none; overflow: visible; padding-bottom: 18px; }')
+    expect(css).not.toContain('.explore-side-panel .explore-list::after')
     expect(css).toContain('.explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }')
     expect(css).toContain('overflow-y: auto; scrollbar-gutter: stable; display: flex; flex-direction: column;')
   })
@@ -287,5 +288,26 @@ describe('chrome consistency (D-66)', () => {
     expect(css).toContain('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand { padding: 4px 10px 4px 4px; }')
     // アカウント側の列はビューポート右端基準（1fr auto＋右余白20px）にする。
     expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { min-height: 0; grid-template-columns: 1fr auto; padding: 10px 20px 16px calc(16px + 380px + 24px); }')
+  })
+})
+
+// パネルの単一スクロールと一覧内詳細の枠なし化（D-70）。CSS の実測は jsdom では
+// できないため、規則の文字列と置き場所で担保する。
+describe('panel single scroll and in-list detail (D-70)', () => {
+  it('makes the PC side panel the only scroller for the quest list', () => {
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 0 0 auto;')
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: none; max-height: none; overflow: visible; padding-bottom: 18px; }')
+    expect(css).not.toContain('.explore-side-panel .explore-list::after')
+  })
+
+  it('drops the detail card frame inside the list accordion', () => {
+    expect(css).toContain('.quest-card.is-in-list { border: 0; border-radius: 0; background: transparent; box-shadow: none; }')
+    expect(css).toContain('.quest-card.is-in-list .quest-card-heading { padding: 14px 16px 0; border-bottom: 0; background: transparent; }')
+    expect(css).toContain('.quest-card.is-in-list .quest-card-content { padding: 12px 16px 16px; }')
+  })
+
+  it('raises the sheet for quest selection and fits selections above the raised sheet', () => {
+    expect(mapPreview).toContain("selectedQuestId ? `quest:${selectedQuestId}` : null")
+    expect(mapPreview).toContain('Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))')
   })
 })

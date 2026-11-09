@@ -34,20 +34,31 @@ function RecordPhoto({ blob }: { blob: Blob }) {
 
 function RecordGuidance({ record }: { record: Discovery }) {
   const { afterClear, descriptionSnapshot } = record
+  const spot = afterClear?.spot
   const fields = ([
     ['アクセス', afterClear?.access.trim()],
     ['利用時間', afterClear?.hours.trim()],
     ['自治体からの紹介', afterClear?.promoComment.trim()],
     ['解説', afterClear?.explanation.trim() || descriptionSnapshot.trim()],
+    ['スポット名', spot?.name],
+    ['住所', spot?.address],
   ] as const).filter(([, value]) => value)
 
   if (fields.length === 0) return null
-  return <dl className="record-guidance">
-    {fields.map(([label, value]) => <div key={label}>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>)}
-  </dl>
+  // 地図リンクは固定の Google Maps 検索URLから組み立てる（D-71）。スポットに
+  // 由来する URL を保存・再表示せず、位置と任意の Place ID だけから作る。
+  const mapsUrl = spot && 'https://www.google.com/maps/search/?api=1&query='
+    + spot.position.latitude + ',' + spot.position.longitude
+    + (spot.googlePlaceId ? '&query_place_id=' + encodeURIComponent(spot.googlePlaceId) : '')
+  return <>
+    <dl className="record-guidance">
+      {fields.map(([label, value]) => <div key={label}>
+        <dt>{label}</dt>
+        <dd>{value}</dd>
+      </div>)}
+    </dl>
+    {mapsUrl && <p className="record-spot-link"><a href={mapsUrl} target="_blank" rel="noreferrer">Googleマップで開く</a></p>}
+  </>
 }
 
 function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: string; onBack: () => void; onDeleted: () => void }) {
