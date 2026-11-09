@@ -130,7 +130,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const source = readDataSource(import.meta.env.VITE_QUEST_DATA_SOURCE, import.meta.env.DEV)
   const teamPreview = apiMode && apiDataMode === 'team-preview'
   const teamAnswerTrial = teamPreview && teamAnswerTrialProp
-  const railFallback = teamPreview ? catalogFallback : undefined
+  const railFallback = teamPreview || (apiMode && apiDataMode === 'durable-local') ? catalogFallback : undefined
   const getHint = providedGetHint ?? (source === 'preview' && !apiMode && !externalQuest && !catalogFallback ? getPreviewHint : undefined)
   const localApiMode = apiMode || source === 'local-api'
   const durableLocal = apiMode && apiDataMode === 'durable-local'
@@ -320,7 +320,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         return
       }
       if (lifecycle.current !== operation || selectionGeneration.current !== generation) return
-      if (durableLocal && !accountChanged && !onStartChallenge && selection && openRef.current &&
+      if ((durableLocal || teamAnswerTrial) && !accountChanged && !onStartChallenge && selection && openRef.current &&
         selectedQuest.current?.questId === selection.questId && selectedQuest.current.version === selection.expectedVersion && Date.now() - requestedAt < 30_000) {
         setStartIntent({ auth: authClient.getSnapshot(), selection, generation, expires: requestedAt + 30_000 })
       }
@@ -385,7 +385,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const clearedDiscoveryId = quest && uid !== null ? clearedByQuest.get(quest.questId) : undefined
   const questDetailBlock = (
               !railFallback && <div ref={questCard}>
-                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={!teamPreview && apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} hideToggle={detailInList} handoffUrl={handoffUrl}
+                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={durableLocal ? '永続APIの公開問題（検証用）' : teamPreview ? 'チーム共有検証の公開問題' : apiMode ? '公開APIデモデータ' : undefined} detailsLabel={durableLocal || teamPreview ? '問題の詳細' : undefined} open={isQuestOpen} hideToggle={detailInList} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
                   onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
@@ -402,7 +402,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                   feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) closeCamera(); /* 開閉ボタンはレールに置く使い方（選択の受け口が無い場合）だけに出る（D-65）。一覧の中の詳細ではボタン自体を出さず、閉じる操作は行の再タップによる選択解除（D-55）に一本化したため、ここで選択解除まで連動させる配線は不要になった（旧 D-60 の配線は廃止）。 */ setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
                     {!questStale && !clearedDiscoveryId && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
                       key={JSON.stringify([uid, quest.questId, quest.version, captureRevision])} api={api} quest={quest} dataMode={apiDataMode}
-                      autoStart={durableLocal && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
+                      autoStart={(durableLocal || teamAnswerTrial) && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
                       canAutoStart={() => startIntent !== null && startIntent.generation === selectionGeneration.current && startIntent.expires > Date.now() && openRef.current && authClient.getSnapshot() === startIntent.auth}
                       onAutoStartConsumed={() => setStartIntent(null)}
                       onOpenDiscovery={durableLocal || teamAnswerTrial ? (id) => { noteCleared(quest.questId, id); setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
@@ -506,7 +506,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {feedback && <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
         </section>}
         <div className="explore-view" hidden={showRecords}>
-        {(!teamPreview ? catalogFallback : undefined) ?? <>
+        {(!teamPreview && !durableLocal ? catalogFallback : undefined) ?? <>
         <section className="explore view-enter" aria-labelledby="explore-title">
           <div className="explore-heading">
             <div>

@@ -1400,7 +1400,7 @@ it('opens a durable quest directly from its public card with a region list fallb
   const api = apiFixture()
   render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="durable-local" />)
   fireEvent.click(await screen.findByRole('button', { name: '森の謎を開く' }))
-  expect(await screen.findByRole('region', { name: 'サンプル問題の詳細' })).toBeVisible()
+  expect(await screen.findByRole('region', { name: '問題の詳細' })).toBeVisible()
   expect(api.getQuest).toHaveBeenLastCalledWith(second.questId, expect.anything())
   // フォールバック表示でも絞り込みは「場所で絞る」から辿れる（D-48）。
   expect(screen.getByRole('button', { name: '場所で絞る' })).toBeVisible()
@@ -1431,4 +1431,29 @@ describe('ディープリンク', () => {
     expect(screen.getByRole('button', { name: '問題を見てみる' })).toBeVisible()
     expect(screen.queryByText('詳細版の手がかり')).not.toBeInTheDocument()
   })
+})
+
+
+it.each(['empty', 'error'] as const)('durable %s keeps the map and region recovery beside the catalog state', async state => {
+  const api = apiFixture()
+  if (state === 'empty') api.listQuests.mockResolvedValueOnce(page([]))
+  else api.listQuests.mockRejectedValueOnce(new Error('synthetic failure'))
+  api.listQuests.mockResolvedValue(page([second]))
+  const user = userEvent.setup()
+  const view = render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="durable-local" />)
+  await screen.findByRole('heading', { name: state === 'empty' ? '問題はありません' : '問題を読み込めませんでした' })
+  expect(view.container.querySelector('.explore')).not.toBeNull()
+  await user.click(await screen.findByRole('button', { name: '地図の公開地域を選択' }))
+  expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
+})
+
+it('durable labels describe the persistent verification mode and retain synthetic restrictions', async () => {
+  window.history.replaceState(null, '', '/?quest=quest-a')
+  render(<ApiQuestApp api={apiFixture()} authClient={signedOutAuth()} dataMode="durable-local" />)
+  await screen.findByRole('heading', { name: first.title })
+  expect(screen.queryByText('公開APIデモデータ')).not.toBeInTheDocument()
+  expect(screen.queryByText('架空のサンプル問題')).not.toBeInTheDocument()
+  expect(screen.getByText('永続APIの公開問題（検証用）')).toBeVisible()
+  expect(screen.getByRole('region', { name: '問題の詳細' })).toBeVisible()
+  expect(screen.getByText(/回答の送信には合成画像と架空の座標/)).toBeVisible()
 })
