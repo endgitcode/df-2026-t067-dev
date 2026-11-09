@@ -14,6 +14,7 @@ import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, M
 import { boundsForFilter } from '../quests/prefectureBounds'
 import { getRegionAreas } from '../quests/areaHierarchy'
 import { areaPinPosition } from './viewportQuests'
+import { mapControlsPlacement } from './mapOverlayLayout'
 import { isMapControlFullyCovered, isMapControlWithin } from './mapControlVisibility'
 
 // SSR has no portal target; the fixed toggle has the same screen coordinates inline.
@@ -279,8 +280,22 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const wideByWidth = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     && window.matchMedia(WIDE_VIEWPORT_QUERY).matches
   const panelMode = sheetMode && (wideViewport || wideByWidth)
-  // Keep mobile map buttons at a viewport-fixed position and disable each button
-  // while any part of its hit target is underneath the moving sheet.
+  useLayoutEffect(() => {
+    const shell = mapShell.current
+    const overlay = shell?.querySelector<HTMLElement>('.map-filter-overlay')
+    if (!shell || !overlay || panelMode) return
+    const update = () => shell.style.setProperty('--map-filter-bottom', `${Math.max(0, overlay.getBoundingClientRect().bottom - shell.getBoundingClientRect().top)}px`)
+    update()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    observer?.observe(overlay)
+    window.addEventListener('resize', update)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', update)
+      shell.style.removeProperty('--map-filter-bottom')
+    }
+  }, [panelMode, status])
+  // Follow the rendered sheet edge during drags and transitions; hide the group if it cannot fit.
   useLayoutEffect(() => {
     if (typeof window.matchMedia !== 'function') return
     const media = window.matchMedia('(max-width: 980px)')
@@ -306,13 +321,19 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         width: Math.max(0, Math.min(viewportLeft + viewportWidth, shellRect.right) - Math.max(viewportLeft, shellRect.left)),
         height: Math.max(0, Math.min(viewportTop + viewportHeight, shellRect.bottom) - Math.max(viewportTop, shellRect.top)),
       }
+      const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom ?? 0
+      const filterBottom = shell?.querySelector('.filter-toggle')?.getBoundingClientRect().bottom ?? 0
+      const placement = mapControlsPlacement(shellRect.bottom, sheetRect.top, controls.getBoundingClientRect().height,
+        Math.max(visibleBounds.top, headerBottom, filterBottom) + 12)
+      controls.style.bottom = `${placement.bottom}px`
+      controls.style.visibility = placement.hidden ? 'hidden' : ''
       const inactiveLabels = new Set<string>()
       for (const button of buttons) {
         const rect = button.getBoundingClientRect()
         const label = button.getAttribute('aria-label') ?? ''
         const available = isMapControlWithin(rect, visibleBounds)
         const covered = available && isMapControlFullyCovered(rect, sheetRect)
-        if (!available || covered) {
+        if (placement.hidden || !available || covered) {
           if (document.activeElement === button) handle?.focus({ preventScroll: true })
           inactiveLabels.add(label)
         }
@@ -349,6 +370,8 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     media.addEventListener('change', onViewportChange)
     return () => {
       observer?.disconnect()
+      controls.style.removeProperty('bottom')
+      controls.style.removeProperty('visibility')
       if (animationFrame) window.cancelAnimationFrame(animationFrame)
       sheet.removeEventListener('transitionrun', onTransitionRun)
       sheet.removeEventListener('transitionend', stopTransitionSampling)
@@ -381,7 +404,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       // snapHeights）と揃える。読めない時は peek 前提に倒す。
       const stageHeight = target.current?.clientHeight ?? 0
       const sheetFitHeight = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
-      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, wideViewport ? undefined : sheetFitHeight))
+      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, wideViewport ? undefined : sheetFitHeight, Math.max(0, mobileHeaderClearance() - (mapShell.current?.getBoundingClientRect().top ?? 0))))
     } else instance.fitBounds(bounds)
     try {
       // フィット完了（idle）前に利用者が地図を掴んだら、その回の完了位置は記録しない
@@ -437,7 +460,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       fitted = true
     }
     if (!fitted) return false
-    instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+    instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, undefined, Math.max(0, mobileHeaderClearance() - (mapShell.current?.getBoundingClientRect().top ?? 0))))
     clampFitZoomOnIdle(instance)
     initialFitDone.current = instance
     initialFitSignature.current = `${sheetMode}:${panelMode}`
@@ -650,7 +673,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
               if (fitPoints) for (const fitPoint of fitPoints) { bounds.extend(fitPoint); fitted = true }
               else { bounds.extend({ lat: point.lat, lng: point.lng }); fitted = true }
             }
-            if (fitted) { instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current)); clampFitZoomOnIdle(instance) }
+            if (fitted) { instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, undefined, Math.max(0, mobileHeaderClearance() - (mapShell.current?.getBoundingClientRect().top ?? 0)))); clampFitZoomOnIdle(instance) }
           }))
           continue
         }

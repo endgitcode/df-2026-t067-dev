@@ -1,15 +1,16 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { mapControlsPlacement } from './mapOverlayLayout'
 
 const readCss = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8').replace(/\r\n?/g, '\n')
 const css = readCss('src/App.css')
-const MOBILE_CONTROL_RULE = '.map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h, 70px) + 180px); z-index: 3; }'
+const MOBILE_CONTROL_RULE = '.map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h, 70px) + var(--sheet-h, 168px) + 12px); z-index: 3; }'
 const mapPreview = readFileSync(resolve(process.cwd(), 'src/features/explore/MapPreview.tsx'), 'utf8')
 const bottomSheet = readFileSync(resolve(process.cwd(), 'src/features/explore/ExploreBottomSheet.tsx'), 'utf8')
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
-// 右下の地図操作系はシートの高さに追随せず、シェル内の同じ場所に置く。
+// 地図操作はシート上端に追従し、ヘッダーとの間に収まる場合だけ表示する。
 describe('map controls placement with the bottom sheet', () => {
   it('スマホ幅では開いた場所フィルターを一覧シートより手前に置く', () => {
     // jsdom は重なりを描画しないため、390pxに適用されるCSSと開状態の条件を検証する。
@@ -23,7 +24,7 @@ describe('map controls placement with the bottom sheet', () => {
     expect(css).toContain('.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3;')
   })
 
-  it('keeps controls at a constant shell position across the mobile range', () => {
+  it('follows the sheet height across the mobile range', () => {
     expect(css.split(MOBILE_CONTROL_RULE).length - 1).toBe(1)
     const mediaAt = css.indexOf('@media (max-width: 980px)')
     expect(mediaAt).toBeGreaterThan(-1)
@@ -39,49 +40,33 @@ describe('map controls placement with the bottom sheet', () => {
     expect(css).toContain('.map-controls { position: absolute; right: 17px; bottom: 52px;')
   })
 
-  it('fits the single-row controls above a peek sheet in a 568 by 320 landscape viewport', () => {
-    const viewportWidth = 568
-    const viewportHeight = 320
-    const tabBarHeight = 70
-    const peekHeight = 168
-    const controlsHeight = 48
-    const bottomOffset = Math.min(tabBarHeight + 169, viewportHeight - controlsHeight)
-    const controlsTop = viewportHeight - bottomOffset - controlsHeight
-    const controlsBottom = viewportHeight - bottomOffset
-    const peekSheetTop = viewportHeight - tabBarHeight - peekHeight
-    const controlsWidth = 194
-    const controlsRight = viewportWidth - 64
-    const controlsLeft = controlsRight - controlsWidth
-    const accountLeft = 514
+  it.each([568, 280])('keeps 44px landscape targets within a %ipx wide viewport when space is available', (viewportWidth) => {
     expect(css).toContain('@media (orientation: landscape)')
     expect(css).toContain('.map-preview-shell.has-sheet .map-zoom-group { display: flex; flex-direction: row; }')
-    expect(css).toContain('bottom: min(calc(var(--mobile-tabbar-h, 70px) + 169px), calc(100dvh - 48px));')
-    expect(css).toContain('right: 64px;')
-    expect(controlsTop).toBe(33)
-    expect(controlsBottom).toBe(81)
-    expect(controlsTop).toBeGreaterThanOrEqual(0)
-    expect(controlsBottom).toBeLessThan(peekSheetTop)
-    expect(controlsRight).toBe(504)
-    expect(controlsLeft).toBe(310)
-    expect(controlsRight).toBeLessThan(accountLeft)
-  })
-
-  it('keeps full-size landscape targets on-screen at 280px and usable with a closed sheet', () => {
-    const viewportHeight = 280
-    const tabBarHeight = 70
-    const peekHeight = 168
-    const controlsHeight = 48
-    const bottomOffset = Math.min(tabBarHeight + 169, viewportHeight - controlsHeight)
-    const controlsTop = viewportHeight - bottomOffset - controlsHeight
-    const controlsBottom = viewportHeight - bottomOffset
-    const peekSheetTop = viewportHeight - tabBarHeight - peekHeight
-    const closedSheetTop = viewportHeight - tabBarHeight - 34
-    expect(css).toContain('bottom: min(calc(var(--mobile-tabbar-h, 70px) + 169px), calc(100dvh - 48px));')
+    expect(css).toContain('right: 64px; bottom: calc(var(--mobile-tabbar-h, 70px) + var(--sheet-h, 168px) + 12px); flex-direction: row;')
     expect(css).toContain('.map-zoom button { width: 44px; height: 44px; }')
-    expect(controlsTop).toBe(0)
-    expect(controlsBottom).toBe(48)
-    expect(controlsBottom).toBeGreaterThan(peekSheetTop)
-    expect(controlsBottom).toBeLessThan(closedSheetTop)
+    const viewportHeight = 320
+    const controlsHeight = 48
+    const controlsWidth = 194
+    const controlsRight = viewportWidth - 64
+    expect(controlsRight - controlsWidth).toBeGreaterThanOrEqual(0)
+    expect(controlsRight).toBeLessThanOrEqual(viewportWidth - 54)
+    for (const sheetHeight of [168, 34]) {
+      const sheetTop = viewportHeight - 70 - sheetHeight
+      const placement = mapControlsPlacement(viewportHeight, sheetTop, controlsHeight, 124)
+      const controlsBottom = viewportHeight - placement.bottom
+      expect(controlsBottom).toBe(sheetTop - 12)
+      if (sheetHeight === 168) {
+        // 横向きではヘッダーとpeekの間に収まらない。縮小せず隠し、閉じると再び操作できる。
+        expect(placement.hidden).toBe(true)
+      } else {
+        expect(placement.hidden).toBe(false)
+        expect(controlsBottom - controlsHeight).toBeGreaterThanOrEqual(124)
+        expect(controlsBottom).toBeLessThan(viewportHeight - 70)
+      }
+    }
+    expect(mapPreview).toContain("controls.style.visibility = placement.hidden ? 'hidden' : ''")
+    expect(mapPreview).toContain('if (placement.hidden || !available || covered)')
   })
 
   it('puts controls above the closed mobile handle and the sheet above controls while open or dragging', () => {
@@ -142,13 +127,13 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).not.toContain('body.explore-fullbleed .mobile-nav {')
   })
 
-  it('keeps the mobile map controls at a constant position behind the sheet and the sheet above the tab bar', () => {
+  it('follows the sheet edge and keeps the sheet above the tab bar', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 180px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); z-index: 3; }')
     expect(mapPreview).toContain('isMapControlFullyCovered(rect, sheetRect)')
     expect(mapPreview).toContain("inert={inactiveMapControls.has('地図を拡大')}")
     expect(mapPreview).toContain('new ResizeObserver(update)')
-    expect(css).toContain('.map-preview-shell.has-sheet .map-controls { right: 64px; bottom: min(calc(var(--mobile-tabbar-h, 70px) + 169px), calc(100dvh - 48px)); flex-direction: row; }')
+    expect(css).toContain('.map-preview-shell.has-sheet .map-controls { right: 64px; bottom: calc(var(--mobile-tabbar-h, 70px) + var(--sheet-h, 168px) + 12px); flex-direction: row; }')
     expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
     const reopenRule = 'body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px;'
     expect(css).toContain(reopenRule)
@@ -160,7 +145,7 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h) + 120px);')
     expect(css).toContain('body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .below-map-quests {')
     expect(css).not.toContain('bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6;')
-    // 同じ固定位置のまま、通常時・ドラッグ中ともシート（z-index 7）の背面に残す。
+    // 通常時・ドラッグ中とも同じ重なり順を保つ。
     expect(css).toContain('.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4;')
     expect(css).toContain('.explore-sheet { left: 0; right: 0; bottom: 0; z-index: 7;')
     expect(css).not.toContain('.explore-sheet.is-dragging { z-index:')
@@ -169,7 +154,7 @@ describe('mobile bottom tab bar (D-32)', () => {
   it('stacks the area chip after the filter flow so one and two filter rows cannot overlap it', () => {
     expect(mapPreview).toContain('<div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline">')
     expect(css).toContain('.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;')
-    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
+    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top, 0px) + 68px); left: 12px; right: 12px; }')
     expect(css).not.toContain('body.explore-fullbleed .map-topline { top:')
     expect(css).toContain('.map-topline.is-sidebar { position: absolute; top: calc(env(safe-area-inset-top) + 88px);')
     expect(css).toContain('.map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; min-width: 0; }')
@@ -315,7 +300,7 @@ describe('mobile fullbleed finish', () => {
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
     expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; border-radius: 12px; }')
     expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
-    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
+    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top, 0px) + 68px); left: 12px; right: 12px; }')
   })
 })
 
@@ -444,7 +429,7 @@ describe('panel single scroll and in-list detail (D-70)', () => {
 // 規則の文字列と定数で担保する。
 describe('sheet peek height and overflow guards (D-73)', () => {
   it('clears the mobile map controls above the peek sheet via the sheet height variable', () => {
-    expect(css).toContain('body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 180px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); z-index: 3; }')
     expect(css).not.toContain('bottom: calc(var(--mobile-tabbar-h) + 58px)')
   })
 
@@ -560,4 +545,22 @@ it('keeps yellow out of selected traveler chips, filters, rows and hint numbers'
     const rule = css.slice(start, css.indexOf('}', start))
     expect(rule, selector).not.toMatch(/var\(--ui-(accent|soft)/)
   }
+})
+
+// 地図未読込・失敗時も、同じフィルター位置と再試行の操作領域を維持する。
+describe('mobile overlay clearance', () => {
+  it('places fallback filters in flow before the state and reserves tab bar clearance', () => {
+    expect(mapPreview).toContain(`status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>`)
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell:has(> .map-filter-flow) { display: flex; flex-direction: column; }')
+    expect(css).toContain('order: -1; flex: none; margin: 0; padding: calc(env(safe-area-inset-top, 0px) + 68px) 12px 12px;')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell:has(> .map-filter-flow) { padding-bottom: var(--mobile-tabbar-h); }')
+    expect(css).toContain('.map-state button { min-height: 44px;')
+  })
+
+  it('keeps area errors below the measured filter and gives sheet actions scroll clearance', () => {
+    expect(mapPreview).toContain("shell.style.setProperty('--map-filter-bottom'")
+    expect(mapPreview).toContain('observer?.observe(overlay)')
+    expect(css).toContain('body.explore-fullbleed .map-area-error { margin-top: calc(var(--map-filter-bottom, 112px) + 12px); }')
+    expect(css).toContain('.explore-sheet-body { padding-bottom: 16px; scroll-padding-bottom: 16px; }')
+  })
 })
