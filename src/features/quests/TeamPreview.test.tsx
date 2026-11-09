@@ -56,6 +56,33 @@ it('lets a signed-out traveler browse the map, published problem and public hint
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:team-hint')
 })
 
+it('keeps the quest count and rows while the detail loads after a row tap (D-75)', async () => {
+  const user = userEvent.setup()
+  const auth: AuthClient = {
+    getSnapshot: () => signedOut, subscribe: () => () => {},
+    signInWithGoogle: vi.fn(), signOut: vi.fn(), getIdToken: vi.fn(async () => null),
+  }
+  let resolveQuest: ((response: Response) => void) | undefined
+  const fetcher = vi.fn<typeof fetch>(async (input) => {
+    const path = String(input)
+    if (path.startsWith('/api/v1/areas?')) return Response.json({ items: [area], nextCursor: null }, { headers })
+    if (path.startsWith('/api/v1/quests?')) return Response.json({ items: [quest], nextCursor: null }, { headers })
+    if (path === '/api/v1/quests/' + quest.questId) return new Promise<Response>((resolve) => { resolveQuest = resolve })
+    throw new Error('Unexpected public traveler request: ' + path)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  render(<TeamPreview authClient={auth} />)
+  const row = await screen.findByRole('button', { name: quest.title + 'の詳細を見る' })
+  expect(screen.getByText('1件')).toBeVisible()
+  await user.click(row)
+  // 詳細の取得が保留中でも、一覧の件数は「読み込み中」へ切り替わらず、行も残る。
+  expect(screen.getByText('1件')).toBeVisible()
+  expect(screen.queryByText('読み込み中')).not.toBeInTheDocument()
+  expect(row).toBeVisible()
+  resolveQuest!(Response.json(quest, { headers }))
+  expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
+})
+
 it('answer trial build lets an invited traveler open the capture flow and records', async () => {
   vi.stubEnv('VITE_QUEST_TEAM_ANSWER_TRIAL', 'true')
   const signedIn = { status: 'signed-in', user: { uid: 'traveler-a', displayName: null } } as const

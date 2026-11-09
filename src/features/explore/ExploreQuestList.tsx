@@ -20,7 +20,9 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
       揃え、行・カードでも再タップで選択を外せるようにする。 */
   onDeselectQuest?: () => void
   /** 読み込み中は件数と「謎はありません」を出さず、行の場所だけを確保する。
-      一瞬だけ「0件／空です」が見えるチラつきと、読み込み前後の大きさの変化を防ぐ。 */
+      一瞬だけ「0件／空です」が見えるチラつきと、読み込み前後の大きさの変化を防ぐ。
+      この読み込み表示は行がまだ無い初回だけに使う（D-75）。再取得中に行が
+      ある場合は、前の件数と行をそのまま残し、「読み込み中」へ切り替えない。 */
   loading?: boolean
   /** ハイライトされた地域の先頭カードへリスト内スクロールするか。地図下の一覧（#70）では
       ページ側のスクロールと競合するため切る。 */
@@ -93,7 +95,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   return (
     <section className="explore-list" aria-label="選べる謎の一覧">
       <div className="explore-list-head">
-        <span>{loading ? '読み込み中' : `${quests.length}件`}</span>
+        <span>{loading && quests.length === 0 ? '読み込み中' : `${quests.length}件`}</span>
       </div>
       {quests.length === 0 && loading
         ? <ul className="explore-quest-list" aria-hidden="true">

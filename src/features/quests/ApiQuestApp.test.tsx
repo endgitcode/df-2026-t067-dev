@@ -85,6 +85,23 @@ describe('APIから問題を表示', () => {
     expect(newImage).toHaveAttribute('src', revised.optionalHintImage)
   })
 
+  it('公開情報の再取得中は前の一覧を残し、新しい一覧が届いたら差し替える（D-75）', async () => {
+    const user = userEvent.setup()
+    const api = apiFixture()
+    render(<ApiQuestApp api={api} authClient={signedOutAuth()} />)
+    expect(await screen.findByRole('button', { name: '一覧表示用タイトルを開く' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '森の謎を開く' })).toBeVisible()
+    // 再取得側の一覧取得を保留し、その間も前の一覧が画面に残ることを見る。
+    let resolveQuests: ((value: { items: PublicQuest[]; nextCursor: null }) => void) | undefined
+    api.listQuests.mockImplementation(() => new Promise<{ items: PublicQuest[]; nextCursor: null }>((resolve) => { resolveQuests = resolve }))
+    await user.click(screen.getByRole('button', { name: '公開情報を更新' }))
+    expect(screen.getByRole('button', { name: '一覧表示用タイトルを開く' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '森の謎を開く' })).toBeVisible()
+    resolveQuests!(page([{ ...first, title: '更新後タイトル' }, second]))
+    expect(await screen.findByRole('button', { name: '更新後タイトルを開く' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: '一覧表示用タイトルを開く' })).not.toBeInTheDocument()
+  })
+
   it('問題を切り替えると古いヒント画像要素を破棄する', async () => {
     const user = userEvent.setup()
     const quest = { ...first, optionalHintImage: 'https://example.test/a.jpg' }
