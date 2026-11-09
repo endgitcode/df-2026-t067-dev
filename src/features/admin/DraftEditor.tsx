@@ -69,7 +69,7 @@ export default function DraftEditor({ draft, setDraft, materialChanged, sampleCo
       <label>特徴を1行で追加<input value={featureLine} onChange={event => setFeatureLine(event.target.value)} placeholder="例：赤い三角屋根がある" /></label>
       <button type="button" disabled={!featureLine.trim()} onClick={addFeatureLine}>特徴を追加</button>
     </div>
-    {!omitMemo && <label>下書きの根拠・人のメモ<textarea rows={3} value={draft.draftingNotes} onChange={event => setDraft(current => ({ ...current, draftingNotes: event.target.value }))} /></label>}
+    {!omitMemo && <label>下書きの根拠・人のメモ<textarea id="workflow-notes" rows={3} value={draft.draftingNotes} onChange={event => setDraft(current => ({ ...current, draftingNotes: event.target.value }))} /></label>}
     {!workflow && <button className="submit-button" type="button" onClick={onPreview}>表示プレビューへ</button>}
     {!workflow && <button type="button" onClick={onBack}>素材・場所へ戻る</button>}
   </section>

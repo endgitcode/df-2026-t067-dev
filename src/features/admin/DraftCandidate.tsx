@@ -56,13 +56,12 @@ export function DraftCandidate({ api, saved, current, omitNotes = false, onApply
   return <section className="form-section" aria-label="下書き案">
     <details>
       <summary>下書き案を取り込む</summary>
-      <h2>検証用の下書き案</h2>
-      <p>保存済みの下書き版 {saved.draftRevision} の合成素材を使います。</p>
+      <h2>下書き案</h2>
       <button type="button" disabled={state.status === 'loading' || (state.status === 'error' && state.changed)}
-        onClick={load}>{state.status === 'loading' ? '案を取得しています…' : '保存済み版の案を取得'}</button>
+        onClick={load}>{state.status === 'loading' ? '案を取得しています…' : '下書き案を取得'}</button>
       {state.status === 'error' && <p role="alert">{state.message}</p>}
       {state.status === 'ready' && <>
-        <p>{state.source === 'real' ? 'Vertex AIの案です。内容を確認してから取り入れてください。' : '合成素材の固定の案です。'}</p>
+        <p>{state.source === 'real' ? 'Vertex AIの案です。内容を確認してから取り入れてください。' : '検証用の合成素材から作った案です。'}</p>
         <h3>{state.content.title}</h3>
         <p>{state.content.question}</p>
         <ol>{state.content.hints.map((hint, index) => <li key={index}>{hint}</li>)}</ol>

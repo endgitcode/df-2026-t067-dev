@@ -1,5 +1,5 @@
 import { PHOTO_UPLOAD_MAX_BYTES, PHOTO_UPLOAD_MIME_TYPES, PHOTO_UPLOAD_ACCEPT } from '../../shared/mediaLimits'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError, parsePublishManagedQuest } from '../../shared/api'
 import type { ApiClient, ManagedQuest, PhotoDecision, PublishManagedQuest, ReviewField, ReviewSubmission } from '../../shared/api'
@@ -70,6 +70,11 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   api: ApiClient; initial: ManagedQuest; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; approvedAssets?: boolean; onFix?: (field: ReviewField) => void; onBusy?: (busy: boolean) => void; onTrialConfirmed?: () => void;
   readiness?: ReviewSubmission; readinessFailed?: boolean; onReadinessRetry?: () => void; onBack: () => void; onPublished: () => void
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const publishTrigger = useRef<HTMLButtonElement>(null)
+  const cancelButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => { if (confirmOpen) cancelButton.current?.focus() }, [confirmOpen])
+  function closeConfirm() { setConfirmOpen(false); publishTrigger.current?.focus() }
   const [quest, setQuest] = useState(initial)
   const [photo, setPhoto] = useState<File | null>(null)
   const [rights, setRights] = useState('')
@@ -95,6 +100,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
     : !approvedAssets && quest.status !== 'review_pending' ? 'この版の公開条件を確認してください。'
     : !proofs.MATCH || !proofs.WRONG_TARGET ? 'この下書き版で一致・別対象の写真試験を完了してください。'
     : ''
+  const trialDisabled = disabled || missing.length > 0 || (approvedAssets && !readiness)
   const reviewed = !checkReason
   const ready = reviewed && (approvedAssets || confirmationLabels.every(([item]) => checked.includes(item)))
   const realPhotoTest = photoTestSource === 'real'
@@ -132,7 +138,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
 
   function trial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!photoValid || !rights.trim() || reuseNeeded) return
+    if (trialDisabled || !photoValid || !rights.trim() || reuseNeeded) return
     sendTrial(photo!, key.current ??= crypto.randomUUID())
   }
 
@@ -143,6 +149,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   }
 
   function sendTrial(file: File, idempotencyKey: string, expected?: TrialKind) {
+    if (trialDisabled) return
     const report = expected && ((feedback: TrialFeedback) => {
       setTrialFeedback((current) => ({ ...current, [expected]: feedback }))
       if (feedback.kind === 'pending') setProofs((current) => ({ ...current, [expected]: undefined }))
@@ -192,7 +199,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
 
   return <section className="form-section" aria-labelledby="publication-workspace-title">
     <h2 id="publication-workspace-title">写真試験と公開確認</h2>
-    <p>{quest.draft.content.title || '無題の下書き'}・下書き版 {draftRevision}</p>
+    <p>{quest.draft.content.title || '無題の下書き'}</p>
     <p>{realPhotoTest ? '検証用の環境です。写真試験は実写真で照合します。' : '検証用の環境です。合成写真を使います。'}</p>
     <button type="button" onClick={onBack}>{backLabel}</button>
     {areaUnclassified && <p role="alert">この地域は都道府県コードが未設定（未分類）のため、公開できません。地域の分類が完了するまで公開は止まります。</p>}
@@ -204,13 +211,14 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
       {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
       {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}を確認</button> : reviewLabels[item]}</li>)}</ul></>}
     </fieldset>}
+    {missing.length > 0 && <div><p>不足項目をすべて修正すると写真試験を送信できます。</p><ul>{missing.map(item => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}の入力へ</button> : reviewLabels[item]}</li>)}</ul></div>}
     {approvedAssets ? <>
       {realPhotoTest && <p>照合に使う許可がある写真を選んでください。送信ごとに回答と共用の送信枠を1回使います。</p>}
       {!realPhotoTest && <p>参考写真には一致用の合成写真を登録し、試験には次の2枚を使ってください。<br /><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真</a> ・ <a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真</a></p>}
-      <PhotoTrial expected="MATCH" disabled={disabled} feedback={trialFeedback.MATCH} onTest={sendTrial} onSelection={resetTrial} />
-      <PhotoTrial expected="WRONG_TARGET" disabled={disabled} feedback={trialFeedback.WRONG_TARGET} onTest={sendTrial} onSelection={resetTrial} />
+      <PhotoTrial expected="MATCH" disabled={trialDisabled} feedback={trialFeedback.MATCH} onTest={sendTrial} onSelection={resetTrial} />
+      <PhotoTrial expected="WRONG_TARGET" disabled={trialDisabled} feedback={trialFeedback.WRONG_TARGET} onTest={sendTrial} onSelection={resetTrial} />
     </> : <form onSubmit={trial}>
-      <fieldset disabled={disabled}>
+      <fieldset disabled={trialDisabled}>
         <legend>写真試験</legend>
         {realPhotoTest
           ? <p>写真試験は、保存済みの参考写真と確認済み特徴で実写真を照合します。送信ごとに、回答と共用の送信枠（上限20回）を1回消費します。参考写真と同じ対象の写真で一致を、別の対象の写真で別対象を確認してください。</p>
@@ -240,13 +248,17 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
       <legend>{approvedAssets ? '公開' : '公開前のチェック'}</legend>
       {checkReason && <p>{checkReason}</p>}
       {approvedAssets && readinessFailed && <button type="button" onClick={onReadinessRetry}>保存状態を読み直す</button>}
-      {approvedAssets && missing[0] && onFix && <button type="button" onClick={() => onFix(missing[0])}>{reviewLabels[missing[0]]}の入力へ</button>}
       {!approvedAssets && confirmationLabels.map(([item, label]) => <label key={item} className="check-option">
         <input type="checkbox" disabled={!reviewed} checked={checked.includes(item)} onChange={(event) => {
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))
         }} />{label}
       </label>)}
-      <button className="workflow-primary" type="button" disabled={!ready || areaUnclassified} onClick={publish}>この版を公開</button>
+      <button className="workflow-primary" type="button" disabled={!ready || areaUnclassified} ref={publishTrigger} onClick={() => setConfirmOpen(true)}>{initial.status === 'published' ? '修正版を公開' : initial.status === 'paused' ? '再公開' : 'この版を公開'}</button>
     </fieldset>
+    {confirmOpen && <div role="dialog" aria-label="公開の確認" className="publication-confirm">
+      <p>公開すると、この問題と公開ヒントを旅行者が見られるようになります。</p>
+      <div className="admin-list-actions"><button type="button" ref={cancelButton} onClick={closeConfirm}>やめる</button>
+      <button type="button" className="workflow-primary" onClick={() => { closeConfirm(); publish() }}>公開する</button></div>
+    </div>}
   </section>
 }

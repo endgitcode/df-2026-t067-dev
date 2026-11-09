@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError } from '../../shared/api'
 import type { ApiClient } from '../../shared/api'
@@ -20,7 +20,11 @@ const pauseCategories = ['安全上の問題', '権利の問題', '内容の誤�
 export function PausePublication({ api, orgId, questId, version, onPaused, onReload }: {
   api: ApiClient; orgId: string; questId: string; version: number; onPaused: () => void; onReload: () => void
 }) {
+  const trigger = useRef<HTMLButtonElement>(null)
+  const categoryInput = useRef<HTMLSelectElement>(null)
+  const wasOpen = useRef(false)
   const [open, setOpen] = useState(false)
+  useEffect(() => { if (open) categoryInput.current?.focus(); else if (wasOpen.current) trigger.current?.focus(); wasOpen.current = open }, [open])
   const [category, setCategory] = useState('')
   const [reason, setReason] = useState('')
   const composed = category ? (reason.trim() ? `${category}：${reason.trim()}` : category) : reason.trim()
@@ -50,12 +54,12 @@ export function PausePublication({ api, orgId, questId, version, onPaused, onRel
     }
   }
 
-  if (!open) return <button type="button" className="danger-button" onClick={() => {
+  if (!open) return <button type="button" className="danger-button" ref={trigger} onClick={() => {
     setCategory(''); setReason(''); setFailure((current) => current?.reload ? current : null); setOpen(true)
   }}>公開を休止</button>
   return <form aria-label="公開休止" onSubmit={pause}>
     <p>公開版 {version} を休止します。旅行者は新しく挑戦や回答を送れなくなります。</p>
-    <label>休止の種類<select value={category} disabled={pending} onChange={(event) => setCategory(event.target.value)}>
+    <label>休止の種類<select ref={categoryInput} value={category} disabled={pending} onChange={(event) => setCategory(event.target.value)}>
       <option value="">選んでください</option>
       {pauseCategories.map((item) => <option key={item} value={item}>{item}</option>)}
     </select></label>

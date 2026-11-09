@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiClient, ManagedQuest, OrgMembership, ReviewField } from '../../shared/api'
 import { useRemote } from '../../shared/useRemote'
+import { QuestStatusBadge } from './QuestStatusBadge'
 import QuestDraftForm from './QuestDraftForm'
 import { HintAssetEditor } from './HintAssetEditor'
 import { PublicationWorkspace } from './PublicationWorkspace'
@@ -11,9 +12,10 @@ const steps = ['対象と参考写真', '撮影条件', '問題とヒント', '�
 const defaultParts: Part[] = ['target', 'conditions', 'content', 'publication']
 const stepNumber: Record<Part, number> = { target: 1, conditions: 2, content: 3, hints: 3, publication: 4 }
 const inputTargets: Partial<Record<ReviewField, string>> = {
+  'materials.photoRights': 'workflow-reference',
   'materials.name': 'workflow-target-name', referenceAssetId: 'workflow-reference', referenceApproval: 'workflow-reference',
   targetSpot: 'workflow-spot', shootingAreas: 'workflow-spot', hintApproval: 'workflow-hint-image', hintAssetId: 'workflow-hint-image',
-  'content.title': 'workflow-title', 'content.question': 'workflow-question', 'content.hints': 'workflow-hints', 'content.verifiedFeatures': 'workflow-features',
+  'content.title': 'workflow-title', 'content.question': 'workflow-question', 'content.hints': 'workflow-hint-0', 'content.verifiedFeatures': 'workflow-features',
 }
 
 function editPart(field: ReviewField): Part {
@@ -139,7 +141,8 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
     </ol>
     <header className="workflow-heading">
       <h2 ref={heading} tabIndex={-1}>STEP {step}　{steps[step - 1]}</h2>
-      <button type="button" disabled={busy} onClick={() => navigate('list')}>問題一覧へ戻る</button>
+      <QuestStatusBadge status={record?.status ?? 'draft'} />
+      {part !== 'publication' && <button type="button" disabled={busy} onClick={() => navigate('list')}>問題一覧へ戻る</button>}
     </header>
     {pending && <div role="alertdialog" aria-label="未保存の入力" className="unsaved-dialog" tabIndex={-1} ref={dialog} onKeyDown={event => {
       if (event.key === 'Escape') { setPending(null); heading.current?.focus() }
@@ -172,7 +175,7 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
       <p role="status">下書きの版が変わったため、以前の写真試験は使えません。この版で再試験してください。</p>}
     {record && openedPublication && <div hidden={part !== 'publication'}>
       <PublicationWorkspace key={revision} api={api} initial={record} approvedAssets photoTestSource={photoTestSource}
-        areaUnclassified={areaUnclassified} onBack={() => navigate({ part: 'content' })} backLabel="問題とヒントへ戻る"
+        areaUnclassified={areaUnclassified} onBack={() => navigate('list')} backLabel="問題一覧へ戻る"
         onFix={fix} onPublished={onPublished} onBusy={setBusy} onTrialConfirmed={() => setLastTrialRevision(record.draftRevision)}
         readiness={readiness} readinessFailed={result.status === 'error'} onReadinessRetry={retry} />
     </div>}

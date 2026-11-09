@@ -96,3 +96,39 @@ it.each(['q&step=content', 'missing&step=target', 'q&step=unknown'])('restores o
     expect(screen.queryByRole('heading', { name: /STEP/ })).toBeNull()
   }
 })
+
+it.each([
+  ['draft', '下書き', 'この版を公開'], ['published', '公開中', '修正版を公開'], ['paused', '休止中', '再公開'],
+] as const)('shows %s status beside the workflow heading and names the publication action', async (status, label, action) => {
+  history.replaceState(null, '', '/?quest=q&step=publication')
+  const record = { ...initial, status }
+  const client = { ...api(), getManagedQuestReadiness: vi.fn().mockResolvedValue({ quest: record, missing: [] }) }
+  render(<AdminQuestWorkflow api={client} initial={record} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
+  expect(screen.getByText(label).closest('header')).toContainElement(screen.getByRole('heading', { name: /STEP 4/ }))
+  expect(screen.getByRole('button', { name: action })).toBeVisible()
+  expect(screen.getAllByRole('button', { name: '問題一覧へ戻る' })).toHaveLength(1)
+  await waitFor(() => expect(client.getManagedQuestReadiness).toHaveBeenCalled())
+})
+
+it('lists every missing field, disables both photo trials, and focuses the selected field', async () => {
+  history.replaceState(null, '', '/?quest=q&step=publication')
+  const client = { ...api(), getManagedQuestReadiness: vi.fn().mockResolvedValue({ quest: initial, missing: ['materials.name', 'referenceAssetId', 'content.question', 'content.hints'] }) }
+  render(<AdminQuestWorkflow api={client} initial={initial} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
+  for (const label of ['対象名', '参考写真', '問題文', '3本のヒント']) expect(await screen.findByRole('button', { name: label + 'の入力へ' })).toBeVisible()
+  expect(screen.getByLabelText('一致写真を選択')).toBeDisabled()
+  expect(screen.getByLabelText('別対象写真を選択')).toBeDisabled()
+  expect(screen.getByText('不足項目をすべて修正すると写真試験を送信できます。')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: '3本のヒントの入力へ' }))
+  expect(screen.getByLabelText('ヒント 1')).toHaveFocus()
+})
+
+it('automatically opens the only team-preview organization', async () => {
+  sessionStorage.clear()
+  const client = { ...api(), getSession: vi.fn().mockResolvedValue({ uid: 'manager' }),
+    listMemberships: vi.fn().mockResolvedValue({ items: [{ ...member, prefectureCode: '07' }], nextCursor: null }),
+    listManagedQuests: vi.fn().mockResolvedValue({ items: [initial], nextCursor: null }) }
+  const snapshot = { status: 'signed-in' as const, user: { uid: 'manager', displayName: null } }
+  render(<LocalAdminWorkspace dataMode="team-preview" apiClient={client} authClient={{ getSnapshot: () => snapshot, subscribe: () => () => {}, getIdToken: async () => 'test', signInWithGoogle: async () => {}, signOut: async () => {} }} />)
+  expect(await screen.findByText('問題')).toBeVisible()
+  expect(client.listManagedQuests).toHaveBeenCalledWith(member.orgId, expect.anything(), expect.anything())
+})

@@ -89,7 +89,7 @@ it('blocks a second create when the response is lost and preserves the entered d
 })
 
 it.each([
-  ['mock', '合成素材の固定の案です。'],
+  ['mock', '検証用の合成素材から作った案です。'],
   ['real', 'Vertex AIの案です。内容を確認してから取り入れてください。'],
 ] as const)('loads a %s candidate for the saved version and waits for explicit adoption and save', async (source, notice) => {
   const user = userEvent.setup()
@@ -113,17 +113,23 @@ it.each([
     role: 'editor', areaId: initial.areaId }, onBack: vi.fn() }} />)
   await user.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   await user.click(screen.getByText('下書き案を取り込む'))
-  await user.click(screen.getByRole('button', { name: '保存済み版の案を取得' }))
+  await user.click(screen.getByRole('button', { name: '下書き案を取得' }))
   expect(await screen.findByText(candidate.title)).toBeVisible()
   expect(screen.getByText(notice)).toBeVisible()
   expect(screen.getByLabelText('問題タイトル')).toHaveValue('手入力の題名')
   expect(generateManagedQuestDraft).toHaveBeenCalledExactlyOnceWith(initial.orgId, initial.questId, 3, { signal: expect.any(AbortSignal) })
   await user.type(screen.getByLabelText('問題タイトル'), '・追記')
   expect(screen.queryByText(candidate.title)).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: '保存済み版の案を取得' }))
+  await user.click(screen.getByRole('button', { name: '下書き案を取得' }))
   await user.click(await screen.findByRole('button', { name: 'この案を編集欄に入れる' }))
   expect(screen.getByLabelText('問題タイトル')).toHaveValue(candidate.title)
   expect(updateManagedQuest).not.toHaveBeenCalled()
+  expect(screen.getByText('編集欄に反映しました（未保存）。')).toBeVisible()
+  expect(screen.getByLabelText('問題タイトル')).toHaveFocus()
+  await user.click(screen.getByRole('button', { name: '元に戻す' }))
+  expect(screen.getByLabelText('問題タイトル')).toHaveValue('手入力の題名・追記')
+  await user.click(screen.getByRole('button', { name: '下書き案を取得' }))
+  await user.click(await screen.findByRole('button', { name: 'この案を編集欄に入れる' }))
   await user.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect(await screen.findByText('下書きを保存しました。')).toBeVisible()
   expect(updateManagedQuest.mock.calls[0][2]).toMatchObject({ expectedDraftRevision: 3, draft: { content: candidate, hintAssetId: 'legacy-hint', hintAssetIds: ['hint-a', 'hint-b', null] } })

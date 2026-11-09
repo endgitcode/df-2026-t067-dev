@@ -107,6 +107,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const [step, setStep] = useState<'A03' | 'A04' | 'A05'>(part === 3 ? 'A04' : 'A03')
   const [previewMode, setPreviewMode] = useState<PreviewMode>('challenge')
   const [draft, setDraft] = useState<DraftFields>(initial?.content ?? { title: '', question: '', hints: ['', '', ''], verifiedFeatures: '', draftingNotes: '' })
+  const [appliedDraft, setAppliedDraft] = useState<DraftFields | null>(null)
   const [draftEdit, setDraftEdit] = useState(0)
   const [draftEntryError, setDraftEntryError] = useState('')
   const [sampleConfirm, setSampleConfirm] = useState(false)
@@ -128,7 +129,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const exploration = record && connection && record.areaId !== connection.member.areaId
     ? { source: 'unavailable' as const } : connection?.member.exploration
   const areaLabel = connection ? (exploration?.source === 'unavailable' ? '探索エリア未設定'
-    : exploration?.name ?? connection.member.label + '・' + connection.member.areaId) : undefined
+    : exploration?.name ?? connection.member.label) : undefined
   const areaStatus = connection ? (record?.shootingAreaStatus === 'configured' ? '設定済み'
     : record?.shootingAreaStatus === 'needs-review' ? '要確認（旧半径）' : '未設定') : '未設定・接続待ち'
 
@@ -329,6 +330,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       hintAssetId: record?.draft.hintAssetIds ? legacyHintAssetId : null,
       ...(hintAssetIds ? { hintAssetIds } : {}),
     }, photo ? { file: photo.file, purpose: 'reference', photoRights } : undefined, (saved) => {
+      setAppliedDraft(null)
       setShowRequired(false)
       setDraftEntryError('')
       setRightsError(false)
@@ -395,7 +397,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
           <p>所属自治体：{connection?.member.label}</p>
           <p role="alert">行政区域を確認できません。自治体コードとデータ登録を運営に確認してください。</p>
         </> : exploration?.source === 'fixture' ? <p>探索エリア：{exploration.name}</p>
-          : areaLabel ? <p>検証用の所属と公開探索エリア：{areaLabel}</p> : <>
+          : areaLabel ? <p>探索エリア：{areaLabel}</p> : <>
           <p><strong>自治体：青葉みらい市</strong></p>
           <p>公開探索エリア：青葉みらい市の行政区域</p>
         </>}
@@ -446,7 +448,15 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     </form> : step === 'A04' ? <>
       <DraftEditor draft={draft} setDraft={editDraft} materialChanged={materialChanged} sampleConfirm={sampleConfirm}
         setSampleConfirm={setSampleConfirm} onBack={() => setStep('A03')} workflow={part === 3} requiredErrors={requiredContent} featuresInvalid={featuresMissing} onPreview={enterPreview} headingRef={a04HeadingRef} omitMemo={focused} allowSample={!connection} />
-      {connection && record && <DraftCandidate key={record.draftRevision + ':' + draftEdit} api={connection.api} saved={record} current={draft} omitNotes={focused} onApply={next => editDraft(current => focused ? { ...next, draftingNotes: current.draftingNotes } : next)} />}
+      {appliedDraft && <div role="status" className="admin-operation-notice">編集欄に反映しました（未保存）。<button type="button" onClick={() => { editDraft(appliedDraft); setAppliedDraft(null); document.getElementById('workflow-title')?.focus() }}>元に戻す</button></div>}
+      {connection && record && <DraftCandidate key={record.draftRevision + ':' + draftEdit} api={connection.api} saved={record} current={draft} omitNotes={focused} onApply={next => {
+        const merged = focused ? { ...next, draftingNotes: draft.draftingNotes } : next
+        const first = (['title', 'question', 'hints', 'verifiedFeatures', 'draftingNotes'] as const).find(key => JSON.stringify(draft[key]) !== JSON.stringify(merged[key]))
+        setAppliedDraft(draft)
+        editDraft(merged)
+        const id = first === 'hints' ? 'workflow-hint-' + draft.hints.findIndex((hint, index) => hint !== merged.hints[index]) : first === 'verifiedFeatures' ? 'workflow-features' : first === 'draftingNotes' ? 'workflow-notes' : 'workflow-' + first
+        document.getElementById(id)?.focus()
+      }} />}
     </> : <>
       {!part && <section className="form-section" aria-label="公開までに足りないもの">
         <p><strong>公開までに足りないもの</strong></p>

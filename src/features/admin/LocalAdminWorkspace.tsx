@@ -6,6 +6,7 @@ import { useRemote } from '../../shared/useRemote'
 import type { AuthClient, AuthUser } from '../auth/authTypes'
 import { AuthError, createFirebaseAuthClient } from '../auth/firebaseAuth'
 import { useServerIdentity } from '../explore/useQuestConnection'
+import { QuestStatusBadge } from './QuestStatusBadge'
 import { PausePublication } from './PausePublication'
 import QuestDraftForm from './QuestDraftForm'
 import { AdminQuestWorkflow } from './AdminQuestWorkflow'
@@ -14,11 +15,6 @@ import { PublicationWorkspace } from './PublicationWorkspace'
 import { remainingWork } from './publicationReadiness'
 import { HintAssetEditor } from './HintAssetEditor'
 import './admin.css'
-
-const statusLabels: Record<ManagedQuest['status'], string> = {
-  draft: '下書き', review_pending: '確認待ち', published: '公開中', paused: '休止中',
-}
-const statusIcons: Record<ManagedQuest['status'], string> = { draft: '✎', review_pending: '◷', published: '✓', paused: 'Ⅱ' }
 
 function formatDateTime(iso: string) {
   const date = new Date(iso)
@@ -41,6 +37,9 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
   const [section, setSection] = useState<'quests' | 'reports'>('quests')
   const [cursor, setCursor] = useState<string>()
   const [notice, setNotice] = useState('')
+  const [actedQuest, setActedQuest] = useState<string | null>(null)
+  const [pausedNotice, setPausedNotice] = useState(false)
+  const listRoot = useRef<HTMLElement>(null)
   const [editor, setEditor] = useState<Editor | null>(null)
   const read = useCallback((signal: AbortSignal) => section === 'quests'
     ? api.listManagedQuests(member.orgId, { cursor, limit: 20 }, { signal })
@@ -71,22 +70,32 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
       }).catch(clear)
     } else clear()
   }, [result, api, member.orgId, areaUnclassified])
-  useEffect(() => { if (!editor) listHeading.current?.focus() }, [editor])
+  useEffect(() => {
+    if (editor || result.status !== 'ready') return
+    const row = actedQuest && Array.from(listRoot.current?.querySelectorAll<HTMLElement>('[data-quest-id]') ?? []).find(row => row.dataset.questId === actedQuest)
+    if (row) { row.focus({ preventScroll: true }); row.scrollIntoView?.({ block: 'center' }) }
+    else listHeading.current?.focus()
+  }, [editor, result, actedQuest])
+  function republish(item: ManagedQuest) {
+    const url = new URL(location.href); url.searchParams.set('step', 'publication'); history.replaceState(null, '', url)
+    setEditor({ kind: 'draft', initial: item })
+  }
+  function published() { setActedQuest(editor && 'initial' in editor ? editor.initial?.questId ?? new URLSearchParams(location.search).get('quest') : null); setPausedNotice(false); setNotice('公開しました。'); closeEditor() }
   function closeEditor() { const url = new URL(location.href); url.searchParams.delete('quest'); url.searchParams.delete('step'); history.replaceState(null, '', url); setEditor(null); retry() }
   if (editor?.kind === 'draft' && (durable || teamPreview)) return <AdminQuestWorkflow api={api} member={member} initial={editor.initial}
     teamPreview={teamPreview} photoTestSource={photoTestSource} areaUnclassified={areaUnclassified} onBack={closeEditor}
-    onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
+    onPublished={published} />
   if (editor?.kind === 'draft') return <QuestDraftForm teamPreview={teamPreview} connection={{ api, member, initial: editor.initial, onBack: closeEditor }} />
   if (editor?.kind === 'areas') return <ShootingAreasEditor enableMap={durable || teamPreview} api={api} orgId={member.orgId} questId={editor.questId} onBack={closeEditor} />
   if (editor?.kind === 'hint') return <HintAssetEditor rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor} />
   if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} photoTestSource={photoTestSource} api={api} initial={editor.initial} areaUnclassified={areaUnclassified} onBack={closeEditor}
-    onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
+    onPublished={published} />
 
-  return <section className="form-section" aria-labelledby="org-workspace-title">
+  return <section className="form-section" aria-labelledby="org-workspace-title" ref={listRoot}>
     <h2 id="org-workspace-title" tabIndex={-1} ref={listHeading}>{heading}</h2>
     <p>{member.label}</p>
     {areaUnclassified && <p role="alert">この組織の地域は都道府県コードが未設定（未分類）のため、新しい問題を作成できず、既存の下書きも公開できません。</p>}
-    {notice && <p role="status">{notice}</p>}
+    {notice && <div role="status" className="admin-operation-notice">{notice}{pausedNotice && result.status === 'ready' && result.value.items.filter((item): item is ManagedQuest => 'draft' in item && item.questId === actedQuest).map(item => <button key={item.questId} type="button" onClick={() => republish(item)}>再公開へ</button>)}</div>}
     {member.role === 'publisher' && !teamPreview && <div className="admin-list-actions">
       <button type="button" aria-pressed={section === 'quests'} onClick={() => select('quests')}>問題一覧</button>
       <button type="button" aria-pressed={section === 'reports'} onClick={() => select('reports')}>問題報告</button>
@@ -99,11 +108,9 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
         : '一覧を読み込めませんでした。'}</p><button type="button" onClick={retry}>一覧を読み直す</button></>}
     {result.status === 'ready' && (result.value.items.length === 0 ? <p>{section === 'quests' ? '問題はまだありません。' : '報告はまだありません。'}</p>
       : <ul className="admin-read-list">{result.value.items.map((item) => 'draft' in item
-        ? <li key={item.questId}>
+        ? <li key={item.questId} data-quest-id={item.questId} tabIndex={-1}>
           <p className="admin-quest-status-row">
-            <span className="admin-quest-status" data-status={item.status}>
-              <span aria-hidden="true">{statusIcons[item.status]}</span>{statusLabels[item.status]}
-            </span>
+            <QuestStatusBadge status={item.status} />
             {item.publishedVersion !== null && item.status !== 'published' && <span>公開版あり</span>}
             {item.questNumber && <span>No. {item.questNumber}</span>}
           </p>
@@ -112,6 +119,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
             <p>問題 {item.questId}</p>
           </details>
           <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>{teamPreview || durable ? '編集を続ける' : '下書きを編集'}</button>
+          {item.status === 'paused' && (teamPreview || durable) && <button type="button" onClick={() => republish(item)}>再公開へ</button>}
           {(teamPreview || durable) ? item.status !== 'published' && <details className="workflow-remaining">
             <summary>残りの作業（{remainingWork(item, true).length}件）</summary>
             <ul>{remainingWork(item, true).map((work) => <li key={work}>{work}</li>)}</ul>
@@ -131,9 +139,9 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
                 <button type="button" onClick={() => setEditor({ kind: 'publication', initial: item })}>試験と公開確認</button>}
             </div>
           </fieldset>}
-          {member.role === 'publisher' && item.publishedVersion !== null &&
+          {member.role === 'publisher' && item.status !== 'paused' && item.publishedVersion !== null &&
             <PausePublication key={item.publishedVersion} api={api} orgId={member.orgId} questId={item.questId} version={item.publishedVersion}
-              onReload={retry} onPaused={() => { setNotice('公開を休止しました。'); retry() }} />}
+              onReload={retry} onPaused={() => { setActedQuest(item.questId); setPausedNotice(true); setNotice('公開を休止しました。'); retry() }} />}
         </li>
         : <li key={item.reportId}><strong>{reportCategoryLabels[item.category]}</strong>
           <p>{item.text}</p>
@@ -151,7 +159,7 @@ function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiC
   const [selected, setSelected] = useState<string | null>(() => { try { return sessionStorage.getItem('admin-selected-org') } catch { return null } })
   const read = useCallback((signal: AbortSignal) => api.listMemberships({ cursor, limit: 20 }, { signal }), [api, cursor])
   const { result, retry } = useRemote(true, read)
-  const current = result.status === 'ready' ? result.value.items.find((member) => member.orgId === selected) ?? (durable && !cursor && !result.value.nextCursor && result.value.items.length === 1 ? result.value.items[0] : undefined) : undefined
+  const current = result.status === 'ready' ? result.value.items.find((member) => member.orgId === selected) ?? ((durable || teamPreview) && !cursor && !result.value.nextCursor && result.value.items.length === 1 ? result.value.items[0] : undefined) : undefined
   return <>
     <section hidden={editing} className="form-section" aria-labelledby="membership-title">
       <h2 id="membership-title">所属する組織</h2>
@@ -244,6 +252,7 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
         ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
         : null}
     </header>
+    {auth.status !== 'signed-in' && <p>招待された自治体の担当者だけが使えます</p>}
     <p className="demo-notice">{teamPreview ? '公開した問題と公開ヒントは誰でも閲覧できます。'
       : '' + (dataMode === 'durable-local' ? '下書きと報告は検証環境の保存先に保存されます。' : '下書きと報告は一時的な保存先に保存されます。')}</p>
     {(auth.status !== 'signed-in' || error) && <section className="form-section" aria-label="担当者ログイン">
