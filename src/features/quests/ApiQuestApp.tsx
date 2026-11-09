@@ -292,8 +292,8 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     }
   }
   const picker = <div className="api-quest-picker">
-    {activeRegion && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '一覧から問題を選んでください。' : 'この条件に公開問題はありません。'}</p>}
-    <ul aria-label="公開問題">{visibleChoices.map((item) => <li key={item.questId}>
+    {activeRegion && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '一覧から問題を選んでください。' : 'この条件に合う問題はありません。'}</p>}
+    <ul aria-label="問題一覧">{visibleChoices.map((item) => <li key={item.questId}>
       <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => chooseQuest(item)}>{item.title}</button>
     </li>)}</ul>
   </div>
@@ -350,14 +350,17 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const FallbackHeading = dataMode === 'team-preview' ? 'h2' : 'h1'
   // 読み込み済みで未選択（D-56）の時はフォールバック枠を出さない。出るのは
   // 読み込み中・0件・エラーの時だけであり、未選択は探索画面の一覧で完結する。
-  const fallback = !quest && state !== 'ready' ? <section className="api-load-state" aria-live="polite">
+  // 地図が使える表示では読み込み中を一覧のスケルトン行だけに一本化し、大きな
+  // カードと二重に出さない（D-57）。地図が使えないフォールバック表示でのみ、
+  // 読み込み中もこの枠が進捗を伝える。
+  const fallback = !quest && state !== 'ready' && !(state === 'loading' && mapSheetMode) ? <section className="api-load-state" aria-live="polite">
       {dataMode !== 'team-preview' && <p className="eyebrow">{dataMode === 'durable-local' ? '永続API・ローカル' : '公開APIデモ'}</p>}
-      <FallbackHeading id={dataMode === 'team-preview' ? undefined : 'explore-title'}>{state === 'loading' ? '公開問題を読み込み中' : state === 'empty' ? '公開問題はありません' : '公開問題を取得できませんでした'}</FallbackHeading>
-      {state === 'loading' && <p role="status">サーバーから問題を取得しています。</p>}
-      {state === 'empty' && <p>{selectedAreaId ? 'この地域に公開問題はありません。地図や地方の絞り込みから別の地域をお選びください。' : '現在選べる公開問題はありません。'}</p>}
+      <FallbackHeading id={dataMode === 'team-preview' ? undefined : 'explore-title'}>{state === 'loading' ? '問題を読み込んでいます' : state === 'empty' ? '問題はありません' : '問題を読み込めませんでした'}</FallbackHeading>
+      {state === 'loading' && <p role="status">問題の一覧を取得しています。</p>}
+      {state === 'empty' && <p>{selectedAreaId ? 'この地域には問題がありません。地図や地方の絞り込みから別の地域をお選びください。' : '現在選べる問題はありません。'}</p>}
       {state === 'error' && <p role="alert">{current?.missing
-        ? 'この問題は公開されていないか、見つかりません。別の問題を選べます。'
-        : 'サーバーとの通信を確認して、もう一度お試しください。'}</p>}
+        ? 'この問題は見つかりません。別の問題を選べます。'
+        : '通信状況を確認して、もう一度お試しください。'}</p>}
       {state !== 'loading' && <button type="button" onClick={(event) => reload(event)} disabled={refreshing}>再試行</button>}
       {!mapSheetMode && refreshControl}
       {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode !== 'team-preview' && filterControls}{!mapSheetMode && picker}</>}
