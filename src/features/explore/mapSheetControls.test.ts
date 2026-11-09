@@ -425,7 +425,7 @@ describe('PC sidebar containment and collapsed rail', () => {
 
   it('keeps brand mark, toggle and nav icons on the collapsed ~56px rail', () => {
     expect(css).toContain('--pc-sidebar-rail-w: 56px;')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 28px; height: 28px; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 32px; height: 32px; }')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 22px; height: 22px; flex: none; }')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
     expect(css).toContain('left: 6px; top: 44px; width: 44px; height: 44px;')

@@ -77,8 +77,9 @@ it('shows the quest as cleared right after clearing, without a reload', async ()
   const submit = await screen.findByRole('button', { name: '写真と位置をテスト送信' })
   await waitFor(() => expect(submit).toBeEnabled())
   await user.click(submit)
-  await user.click(await screen.findByRole('button', { name: '判定結果を確認' }))
-
+  // 判定中は待ち表示のみ（判定結果を確認は出さない）。自動ポーリングでクリア画面へ進む。
+  expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
   // 初回クリアでは全画面のクリア画面（D-63）が出る。ここでは「地図に戻る」で
   // 詳細へ戻る退出を選び、戻った先がその場でクリア済み表示になることを見る。
   expect(await screen.findByRole('heading', { name: 'クリア！' })).toBeVisible()

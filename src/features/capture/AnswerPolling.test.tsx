@@ -61,11 +61,12 @@ it('team-preview accepts a real receipt, polls to completion and shows the clear
   const onOpenDiscovery = vi.fn()
   const { container } = render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt }, challengeId: 'challenge', onReloadQuest: vi.fn(), onOpenDiscovery, dataMode: 'team-preview' }} photo={new Blob(['photo'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置を送信' })))
-  expect(screen.getByText('回答を受け付けました。判定結果を確認できます。')).toBeVisible()
+  expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBeVisible()
+  expect(screen.queryByText('回答を受け付けました。判定結果を確認できます。')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
   expect(container.querySelector('.clear-celebration')).not.toBeInTheDocument()
   await act(async () => vi.advanceTimersByTimeAsync(1500))
   expect(getAttempt).toHaveBeenCalledExactlyOnceWith('accepted', { signal: expect.any(AbortSignal) })
-  expect(screen.getByText('クリアしました。「自分の記録」で確認できます。')).toBeVisible()
   // 初回クリアの確定時は、全画面のクリア画面（D-63）が小さな演出に置き換わって出る。
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'クリア！' })).toBeInTheDocument()
@@ -153,9 +154,42 @@ it('keeps the waiting card between automatic reads and lets cancellation stop po
   expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBeVisible()
   await act(async () => vi.advanceTimersByTimeAsync(1000))
   expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBeVisible()
-  await act(async () => fireEvent.click(screen.getByRole('button', { name: '受付の確認をキャンセル' })))
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'キャンセル' })))
   expect(screen.queryByRole('status', { name: '写真の判定待ち' })).not.toBeInTheDocument()
   await act(async () => vi.advanceTimersByTimeAsync(60000))
   expect(getAttempt).toHaveBeenCalledTimes(1)
   expect(submitAnswer).toHaveBeenCalledTimes(1)
+})
+
+it('keeps a single waiting surface across automatic polls without toggling the result button', async () => {
+  vi.useFakeTimers()
+  const submitAnswer = vi.fn().mockResolvedValue(receipt)
+  const getAttempt = vi.fn().mockResolvedValue(receipt)
+  render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'durable-local' }} photo={new Blob(['synthetic'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置をテスト送信' })))
+  const waiting = screen.getByRole('status', { name: '写真の判定待ち' })
+  expect(waiting).toHaveTextContent('写真を判定しています')
+  expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
+  // 数秒ポーリングしても待ち面は同一ノードのまま、結果確認ボタンは一度も出ない。
+  for (let i = 0; i < 4; i++) {
+    await act(async () => vi.advanceTimersByTimeAsync(2000))
+    expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBe(waiting)
+    expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
+    expect(screen.queryByText('回答を受け付けました。判定結果を確認できます。')).not.toBeInTheDocument()
+  }
+  expect(getAttempt.mock.calls.length).toBeGreaterThanOrEqual(2)
+})
+
+it('does not show judgment-waiting and result-check controls at the same time', async () => {
+  vi.useFakeTimers()
+  const submitAnswer = vi.fn().mockResolvedValue(receipt)
+  const getAttempt = vi.fn().mockResolvedValue(receipt)
+  render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt }, challengeId: 'challenge', onReloadQuest: vi.fn(), dataMode: 'team-preview' }} photo={new Blob(['photo'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置を送信' })))
+  expect(screen.getByRole('status', { name: '写真の判定待ち' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
+  // 自動確認上限まで進めると待ちは終わり、結果確認だけが出る。
+  for (let i = 0; i < 10; i++) await act(async () => vi.advanceTimersByTimeAsync(16000))
+  expect(screen.queryByRole('status', { name: '写真の判定待ち' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '判定結果を確認' })).toBeVisible()
 })
