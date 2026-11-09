@@ -244,7 +244,7 @@ describe('look and spacing (D-54)', () => {
   })
 
   it('aligns the floating title chip line with the panel side, open and collapsed', () => {
-    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 25;')
+    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 32;')
     expect(css).toContain('grid-template-columns: 1fr auto; padding-left: 12px;')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-rail-w); }')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-rail-w) + 12px); }')
@@ -400,5 +400,15 @@ describe('PC sidebar containment and collapsed rail', () => {
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 22px; height: 22px; flex: none; }')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
     expect(css).toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
+  })
+})
+
+
+describe('PC sidebar stacking', () => {
+  it('keeps the sidebar rail ::before under the header chrome so logo/nav stay visible', () => {
+    expect(css).toContain('body.explore-fullbleed::before {')
+    expect(css).toContain('z-index: 20;')
+    expect(css).toContain('body.explore-fullbleed .site-header {')
+    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 32;')
   })
 })

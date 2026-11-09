@@ -532,9 +532,11 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed.explore-sidebar-collapsed {
     --pc-sidebar-w: var(--pc-sidebar-rail-w);
   }
-  /* 左カラムの地（畳んでも帯が途切れない） */
+  /* 左カラムの地（畳んでも帯が途切れない）。
+     z-index は site-header(25) より下にし、ヘッダー内の fixed ロゴ／ナビが
+     帯に隠れないようにする（子の z-index はヘッダーのスタッキング文脈内）。 */
   body.explore-fullbleed::before {
-    content: ""; position: fixed; top: 0; left: 0; bottom: 0; z-index: 29;
+    content: ""; position: fixed; top: 0; left: 0; bottom: 0; z-index: 20;
     width: var(--pc-sidebar-w); background: var(--ui-surface);
     border-right: 1px solid color-mix(in srgb, var(--ui-line) 28%, transparent);
     pointer-events: none; transition: width 200ms var(--ease-out);
@@ -544,7 +546,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   }
   /* アカウントだけ右上。ブランドはサイドバー最上段へ移す。 */
   body.explore-fullbleed .site-header {
-    position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 25;
+    position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 32;
     grid-template-columns: 1fr auto; padding-left: 12px;
   }
   body.explore-fullbleed .brand {
