@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QuestDetails } from './QuestDetails'
@@ -58,7 +58,8 @@ it('opens an optional public hint image only on request and supports loading, fa
   fireEvent.load(image)
   expect(image).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'ヒント画像を閉じる' }))
-  expect(document.querySelector('img.optional-hint-image')).not.toBeInTheDocument()
+  // 閉じるアニメーション（D-59追記）が終わると内容は外れる。
+  await waitFor(() => expect(document.querySelector('img.optional-hint-image')).not.toBeInTheDocument())
   await user.click(screen.getByRole('button', { name: 'ヒント画像を見る' }))
   image = document.querySelector('img.optional-hint-image') as HTMLImageElement
   fireEvent.error(image)
@@ -69,6 +70,31 @@ it('opens an optional public hint image only on request and supports loading, fa
   expect(screen.getByRole('status')).toHaveTextContent('読み込み中')
   expect(screen.getByRole('button', { name: 'ヒント画像を閉じる' })).toHaveFocus()
   expect(document.querySelector('img.optional-hint-image')).toBeInTheDocument()
+})
+
+it('keeps the hint image frame mounted and toggles only its open class (D-59 addendum)', async () => {
+  const user = userEvent.setup()
+  const quest = { ...demoQuest, optionalHintImage: 'https://example.test/hint.jpg' }
+  const { container } = render(<QuestDetails quest={quest} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" note="" onToggle={vi.fn()} onStart={vi.fn()} />)
+  // 閉じている間も枠は常駐し、中身は持たない。枠が常駐していることで、
+  // 閉じた高さ（0fr）が確定した状態からクラス切り替えで遷移が始められる。
+  const wrap = container.querySelector('.optional-hint-content-wrap')
+  expect(wrap).not.toBeNull()
+  expect(wrap).not.toHaveClass('is-open')
+  expect(container.querySelector('.optional-hint-content')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'ヒント画像を見る' }))
+  // 枠の要素自体は差し替わらず、is-open が付くだけ（再マウントなし）。
+  expect(container.querySelector('.optional-hint-content-wrap')).toBe(wrap)
+  expect(wrap).toHaveClass('is-open')
+  const image = document.querySelector('img.optional-hint-image') as HTMLImageElement
+  fireEvent.load(image)
+  expect(image).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'ヒント画像を閉じる' }))
+  expect(container.querySelector('.optional-hint-content-wrap')).toBe(wrap)
+  expect(wrap).not.toHaveClass('is-open')
+  // 閉じ終わるまでは最後の内容が枠の中に残り、終わると外れる。
+  expect(document.querySelector('img.optional-hint-image')).toBeInTheDocument()
+  await waitFor(() => expect(document.querySelector('img.optional-hint-image')).not.toBeInTheDocument())
 })
 
 it('shows a per-hint image inline after its hint is opened without a second button', async () => {
@@ -159,6 +185,9 @@ it('times out each image attempt, ignores late events from timed out or closed a
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'ヒント画像を閉じる' }))
+    // 閉じるアニメーション（D-59追記）の間は内容が保持され、終わると外れる。
+    expect(document.querySelector('img.optional-hint-image')).toBeInTheDocument()
+    await act(async () => { vi.advanceTimersByTime(300) })
     expect(document.querySelector('img.optional-hint-image')).not.toBeInTheDocument()
     await act(async () => { vi.advanceTimersByTime(10_000) })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()

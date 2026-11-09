@@ -128,14 +128,18 @@ function getPhotoIdentity(getPhoto?: HintPhoto) {
   return identity
 }
 
-function ProtectedHintImage({ getPhoto, questId, version, index, alt, hidden, onLoad, onError }: {
+function ProtectedHintImage({ getPhoto, questId, version, index, alt, hidden, active, onLoad, onError }: {
   getPhoto: HintPhoto; questId: string; version: number; index?: number; alt: string; hidden: boolean
+  /** 開いている間だけ取得する。閉じ始めたら進行中の取得を破棄し、閉じた後の
+      遅延解決でオブジェクトURLを作らない（従来はアンマウントが担っていた）。 */
+  active: boolean
   onLoad(): void; onError(error?: unknown): void
 }) {
   const [source, setSource] = useState<string>()
   const onErrorRef = useRef(onError)
   useEffect(() => { onErrorRef.current = onError }, [onError])
   useEffect(() => {
+    if (!active) return
     const controller = new AbortController()
     let url: string | undefined
     void (index === undefined ? getPhoto(questId, version, { signal: controller.signal }) : getPhoto(questId, version, index, { signal: controller.signal })).then((photo) => {
@@ -147,7 +151,7 @@ function ProtectedHintImage({ getPhoto, questId, version, index, alt, hidden, on
       controller.abort()
       if (url) URL.revokeObjectURL(url)
     }
-  }, [getPhoto, index, questId, version])
+  }, [active, getPhoto, index, questId, version])
   return source && <img src={source} alt={alt} className="optional-hint-image"
     style={{ display: hidden ? 'none' : undefined }} onLoad={onLoad} onError={onError} />
 }
@@ -164,6 +168,13 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
   const attemptRef = useRef(0)
   const finishedAttemptRef = useRef(-1)
   const timeoutRef = useRef<number | null>(null)
+  // 閉じる間は最後の内容を保持し、畳むアニメーション（280ms）の後に外す
+  // （D-59 追記、行アコーディオンと同じ考え方）。
+  const [closing, setClosing] = useState(false)
+  const closeTimerRef = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+  }, [])
 
   useEffect(() => {
     if (!expanded || status !== 'loading') return
@@ -216,8 +227,18 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
           if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current)
           timeoutRef.current = null
           setExpanded(false)
-          setStatus('loading')
+          // 状態の初期化は畳み終わってから。中身は closing の間保持する。
+          setClosing(true)
+          if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+          closeTimerRef.current = window.setTimeout(() => {
+            closeTimerRef.current = null
+            setClosing(false)
+            setStatus('loading')
+          }, 300)
         } else {
+          if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+          closeTimerRef.current = null
+          setClosing(false)
           onReloadNeeded(false)
           attemptRef.current++
           finishedAttemptRef.current = -1
@@ -228,7 +249,13 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
       }}>
       {expanded ? 'ヒント画像を閉じる' : 'ヒント画像を見る'}
     </button>}
-    {expanded && <div className="optional-hint-content" aria-live="polite">
+    {/* 開閉の枠は行アコーディオン（D-59）と同じく常時マウントし、開状態のクラスだけで
+        grid-template-rows を切り替える（D-59 追記）。中身は開いている間と、閉じ終わる
+        までの間だけが持つ。 */}
+    <div className={'optional-hint-content-wrap' + (expanded ? ' is-open' : '')}
+      aria-hidden={!expanded || undefined}>
+      <div className="optional-hint-content-clip">
+      {(expanded || closing) && <div className="optional-hint-content" aria-live="polite">
       {status === 'loading' && <p role="status">ヒント画像を読み込み中…</p>}
       {(status === 'error' || status === 'timeout') && <div role="alert"><p>{status === 'timeout' ? '読み込みがタイムアウトしました。再試行できます。' : 'ヒント画像を読み込めませんでした。'}</p>
         <button type="button" className="optional-hint-retry" onClick={() => {
@@ -240,8 +267,8 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
           setStatus('loading')
         }}>再試行</button>
       </div>}
-      {expanded && status === 'reload' && <div role="alert"><p>公開情報が変わった可能性があります。問題を読みなおしてください。</p></div>}
-      {expanded && status === 'auth' && <div role="alert"><p>{authCode === 'UNAUTHENTICATED'
+      {status === 'reload' && <div role="alert"><p>公開情報が変わった可能性があります。問題を読みなおしてください。</p></div>}
+      {status === 'auth' && <div role="alert"><p>{authCode === 'UNAUTHENTICATED'
         ? 'ヒント画像を表示できません。ページを開き直してから再試行してください。'
         : 'ヒント画像へのアクセスが拒否されました。もう一度お試しください。'}</p>
         <button type="button" className="optional-hint-retry" onClick={() => {
@@ -255,12 +282,14 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
       </div>}
       {(status === 'loading' || status === 'loaded') && (getPhoto
         ? <ProtectedHintImage key={attempt} getPhoto={getPhoto} questId={quest.questId} version={quest.version} index={index}
-          alt={alt} hidden={status !== 'loaded'}
+          alt={alt} hidden={status !== 'loaded'} active={expanded}
           onLoad={onLoad} onError={onError} />
         : <img key={attempt} src={url} alt={alt} className="optional-hint-image"
         style={{ display: status === 'loaded' ? undefined : 'none' }}
         onLoad={onLoad} onError={onError} />)}
-    </div>}
+      </div>}
+      </div>
+    </div>
   </div>
 }
 
