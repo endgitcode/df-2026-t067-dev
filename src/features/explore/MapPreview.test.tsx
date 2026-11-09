@@ -128,6 +128,34 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('suppresses swipe-generated area retry clicks while preserving taps and keyboard clicks', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const addGeoJson = vi.fn().mockImplementationOnce(() => { throw new Error('sdk error') }).mockImplementationOnce(() => { throw new Error('sdk error') })
+    class Data { setMap() {} addGeoJson = addGeoJson; setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    render(<ConfiguredMapPreview areas={areas} />)
+    const retry = await screen.findByRole('button', { name: '地域エリアを再試行' })
+    await waitFor(() => expect(addGeoJson).toHaveBeenCalledTimes(1))
+
+    fireEvent.pointerDown(retry, { pointerId: 41, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.pointerMove(retry, { pointerId: 41, pointerType: 'touch', clientX: 22, clientY: 36 })
+    fireEvent.pointerUp(retry, { pointerId: 41, pointerType: 'touch', clientX: 22, clientY: 36 })
+    fireEvent.click(retry, { detail: 1 })
+    expect(addGeoJson).toHaveBeenCalledTimes(1)
+
+    fireEvent.pointerDown(retry, { pointerId: 42, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.pointerUp(retry, { pointerId: 42, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.click(retry, { detail: 1 })
+    await waitFor(() => expect(addGeoJson).toHaveBeenCalledTimes(2))
+
+    const keyboardRetry = await screen.findByRole('button', { name: '地域エリアを再試行' })
+    fireEvent.click(keyboardRetry, { detail: 0 })
+    await waitFor(() => expect(addGeoJson).toHaveBeenCalledTimes(3))
+    delete window.google
+  })
+
   it('starts at zoom 5 and allows zooming through 12 up to the max of 20, then stops and respects min 5', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
@@ -165,6 +193,35 @@ describe('Google map panel', () => {
     expect(currentZoom).toBe(5)
     expect(screen.getByRole('button', { name: '地図を縮小' })).toBeDisabled()
     expect(setZoom).toHaveBeenLastCalledWith(5)
+    delete window.google
+  })
+
+  it('suppresses a swipe-generated map-control click while preserving touch taps and keyboard clicks', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const setZoom = vi.fn()
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return { ...mapInstance, getZoom: () => 5, setZoom } } }, Data, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    render(<ConfiguredMapPreview />)
+    const zoomIn = await screen.findByRole('button', { name: '地図を拡大' })
+    setZoom.mockClear()
+
+    fireEvent.pointerDown(zoomIn, { pointerId: 31, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.pointerMove(zoomIn, { pointerId: 31, pointerType: 'touch', clientX: 22, clientY: 36 })
+    fireEvent.pointerUp(zoomIn, { pointerId: 31, pointerType: 'touch', clientX: 22, clientY: 36 })
+    fireEvent.click(zoomIn, { detail: 1 })
+    expect(setZoom).not.toHaveBeenCalled()
+
+    fireEvent.pointerDown(zoomIn, { pointerId: 32, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.pointerUp(zoomIn, { pointerId: 32, pointerType: 'touch', clientX: 20, clientY: 20 })
+    fireEvent.click(zoomIn, { detail: 1 })
+    expect(setZoom).toHaveBeenCalledTimes(1)
+    expect(setZoom).toHaveBeenLastCalledWith(6)
+
+    fireEvent.click(zoomIn, { detail: 0 })
+    expect(setZoom).toHaveBeenCalledTimes(2)
+    expect(setZoom).toHaveBeenLastCalledWith(6)
     delete window.google
   })
 
@@ -1117,7 +1174,7 @@ describe('Google map panel', () => {
     // half はその 55%（352px）。開くのは effect 経由なので状態が落ち着くまで待つ。
     await waitFor(() => expect(sheet).toHaveAttribute('data-snap', 'half'))
     expect(sheet.style.height).toBe('352px')
-    expect(SHEET_PEEK_HEIGHT).toBe(128)
+    expect(SHEET_PEEK_HEIGHT).toBe(168)
     expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
     expect(onOpenQuest).toHaveBeenCalledWith('q1')
