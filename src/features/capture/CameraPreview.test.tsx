@@ -210,6 +210,9 @@ describe('local camera preview', () => {
     await media.user.click(screen.getByRole('button', { name: '時計回りに回転' }))
     await waitFor(() => expect(screen.getByRole('button', { name: '写真と位置をテスト送信' })).toBeEnabled())
     await media.user.click(screen.getByRole('button', { name: '写真と位置をテスト送信' }))
+    const retake = screen.getByRole('button', { name: '撮り直す' })
+    expect(retake).toBeDisabled()
+    await media.user.click(retake)
     const [input, call] = submitAnswer.mock.calls[0]
     expect(input.photo).toBe(media.createObjectURL.mock.calls[1][0])
     expect(input.metadata.position).toEqual({ latitude: 35, longitude: 135, accuracyMeters: 12.4,
@@ -229,12 +232,49 @@ describe('local camera preview', () => {
       expect(button).toBeDisabled()
       await media.user.click(button)
     }
+    expect(retake).toBeDisabled()
+    await media.user.click(retake)
+    expect(media.getUserMedia).toHaveBeenCalledOnce()
+    expect(screen.getByRole('img', { name: '撮影した写真のプレビュー' })).toBeVisible()
     expect(media.createImageBitmap).toHaveBeenCalledOnce()
     await media.user.click(screen.getByRole('button', { name: '判定結果を確認' }))
     expect(await screen.findByText('テストでクリアしました。「自分の記録」で確認できます。')).toBeVisible()
+    expect(retake).toBeEnabled()
+    expect(media.getUserMedia).toHaveBeenCalledOnce()
     expect(getAttempt).toHaveBeenCalledExactlyOnceWith(receipt.attemptId, { signal: expect.any(AbortSignal) })
     expect(submitAnswer).toHaveBeenCalledOnce()
     expect(call?.signal?.aborted).toBe(false)
+  })
+
+  it.each(['network', 'cancel'] as const)('keeps retake locked after an uncertain %s and recovers with the same answer', async (failure) => {
+    const media = setup()
+    const receipt = { source: 'real' as const, state: 'RECEIVED' as const, attemptId: 'kept-receipt', outcome: null, nextAction: 'WAIT' as const }
+    const submitAnswer = vi.fn<DemoAnswerContext['api']['submitAnswer']>()
+    if (failure === 'network') submitAnswer.mockRejectedValueOnce(new Error('network'))
+    else submitAnswer.mockImplementationOnce(() => new Promise(() => {}))
+    submitAnswer.mockResolvedValue(receipt)
+    const getAttempt = vi.fn<DemoAnswerContext['api']['getAttempt']>().mockResolvedValue({ ...receipt,
+      state: 'COMPLETED', outcome: 'WRONG_TARGET', nextAction: 'RETAKE' })
+    render(<CameraPreview onClose={media.onClose} answer={{ api: { submitAnswer, getAttempt },
+      challengeId: 'challenge', dataMode: 'durable-local', onReloadQuest: vi.fn() }} />)
+    await loadFrame(media.stream)
+    await media.user.click(screen.getByRole('button', { name: '撮影する' }))
+    await media.user.click(screen.getByRole('button', { name: '写真と位置をテスト送信' }))
+    if (failure === 'cancel') await media.user.click(screen.getByRole('button', { name: '受付の確認をキャンセル' }))
+    expect(await screen.findByRole('alert')).toBeVisible()
+    const retake = screen.getByRole('button', { name: '撮り直す' })
+    expect(retake).toBeDisabled()
+    await media.user.click(retake)
+    await media.user.click(screen.getByRole('button', { name: '同じ回答を再送' }))
+    expect(await screen.findByRole('button', { name: '判定結果を確認' })).toBeEnabled()
+    expect(submitAnswer.mock.calls[1][0]).toEqual(submitAnswer.mock.calls[0][0])
+    expect(retake).toBeDisabled()
+    await media.user.click(screen.getByRole('button', { name: '判定結果を確認' }))
+    expect(await screen.findByText('写真の対象が一致しませんでした。合成画像を確認してください。')).toBeVisible()
+    expect(retake).toBeEnabled()
+    expect(getAttempt).toHaveBeenCalledExactlyOnceWith(receipt.attemptId, { signal: expect.any(AbortSignal) })
+    expect(submitAnswer).toHaveBeenCalledTimes(2)
+    expect(media.getUserMedia).toHaveBeenCalledOnce()
   })
 
   it('rotates counterclockwise when that button is selected', async () => {
@@ -287,7 +327,7 @@ describe('local camera preview', () => {
     expect(submitAnswer).toHaveBeenCalledOnce()
   })
 
-  it('keeps retake and close available while a submission is pending', async () => {
+  it('locks retake and keeps close available while a submission is pending', async () => {
     const media = setup()
     const submitAnswer = vi.fn(() => new Promise<never>(() => {}))
     const answer = { api: { submitAnswer, getAttempt: vi.fn() }, challengeId: 'challenge-1', onReloadQuest: vi.fn() } as unknown as DemoAnswerContext
@@ -296,7 +336,7 @@ describe('local camera preview', () => {
     await media.user.click(screen.getByRole('button', { name: '撮影する' }))
     await media.user.click(screen.getByRole('button', { name: '写真と位置をデモ送信' }))
     expect(await screen.findByRole('button', { name: '受付を確認しています…' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '撮り直す' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '撮り直す' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '撮影を終了' })).toBeEnabled()
     await media.user.click(screen.getByRole('button', { name: '撮影を終了' }))
     expect(media.onClose).toHaveBeenCalledOnce()
