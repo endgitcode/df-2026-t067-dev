@@ -90,6 +90,26 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const [activeRegions, setActiveRegions] = useState<string[]>(() => initialSelection.regions)
   const [activePrefectures, setActivePrefectures] = useState<string[]>(() => initialSelection.prefectures)
   const [filterOpen, setFilterOpen] = useState(false)
+  const filterPanelRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!filterOpen) return
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !filterPanelRef.current?.contains(event.target)) setFilterOpen(false)
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      setFilterOpen(false)
+      filterPanelRef.current?.querySelector<HTMLButtonElement>('.filter-toggle')?.focus()
+    }
+    document.addEventListener('pointerdown', outside)
+    document.addEventListener('keydown', escape, true)
+    return () => {
+      document.removeEventListener('pointerdown', outside)
+      document.removeEventListener('keydown', escape, true)
+    }
+  }, [filterOpen])
   const [openRegions, setOpenRegions] = useState<string[]>([])
   const [retry, setRetry] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -298,6 +318,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     writeSelectionToUrl(selectedAreaId, selectedId, 'replace', regions, prefectures)
   }
   const applyPlaceFilter = (regions: readonly string[], prefectures: readonly string[]) => {
+    if (dataMode !== 'demo') setFilterOpen(false)
     setActiveRegions([...regions])
     setActivePrefectures([...prefectures])
     if (selectedAreaId || selectedId) resetAreaSelection(regions, prefectures)
@@ -341,11 +362,16 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     })
   }
   // 地方→県のアコーディオン（D-48 の畳みは維持）。複数選択は「または」（#160）。
-  // チップ操作ではパネルを閉じない。件数をボタンへ出し、「すべて解除」で空に戻す。
+  // 永続側・共有検証では選択後に欄を閉じ、選択条件は外せるチップとして残す。
   const selectedPlaceCount = activeRegions.length + activePrefectures.length
   const filterSummary = selectedPlaceCount > 0 ? `場所で絞る：${selectedPlaceCount}件` : '場所で絞る'
-  const filterControls = <div className="map-filter-panel">
+  const selectedArea = availableAreas.find((area) => area.areaId === selectedAreaId)
+  const filterControls = <div ref={filterPanelRef} className="map-filter-panel">
     <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={openPlaceFilter}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
+    {dataMode !== 'demo' && selectedArea && <div className="map-filter-selection">
+      <button type="button" className="filter-chip" aria-label={`${selectedArea.label}のしぼり込みを外す`} onClick={() => resetAreaSelection()}>{selectedArea.label} <span aria-hidden="true">×</span></button>
+      <span role="status">{visibleChoices.length}件の謎</span>
+    </div>}
     {selectedPlaceCount > 0 && <div className="map-filter-selection">
       {activeRegions.map((region) => <button key={`r-${region}`} type="button" className="filter-chip" aria-label={`${region}の絞り込みを解除`} onClick={() => toggleRegion(region)}>{region} <span aria-hidden="true">×</span></button>)}
       {activePrefectures.map((prefecture) => <button key={`p-${prefecture}`} type="button" className="filter-chip" aria-label={`${prefecture}の絞り込みを解除`} onClick={() => togglePrefecture(prefecture)}>{prefecture} <span aria-hidden="true">×</span></button>)}

@@ -75,6 +75,8 @@ describe('PC sidebar review flow', () => {
     // 開閉（畳むと explore-sidebar-collapsed、開くと外れる）
     await user.click(screen.getByRole('button', { name: 'サイドバーを閉じる' }))
     expect(document.body).toHaveClass('explore-sidebar-collapsed')
+    const nav = document.querySelector('.desktop-nav')!
+    expect(nav.nextElementSibling).toContainElement(screen.getByRole('button', { name: 'サイドバーを開く' }))
     await user.click(screen.getByRole('button', { name: 'サイドバーを開く' }))
     expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
 
