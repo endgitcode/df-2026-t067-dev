@@ -222,7 +222,10 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const clearedByQuest = clearedState && uid !== null && clearedState.uid === uid ? clearedState.byQuest : emptyClearedByQuest
   const clearedQuestIds = useMemo(() => new Set(clearedByQuest.keys()), [clearedByQuest])
   useEffect(() => {
-    if (!localApiMode || uid === null || visiblePending !== null || serverIdentity.result?.status !== 'ready') return
+    // 対象は実モード（共有検証・永続）だけ。デモ表示は後退のため新機能の対象に
+    // しない（AGENTS.md の方針）。取得回数の契約（認証まわりの呼び出し回数など）を
+    // 乱さないよう、デモでは一切取得しない。
+    if (!(durableLocal || teamPreview) || !localApiMode || uid === null || visiblePending !== null || serverIdentity.result?.status !== 'ready') return
     const controller = new AbortController()
     void (async () => {
       try {
@@ -239,7 +242,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
       } catch { /* 表示だけの情報のため、失敗時は未取得として従来表示にする。 */ }
     })()
     return () => controller.abort()
-  }, [api, localApiMode, uid, visiblePending, serverIdentity.result, clearedRefresh])
+  }, [api, durableLocal, teamPreview, localApiMode, uid, visiblePending, serverIdentity.result, clearedRefresh])
   // クリア確定後の退出点（記録を開く／クリア画面から地図へ戻る）で、セッション内
   // でもクリア済みへ即時反映する（D-64）。一覧を取り直さずに詳細・バッジへ出す。
   const noteCleared = useCallback((questId: string, discoveryId: string) => {
