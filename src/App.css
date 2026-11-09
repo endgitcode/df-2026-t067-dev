@@ -156,7 +156,8 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .filter-chip[aria-pressed="true"] { background: var(--ui-accent); }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .api-load-state .map-filter-panel { margin-top: 18px; }
-.map-filter-flow { margin-top: 12px; }
+/* Maps準備中も開閉ボタン・パネル・選択行の基点を共有し、右上の固定スロットを避ける。 */
+.map-filter-flow { margin: 12px 20px 0; width: min(640px, calc(100% - 20px - var(--account-slot-right) - var(--account-slot-size) - 8px)); }
 .map-filter-flow .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .explore-list { margin-top: 14px; padding: 12px 14px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); box-shadow: none; }
 .explore-list-head { display: flex; align-items: baseline; gap: 10px; }

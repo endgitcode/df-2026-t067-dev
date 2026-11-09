@@ -554,3 +554,19 @@ describe('場所パネルの一体化とチップ配置', () => {
     expect(css).toContain('.map-filter-overlay .filter-disclosure.is-open { width: 100%; }')
   })
 })
+
+
+describe('場所フィルターとアカウントの間隔', () => {
+  it('Maps準備中も開閉共通の外枠で左20pxとアカウント左の8pxを確保する', () => {
+    const flow = css.match(/\.map-filter-flow \{([^}]+)\}/)?.[1] ?? ''
+    expect(flow).toContain('margin: 12px 20px 0;')
+    expect(flow).toContain('width: min(640px, calc(100% - 20px - var(--account-slot-right) - var(--account-slot-size) - 8px));')
+    // 開状態にも選択チップ行にも別の位置指定を設けず、同じ親の左端・上端を使う。
+    expect(css).not.toMatch(/\.filter-disclosure\.is-open\s*\{[^}]*(?:position|left|top):/)
+    expect(mapPreview).toContain('<div className="map-filter-flow">{topOverlay}</div>')
+    for (const [viewport, accountRight] of [[320, 10], [390, 10], [980, 10], [981, 20], [1440, 20]]) {
+      const panelRight = 20 + Math.min(640, viewport - 20 - accountRight - 44 - 8)
+      expect(viewport - accountRight - 44 - panelRight).toBeGreaterThanOrEqual(8)
+    }
+  })
+})
