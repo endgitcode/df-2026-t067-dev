@@ -367,7 +367,7 @@ describe('records view tab position (D-60 addendum)', () => {
     expect(css).toContain('body:has(.traveler-shell) .owner-records {')
     expect(css).toContain('margin: calc(var(--account-slot-top) + var(--account-slot-size) + 24px) 24px 24px calc(var(--pc-sidebar-w) + 24px);')
     expect(mapPreview).toContain('{createPortal(<button type="button" className="sidebar-toggle"')
-    expect(mapPreview).toContain("</button>, typeof document === 'undefined' ? null : document.body)}")
+    expect(mapPreview).toContain("</button>, typeof document === 'undefined' ? null : document.getElementById('sidebar-toggle-slot') ?? document.body)}")
     expect(mapPreview).toContain('[panelMode, sidebarCollapsed])')
     expect(css).toContain('body.explore-fullbleed .desktop-nav {')
     expect(css).toContain('top: var(--pc-sidebar-brand-h); left: 0;')

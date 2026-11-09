@@ -378,7 +378,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('fits to the selected quest area without an area selection and restores the camera when the quest is deselected (D-65)', async () => {
+  it('fits to the selected quest area without an area selection and preserves the camera when the quest is deselected', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const fitBounds = vi.fn()
@@ -400,9 +400,12 @@ describe('Google map panel', () => {
     // 地域を選ばず問題だけを選んでも、所属地域へ寄せる（D-44 の寄せは維持する）。
     rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="q1" onOpenQuest={vi.fn()} />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
-    // 問題の選択を外すと、選択直前のカメラへ戻る（#43 の復元も維持する）。
+    // 説明を閉じても直前の中心・縮尺とフィット回数を維持する。
     rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="" onOpenQuest={vi.fn()} />)
-    await waitFor(() => expect(setCenter).toHaveBeenCalled())
+    expect(setCenter).not.toHaveBeenCalled()
+    expect(setZoom).not.toHaveBeenCalled()
+    expect(fitBounds).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('.map-area-chip')).toBeNull()
     unmount()
     delete window.google
   })
@@ -690,7 +693,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('restores the camera from before the selection when the selection is cleared, even across area switches', async () => {
+  it('preserves the latest camera when selection is cleared across area switches', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     let center = { lat: 36.2048, lng: 138.2529 }
@@ -719,9 +722,11 @@ describe('Google map panel', () => {
     rerender(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="area-b" />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(2))
     rerender(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="" />)
-    // 解除時は初期表示ではなく、最初に選ぶ直前のカメラ（大阪・ズーム9）へ戻る。
-    expect(setCenter).toHaveBeenLastCalledWith({ lat: 34.6937, lng: 135.5023 })
-    expect(setZoom).toHaveBeenLastCalledWith(9)
+    // 地域を切り替えてから解除しても、最後の中心・縮尺を維持する。
+    expect(setCenter).not.toHaveBeenCalled()
+    expect(setZoom).not.toHaveBeenCalled()
+    expect(center).toEqual({ lat: 35.5, lng: 139.5 })
+    expect(zoom).toBe(11)
     unmount()
     delete window.google
   })
@@ -1430,7 +1435,7 @@ describe('Google map panel', () => {
     expect(container.querySelector('.explore-sheet')).toBe(sheet)
     expect(sheet).toHaveAttribute('data-snap', 'half')
     // Closing exposes the below-map list without scrolling or moving focus; the handle still reopens the sheet.
-    const handle = screen.getByRole('button', { name: '謎リストを縮める' })
+    const handle = screen.getByRole('button', { name: '謎リストを広げる' })
     fireEvent.pointerDown(handle, { pointerId: 30, pointerType: 'touch', clientY: 200 })
     fireEvent.pointerMove(handle, { pointerId: 30, pointerType: 'touch', clientY: 600 })
     fireEvent.pointerUp(handle, { pointerId: 30, pointerType: 'touch', clientY: 600 })
@@ -1446,7 +1451,7 @@ describe('Google map panel', () => {
     await user.click(screen.getByRole('button', { name: '地図に戻る' }))
     expect(container.querySelector('.below-map-quests')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
-    expect(sheet).toHaveAttribute('data-snap', 'peek')
+    expect(sheet).toHaveAttribute('data-snap', 'half')
     await waitFor(() => expect(container.querySelector('.below-map-quests')).not.toBeInTheDocument())
     expect(sheet).toContainElement(screen.getByRole('heading', { name: '港の時計台' }))
     expect(sheet.querySelector('textarea')).toBe(persistentDraft)
@@ -1454,8 +1459,10 @@ describe('Google map panel', () => {
     // Re-closing exposes the list without moving focus; selecting a row auto-opens the sheet,
     // while the detail remains in the below-map list and mounts only once.
     await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
-    const reopenedHandle = screen.getByRole('button', { name: '謎リストを縮める' })
-    await user.click(reopenedHandle)
+    const reopenedHandle = screen.getByRole('button', { name: '謎リストをたたむ' })
+    fireEvent.pointerDown(reopenedHandle, { pointerId: 31, pointerType: 'touch', clientY: 100 })
+    fireEvent.pointerMove(reopenedHandle, { pointerId: 31, pointerType: 'touch', clientY: 900 })
+    fireEvent.pointerUp(reopenedHandle, { pointerId: 31, pointerType: 'touch', clientY: 900 })
     expect(sheet).toHaveAttribute('data-snap', 'closed')
     const listCard = container.querySelector<HTMLButtonElement>('.below-map-quests button[aria-label="博多の灯台の詳細を見る"]')!
     await user.click(listCard)
@@ -1471,7 +1478,10 @@ describe('Google map panel', () => {
     expect(sheet).toContainElement(screen.getByRole('heading', { name: '博多の灯台' }))
 
     // A later sheet-card selection also exits below-map mode before the parent selection update.
-    await user.click(screen.getByRole('button', { name: '謎リストを縮める' }))
+    const closingHandle = screen.getByRole('button', { name: '謎リストを広げる' })
+    fireEvent.pointerDown(closingHandle, { pointerId: 32, pointerType: 'touch', clientY: 100 })
+    fireEvent.pointerMove(closingHandle, { pointerId: 32, pointerType: 'touch', clientY: 900 })
+    fireEvent.pointerUp(closingHandle, { pointerId: 32, pointerType: 'touch', clientY: 900 })
     expect(container.querySelector('.below-map-quests')).toBeInTheDocument()
     const sheetCard = sheet.querySelector<HTMLButtonElement>('[aria-label="港の時計台の詳細を見る"]')!
     await user.click(sheetCard)

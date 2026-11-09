@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ExploreQuestList } from './ExploreQuestList'
@@ -184,4 +184,46 @@ describe('ExploreQuestList', () => {
     await waitFor(() => expect(screen.queryByText('詳細コンテンツ')).not.toBeInTheDocument())
     expect(onOpenQuest).not.toHaveBeenCalled()
   })
+})
+
+it.each([false, true])('scrolls the opened lower row to the top (reduced motion: %s)', (reduced) => {
+  vi.stubGlobal('matchMedia', () => ({ matches: reduced }))
+  const scroll = vi.fn()
+  const original = HTMLElement.prototype.scrollIntoView
+  HTMLElement.prototype.scrollIntoView = scroll
+  const { rerender } = render(<ExploreQuestList areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+  rerender(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q2" onOpenQuest={vi.fn()} detailContent={<h3>説明</h3>} />)
+  expect(scroll).toHaveBeenCalledWith({ block: 'start', behavior: reduced ? 'instant' : 'smooth' })
+  const row = screen.getByRole('button', { name: '博多の灯台の詳細を見る' }).closest('li')!
+  expect(scroll.mock.instances.at(-1)).toBe(row)
+  scroll.mockClear()
+  fireEvent.transitionEnd(row.querySelector('.explore-quest-detail-wrap')!)
+  expect(scroll).toHaveBeenCalledWith({ block: 'start', behavior: reduced ? 'instant' : 'smooth' })
+  HTMLElement.prototype.scrollIntoView = original
+  vi.unstubAllGlobals()
+})
+
+it.each(['button', 'Escape'])('closes the explanation with %s and returns focus to its row', async (method) => {
+  const user = userEvent.setup()
+  render(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q2" onOpenQuest={vi.fn()} detailContent={<h3>説明</h3>} />)
+  const close = screen.getByRole('button', { name: '説明を閉じる' })
+  close.focus()
+  if (method === 'button') await user.click(close)
+  else await user.keyboard('{Escape}')
+  expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' })).toHaveFocus()
+  expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' })).toHaveAttribute('aria-expanded', 'false')
+})
+
+it.each(['explore-side-panel', 'explore-sheet-body'])('aligns a scrolled row within %s and clears sticky filters', (className) => {
+  const { container, rerender } = render(<div className={className}><div className="side-panel-filters">場所</div><ExploreQuestList areas={areas} quests={quests} onOpenQuest={vi.fn()} /></div>)
+  const scroller = container.firstElementChild as HTMLElement
+  scroller.scrollTop = 96
+  const scrollTo = vi.fn()
+  scroller.scrollTo = scrollTo
+  vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ y: 100 }))
+  vi.spyOn(scroller.querySelector('.side-panel-filters')!, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ height: 64 }))
+  const row = screen.getByRole('button', { name: '博多の灯台の詳細を見る' }).closest('li')!
+  vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ y: 500 }))
+  rerender(<div className={className}><div className="side-panel-filters">場所</div><ExploreQuestList areas={areas} quests={quests} selectedQuestId="q2" onOpenQuest={vi.fn()} detailContent={<h3>説明</h3>} /></div>)
+  expect(scrollTo).toHaveBeenCalledWith({ top: className === 'explore-side-panel' ? 432 : 496, behavior: 'smooth' })
 })

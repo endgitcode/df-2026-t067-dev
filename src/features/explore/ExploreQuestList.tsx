@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 
@@ -86,6 +86,46 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
     }
   }, [highlightArea, scrollToHighlight])
 
+  // Scroll after the selected row and its detail have been committed, including async loads.
+  useLayoutEffect(() => {
+    if (!expandedQuestId) return
+    const row = listRef.current?.querySelector<HTMLElement>('[aria-expanded="true"]')?.closest('li')
+    const align = () => {
+      if (!row) return
+      const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+      const scroller = row.closest<HTMLElement>('.explore-side-panel, .explore-sheet-body')
+      if (scroller?.scrollTo) {
+        const stickyHeight = scroller.classList.contains('explore-side-panel')
+          ? scroller.querySelector('.side-panel-filters')?.getBoundingClientRect().height ?? 0 : 0
+        scroller.scrollTo({ top: scroller.scrollTop + row.getBoundingClientRect().top - scroller.getBoundingClientRect().top - stickyHeight, behavior })
+      } else row.scrollIntoView?.({ block: 'start', behavior })
+    }
+    align()
+    const detail = row?.querySelector('.explore-quest-detail-wrap')
+    const onExpanded = (event: Event) => { if (event.target === detail) align() }
+    detail?.addEventListener('transitionend', onExpanded)
+    return () => detail?.removeEventListener('transitionend', onExpanded)
+  }, [expandedQuestId])
+
+  useEffect(() => {
+    if (!expandedQuestId) return
+    const close = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      event.preventDefault()
+      listRef.current?.querySelector<HTMLButtonElement>('[aria-expanded="true"]')?.focus({ preventScroll: true })
+      if (onDeselectQuest) onDeselectQuest()
+      else setClosedQuestId(expandedQuestId)
+    }
+    document.addEventListener('keydown', close)
+    return () => document.removeEventListener('keydown', close)
+  }, [expandedQuestId, onDeselectQuest])
+
+  const closeDetail = () => {
+    listRef.current?.querySelector<HTMLButtonElement>('[aria-expanded="true"]')?.focus({ preventScroll: true })
+    if (onDeselectQuest) onDeselectQuest()
+    else setClosedQuestId(expandedQuestId)
+  }
+
   const handleRowClick = (questId: string) => {
     if (questId === selectedQuestId) {
       // 選択中の行の再タップは選択解除に統一する（D-55、ピンの再タップ D-44 と同じ）。
@@ -101,6 +141,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
         return
       }
     }
+    setClosedQuestId('')
     onOpenQuest?.(questId)
   }
 
@@ -143,7 +184,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
                 aria-hidden={!expanded || undefined}>
                 <div className="explore-quest-detail-clip">
                   {expanded
-                    ? <div ref={detailRef} className="explore-quest-detail">{detailContent}</div>
+                    ? <div ref={detailRef} className="explore-quest-detail"><button type="button" className="quest-detail-close" aria-label="説明を閉じる" onClick={closeDetail}>閉じる</button>{detailContent}</div>
                     : closing && <div className="explore-quest-detail">{closingDetail?.content}</div>}
                 </div>
               </div>

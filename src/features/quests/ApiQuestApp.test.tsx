@@ -9,7 +9,7 @@ import { ApiQuestApp } from './ApiQuestApp'
 import { ApiError } from '../../shared/api/client'
 
 vi.mock('../explore/MapPreview', () => ({ MapPreview: (props: { areas?: PublicArea[]; quests?: PublicQuest[]; selectedAreaId?: string; onSelectArea?: (id: string) => void; topOverlay?: ReactNode; questDetail?: ReactNode }) =>
-  <div data-testid="map-state" data-area={props.selectedAreaId}><div className="explore-list-head">{props.quests?.length ?? 0}件</div>地図 {props.areas?.length ?? 0} {props.selectedAreaId}{props.areas?.map((area) => <button key={area.areaId} type="button" aria-label={area.areaId === 'area-b' ? '地図の公開地域を選択' : '地図の川辺エリアを選択'} onClick={() => props.onSelectArea?.(area.areaId)}>{area.label}のピン</button>)}{props.topOverlay}{props.questDetail}</div> }))
+  <div data-testid="map-state" data-area={props.selectedAreaId} data-quest-order={props.quests?.map((quest) => quest.questId).join(",")}><div className="explore-list-head">{props.quests?.length ?? 0}件</div>地図 {props.areas?.length ?? 0} {props.selectedAreaId}{props.areas?.map((area) => <button key={area.areaId} type="button" aria-label={area.areaId === 'area-b' ? '地図の公開地域を選択' : '地図の川辺エリアを選択'} onClick={() => props.onSelectArea?.(area.areaId)}>{area.label}のピン</button>)}{props.topOverlay}{props.questDetail}</div> }))
 
 const first: PublicQuest = { questId: 'quest-a', version: 2, title: '川辺の謎', clue: '詳細版の手がかり', areaId: 'area-a', visitConditions: '訪問条件', hintCount: 0 }
 const second: PublicQuest = { questId: 'quest-b', version: 1, title: '森の謎', clue: '森の手がかり', areaId: 'area-b', visitConditions: '訪問条件', hintCount: 0 }
@@ -652,6 +652,7 @@ describe('APIから問題を表示', () => {
     expect(screen.queryByRole('button', { name: '全国' })).not.toBeInTheDocument()
     await openFilterPanel(user)
     await expandRegion(user, '関東')
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '関東地方ぜんぶ' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByText('森エリアのピン')).toBeVisible()
     await act(async () => {
@@ -853,11 +854,13 @@ describe('APIから問題を表示', () => {
     await screen.findByRole('button', { name: '川辺の謎を開く' })
     expect(screen.queryByRole('combobox', { name: '地域を選択' })).not.toBeInTheDocument()
     await clickRegionWhole(user, '関東')
-    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByText('川辺エリアのピン')).toBeVisible()
     expect(screen.getByText('森エリアのピン')).toBeVisible()
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '関東地方ぜんぶ' })).toHaveAttribute('aria-pressed', 'true')
     // 県も見た目上すべて選択
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '東京都' })).toHaveAttribute('aria-pressed', 'true')
     // OR: 関東のまま東京都だけに絞っても川辺は残る（冗長な個別指定）
     await user.click(screen.getByRole('button', { name: 'すべて解除' }))
@@ -876,13 +879,13 @@ describe('APIから問題を表示', () => {
     expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
     expect(api.listQuests).not.toHaveBeenCalledWith({ areaId: second.areaId, limit: 100, cursor: undefined }, expect.anything())
     await clickRegionWhole(user, '近畿')
-    await openFilterPanel(user)
+    await expandRegion(user, '近畿')
     expect(screen.getByRole('button', { name: '近畿地方ぜんぶ' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: '川辺の謎を開く' })).toBeInTheDocument()
     expect(screen.getByText('森エリアのピン')).toBeVisible()
   })
 
-  it('「場所で絞る」は開閉でき、選んでも開いたまま、選択中の地方の再タップで解除できる（D-48/D-55）', async () => {
+  it('「場所で絞る」は開閉でき、選ぶと閉じて、選択中の地方の再タップで解除できる（D-48/D-55）', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
     const tokyo = { ...areas[0], prefectureCode: '13' }
@@ -908,7 +911,7 @@ describe('APIから問題を表示', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: (_l, el) => el.classList.contains('filter-accordion-row') && el.querySelector('.filter-accordion-name')?.textContent === '関東' })).not.toBeInTheDocument()
     await clickFilterChip(user, '関東')
-    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByText('森エリアのピン')).toBeVisible()
     // 選択中の地方をもう一度押すと解除され、全国の表示に戻る。
     await clickFilterChip(user, '関東')
@@ -926,8 +929,10 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} dataMode="team-preview" />)
     await screen.findByRole('button', { name: '川辺の謎を開く' })
     await clickPrefecture(user, '関東', '東京都')
-    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'false')
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '東京都' })).toHaveAttribute('aria-pressed', 'true')
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '関東地方ぜんぶ' })).toHaveAttribute('aria-pressed', 'false')
     expect(await regionAccordionRow('関東')).toHaveTextContent('1県')
     // 再タップで解除
@@ -935,10 +940,14 @@ describe('APIから問題を表示', () => {
     expect(screen.getByRole('button', { name: '場所で絞る' })).toBeVisible()
     // 地方ぜんぶ → 1県外すと残り県が個別選択になる
     await clickRegionWhole(user, '関東')
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '関東地方ぜんぶ' })).toHaveAttribute('aria-pressed', 'true')
     await clickPrefecture(user, '関東', '東京都')
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '関東地方ぜんぶ' })).toHaveAttribute('aria-pressed', 'false')
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '東京都' })).toHaveAttribute('aria-pressed', 'false')
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '神奈川県' })).toHaveAttribute('aria-pressed', 'true')
     expect(await regionAccordionRow('関東')).toHaveTextContent('6県')
   })
@@ -970,7 +979,7 @@ describe('APIから問題を表示', () => {
     expect(document.querySelector('.explore-list-head')).toHaveTextContent('2件')
     await clickRegionWhole(user, '関東')
     expect(document.querySelector('.explore-list-head')).toHaveTextContent('1件')
-    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'false')
     // 地方チップの×で解除
     await user.click(screen.getByRole('button', { name: '関東の絞り込みを解除' }))
     expect(screen.getByRole('button', { name: '場所で絞る' })).toBeVisible()
@@ -1056,14 +1065,17 @@ describe('APIから問題を表示', () => {
     expect(screen.getByRole('button', { name: '東京都' })).toBeVisible()
     // 2県選択
     await user.click(screen.getByRole('button', { name: '東京都' }))
+    await openFilterPanel(user)
     await user.click(screen.getByRole('button', { name: '神奈川県' }))
     expect(kanto).toHaveTextContent('2県')
     expect(screen.getByRole('button', { name: '場所で絞る：2件' })).toBeVisible()
     expect(window.location.search).toContain('prefs=')
     // 全県そろえると地方ぜんぶへ昇格
     for (const name of ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県']) {
+      await openFilterPanel(user)
       await user.click(screen.getByRole('button', { name }))
     }
+    await openFilterPanel(user)
     expect(screen.getByRole('button', { name: '関東地方ぜんぶ' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toBeVisible()
     expect(window.location.search).toContain('regions=')
@@ -1079,7 +1091,7 @@ describe('APIから問題を表示', () => {
     expect(screen.getByRole('button', { name: '東京都の絞り込みを解除' })).toBeVisible()
   })
 
-  it('地方・県を複数選べ、チップ操作ではパネルが開いたまま、すべて解除とURL復元ができる', async () => {
+  it('地方・県を複数選べ、選択ごとにパネルを閉じて、すべて解除とURL復元ができる', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
     const tokyo = { ...areas[0], prefectureCode: '13' }
@@ -1089,9 +1101,9 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} dataMode="team-preview" />)
     await screen.findByRole('button', { name: '川辺の謎を開く' })
     await clickRegionWhole(user, '関東')
-    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: '場所で絞る：1件' })).toHaveAttribute('aria-expanded', 'false')
     await clickRegionWhole(user, '近畿')
-    expect(screen.getByRole('button', { name: '場所で絞る：2件' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: '場所で絞る：2件' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByRole('button', { name: '川辺の謎を開く' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '森の謎を開く' })).toBeInTheDocument()
     expect(window.location.search).toContain('regions=')
@@ -1676,4 +1688,35 @@ it('durable traveler chrome omits mode badges and synthetic-restriction banners'
   expect(document.querySelector('.demo-note')).toBeNull()
   expect(document.querySelector('.preview-label')).toBeNull()
   expect(screen.getByRole('region', { name: '問題の詳細' })).toBeVisible()
+})
+
+it('shows a removable pin filter with count and restores the full original list', async () => {
+  const user = userEvent.setup()
+  const api = apiFixture()
+  api.listQuests.mockImplementation(async (params) => page(params?.areaId ? [second] : [first, second]))
+  render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="durable-local" />)
+  await user.click(await screen.findByRole('button', { name: '地図の公開地域を選択' }))
+  const chip = await screen.findByRole('button', { name: '森エリアのしぼり込みを外す' })
+  await waitFor(() => expect(screen.getByTestId('map-state').querySelector('.explore-list-head')).toHaveTextContent('1件'))
+  await user.click(chip)
+  await waitFor(() => expect(screen.getByTestId('map-state').querySelector('.explore-list-head')).toHaveTextContent('2件'))
+  expect(screen.getByTestId('map-state')).toHaveAttribute('data-quest-order', 'quest-a,quest-b')
+  expect(window.location.search).not.toContain('area=')
+  expect(screen.queryByRole('button', { name: '森エリアのしぼり込みを外す' })).not.toBeInTheDocument()
+})
+
+it('dismisses the place picker on selection, outside pointer and Escape', async () => {
+  const user = userEvent.setup()
+  render(<ApiQuestApp api={apiFixture()} authClient={signedOutAuth()} dataMode="durable-local" />)
+  await screen.findByRole('button', { name: '地図の公開地域を選択' })
+  await clickPrefecture(user, '関東', '神奈川県')
+  const toggle = screen.getByRole('button', { name: /場所で絞る/ })
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await user.click(toggle)
+  await user.keyboard('{Escape}')
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(toggle).toHaveFocus()
+  await user.click(toggle)
+  await user.click(document.body)
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
 })

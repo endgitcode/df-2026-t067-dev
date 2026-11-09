@@ -463,6 +463,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             <Icon name="book" /><span className="nav-label">自分の記録</span>
           </button>
         </nav>
+        <div id="sidebar-toggle-slot" />
         <div className="account-area">
           {/* 右上の固定スロットはアイコン型にする（#36 の固定スロットと、#42 の「状態表示を置かない」を維持）。
               ログイン中はタップで小さなメニューを開き、アカウント名とログアウトはその中だけに出す。 */}
