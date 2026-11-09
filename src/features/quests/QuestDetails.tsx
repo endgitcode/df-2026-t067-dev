@@ -1,3 +1,4 @@
+import { openedHints } from '../capture/captureContinuity'
 import type { PublicQuest } from '../../shared/api/types'
 import { Icon } from '../../components/Icon'
 import { QuestHandoff } from '../../components/QuestHandoff'
@@ -77,6 +78,8 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
       const hint = await getHint!({ questId, expectedVersion: version, index }, { signal: controller.signal })
       if (controller.signal.aborted || generation.current !== currentGeneration) return
       setCache((current) => ({ ...current, [index]: hint.text }))
+      const key = `${questId}:${version}`
+      openedHints.set(key, { ...openedHints.get(key), [index]: hint.text })
       setState({ status: 'ready', text: hint.text })
       setUnlockedThrough((current) => Math.max(current, index + 1))
     } catch (error) {

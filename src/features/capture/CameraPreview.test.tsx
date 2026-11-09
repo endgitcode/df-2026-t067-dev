@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { StrictMode } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -57,7 +58,7 @@ describe('local camera preview', () => {
   it('places the mobile fullscreen camera outside the transformed sheet', () => {
     const media = setup()
     const { container } = render(<CameraPreview onClose={media.onClose} />)
-    const camera = screen.getByRole('region', { name: '写真撮影と確認' })
+    const camera = screen.getByRole('dialog', { name: '写真撮影と確認' })
     expect(camera).toHaveClass('camera-overlay')
     expect(camera.parentElement).toBe(document.body)
     expect(container).not.toContainElement(camera)
@@ -584,6 +585,7 @@ describe('local camera preview', () => {
     await loadFrame(media.stream)
     await media.user.click(screen.getByRole('button', { name: '撮影する' }))
     const success = media.getCurrentPosition.mock.calls[0][0]
+    if (leave === 'close') vi.spyOn(window, 'confirm').mockReturnValue(true)
     if (leave === 'close') await media.user.click(screen.getByRole('button', { name: '撮影を終了' }))
     else if (leave === 'unmount') view.unmount()
     else fireEvent(window, new Event('pagehide'))
@@ -669,4 +671,97 @@ describe('confirm photo layout CSS', () => {
     expect(css).not.toMatch(/\.camera-overlay \.camera-video, \.camera-overlay \.photo-preview \{[^}]*position: absolute; inset: 0/)
     expect(css).toMatch(/\.camera-overlay \.camera-video, \.camera-overlay \.photo-preview \{[^}]*flex: 1 1 auto/)
   })
+})
+
+it('撮影中も問題名・手がかり・開いたヒントを開閉できる', async () => {
+  const media = setup()
+  render(<CameraPreview onClose={media.onClose} clue="塔の窓を探す" hints={['丸い窓が目印']} answer={{ api: { submitAnswer: vi.fn(), getAttempt: vi.fn() }, challengeId: 'c', questTitle: '窓の謎', onReloadQuest: vi.fn() }} />)
+  expect(screen.getByRole('heading', { name: '窓の謎' })).toBeVisible()
+  const summary = screen.getByText('手がかり・開いたヒント')
+  expect(summary.parentElement).not.toHaveAttribute('open')
+  await media.user.click(summary)
+  expect(summary.parentElement).toHaveAttribute('open')
+  expect(screen.getByText('塔の窓を探す')).toBeVisible()
+  expect(screen.getByText('丸い窓が目印')).toBeVisible()
+})
+
+it('カメラは背景をinertにし、Tabを閉じ込め、未送信写真のEsc終了を確認する', async () => {
+  const media = setup()
+  const { container, unmount } = render(<CameraPreview onClose={media.onClose} />)
+  const dialog = screen.getByRole('dialog', { name: '写真撮影と確認' })
+  expect(dialog).toHaveAttribute('aria-modal', 'true')
+  expect(container).toHaveAttribute('inert')
+  await loadFrame(media.stream)
+  const close = screen.getByRole('button', { name: '撮影を終了' })
+  close.focus()
+  await media.user.tab()
+  expect(screen.getByRole('button', { name: '撮影する' })).toHaveFocus()
+  await media.user.tab({ shift: true })
+  expect(close).toHaveFocus()
+  await media.user.click(screen.getByRole('button', { name: '撮影する' }))
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(confirm).toHaveBeenCalledOnce()
+  expect(media.onClose).not.toHaveBeenCalled()
+  fireEvent.popState(window, { state: null })
+  expect(confirm).toHaveBeenCalledTimes(2)
+  expect(window.history.state.camera).toBe(true)
+  expect(media.onClose).not.toHaveBeenCalled()
+  confirm.mockReturnValue(true)
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(media.onClose).toHaveBeenCalledOnce()
+  unmount()
+  expect(container).not.toHaveAttribute('inert')
+})
+
+it('カメラ拒否時は撮影ボタンを隠して黄色の再試行を出す', async () => {
+  const media = setup()
+  media.getUserMedia.mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
+  render(<CameraPreview onClose={media.onClose} />)
+  expect(await screen.findByRole('button', { name: 'カメラを再試行' })).toHaveClass('primary-button')
+  expect(screen.queryByRole('button', { name: '撮影する' })).not.toBeInTheDocument()
+})
+
+it.each(['WRONG_TARGET', 'OUTSIDE_AREA', 'SYSTEM_ERROR'])('%sの後は撮り直すが主ボタンになる', async outcome => {
+  const media = setup()
+  render(<CameraPreview onClose={media.onClose} answer={{ api: { submitAnswer: vi.fn().mockResolvedValue({ attemptId: 'a', state: 'COMPLETED', outcome, source: 'real', nextAction: 'RETAKE' }), getAttempt: vi.fn() }, challengeId: 'c', dataMode: 'team-preview', questTitle: '窓の謎', onReloadQuest: vi.fn() }} />)
+  await loadFrame(media.stream)
+  await media.user.click(screen.getByRole('button', { name: '撮影する' }))
+  await media.user.click(await screen.findByRole('button', { name: '写真と位置を送信' }))
+  expect(screen.getByRole('button', { name: '撮り直す' })).toHaveClass('primary-button')
+  if (outcome === 'OUTSIDE_AREA') expect(screen.getByText('窓の謎：範囲の中心付近で撮ってください')).toBeVisible()
+  if (outcome === 'SYSTEM_ERROR') expect(screen.getByRole('button', { name: '同じ写真で再送' })).toBeEnabled()
+})
+
+
+it('確定したシステムエラーは同じ写真で新しい回答として再送できる', async () => {
+  const media = setup()
+  const submitAnswer = vi.fn().mockResolvedValueOnce({ attemptId: 'failed', state: 'COMPLETED', outcome: 'SYSTEM_ERROR', source: 'real', nextAction: 'RETRY' }).mockResolvedValue({ attemptId: 'retried', state: 'COMPLETED', outcome: 'WRONG_TARGET', source: 'real', nextAction: 'RETAKE' })
+  render(<CameraPreview onClose={media.onClose} answer={{ api: { submitAnswer, getAttempt: vi.fn() }, challengeId: 'c', dataMode: 'team-preview', onReloadQuest: vi.fn() }} />)
+  await loadFrame(media.stream)
+  await media.user.click(screen.getByRole('button', { name: '撮影する' }))
+  await media.user.click(await screen.findByRole('button', { name: '写真と位置を送信' }))
+  await media.user.click(await screen.findByRole('button', { name: '同じ写真で再送' }))
+  expect(submitAnswer).toHaveBeenCalledTimes(2)
+  const first = submitAnswer.mock.calls[0][0], second = submitAnswer.mock.calls[1][0]
+  expect(second.photo).toBe(first.photo)
+  expect(second.metadata).toEqual(first.metadata)
+  expect(second.idempotencyKey).not.toBe(first.idempotencyKey)
+  expect(media.getUserMedia).toHaveBeenCalledTimes(1)
+})
+
+
+it('クリア画面から撮影を終了すると重なったdialogの背景inertを解除する', async () => {
+  const media = setup()
+  function Host() {
+    const [open, setOpen] = useState(true)
+    return open && <CameraPreview onClose={() => {}} answer={{ api: { submitAnswer: vi.fn().mockResolvedValue({ attemptId: 'a', state: 'COMPLETED', outcome: 'CORRECT', optionalDiscoveryId: 'd', source: 'real', nextAction: 'OPEN_DISCOVERY' }), getAttempt: vi.fn() }, challengeId: 'c', dataMode: 'team-preview', onReloadQuest: vi.fn(), onReturnToMap: () => setOpen(false) }} />
+  }
+  const { container } = render(<Host />)
+  await loadFrame(media.stream)
+  await media.user.click(screen.getByRole('button', { name: '撮影する' }))
+  await media.user.click(await screen.findByRole('button', { name: '写真と位置を送信' }))
+  await media.user.click(await screen.findByRole('button', { name: '地図に戻る' }))
+  expect(container).not.toHaveAttribute('inert')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

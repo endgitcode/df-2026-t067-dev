@@ -93,7 +93,7 @@ describe('PC sidebar review flow', () => {
     expect(await within(panel).findByRole('heading', { name: quest.title })).toBeVisible()
 
     // PCでは詳細からスマホへ受け渡し、撮影操作は提供しない。
-    expect(within(panel).getByRole('button', { name: 'スマホで挑戦する' })).toBeVisible()
+    expect(within(panel).queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
     expect(within(panel).getByRole('img', { name: /QRコード/ })).toBeVisible()
     expect(within(panel).queryByRole('button', { name: '挑戦を始める' })).not.toBeInTheDocument()
     expect(panel.querySelector('input[type="file"], video')).toBeNull()

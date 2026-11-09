@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { inertBackground } from '../../components/inertBackground'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { QuestHandoff } from '../../components/QuestHandoff'
 import { createPortal } from 'react-dom'
 import { useWideViewport } from '../quests/useWideViewport'
@@ -9,7 +10,7 @@ import type { DemoAnswerContext } from './DemoAnswerSubmission'
 import { CaptureLocationMap } from './CaptureLocationMap'
 import { isCaptureLocationMapDebugEnabled } from './captureMapDebug'
 
-type CameraPreviewProps = { onClose: () => void; answer?: DemoAnswerContext; handoffUrl?: string }
+type CameraPreviewProps = { onClose: () => void; answer?: DemoAnswerContext; handoffUrl?: string; clue?: string; hints?: string[] }
 
 export function CameraPreview(props: CameraPreviewProps) {
   const wide = useWideViewport()
@@ -17,9 +18,12 @@ export function CameraPreview(props: CameraPreviewProps) {
   return <MobileCameraPreview {...props} />
 }
 
-function MobileCameraPreview({ onClose, answer }: CameraPreviewProps) {
+function MobileCameraPreview({ onClose, answer, clue, hints = [] }: CameraPreviewProps) {
   const wide = useWideViewport()
   const showCaptureLocationMapDebug = isCaptureLocationMapDebugEnabled(import.meta.env.DEV, import.meta.env.VITE_CAPTURE_LOCATION_MAP_DEBUG)
+  const closing = useRef(false)
+  const panelRef = useRef<HTMLElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const photoRef = useRef<string | null>(null)
@@ -40,6 +44,45 @@ function MobileCameraPreview({ onClose, answer }: CameraPreviewProps) {
   const [locating, setLocating] = useState(false)
   const [showLocationMap, setShowLocationMap] = useState(false)
   const photoUrl = photo?.url
+
+  function requestClose(fromBack = false) {
+    if (photoRef.current && !submissionStarted && !window.confirm('未送信の写真を破棄して撮影を終了しますか？')) return false
+    closing.current = true
+    if (!fromBack && window.history.state?.camera) {
+      window.history.back()
+    }
+    dispose(); setLocating(false); onClose(); return true
+  }
+  const closeFromEvent = useEffectEvent(requestClose)
+  useEffect(() => {
+    const previous = document.activeElement
+    const releaseBackground = inertBackground(panelRef.current)
+    closeRef.current?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (document.querySelector('.clear-screen')) return
+      if (event.key === 'Escape') { event.preventDefault(); closeFromEvent() }
+      if (event.key === 'Tab') {
+        const items = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), summary, [tabindex="0"]') ?? [])
+        const first = items[0], last = items.at(-1)
+        if (event.shiftKey && (document.activeElement === first || !panelRef.current?.contains(document.activeElement))) { event.preventDefault(); last?.focus() }
+        else if (!event.shiftKey && (document.activeElement === last || !panelRef.current?.contains(document.activeElement))) { event.preventDefault(); first?.focus() }
+      }
+    }
+    const onBack = (event: PopStateEvent) => {
+      event.stopImmediatePropagation()
+      if (closing.current) return
+      if (!closeFromEvent(true)) window.history.pushState({ ...window.history.state, camera: true }, '')
+    }
+    if (!window.history.state?.camera) window.history.pushState({ ...window.history.state, camera: true }, '')
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('popstate', onBack, true)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('popstate', onBack, true)
+      releaseBackground()
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus()
+    }
+  }, [])
 
   function stopCamera() {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -233,8 +276,10 @@ function MobileCameraPreview({ onClose, answer }: CameraPreviewProps) {
   }
 
   const panel = (
-    <section className={wide ? "camera-panel" : "camera-panel camera-overlay"} aria-label="写真撮影と確認">
-      <h4>{photoUrl ? '写真を確認' : '写真を撮影'}</h4>
+    <section ref={panelRef} role="dialog" aria-modal="true" className={wide ? "camera-panel" : "camera-panel camera-overlay"} aria-label="写真撮影と確認">
+      <header className="camera-heading"><h4>{answer?.questTitle ?? (photoUrl ? '写真を確認' : '写真を撮影')}</h4>
+        {(clue || hints.length > 0) && <details><summary>手がかり・開いたヒント</summary>{clue && <p>{clue}</p>}{hints.map((hint, index) => <p key={index}>{hint}</p>)}</details>}
+      </header>
       {photoUrl ? <img className="photo-preview" src={photoUrl} alt="撮影した写真のプレビュー" />
         : <video ref={videoRef} className="camera-video" autoPlay playsInline muted aria-label="カメラ映像"
           onLoadedData={ready} onCanPlay={ready} onError={() => fail('カメラ映像を表示できませんでした。再試行してください。')} />}
@@ -258,12 +303,12 @@ function MobileCameraPreview({ onClose, answer }: CameraPreviewProps) {
         onSubmissionResolved={() => setRetakeLocked(false)}
         onWaitingChange={setJudging} />}
       {!judging && <div className="camera-actions">
-        {!photoUrl && <button type="button" className="primary-button" onClick={capture} disabled={phase !== 'live'}>{phase === 'capturing' ? '写真を作成しています…' : '撮影する'}</button>}
+        {!photoUrl && phase !== 'error' && <button type="button" className="primary-button" onClick={capture} disabled={phase !== 'live'}>{phase === 'capturing' ? '写真を作成しています…' : '撮影する'}</button>}
         {photoUrl && !metadata && <button type="button" className="primary-button" onClick={requestLocation} disabled={locating}>{locating ? '撮影地を取得中…' : '位置情報を再試行'}</button>}
         {photoUrl && !answer && <button type="button" className="primary-button" disabled>解答を送信する</button>}
-        {photoUrl && <button type="button" className="secondary-button" onClick={restart} disabled={retakeLocked}>撮り直す</button>}
-        {phase === 'error' && <button type="button" className="secondary-button" onClick={restart}>カメラを再試行</button>}
-        <button type="button" className="secondary-button" onClick={() => { dispose(); setLocating(false); onClose() }}>撮影を終了</button>
+        {photoUrl && <button type="button" className={submissionStarted && !retakeLocked ? "primary-button" : "secondary-button"} onClick={restart} disabled={retakeLocked}>撮り直す</button>}
+        {phase === 'error' && <button type="button" className="primary-button" onClick={restart}>カメラを再試行</button>}
+        <button ref={closeRef} type="button" className="secondary-button" onClick={() => requestClose()}>撮影を終了</button>
       </div>}
     </section>
   )

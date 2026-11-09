@@ -280,3 +280,37 @@ describe('challenge before camera', () => {
     expect(f.submitAnswer).toHaveBeenCalledTimes(1)
   })
 })
+
+it('再読込後も本人・問題に対応する受付から再開し、POSTを増やさない', async () => {
+  const { receiptKey } = await import('./captureContinuity')
+  const key = receiptKey('owner', quest.questId)
+  const { DemoAnswerSubmission } = await import('./DemoAnswerSubmission')
+  const initial = render(<DemoAnswerSubmission context={{ api: { submitAnswer: vi.fn().mockResolvedValue({ attemptId: 'saved-attempt', state: 'PROCESSING', outcome: null, source: 'real', nextAction: 'WAIT' }), getAttempt: vi.fn() }, challengeId: 'c', storageKey: key, questId: quest.questId, dataMode: 'durable-local', onReloadQuest: vi.fn() }} photo={new Blob(['synthetic'])} metadata={{ capturedAt: new Date().toISOString(), position: { latitude: 0, longitude: 0, accuracyMeters: 10, measuredAt: new Date().toISOString() } }} disabled={false} onSubmissionStarted={vi.fn()} />)
+  await userEvent.setup().click(screen.getByRole('button', { name: '写真と位置をテスト送信' }))
+  expect(sessionStorage.getItem(key)).toBe('saved-attempt')
+  initial.unmount()
+  const getAttempt = vi.fn().mockResolvedValue({ attemptId: 'saved-attempt', state: 'COMPLETED', outcome: 'LOCATION_UNCERTAIN', source: 'real', nextAction: 'RETAKE' })
+  const submitAnswer = vi.fn()
+  const api = { ...createApiClient(), getAttempt, submitAnswer }
+  render(<ChallengeCapture api={api} quest={quest} ownerKey="owner" dataMode="durable-local" onReloadQuest={vi.fn()} />)
+  expect(screen.getByText('判定中の回答があります')).toBeVisible()
+  await userEvent.setup().click(screen.getByRole('button', { name: '結果を見る' }))
+  await waitFor(() => expect(getAttempt).toHaveBeenCalledWith('saved-attempt', { signal: expect.any(AbortSignal) }), { timeout: 3000 })
+  expect(await screen.findByText(`${quest.title}：範囲の中心付近で撮ってください`)).toBeVisible()
+  expect(submitAnswer).not.toHaveBeenCalled()
+  expect(sessionStorage.getItem(key)).toBeNull()
+})
+
+
+it('選択問題の手がかりと取得済みヒントを撮影画面へ渡す', async () => {
+  const { openedHints } = await import('./captureContinuity')
+  const key = `${quest.questId}:${quest.version}`
+  openedHints.set(key, { 1: '開いたヒントの本文' })
+  const f = fixture('durable-local')
+  await f.user.click(screen.getByRole('button', { name: '挑戦を始める' }))
+  expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
+  await f.user.click(screen.getByText('手がかり・開いたヒント'))
+  expect(screen.getByText(quest.clue)).toBeVisible()
+  expect(screen.getByText('開いたヒントの本文')).toBeVisible()
+  openedHints.delete(key)
+})

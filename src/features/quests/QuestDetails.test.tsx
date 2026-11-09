@@ -532,18 +532,13 @@ describe('広い画面でのスマホ受け渡し', () => {
 
   it('PCではQRだけを表示し、挑戦開始を呼ばない', async () => {
     stubViewport(true)
-    const user = userEvent.setup()
     const onStart = vi.fn()
     render(<QuestDetails quest={demoQuest} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" note="注記" onToggle={vi.fn()} onStart={onStart} handoffUrl={handoffUrl} />)
-    const handoffButton = screen.getByRole('button', { name: 'スマホで挑戦する' })
-    expect(handoffButton).toHaveAttribute('aria-expanded', 'true')
-    expect(handoffButton).toHaveClass('primary-button')
+    expect(screen.queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
     expect(screen.getByRole('img', { name: /QRコード/ })).toBeVisible()
     expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
     expect(onStart).not.toHaveBeenCalled()
-    await user.click(handoffButton)
-    expect(handoffButton).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('img', { name: /QRコード/ })).not.toBeInTheDocument()
+
   })
 
   it('狭い画面では従来どおり挑戦が主導線で、受け渡しは出ない', async () => {

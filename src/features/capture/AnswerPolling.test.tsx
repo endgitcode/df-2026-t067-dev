@@ -29,7 +29,7 @@ it('bounds automatic reads and aborts an in-flight read when leaving', async () 
   expect(getAttempt).toHaveBeenCalledTimes(6)
   expect(screen.getByText(/自動確認をいったん終了/)).toBeVisible()
   getAttempt.mockImplementation(() => new Promise(() => {}))
-  await act(async () => fireEvent.click(screen.getByRole('button', { name: '判定結果を確認' })))
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: '結果を見る' })))
   const signal = getAttempt.mock.calls.at(-1)?.[1].signal as AbortSignal
   view.unmount()
   expect(signal.aborted).toBe(true)
@@ -51,7 +51,7 @@ it('honors 429 retry-after then resumes the same ID and opens only a saved disco
   await act(async () => vi.advanceTimersByTimeAsync(1))
   await act(async () => vi.advanceTimersByTimeAsync(2000))
   expect(getAttempt).toHaveBeenCalledTimes(2)
-  expect(onOpenDiscovery).toHaveBeenCalledExactlyOnceWith('first-record')
+  expect(onOpenDiscovery).toHaveBeenCalledExactlyOnceWith('first-record', true)
   expect(submitAnswer).toHaveBeenCalledTimes(1)
 })
 it('team-preview accepts a real receipt, polls to completion and shows the clear screen instead of opening the discovery', async () => {
@@ -191,7 +191,7 @@ it('does not show judgment-waiting and result-check controls at the same time', 
   // 自動確認上限まで進めると待ちは終わり、結果確認だけが出る。
   for (let i = 0; i < 10; i++) await act(async () => vi.advanceTimersByTimeAsync(16000))
   expect(screen.queryByRole('status', { name: '写真の判定待ち' })).not.toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '判定結果を確認' })).toBeVisible()
+  expect(screen.getByRole('button', { name: '結果を見る' })).toBeVisible()
 })
 
 it('shows real waiting stages without fake percent and keeps the progress node across polls', async () => {

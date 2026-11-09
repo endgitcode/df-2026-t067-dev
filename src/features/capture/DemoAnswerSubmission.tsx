@@ -1,3 +1,4 @@
+import { saveReceipt } from './captureContinuity'
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import { ApiError } from '../../shared/api'
 import { ClearCelebration } from './ClearCelebration'
@@ -6,9 +7,12 @@ import type { ApiClient, AttemptOutcome, AttemptResult, CaptureMetadata, LocalAp
 
 export interface DemoAnswerContext {
   api: Pick<ApiClient, 'submitAnswer' | 'getAttempt'>
+  storageKey?: string
+  placeName?: string
+  questId?: string
   challengeId: string
   onReloadQuest: () => void
-  onOpenDiscovery?: (id: string) => void
+  onOpenDiscovery?: (id: string, alreadyCleared?: boolean) => void
   // クリア画面の「地図に戻る」用。撮影を終えて探索画面へ戻す操作を呼び出し側が渡す。
   // クリア済みの記録ID（あれば）を一緒に渡し、呼び出し側が詳細側のクリア済み
   // 表示へ即時反映できるようにする（D-64）。
@@ -18,9 +22,12 @@ export interface DemoAnswerContext {
   dataMode?: LocalApiDataMode
 }
 
-type ReceiptView = { attemptId: string; message: string; canCheck: boolean; reload?: boolean; discoveryId?: string; cleared?: boolean }
+type ReceiptView = { attemptId: string; message: string; canCheck: boolean; reload?: boolean; discoveryId?: string; cleared?: boolean; outcome?: AttemptOutcome }
 type Failure = { message: string; reload?: true; retake?: true; retryAfterSeconds?: number }
 type Operation = { controller: AbortController; deadline?: ReturnType<typeof setTimeout> }
+
+const automaticDelays = [1000, 2000, 4000, 8000, 8000, 8000]
+const usualSeconds = automaticDelays.reduce((sum, delay) => sum + delay, 0) / 1000
 
 const durableMessages: Record<AttemptOutcome, string> = {
   CORRECT: 'テストでクリアしました。「自分の記録」で確認できます。',
@@ -57,7 +64,7 @@ function receiptView(result: AttemptResult, dataMode: LocalApiDataMode | undefin
       return { attemptId, canCheck: true, message: '回答を受け付けました。判定結果を確認できます。' }
     }
     const messages = dataMode === 'durable-local' ? durableMessages : trialMessages
-    return { attemptId, canCheck: false, message: messages[result.outcome],
+    return { attemptId, outcome: result.outcome, canCheck: false, message: messages[result.outcome],
       discoveryId: result.outcome === 'CORRECT' || result.outcome === 'ALREADY_CLEARED' ? result.optionalDiscoveryId : undefined,
       // 演出は初回クリアの確定時だけ（D-42）。クリア済み・その他の結果では出さない。
       cleared: result.outcome === 'CORRECT',
@@ -67,10 +74,10 @@ function receiptView(result: AttemptResult, dataMode: LocalApiDataMode | undefin
     return { attemptId, canCheck: true, message: '受付済みです。' }
   }
   if (result.outcome === 'OUTSIDE_AREA') {
-    return { attemptId, canCheck: false, message: '指定の撮影範囲外です。範囲内で撮り直してください。' }
+    return { attemptId, canCheck: false, outcome: 'OUTSIDE_AREA', message: '指定の撮影範囲外です。範囲内で撮り直してください。' }
   }
   if (result.outcome === 'LOCATION_UNCERTAIN') {
-    return { attemptId, canCheck: false, message: '位置を確認できませんでした。撮影場所を確認して撮り直してください。' }
+    return { attemptId, canCheck: false, outcome: 'LOCATION_UNCERTAIN', message: '位置を確認できませんでした。撮影場所を確認して撮り直してください。' }
   }
   throw new ApiError('INVALID_RESPONSE')
 }
@@ -91,10 +98,11 @@ function answerFailure(cause: unknown): Failure {
   }
 }
 
-export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSubmissionStarted, onSubmissionResolved, onWaitingChange }: {
+export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSubmissionStarted, onSubmissionResolved, onWaitingChange, initialAttemptId }: {
   context: DemoAnswerContext
-  photo: Blob
-  metadata: CaptureMetadata
+  initialAttemptId?: string
+  photo?: Blob
+  metadata?: CaptureMetadata
   disabled: boolean
   onSubmissionStarted: () => void
   onSubmissionResolved?: () => void
@@ -104,7 +112,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   const onOpenDiscovery = context.onOpenDiscovery
   const dataMode = context.dataMode
   const real = dataMode === 'durable-local' || dataMode === 'team-preview'
-  const [receipt, setReceipt] = useState<ReceiptView | null>(null)
+  const [receipt, setReceipt] = useState<ReceiptView | null>(() => initialAttemptId ? { attemptId: initialAttemptId, message: '判定中の回答があります', canCheck: true } : null)
   const [failure, setFailure] = useState<Failure | null>(null)
   const [pending, setPending] = useState(false)
   const active = useRef<Operation | null>(null)
@@ -125,7 +133,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     // ボタンからの遷移だけにする。クリア済み（ALREADY_CLEARED）は従来どおり自動で開く。
     if (receipt.cleared) return
     openedDiscovery.current = receipt.discoveryId
-    onOpenDiscovery(receipt.discoveryId)
+    onOpenDiscovery(receipt.discoveryId, true)
   }, [receipt, onOpenDiscovery])
   const [clearScreenClosed, setClearScreenClosed] = useState(false)
   const showClearScreen = Boolean(receipt?.cleared && !clearScreenClosed)
@@ -157,11 +165,11 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   const poll = useEffectEvent(() => { void exchange(true) })
   useEffect(() => {
     if (!real || !receipt?.canCheck || pending || failure || automaticStopped.current) return
-    if (automaticReads.current >= 6) { setPollLimit(true); return }
+    if (automaticReads.current >= automaticDelays.length) { setPollLimit(true); return }
     const timer = setTimeout(() => {
       automaticReads.current += 1
       poll()
-    }, Math.min(1000 * 2 ** automaticReads.current, 8000))
+    }, automaticDelays[automaticReads.current])
     return () => clearTimeout(timer)
   }, [real, receipt, pending, failure])
 
@@ -171,12 +179,15 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     return () => window.removeEventListener('pagehide', leave)
   }, [cancel, receipt])
 
-  async function exchange(automatic = false) {
-    if (active.current || failure?.reload || failure?.retake || failure?.retryAfterSeconds || (receipt && !receipt.canCheck)) return
+  async function exchange(automatic = false, retryPhoto = false) {
+    if (retryPhoto && receipt?.outcome !== 'SYSTEM_ERROR') return
+    const acceptedReceipt = retryPhoto ? null : receipt
+    if (active.current || failure?.reload || failure?.retake || failure?.retryAfterSeconds || (acceptedReceipt && !acceptedReceipt.canCheck)) return
+    if (retryPhoto) { idempotencyKey.current = null; setReceipt(null) }
     if (!automatic) { automaticReads.current = 0; automaticStopped.current = false; setPollLimit(false) }
     const operation: Operation = { controller: new AbortController() }
     active.current = operation
-    if (!receipt) onSubmissionStarted()
+    if (!acceptedReceipt) onSubmissionStarted()
     setPending(true)
     setFailure(null)
     operation.deadline = setTimeout(() => {
@@ -184,12 +195,14 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     }, 10_000)
     try {
       const call = { signal: operation.controller.signal }
-      const response = receipt ? await context.api.getAttempt(receipt.attemptId, call)
-        : await context.api.submitAnswer({ challengeId: context.challengeId, photo, metadata,
+      if (!acceptedReceipt && (!photo || !metadata)) return
+      const response = acceptedReceipt ? await context.api.getAttempt(acceptedReceipt.attemptId, call)
+        : await context.api.submitAnswer({ challengeId: context.challengeId, photo: photo!, metadata: metadata!,
           idempotencyKey: idempotencyKey.current ??= crypto.randomUUID() }, call)
       if (active.current !== operation) return
-      const nextReceipt = receiptView(response, dataMode, receipt?.attemptId)
+      const nextReceipt = receiptView(response, dataMode, acceptedReceipt?.attemptId)
       setReceipt(nextReceipt)
+      saveReceipt(context.storageKey, nextReceipt.canCheck ? nextReceipt.attemptId : null)
       if (!nextReceipt.canCheck) onSubmissionResolved?.()
     } catch (cause) {
       if (active.current !== operation) return
@@ -197,7 +210,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
       if (next.reload) setReceipt(null)
       setFailure(next)
       // 受付結果が不明な通信失敗・取消では写真と冪等キーを保持する。
-      if (!receipt && next.retake) onSubmissionResolved?.()
+      if (!acceptedReceipt && next.retake) onSubmissionResolved?.()
     } finally {
       clearTimeout(operation.deadline)
       if (active.current === operation) { active.current = null; setPending(false) }
@@ -214,7 +227,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     return () => { onWaitingChange?.(false) }
   }, [waiting, onWaitingChange])
 
-  if (showClearScreen) {
+  if (showClearScreen && photo) {
     return <ClearScreen questTitle={context.questTitle} photo={photo}
       onViewRecord={viewRecord} onReturnToMap={returnToMap} />
   }
@@ -226,25 +239,28 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     const stage = receipt ? '受付済み・解析中' : '送信中'
     return <div className="camera-actions is-waiting" aria-label="回答受付">
       <div className="answer-waiting" role="status" aria-label="写真の判定待ち">
-        <p className="answer-waiting-stage">{stage}</p>
+        <p className="answer-waiting-stage">{stage}（通常{usualSeconds}秒ほど）</p>
         <div className="answer-waiting-progress" role="progressbar" aria-label="判定の進行状況" aria-valuetext={stage}>
           <span className="answer-waiting-progress-bar" />
         </div>
         <button type="button" className="answer-waiting-cancel" onClick={() => cancel(receipt
-          ? '受付状態の確認を中止しました。' : '送信を中止しました。受付済みか確認できませんでした。')}>キャンセル</button>
+          ? '確認を中止しました。同じ受付IDで再確認できます。' : '送信を中止しました。受付済みか確認できませんでした。')}>キャンセル</button>
       </div>
     </div>
   }
 
   return <div className="camera-actions" aria-label="回答受付">
     {receipt?.cleared && <ClearCelebration />}
-    {receipt && <p role="status">{receipt.message}</p>}
-    {failure && <p role="alert">{failure.message}</p>}
-    {pollLimit && <p role="status">自動確認をいったん終了しました。処理の失敗ではありません。同じ受付IDで再確認できます。</p>}
+    {receipt?.discoveryId && !photo && <button type="button" className="primary-button" onClick={viewRecord}>自分の記録を見る</button>}
+    {receipt && !failure && <p role="status">{receipt.message}</p>}
+    {(receipt?.outcome === 'OUTSIDE_AREA' || receipt?.outcome === 'LOCATION_UNCERTAIN') && <p role="status">{context.placeName ?? context.questTitle ?? 'この問題の場所'}：範囲の中心付近で撮ってください</p>}
+    {receipt?.outcome === 'SYSTEM_ERROR' && photo && metadata && <button type="button" className="secondary-button" onClick={() => void exchange(false, true)}>同じ写真で再送</button>}
+    {failure && <p role="alert">{failure.message}{!failure.retake && !failure.reload && " 受付が未確定のため撮り直せません。"}</p>}
+    {pollLimit && <p role="status">自動確認をいったん終了しました。受付が未確定のため写真を保持し、同じ受付IDで再確認してください。</p>}
     {(failure?.reload || receipt?.reload) && <button type="button" className="retry-button" onClick={context.onReloadQuest}>問題を読み直す</button>}
     {!failure?.reload && !failure?.retake && (!receipt || receipt.canCheck) &&
       <button type="button" className="primary-button" disabled={disabled || !!failure?.retryAfterSeconds} onClick={() => void exchange()}>
-        {receipt ? (real ? '判定結果を確認' : '受付状態を確認')
+        {receipt ? (real ? '結果を見る' : '受付状態を確認')
           : failure ? '同じ回答を再送' : dataMode === 'durable-local' ? '写真と位置をテスト送信'
             : dataMode === 'team-preview' ? '写真と位置を送信' : '写真と位置を送信'}
       </button>}

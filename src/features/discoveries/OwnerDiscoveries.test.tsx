@@ -138,11 +138,15 @@ it.each(['button', 'escape'])('refreshes records after closing a failed deletion
   const dialog = screen.getByRole('dialog', { name: '記録詳細' })
   if (method === 'button') await user.click(within(dialog).getByRole('button', { name: '閉じる' }))
   else fireEvent(dialog, new Event('cancel', { cancelable: true }))
-  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
+  expect(await screen.findByText('削除中')).toBeVisible()
   expect(dialog).not.toBeInTheDocument()
   expect(screen.queryByText('記録と写真の削除が完了しました。')).not.toBeInTheDocument()
   expect(deleteDiscovery).toHaveBeenCalledTimes(1)
   expect(listDiscoveries).toHaveBeenCalledTimes(2)
+  await user.click(screen.getByText(discovery.placeName))
+  await user.click(await screen.findByRole('button', { name: '削除状態を再確認' }))
+  expect(api.getDeletion).toHaveBeenLastCalledWith('demo-deletion', { signal: expect.any(AbortSignal) })
+  expect(deleteDiscovery).toHaveBeenCalledTimes(1)
 })
 
 it('refetches the list when the records view is entered again', async () => {
@@ -394,4 +398,18 @@ it.each(['', '   '])('omits blank address and duplicate quest name in the detail
     expect(dialog.queryByText(label, { exact: true })).not.toBeInTheDocument()
   }
   expect(dialog.getByRole('button', { name: '記録を削除' })).toHaveClass('secondary-button', 'record-delete')
+})
+
+it('記録詳細は履歴を1つ積み、戻ると詳細だけ閉じる', async () => {
+  vi.stubGlobal('URL', class extends URL { static createObjectURL = () => 'blob:record'; static revokeObjectURL = vi.fn() })
+  const push = vi.spyOn(window.history, 'pushState')
+  const api = { ...createApiClient(), listDiscoveries: vi.fn().mockResolvedValue({ items: [discovery], nextCursor: null }), getDiscovery: vi.fn().mockResolvedValue(discovery), getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])), getQuest: vi.fn().mockResolvedValue({ title: '謎' }) }
+  render(<OwnerDiscoveries api={api} onExplore={vi.fn()} />)
+  await userEvent.setup().click(await screen.findByRole('button', { name: discovery.placeName }))
+  expect(await screen.findByRole('dialog')).toBeVisible()
+  expect(push).toHaveBeenCalledTimes(1)
+  expect(window.history.state.recordDetail).toBe(discovery.discoveryId)
+  window.history.back()
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByRole('table', { name: '自分の記録一覧' })).toBeVisible()
 })

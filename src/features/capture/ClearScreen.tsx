@@ -1,3 +1,4 @@
+import { inertBackground } from '../../components/inertBackground'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ClearCelebration } from './ClearCelebration'
@@ -26,13 +27,10 @@ export function ClearScreen({ questTitle, photo, onViewRecord, onReturnToMap }: 
   }, [photoUrl])
   useEffect(() => {
     const previousFocus = document.activeElement
-    const background = Array.from(document.body.children)
-      .filter((element): element is HTMLElement => element instanceof HTMLElement && element !== dialogRef.current)
-      .map(element => ({ element, inert: element.hasAttribute('inert') }))
-    background.forEach(({ element }) => { element.setAttribute('inert', '') })
+    const releaseBackground = inertBackground(dialogRef.current)
     headingRef.current?.focus()
     return () => {
-      background.forEach(({ element, inert }) => { element.toggleAttribute('inert', inert) })
+      releaseBackground()
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus()
     }
   }, [])

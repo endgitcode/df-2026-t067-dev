@@ -84,7 +84,7 @@ it('shows the quest as cleared right after clearing, without a reload', async ()
   // 詳細へ戻る退出を選び、戻った先がその場でクリア済み表示になることを見る。
   expect(await screen.findByRole('heading', { name: 'クリア！' })).toBeVisible()
   // fullbleed 殻が常駐するため「地図に戻る」が複数候補になり得る。クリア画面のダイアログ内だけを押す。
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '地図に戻る' }))
+  await user.click(within(screen.getByRole('dialog', { name: 'クリア！' })).getByRole('button', { name: '地図に戻る' }))
 
   expect(screen.getByText('クリア済み')).toBeVisible()
   expect(screen.getByText(/再挑戦はできません/)).toBeVisible()

@@ -119,7 +119,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
     setOpenState({ quest: externalQuest, open: true })
   }
 
-  const [recordDestination, setRecordDestination] = useState<{ auth: AuthSnapshot; id: string } | null>(null)
+  const [recordDestination, setRecordDestination] = useState<{ auth: AuthSnapshot; id: string; alreadyCleared?: boolean } | null>(null)
   // 記録タブは ?view=records で復元する（パスは Cloud Run の静的配信が / と /admin 以外
   // を HTML に落とさないため使わない。Firebase Hosting は SPA rewrite あり）。
   const [recordsOpen, setRecordsOpen] = useState(() => readRecordsViewFromUrl())
@@ -235,6 +235,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   useEffect(() => {
     if (!localApiMode) return
     const onPopState = () => {
+      if (document.querySelector('.record-dialog[open]')) return
       const open = readRecordsViewFromUrl()
       if (open) { setRecordsVisited(true); setRecordsVisit((value) => value + 1) }
       else { setRecordDestination(null); setClearedRefresh((value) => value + 1) }
@@ -412,11 +413,11 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                   clearedDiscoveryId={clearedDiscoveryId} onOpenDiscovery={(id) => { setRecordDestination({ auth, id }); navigateToRecords(true) }}
                   feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) closeCamera(); /* 開閉ボタンはレールに置く使い方（選択の受け口が無い場合）だけに出る（D-65）。一覧の中の詳細ではボタン自体を出さず、閉じる操作は行の再タップによる選択解除（D-55）に一本化したため、ここで選択解除まで連動させる配線は不要になった（旧 D-60 の配線は廃止）。 */ setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
                     {!wideViewport && !questStale && !clearedDiscoveryId && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
-                      key={JSON.stringify([uid, quest.questId, quest.version, captureRevision])} api={api} quest={quest} dataMode={apiDataMode}
+                      key={JSON.stringify([uid, quest.questId, quest.version, captureRevision])} api={api} quest={quest} dataMode={apiDataMode} ownerKey={uid} placeName={areaLabel}
                       autoStart={(durableLocal || teamAnswerTrial) && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
                       canAutoStart={() => startIntent !== null && startIntent.generation === selectionGeneration.current && startIntent.expires > Date.now() && openRef.current && authClient.getSnapshot() === startIntent.auth}
                       onAutoStartConsumed={() => setStartIntent(null)}
-                      onOpenDiscovery={durableLocal || teamAnswerTrial ? (id) => { noteCleared(quest.questId, id); setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
+                      onOpenDiscovery={durableLocal || teamAnswerTrial ? (id, alreadyCleared) => { noteCleared(quest.questId, id); setRecordDestination({ auth, id, alreadyCleared }); navigateToRecords(true) } : undefined}
                       onReturnToMap={(discoveryId) => { if (discoveryId) noteCleared(quest.questId, discoveryId) }}
                       onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
                     {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
@@ -512,7 +513,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {auth.status === 'checking' && <p role="status">ログイン状態を確認しています…</p>}
           {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">ログインすると記録が見られます</p>}
           {uid !== null && visiblePending === null && (serverIdentity.result?.status === 'ready'
-            ? <OwnerDiscoveries key={uid} api={api} onExplore={navigateToExplore} visit={recordsVisit} active={showRecords} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
+            ? <OwnerDiscoveries alreadyCleared={recordDestination?.auth === auth && recordDestination.alreadyCleared} key={uid} api={api} onExplore={navigateToExplore} visit={recordsVisit} active={showRecords} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
             : serverIdentity.result?.status === 'error'
               ? <><p role="alert">ログインを確認できませんでした。</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></>
               : <p role="status">ログインを確認しています…</p>)}

@@ -987,3 +987,19 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 .quest-detail-close { display: block; margin: 0 0 8px auto; min-width: 44px; min-height: 44px; padding: 8px 12px; border: 2px solid #000; border-radius: 12px; background: #fff; color: #000; cursor: pointer; }
 .explore-sheet[data-snap="closed"] .explore-sheet-handle { height: 64px; }
 .explore-sheet-count { font-size: 16px; }
+
+/* 撮影・回復操作は白い一つの面にまとめる。 */
+.camera-panel.camera-overlay { overflow-y: auto; background: #fff; gap: 12px; }
+.camera-heading { flex: 0 0 auto; color: var(--ui-ink); }
+.camera-heading h4 { margin: 0 0 8px; }
+.camera-heading details p { margin: 8px 0; }
+.camera-panel.camera-overlay > p,
+.camera-panel.camera-overlay > .camera-actions,
+.camera-panel.camera-overlay > .camera-map-reference { border: 0; padding: 0; border-radius: 0; background: #fff; }
+.camera-panel.camera-overlay .camera-video,
+.camera-panel.camera-overlay .photo-preview { flex-shrink: 0; height: 32dvh; min-height: 128px; border-radius: 12px; }
+.camera-panel .camera-actions { gap: 12px; margin-top: 12px; }
+.answer-waiting-cancel { display: block; min-height: 44px; padding: 8px 16px; border: 2px solid #000; border-radius: 12px; background: #fff; text-decoration: none; }
+.clear-screen-actions > button { font-size: 16px; font-weight: var(--ui-weight-control, 600); }
+.record-dialog-heading { position: sticky; top: 0; z-index: 2; padding: 12px 0; background: #fff; }
+.hint-card, .hint-item, .hint-version-changed, .retry-button, .retry-button:hover { background: #fff; }
