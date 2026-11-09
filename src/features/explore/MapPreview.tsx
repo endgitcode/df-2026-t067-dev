@@ -977,7 +977,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '') + (belowMap ? ' is-browsing-below-map' : '')}
       style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
-      {status === 'ready' && !panelMode && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className={'map-state' + (sheetMode && status === 'loading' ? ' is-boot-quiet' : '')} role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'} {...mapControlGestureProps}>
         {status === 'missing' ? <><strong>地図未設定</strong></> :
@@ -991,9 +990,10 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
     </section>
       {/* 地図の独立レイヤーより上で操作できるよう、シート時はシェル直下に置く。 */}
+      {status === 'ready' && !panelMode && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
       {sheetMode && mapControls}
       {/* 地図が使えない時は浮かせず、地図の下に通常フローで出して絞り込み自体は失わせない。 */}
-      {status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
+      {status !== 'ready' && !panelMode && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
       {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status"><span>{locationStatus}</span><button type="button" className="map-location-status-close" aria-label="位置情報の表示を閉じる" onClick={() => setLocationStatus('')}>×</button></div>}
       {sheetMode
         ? panelMode

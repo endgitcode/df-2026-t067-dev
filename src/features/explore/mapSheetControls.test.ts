@@ -534,9 +534,7 @@ describe('traveler navigation selection (D-85)', () => {
 
 it('keeps yellow out of selected traveler chips, filters, rows and hint numbers', () => {
   for (const selector of [
-    '.filter-chip[aria-pressed="true"]', '.filter-check[aria-pressed="true"]',
-    '.filter-check[aria-pressed="true"] .filter-check-box',
-    '.filter-accordion-item.has-selection > .filter-accordion-row',
+    '.filter-chip[aria-pressed="true"]', '.filter-prefecture[aria-pressed="true"]',
     '.filter-toggle[aria-expanded="true"]', '.map-area-chip',
     '.explore-quest-list .traveler-list-row.is-selected', '.traveler-list-row.is-selected',
     '.api-quest-picker li button[aria-pressed="true"]', '.hint-step.is-current',
@@ -551,7 +549,8 @@ it('keeps yellow out of selected traveler chips, filters, rows and hint numbers'
 // 地図未読込・失敗時も、同じフィルター位置と再試行の操作領域を維持する。
 describe('mobile overlay clearance', () => {
   it('places fallback filters in flow before the state and reserves tab bar clearance', () => {
-    expect(mapPreview).toContain(`status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>`)
+    // PCの細いパネル表示では絞り込みはパネル側に出るため、地図の流れには置かない。
+    expect(mapPreview).toContain(`status !== 'ready' && !panelMode && topOverlay && <div className="map-filter-flow">{topOverlay}</div>`)
     expect(css).toContain('body.explore-fullbleed .map-preview-shell:has(> .map-filter-flow) { display: flex; flex-direction: column; }')
     expect(css).toContain('order: -1; flex: none; margin: 0; padding: calc(env(safe-area-inset-top, 0px) + 68px) 12px 12px;')
     expect(css).toContain('body.explore-fullbleed .map-preview-shell:has(> .map-filter-flow) { padding-bottom: var(--mobile-tabbar-h); }')

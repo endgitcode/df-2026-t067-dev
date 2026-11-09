@@ -111,9 +111,6 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .map-preview-shell.has-sheet .map-preview { position: absolute; inset: 0; height: auto; }
 .map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
 .map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; min-width: 0; }
-/* 「場所で絞る」の開閉（D-55）。チップは常時マウントし、行の高さ（grid-template-rows）と
-   透明度で開閉する。出し入れで下の一覧がガクッと押し下げられず、なめらかに場所が空く。
-   閉じている間の非表示への切り替えは、シートと同じく遷移の終わりに遅らせる。 */
 .map-filter-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: auto; }
 .filter-stage-label { margin: 4px 2px 0; font-size: 14px; font-weight: 600; }
 .map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }
@@ -136,18 +133,14 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .filter-accordion { display: flex; flex-direction: column; gap: 4px; width: min(100%, 360px); max-height: min(52vh, 440px); overflow: auto; pointer-events: auto; padding: 2px; }
 .filter-accordion-item { display: flex; flex-direction: column; gap: 2px; width: 100%; }
 .filter-accordion-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
-.filter-accordion-item.has-selection > .filter-accordion-row { background: var(--ui-surface); font-weight: var(--ui-weight-strong); }
 .filter-accordion-name { flex: 1 1 auto; }
-.filter-accordion-count { flex: none; font-size: 12px; color: var(--ui-muted); font-weight: 600; }
 .filter-accordion-chevron { display: inline-flex; flex: none; transition: transform 200ms var(--ease-out); }
 .filter-accordion-chevron .icon { width: 16px; height: 16px; }
 .filter-accordion-chevron.is-open { transform: rotate(180deg); }
 .filter-accordion-body { display: flex; flex-direction: column; gap: 2px; padding: 2px 4px 8px 8px; }
-.filter-check { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
-.filter-check:hover, .filter-check:focus-visible { background: var(--ui-soft); }
-.filter-check[aria-pressed="true"] { background: var(--ui-surface); font-weight: var(--ui-weight-strong); }
-.filter-check-box { flex: none; width: 18px; height: 18px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; background: var(--ui-surface); }
-.filter-check[aria-pressed="true"] .filter-check-box { background: var(--ui-ink); color: var(--ui-surface); }
+.filter-prefecture { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
+.filter-prefecture:hover, .filter-prefecture:focus-visible { background: var(--ui-soft); }
+.filter-prefecture[aria-pressed="true"] { background: var(--ui-surface); font-weight: var(--ui-weight-strong); }
 @media (prefers-reduced-motion: reduce) { .filter-accordion-chevron { transition: none; } }
 .filter-chip[aria-pressed="true"] { background: var(--ui-surface); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
@@ -1067,3 +1060,17 @@ body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; 
 .owner-records > .google-continue, .owner-records > .login-terms { max-width: 400px; margin-inline: auto; }
 
 .owner-records.is-login > h1 { text-align: center; margin-top: clamp(40px, 12vh, 120px); }
+
+/* 場所選択はPCでは一覧の幅、モバイルでは地図上の下シート。 */
+.map-filter-chips-wrap.is-open { width: min(100%, 320px); }
+.map-filter-chips-inner { background: var(--ui-surface); border-radius: 16px; }
+.filter-accordion { width: 100%; padding: 8px; }
+.filter-accordion-row { border: 0; border-radius: 10px; }
+.filter-nationwide { width: 100%; min-height: 44px; padding: 8px 12px; border: 0; background: transparent; color: var(--ui-ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.filter-nationwide:hover, .filter-accordion-row:hover { background: var(--ui-soft); }
+@media (max-width: 980px) {
+  .map-filter-panel:has(.map-filter-chips-wrap) { position: relative; z-index: 12; }
+  .map-filter-chips-wrap.is-open { position: fixed; inset: auto 0 var(--mobile-tabbar-h, 0px); width: 100%; z-index: 12; }
+  .map-filter-chips-inner { width: 100%; border-radius: 20px 20px 0 0; padding: 12px 12px max(16px, env(safe-area-inset-bottom)); border-top: var(--ui-border-width) solid var(--ui-line); }
+  .map-filter-panel .filter-accordion { max-height: 60dvh; border: 0; border-radius: 0; padding: 0; }
+}

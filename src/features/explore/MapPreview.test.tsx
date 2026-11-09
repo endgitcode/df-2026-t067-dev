@@ -29,6 +29,16 @@ describe('Google map panel', () => {
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
   })
+  it('renders the location picker once inside the PC list even without a map key', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('min-width: 981px'), media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }))
+    const { container } = render(<MapPreview topOverlay={<button type="button">場所で絞る</button>} />)
+    expect(screen.getAllByRole('button', { name: '場所で絞る' })).toHaveLength(1)
+    expect(container.querySelector('.side-panel-filters')).toContainElement(screen.getByRole('button', { name: '場所で絞る' }))
+    expect(container.querySelector('.map-filter-flow')).not.toBeInTheDocument()
+  })
   it('keeps authentication failure visible when it occurs during map creation', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
