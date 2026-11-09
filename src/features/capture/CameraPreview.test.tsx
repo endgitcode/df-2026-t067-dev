@@ -78,7 +78,7 @@ describe('local camera preview', () => {
     render(<CameraPreview onClose={media.onClose} />)
     await loadFrame(media.stream)
     await media.user.click(screen.getByRole('button', { name: '撮影する' }))
-    expect(await screen.findByRole('button', { name: '解答を送信する（準備中）' })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: '解答を送信する' })).toBeDisabled()
   })
 
   it('requests video only and waits for a decoded frame before enabling capture', async () => {
@@ -154,7 +154,7 @@ describe('local camera preview', () => {
     expect(screen.queryByText(/撮影地を紐づけました/)).not.toBeInTheDocument()
     expect(screen.queryByText(/精度 約/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '撮影地を見る' })).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByText(/座標がGoogle Mapsに送信されます/)).toBeInTheDocument()
+    expect(screen.queryByText(/座標がGoogle Mapsに送信されます/)).not.toBeInTheDocument()
     expect(media.getCurrentPosition).toHaveBeenCalledExactlyOnceWith(expect.any(Function), expect.any(Function),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 })
     expect(media.toBlob.mock.calls[0].slice(1)).toEqual(['image/jpeg', .9])
@@ -324,7 +324,7 @@ describe('local camera preview', () => {
     // 送信後は回転操作を出さない（判定・受付フローに一本化）。
     expect(screen.queryByRole('button', { name: '反時計回りに回転' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '時計回りに回転' })).not.toBeInTheDocument()
-    expect(await screen.findByText('デモ受付済みです。写真判定と記録保存は未接続です。')).toBeVisible()
+    expect(await screen.findByText('受付済みです。')).toBeVisible()
     await media.user.click(screen.getByRole('button', { name: '受付状態を確認' }))
     expect(getAttempt).toHaveBeenCalledExactlyOnceWith('attempt-locked', { signal: expect.any(AbortSignal) })
     expect(submitAnswer).toHaveBeenCalledOnce()
@@ -347,7 +347,7 @@ describe('local camera preview', () => {
     await act(async () => resolveBitmap(media.bitmap))
     await waitFor(() => expect(send).toBeEnabled())
     await media.user.click(send)
-    expect(await screen.findByText('デモ受付済みです。写真判定と記録保存は未接続です。')).toBeVisible()
+    expect(await screen.findByText('受付済みです。')).toBeVisible()
     expect(submitAnswer).toHaveBeenCalledOnce()
   })
 

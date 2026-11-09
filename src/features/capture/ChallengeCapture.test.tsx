@@ -68,7 +68,7 @@ describe('challenge before camera', () => {
     await f.user.click(screen.getByRole('button', { name: '写真と位置をデモ送信' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('通信状況')
     await f.user.click(screen.getByRole('button', { name: '同じ回答を再送' }))
-    expect(await screen.findByText(/デモ受付済み/)).toBeVisible()
+    expect(await screen.findByText(/受付済みです/)).toBeVisible()
     expect(f.submitAnswer).toHaveBeenCalledTimes(2)
     expect(f.submitAnswer.mock.calls[0][0]).toEqual({ photo, challengeId: challenge.challengeId,
       metadata: { capturedAt: expect.any(String), position: { latitude: 0, longitude: 0,
@@ -91,7 +91,7 @@ describe('challenge before camera', () => {
     takePhoto()
     await f.user.click(screen.getByRole('button', { name: '写真と位置をデモ送信' }))
     expect(await screen.findByText(new RegExp(message))).toBeVisible()
-    expect(screen.queryByText(/デモ受付済み/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/受付済みです/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '撮り直す' })).toBeEnabled()
     expect(screen.queryByRole('button', { name: '受付状態を確認' })).not.toBeInTheDocument()
   })
@@ -114,7 +114,7 @@ describe('challenge before camera', () => {
     expect(signal.aborted).toBe(true)
     await f.user.click(screen.getByRole('button', { name: '撮影を終了' }))
     await act(async () => resolve(receipt))
-    expect(screen.queryByText(/デモ受付済み/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/受付済みです/)).not.toBeInTheDocument()
   })
   it('waits for an explicit start and matching response, and locks duplicate starts', async () => {
     const f = fixture()
@@ -133,7 +133,7 @@ describe('challenge before camera', () => {
     expect(document.body).not.toHaveTextContent(challenge.challengeId)
     await f.user.click(screen.getByRole('button', { name: '撮影を終了' }))
     expect(f.stop).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('挑戦を開始しました。写真と位置を確認してからデモ送信できます。')).toBeVisible()
+    expect(screen.queryByText(/挑戦を開始しました/)).not.toBeInTheDocument()
     await f.user.click(screen.getByRole('button', { name: '撮影を再開' }))
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(2))
     expect(f.createChallenge).toHaveBeenCalledTimes(2)
@@ -247,10 +247,10 @@ describe('challenge before camera', () => {
     f.submitAnswer.mockResolvedValue(receipt)
     f.getAttempt.mockResolvedValue({ ...receipt, state: 'COMPLETED', outcome: 'CORRECT',
       nextAction: 'OPEN_DISCOVERY', optionalDiscoveryId: 'trial-discovery' })
-    expect(screen.getByText('撮影して回答を試せます。')).toBeVisible()
+    expect(screen.queryByText('撮影して回答を試せます。')).not.toBeInTheDocument()
     await f.user.click(screen.getByRole('button', { name: '挑戦を始める' }))
     await waitFor(() => expect(f.getUserMedia).toHaveBeenCalledTimes(1))
-    expect(screen.getByText('挑戦を開始しました。写真と位置を確認してから送信できます。')).toBeVisible()
+    expect(screen.queryByText(/挑戦を開始しました/)).not.toBeInTheDocument()
     takePhoto()
     // 細かい説明カードは出さない（写真確認は見出しと操作だけ）
     expect(screen.queryByText(/「写真と位置を送信」で判定します/)).not.toBeInTheDocument()

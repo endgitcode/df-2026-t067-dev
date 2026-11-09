@@ -94,19 +94,11 @@ export function ChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, o
   }, [autoStart])
 
   return <>
-    <button type="button" className="primary-button" onClick={start} aria-describedby="challenge-note"
+    <button type="button" className="primary-button" onClick={start} aria-describedby={state.status === 'starting' ? 'challenge-note' : undefined}
       disabled={state.status === 'starting' || cameraOpen || seconds > 0 || (state.status === 'error' && state.reload)}>
       {state.status === 'starting' ? '挑戦を開始しています…' : cameraOpen ? '撮影中' : state.status === 'ready' ? '撮影を再開' : '挑戦を始める'}
     </button>
-    <p id="challenge-note" className="unavailable-note" role="status">
-      {state.status === 'ready' ? (dataMode === 'durable-local' ? '挑戦を開始しました。写真と位置を確認してからテスト送信できます。'
-        : dataMode === 'team-preview' ? '挑戦を開始しました。写真と位置を確認してから送信できます。'
-          : '挑戦を開始しました。写真と位置を確認してからデモ送信できます。')
-        : state.status === 'starting' ? '挑戦の開始を確認しています…'
-          : dataMode === 'durable-local' ? '合成素材で回答と判定を試せます。'
-            : dataMode === 'team-preview' ? '撮影して回答を試せます。'
-              : 'デモの回答受付を試せます。'}
-    </p>
+    {state.status === 'starting' && <p id="challenge-note" className="unavailable-note" role="status">挑戦の開始を確認しています…</p>}
     {state.status === 'starting' && <button type="button" className="retry-button" onClick={() => { abort(); setState({ status: 'idle' }) }}>開始をキャンセル</button>}
     {state.status === 'error' && <div className="auth-feedback">
       <p role="alert">{state.message}{seconds > 0 && ` ${seconds}秒後に再試行できます。`}</p>

@@ -36,6 +36,7 @@ p { overflow-wrap: anywhere; }
 .desktop-nav a, .desktop-nav button { min-height: 44px; display: flex; align-items: center; gap: 7px; border: 0; padding: 6px 0; font-size: 13px; background: transparent; }
 .desktop-nav .nav-active { color: var(--ui-ink); font-weight: var(--ui-weight-display); }
 .desktop-nav button { color: var(--ui-muted); }
+.desktop-nav button:disabled, .mobile-nav button:disabled { opacity: .45; }
 .desktop-nav button span { font-size: 12px; }
 .desktop-nav .icon { width: 18px; height: 18px; }
 /* アカウントアイコンは画面種別に依らず同じ固定スロット（位置・大きさ）に置く（t154u）。

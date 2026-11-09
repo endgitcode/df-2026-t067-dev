@@ -64,13 +64,13 @@ function receiptView(result: AttemptResult, dataMode: LocalApiDataMode | undefin
       reload: result.outcome === 'QUEST_CHANGED' || result.outcome === 'QUEST_UNAVAILABLE' }
   }
   if (result.state === 'RECEIVED') {
-    return { attemptId, canCheck: true, message: 'デモ受付済みです。写真判定と記録保存は未接続です。' }
+    return { attemptId, canCheck: true, message: '受付済みです。' }
   }
   if (result.outcome === 'OUTSIDE_AREA') {
-    return { attemptId, canCheck: false, message: '指定の撮影範囲外です（開発用の位置判定）。範囲内で撮り直してください。' }
+    return { attemptId, canCheck: false, message: '指定の撮影範囲外です。範囲内で撮り直してください。' }
   }
   if (result.outcome === 'LOCATION_UNCERTAIN') {
-    return { attemptId, canCheck: false, message: '位置を確認できませんでした（開発用の位置判定）。撮影場所を確認して撮り直してください。' }
+    return { attemptId, canCheck: false, message: '位置を確認できませんでした。撮影場所を確認して撮り直してください。' }
   }
   throw new ApiError('INVALID_RESPONSE')
 }
@@ -224,7 +224,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   if (waiting) {
     // receipt の有無だけが本当の区切り。ポーリングの pending 往復では段階を動かさない。
     const stage = receipt ? '受付済み・解析中' : '送信中'
-    return <div className="camera-actions is-waiting" aria-label="開発用の回答受付">
+    return <div className="camera-actions is-waiting" aria-label="回答受付">
       <div className="answer-waiting" role="status" aria-label="写真の判定待ち">
         <p className="answer-waiting-stage">{stage}</p>
         <div className="answer-waiting-progress" role="progressbar" aria-label="判定の進行状況" aria-valuetext={stage}>
@@ -236,7 +236,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     </div>
   }
 
-  return <div className="camera-actions" aria-label="開発用の回答受付">
+  return <div className="camera-actions" aria-label="回答受付">
     {receipt?.cleared && <ClearCelebration />}
     {receipt && <p role="status">{receipt.message}</p>}
     {failure && <p role="alert">{failure.message}</p>}

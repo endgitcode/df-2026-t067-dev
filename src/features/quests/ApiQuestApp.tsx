@@ -431,7 +431,6 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // カードと二重に出さない（D-57）。地図が使えないフォールバック表示でのみ、
   // 読み込み中もこの枠が進捗を伝える。
   const fallback = !quest && state !== 'ready' && !(state === 'loading' && mapSheetMode) ? <section className="api-load-state" aria-live="polite">
-      {dataMode !== 'team-preview' && <p className="eyebrow">{dataMode === 'durable-local' ? '永続API・ローカル' : '公開APIデモ'}</p>}
       <FallbackHeading id={dataMode !== 'demo' ? undefined : 'explore-title'}>{state === 'loading' ? '問題を読み込んでいます' : state === 'empty' ? '問題はありません' : '問題を読み込めませんでした'}</FallbackHeading>
       {state === 'loading' && <p role="status">問題の一覧を取得しています。</p>}
       {state === 'empty' && <p>{selectedAreaId ? 'この地域には問題がありません。地図や地方の絞り込みから別の地域をお選びください。' : '現在選べる問題はありません。'}</p>}
