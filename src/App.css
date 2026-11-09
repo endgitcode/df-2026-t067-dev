@@ -156,7 +156,7 @@ button.explore-quest-card { cursor: pointer; }
 .quest-card.is-in-list { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .quest-card.is-in-list .quest-card-heading { padding: 14px 16px 0; border-bottom: 0; background: transparent; }
 .quest-card.is-in-list .quest-card-content { padding: 12px 16px 16px; }
-.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); transition: height 300ms var(--ease-drawer), visibility 0s; }
+.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); transition: height var(--sheet-release-ms, 300ms) var(--ease-drawer), visibility 0s; }
 .explore-sheet.is-dragging { transition: none; }
 .explore-sheet-reopen { display: none; }
 .below-map-quests { min-width: 0; min-height: 100svh; padding: 16px 12px calc(var(--mobile-tabbar-h, 70px) + 16px); background: var(--ui-surface); }
@@ -165,12 +165,12 @@ button.explore-quest-card { cursor: pointer; }
 .explore-sheet-handle:active { cursor: grabbing; }
 .explore-sheet-grip { width: 46px; height: 6px; border-radius: 999px; background: var(--ui-line); opacity: .45; }
 .explore-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
-.explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; }
+.explore-sheet[data-snap="peek"] .explore-sheet-body { overflow-y: hidden; overscroll-behavior: none; touch-action: pan-x; }
 .explore-sheet[data-snap="closed"]:not(.is-dragging) .explore-sheet-body { visibility: hidden; transition: visibility 0s linear 300ms; }
 .explore-sheet .explore-list { margin: 0; border: 0; box-shadow: none; padding-top: 2px; }
 /* 一覧の行はタイトルだけの形（D-46）なので、peek でも追加の要約化はしない。 */
 .explore-sheet .explore-quest-list { max-height: none; overflow: visible; }
-@media (prefers-reduced-motion: reduce) { .explore-sheet { transition: none; } .explore-sheet-body { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .explore-sheet { transition: height 120ms linear, visibility 0s; } .explore-sheet.is-dragging { transition: none; } .explore-sheet-body { transition: none !important; } }
 .demo-map-label { padding: 4px 7px; font-size: 12px; color: var(--ui-muted); background: var(--ui-muted); border-radius: var(--ui-radius); }
 .map-viewport { position: absolute; inset: 0; overflow: hidden; }
 .map-canvas { position: relative; width: 100%; height: 100%; transform-origin: 50% 50%; transition: transform 200ms ease; }
