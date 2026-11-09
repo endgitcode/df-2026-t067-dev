@@ -250,4 +250,4 @@ materials.evidenceはキーと文字列型を維持し、空文字を確認依�
 
 永続側A03〜A06の地図・時間・料金・写真権利の入力支援は[管理入力支援](admin-input-ux.md)を参照。保存API/strict schema/公開DTOの変更はなく、既存文字列と非公開範囲専用APIを使用する。
 
-住所候補は管理者専用の `POST /api/v1/orgs/:orgId/spot-address` で照会する。入力は `position: {latitude, longitude}` または `googlePlaceId` の少なくとも一方。成功応答は `{orgId, status: 'candidate', source: 'place' | 'nearby', address}`、候補が使えない場合は `{orgId, status: 'no-result' | 'unavailable' | 'conflict'}`。組織所属を照会前と返却前に確認し、候補を保存しない。[設定と制限](google-maps.md#管理画面の住所候補)
+住所候補は管理者専用の `POST /api/v1/orgs/:orgId/spot-address` で照会する。入力は `position: {latitude, longitude}` または `googlePlaceId` の少なくとも一方。成功応答は `{orgId, status: 'candidate', source: 'place' | 'nearby', address}`、候補が使えない場合は `{orgId, status: 'no-result' | 'unavailable' | 'conflict'}`（`unavailable` は取得失敗とキー未設定・無効の両方を含み、区別しない。D-68）。組織所属を照会前と返却前に確認し、候補を保存しない。[設定と制限](google-maps.md#管理画面の住所候補)
