@@ -46,6 +46,19 @@ test('listOwned は複合インデックスなしで本人の記録を新しい�
   assert.equal(page.nextCursor, null)
 })
 
+test('listOwned は保存済みレコードに案内があっても一覧へ含めない', async () => {
+  // クリア後の案内（afterClear、スポットの正確な住所・位置を含む）は本人詳細
+  // だけの項目で、一覧の応答には決して混ぜない（D-71）。
+  const withGuidance = record('disc-a', 'user-1', 300)
+  withGuidance.data.afterClear = { access: '', hours: '', promoComment: '', explanation: '解説',
+    spot: { name: '架空の灯台', address: '架空県架空市1-1', position: { latitude: 35.5, longitude: 139.5 } } }
+  const store = new FirestoreDiscoveryStore(fakeDb([withGuidance]), photos)
+  const page = await store.listOwned('user-1', {})
+  assert.equal(page.items.length, 1)
+  assert.equal('afterClear' in page.items[0], false)
+  assert.equal(JSON.stringify(page.items).includes('架空の灯台'), false)
+})
+
 test('listOwned はカーソルで続きを返し、地域でも絞れる', async () => {
   const store = new FirestoreDiscoveryStore(fakeDb([
     record('disc-a', 'user-1', 300, 0, 'area-1'),

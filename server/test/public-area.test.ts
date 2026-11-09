@@ -21,6 +21,20 @@ test('readPublicArea treats a missing or invalid stored code as unclassified', (
   assert.equal(readPublicArea(row({ ...base, prefectureCode: 13 }), 1).prefectureCode, undefined)
 })
 
+test('readPublicArea exposes a stored N03 boundary source with its registered year', () => {
+  assert.deepEqual(readPublicArea(row({ ...base, boundarySource: 'N03', boundaryYear: 2025 }), 1).boundary,
+    { source: 'N03', year: 2025 })
+})
+
+test('readPublicArea leaves the boundary unstated for missing or invalid stored values', () => {
+  assert.equal(readPublicArea(row(base), 1).boundary, undefined)
+  assert.equal(readPublicArea(row({ ...base, boundarySource: 'fixture' }), 1).boundary, undefined)
+  assert.equal(readPublicArea(row({ ...base, boundarySource: 'N03' }), 1).boundary, undefined)
+  assert.equal(readPublicArea(row({ ...base, boundarySource: 'N03', boundaryYear: '2025' }), 1).boundary, undefined)
+  assert.equal(readPublicArea(row({ ...base, boundarySource: 'N03', boundaryYear: 999 }), 1).boundary, undefined)
+  assert.equal(readPublicArea(row({ ...base, boundarySource: 'other', boundaryYear: 2025 }), 1).boundary, undefined)
+})
+
 test('readPublicArea exposes a stored municipality code', () => {
   assert.equal(readPublicArea(row({ ...base, municipalityCode: '07203' }), 1).municipalityCode, '07203')
 })

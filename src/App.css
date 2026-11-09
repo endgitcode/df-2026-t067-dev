@@ -141,6 +141,13 @@ button.explore-quest-card { cursor: pointer; }
 .explore-quest-detail-wrap.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows 280ms var(--ease-out), visibility 0s; }
 .explore-quest-detail-clip { min-height: 0; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .explore-quest-detail-wrap { transition: none; } }
+/* 一覧の中の詳細（アコーディオン）では、詳細カード自体の枠・影・地を持たない（D-70）。
+   行の直下にカードの枠と見出しの地が重なると「同じ題名のカードが2枚並ぶ」ように見え、
+   PCパネルではパネルの枠と合わせて三重になり、見出し・本文の二重のパディングで
+   本文幅も削られる。詳細は行の続きとして読ませ、余白も一覧の尺に寄せる。 */
+.quest-card.is-in-list { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.quest-card.is-in-list .quest-card-heading { padding: 14px 16px 0; border-bottom: 0; background: transparent; }
+.quest-card.is-in-list .quest-card-content { padding: 12px 16px 16px; }
 .explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); transition: height 300ms var(--ease-drawer), visibility 0s; }
 .explore-sheet.is-dragging { transition: none; }
 .explore-sheet-reopen { display: none; }
@@ -418,6 +425,7 @@ button.explore-quest-card { cursor: pointer; }
 .record-detail { display: grid; gap: 12px; overflow-wrap: anywhere; }
 .record-detail > button { justify-self: start; }
 .record-guidance { display: grid; gap: 12px; margin: 0; }
+.record-spot-link { margin: 12px 0 0; }
 .record-guidance dt { font-weight: var(--ui-weight-strong); }
 .record-guidance dd { margin: 0; white-space: pre-wrap; }
 .quest-report-form, .quest-report-form label { display: grid; gap: 8px; }
@@ -495,12 +503,13 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .map-location-status.is-floating { left: calc(var(--pc-sidebar-offset) + 8px); max-width: min(430px, calc(100% - var(--pc-sidebar-offset) - 118px)); }
   body.explore-fullbleed .explore-side-panel .side-panel-filters { position: sticky; top: 0; z-index: 2; margin: 0 -16px; padding: 12px 16px 10px; background: var(--ui-surface); }
   body.explore-fullbleed .explore-side-panel .map-filter-chips { flex-wrap: wrap; overflow: visible; }
-  /* 一覧領域はパネルの下まで伸ばす（D-54）。出典クレジットは margin-top: auto で
-     最下部に残し、一覧のスクロール領域が間の空白を埋める。一覧の下端は
-     グラデーションで面の色へ溶かし、行が半分だけ覗く切れ方を整える。 */
-  body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin: 10px 0 0; border: 0; border-radius: 0; box-shadow: none; padding-right: 0; padding-left: 0; background: transparent; }
-  body.explore-fullbleed .explore-side-panel .explore-list::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: linear-gradient(to bottom, rgb(255 255 255 / 0), var(--ui-surface)); pointer-events: none; }
-  body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: 1 1 auto; min-height: 0; max-height: none; padding-bottom: 18px; }
+  /* スクロールはパネル本体だけが担う（D-70）。一覧リスト側にもスクロールを持たせると
+     スクロールバーが2本出て、ガターの分だけ詳細の幅も削られた（D-54 の「一覧領域は
+     パネルの下まで伸ばす」はこの形に置き換える）。出典クレジットは margin-top: auto で
+     最下部に残し、中身が短い時はパネル下端へ寄せる。一覧下端のグラデーションは
+     リスト内スクロール前提の整えだったため、単一スクロール化に合わせて外した。 */
+  body.explore-fullbleed .explore-side-panel .explore-list { position: relative; flex: 0 0 auto; display: flex; flex-direction: column; margin: 10px 0 0; border: 0; border-radius: 0; box-shadow: none; padding-right: 0; padding-left: 0; background: transparent; }
+  body.explore-fullbleed .explore-side-panel .explore-quest-list { flex: none; max-height: none; overflow: visible; padding-bottom: 18px; }
   /* 出典表記はパネルの一番下に置く（D-46）。中身が短い時は下端へ寄せる。 */
   body.explore-fullbleed .explore-side-panel .map-boundary-credit { margin: auto 0 0; padding-top: 12px; }
   /* 地図の下に通常フローで残っていたレール（問題の選択・詳細）はサイドバー内に寄せ、

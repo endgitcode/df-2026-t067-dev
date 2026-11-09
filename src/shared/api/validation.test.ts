@@ -43,6 +43,17 @@ describe('public data boundary', () => {
       expect(() => parsePublicArea({ ...area, prefectureCode })).toThrow(ContractError)
     }
   })
+  it('keeps a valid boundary attribution and rejects invalid ones', () => {
+    expect(parsePublicArea({ ...area, boundary: { source: 'N03', year: 2025 } })).toEqual({ ...area, boundary: { source: 'N03', year: 2025 } })
+    expect(parsePublicArea({ ...area, boundary: { source: 'fixture' } })).toEqual({ ...area, boundary: { source: 'fixture' } })
+    expect(parsePublicArea(area)).not.toHaveProperty('boundary')
+    for (const boundary of [
+      { source: 'N03' }, { source: 'N03', year: '2025' }, { source: 'N03', year: 999 }, { source: 'N03', year: 10_000 },
+      { source: 'N03', year: 2025.5 }, { source: 'fixture', year: 2025 }, { source: 'other', year: 2025 }, { year: 2025 }, null, 'N03',
+    ]) {
+      expect(() => parsePublicArea({ ...area, boundary })).toThrow(ContractError)
+    }
+  })
   it('keeps a valid quest number and rejects invalid ones', () => {
     expect(parsePublicQuest({ ...quest, questNumber: '40-01' })).toEqual({ ...quest, questNumber: '40-01' })
     expect(parsePublicQuest(quest)).not.toHaveProperty('questNumber')

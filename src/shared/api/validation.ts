@@ -1,7 +1,7 @@
 import { ATTEMPT_OUTCOMES, ATTEMPT_STATES, REPORT_CATEGORIES } from './types'
 import type {
   AfterClearContent, AttemptResult, CaptureMetadata, Challenge, Decoder, DeletionReceipt, DeletionStatus, Discovery, LngLat,
-  ManagedReport, Page, Position, PublicArea, PublicGeometry, PublicQuest, QuestHint, ReportInput, ReportReceipt, SessionIdentity,
+  ManagedReport, Page, Position, PublicArea, PublicAreaBoundary, PublicGeometry, PublicQuest, QuestHint, ReportInput, ReportReceipt, SessionIdentity,
   ShootingConditions,
 } from './types'
 
@@ -110,8 +110,20 @@ export function isMunicipalityCode(input: unknown): input is string {
   return typeof input === 'string' && /^[0-9]{5}$/u.test(input)
 }
 
+function parsePublicAreaBoundary(input: unknown): PublicAreaBoundary {
+  const d = object(input, ['source', 'year'], 'PublicArea.boundary')
+  if (d.source === 'fixture') {
+    if (d.year !== undefined) throw new ContractError('PublicArea.boundary.year')
+    return { source: 'fixture' }
+  }
+  if (d.source !== 'N03') throw new ContractError('PublicArea.boundary.source')
+  const year = integer(d.year, 'PublicArea.boundary.year', 1000)
+  if (year > 9999) throw new ContractError('PublicArea.boundary.year')
+  return { source: 'N03', year }
+}
+
 export function parsePublicArea(input: unknown): PublicArea {
-  const d = object(input, ['areaId', 'label', 'publicGeometry', 'marker', 'publishedCount', 'prefectureCode', 'municipalityCode'], 'PublicArea')
+  const d = object(input, ['areaId', 'label', 'publicGeometry', 'marker', 'publishedCount', 'prefectureCode', 'municipalityCode', 'boundary'], 'PublicArea')
   const result: PublicArea = {
     areaId: text(d.areaId, 'areaId'), label: text(d.label, 'label'),
     publicGeometry: geometry(d.publicGeometry), marker: position(d.marker, 'marker'),
@@ -125,6 +137,7 @@ export function parsePublicArea(input: unknown): PublicArea {
     if (!isMunicipalityCode(d.municipalityCode)) throw new ContractError('PublicArea.municipalityCode')
     result.municipalityCode = d.municipalityCode
   }
+  if (d.boundary !== undefined) result.boundary = parsePublicAreaBoundary(d.boundary)
   return result
 }
 
