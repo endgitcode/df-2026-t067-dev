@@ -31,7 +31,7 @@ it('reads a quest without auth and forwards the currently displayed id and versi
   const { rerender } = render(<QuestDetails {...props} quest={demoQuest} />)
   expect(screen.getByRole('heading', { name: demoQuest.title })).toBeVisible()
   expect(screen.getByText(demoQuest.clue)).toBeVisible()
-  expect(screen.getByText(demoQuest.visitConditions)).toBeVisible()
+  expect(document.querySelector('.sample-note')).not.toBeInTheDocument()
   expect(screen.getByText(props.areaLabel)).toBeVisible()
   expect(onStart).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: '挑戦する' }))

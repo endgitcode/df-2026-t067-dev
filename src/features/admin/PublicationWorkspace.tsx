@@ -10,7 +10,7 @@ import { reviewLabels } from './publicationReadiness'
 
 type Confirmation = keyof NonNullable<PublishManagedQuest['confirmations']>
 const confirmationLabels: ReadonlyArray<readonly [Confirmation, string]> = [
-  ['fictionalData', '架空の素材と情報だけを使った'],
+  ['fictionalData', '素材と情報の内容を確認した'],
   ['visitConditions', '訪問条件と撮影時の注意を確認した'],
   ['photoRights', '写真の権利と公開する画像を確認した'],
   ['shootingArea', '撮影できる範囲（非公開）を確認した'],

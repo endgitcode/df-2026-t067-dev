@@ -27,7 +27,7 @@ describe('未接続の起動画面', () => {
 
     await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
     const details = screen.getByRole('region', { name: 'サンプル問題の詳細' })
-    expect(details).toHaveTextContent('実際に訪問・撮影できる場所ではありません')
+    expect(details).not.toHaveTextContent(/デモ|実際に訪問・撮影できる場所ではありません/)
     const startButton = within(details).getByRole('button', { name: 'Googleログインして挑戦する' })
     expect(startButton).toBeDisabled()
     await user.click(startButton)

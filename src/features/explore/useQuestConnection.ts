@@ -20,7 +20,7 @@ export function useQuestConnection(source: DataSource, api: ApiClient) {
   const read = useCallback(async (signal: AbortSignal): Promise<QuestContent> => {
     const quest = await api.getQuest('demo-quest', { signal })
     if (quest.questId !== 'demo-quest') throw new ApiError('INVALID_RESPONSE')
-    return { ...quest, areaLabel: '架空の地域' }
+    return { ...quest, areaLabel: '地域' }
   }, [api])
   const remote = useRemote(source === 'local-api', read)
   const result: Remote<QuestContent> = source === 'preview' ? { status: 'ready', value: { ...demoQuest, areaLabel: demoAreaLabel } }

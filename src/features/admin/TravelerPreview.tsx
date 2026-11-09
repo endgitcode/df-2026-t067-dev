@@ -31,10 +31,10 @@ function ChallengePreview({ content, areaLabel }: { content: ChallengePreviewCon
       <ShootingConditionIndicators conditions={content} />
     </header>
     <p>{shown(content.question)}</p>
-    <section aria-labelledby="preview-area-heading"><h4 id="preview-area-heading">公開探索エリア</h4><p>{areaLabel ?? '青葉みらい市の行政区域（架空エリア）'}</p></section>
-    <section aria-labelledby="preview-conditions-heading"><h4 id="preview-conditions-heading">挑戦前の条件</h4>
+    <section aria-labelledby="preview-area-heading"><h4 id="preview-area-heading">公開探索エリア</h4><p>{areaLabel ?? '青葉みらい市の行政区域'}</p></section>
+    {(content.price.trim() || content.photoNote.trim()) && <section aria-labelledby="preview-conditions-heading"><h4 id="preview-conditions-heading">挑戦前の条件</h4>
       <dl><dt>料金</dt><dd>{shown(content.price)}</dd><dt>撮影時の注意</dt><dd>{shown(content.photoNote)}</dd></dl>
-    </section>
+    </section>}
     <section aria-labelledby="preview-hints-heading"><h4 id="preview-hints-heading">ヒント</h4>
       {content.hints.map((hint, index) => (
         <div className="preview-hint" key={index}>
