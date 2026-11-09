@@ -8,9 +8,7 @@ import { PublicationWorkspace } from './PublicationWorkspace'
 
 type Part = 'target' | 'conditions' | 'content' | 'hints' | 'publication'
 type Destination = { part: Part; field?: ReviewField } | 'list'
-const steps = ['非公開', '条件と案内', '問題とヒント', '写真試験と公開']
-const defaultParts: Part[] = ['target', 'conditions', 'content', 'publication']
-const stepNumber: Record<Part, number> = { target: 1, conditions: 2, content: 3, hints: 3, publication: 4 }
+const sectionIds: Record<Part, string> = { target: 'target-heading', conditions: 'conditions-heading', content: 'draft-heading', hints: 'hint-asset-title', publication: 'publication-section' }
 const inputTargets: Partial<Record<ReviewField, string>> = {
   'materials.photoRights': 'workflow-reference',
   'materials.name': 'workflow-target-name', referenceAssetId: 'workflow-reference', referenceApproval: 'workflow-reference',
@@ -24,52 +22,30 @@ function editPart(field: ReviewField): Part {
   return 'target'
 }
 
-function fieldStep(field: ReviewField) {
-  return field === 'shootingAreas' ? 2 : stepNumber[editPart(field)]
-}
-
-function localMissing(record: ManagedQuest | null): ReviewField[] {
-  const draft = record?.draft
-  return [
-    ...(!draft?.materials.name.trim() ? ['materials.name'] as const : []),
-    ...(!draft?.referenceAssetId ? ['referenceAssetId'] as const : []),
-    ...(!draft?.afterClear.spot ? ['targetSpot'] as const : []),
-    ...(record?.shootingAreaStatus !== 'configured' ? ['shootingAreas'] as const : []),
-    ...(!draft?.content.title.trim() ? ['content.title'] as const : []),
-    ...(!draft?.content.question.trim() ? ['content.question'] as const : []),
-    ...(!draft?.content.hints.every((hint) => hint.trim()) ? ['content.hints'] as const : []),
-    ...(!draft?.content.verifiedFeatures.trim() ? ['content.verifiedFeatures'] as const : []),
-  ]
-}
-
-function resumePart(record: ManagedQuest | null): Part {
-  const missing = localMissing(record)
-  if (!record || record.status === 'published') return 'target'
-  if (missing.some((field) => fieldStep(field) === 1)) return 'target'
-  if (missing.includes('shootingAreas')) return 'target'
-  return missing.length ? 'content' : 'publication'
-}
-
 export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTestSource, areaUnclassified, onBack, onPublished }: {
   api: ApiClient; initial: ManagedQuest | null; member: OrgMembership; teamPreview: boolean
   photoTestSource: 'mock' | 'real'; areaUnclassified: boolean; onBack: () => void; onPublished: () => void
 }) {
+  const [reloadKey, setReloadKey] = useState(0)
   const [record, setRecord] = useState(initial)
-  const [part, setPart] = useState<Part>(() => { const value = new URLSearchParams(location.search).get('step'); return value && ['target', 'conditions', 'content', 'hints', 'publication'].includes(value) ? value as Part : resumePart(initial) })
+  const [part, setPart] = useState<Part>(() => {
+    const value = new URLSearchParams(location.search).get('step') ?? ''
+    return ({ '1': 'target', '2': 'conditions', '3': 'content', '4': 'publication', target: 'target', conditions: 'conditions', content: 'content', hints: 'hints', publication: 'publication' } as Record<string, Part>)[value] ?? 'target'
+  })
   const [dirty, setDirty] = useState(false)
+  const [hintDirty, setHintDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<Destination | null>(null)
   const [focusField, setFocusField] = useState<ReviewField | null>(null)
   const [lastTrialRevision, setLastTrialRevision] = useState<number | null>(null)
-  const [openedPublication, setOpenedPublication] = useState(part === 'publication')
   const dialog = useRef<HTMLDivElement>(null)
   useEffect(() => { if (pending) dialog.current?.focus() }, [pending])
   useEffect(() => {
-    if (!dirty) return
+    if (!dirty && !hintDirty) return
     const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     window.addEventListener('beforeunload', guard)
     return () => window.removeEventListener('beforeunload', guard)
-  }, [dirty])
+  }, [dirty, hintDirty])
   useEffect(() => {
     const url = new URL(location.href)
     url.searchParams.set('quest', record?.questId ?? 'new')
@@ -78,7 +54,6 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
   }, [record?.questId, part])
   const heading = useRef<HTMLElement>(null)
   const root = useRef<HTMLElement>(null)
-  const step = stepNumber[part]
   const questId = record?.questId
   const revision = record?.draftRevision
   const read = useCallback((signal: AbortSignal) => api.getManagedQuestReadiness(member.orgId, questId!, { signal }), [api, member.orgId, questId])
@@ -91,35 +66,31 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
     const id = focusField && inputTargets[focusField]
     const field = id && root.current?.querySelector<HTMLElement>('#' + id)
     if (field) field.focus()
-    else heading.current?.focus()
+    else { const section = document.getElementById(sectionIds[part]); section?.scrollIntoView?.({ block: 'start' }); section?.focus() }
   }, [part, focusField])
 
   function move(destination: Destination) {
     setPending(null)
-    setDirty(false)
+    if (destination === 'list') setDirty(false)
     if (destination === 'list') { onBack(); return }
     setPart(destination.part)
     setFocusField(destination.field ?? null)
     if (destination.part === 'publication') {
-      setOpenedPublication(true)
       retry()
     }
   }
 
   function navigate(destination: Destination) {
     if (busy) return
-    if (destination !== 'list' && destination.part === part) {
-      const id = destination.field && inputTargets[destination.field]
-      if (id) root.current?.querySelector<HTMLElement>('#' + id)?.focus()
-      return
-    }
-    if (dirty) setPending(destination)
+    if (destination !== 'list') { move(destination); return }
+    if (dirty || hintDirty) setPending(destination)
     else move(destination)
   }
 
   function saved(savedRecord: ManagedQuest, advance: boolean) {
     setRecord(savedRecord)
     setDirty(false)
+    setHintDirty(false)
     retry()
     if (pending) { move(pending); return }
     if (advance) move({ part: part === 'target' ? 'conditions' : part === 'conditions' ? 'content' : 'hints' })
@@ -128,19 +99,9 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
   function fix(field: ReviewField) { navigate({ part: editPart(field), field }) }
 
   return <section className="admin-workflow" aria-label="問題作成" ref={root}>
-    <ol className="workflow-steps" aria-label="問題作成の工程">
-      {steps.map((label, index) => {
-        const number = index + 1
-        return <li key={label} aria-current={number === step ? 'step' : undefined}>
-          <button type="button" aria-label={`STEP ${number} ${label}`} disabled={busy} onClick={() => navigate({ part: defaultParts[index] })}>
-            <strong>STEP {number}</strong><span>{label}</span>
-          </button>
-        </li>
-      })}
-    </ol>
-    <header className="workflow-heading" ref={heading} tabIndex={-1} aria-label={`STEP ${step} ${steps[step - 1]}`}>
+    <header className="workflow-heading" ref={heading} tabIndex={-1} aria-label="問題作成">
       <QuestStatusBadge status={record?.status ?? 'draft'} />
-      {part !== 'publication' && <button type="button" disabled={busy} onClick={() => navigate('list')}>謎一覧へ</button>}
+      <button type="button" disabled={busy} onClick={() => navigate('list')}>謎一覧へ</button>
     </header>
     {pending && <div role="alertdialog" aria-label="未保存の入力" className="unsaved-dialog" tabIndex={-1} ref={dialog} onKeyDown={event => {
       if (event.key === 'Escape') { setPending(null); heading.current?.focus() }
@@ -151,29 +112,33 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
         else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) { event.preventDefault(); buttons[0].focus() }
       }
     }}>
-      <p>STEP {step}・未保存</p>
+      <p>未保存</p>
       <button type="button" className="workflow-primary" disabled={busy} onClick={() => document.dispatchEvent(new Event('admin-save-draft'))}>保存して移動</button>
       <button type="button" disabled={busy} onClick={() => move(pending)}>保存せず移動</button>
       <button type="button" disabled={busy} onClick={() => { setPending(null); heading.current?.focus() }}>とどまる</button>
     </div>}
-    {part === 'hints' && record ? <HintAssetEditor api={api} initial={record} member={member}
-      onBack={() => navigate({ part: 'content' })} backLabel="問題文へ" onDirty={setDirty} onSaving={setBusy}
-      onSaved={(updated) => saved(updated, false)} onContinue={(updated) => { setRecord(updated); if (!pending) move({ part: 'publication' }) }} />
-      : part !== 'publication' && <QuestDraftForm key={part} teamPreview={teamPreview} connection={{
-        workflowPart: part === 'conditions' ? 2 : part === 'content' ? 3 : 1,
-        api, initial: record, member, onBack, onWorkflowSave: saved, onDirty: setDirty, onSaving: setBusy,
-      }} />}
-    {part === 'publication' && !record && <p>下書きを保存</p>}
-    {part === 'publication' && newerVersion && <p role="alert">別の操作で下書きが更新されました。
-      <button type="button" disabled={busy} onClick={() => setRecord(remote.quest)}>最新の内容を読み込む</button>
-    </p>}
-    {part === 'publication' && lastTrialRevision !== null && lastTrialRevision !== revision &&
-      <p role="status">変更あり・再テスト</p>}
-    {record && openedPublication && <div hidden={part !== 'publication'}>
-      <PublicationWorkspace key={revision} api={api} initial={record} approvedAssets photoTestSource={photoTestSource}
-        areaUnclassified={areaUnclassified} onBack={() => navigate('list')} backLabel="謎一覧へ"
-        onFix={fix} onPublished={onPublished} onBusy={setBusy} onTrialConfirmed={() => setLastTrialRevision(record.draftRevision)}
-        readiness={readiness} readinessFailed={result.status === 'error'} onReadinessRetry={retry} />
-    </div>}
+    <div inert={busy || Boolean(pending)}>
+    <div inert={hintDirty}><QuestDraftForm key={reloadKey} teamPreview={teamPreview} connection={{ workflowPart: 'all', saveBlocked: hintDirty,
+      api, initial: record, member, onBack, onWorkflowSave: saved, onDirty: setDirty, onSaving: setBusy }} /></div>
+    {dirty && <p>変更を保存</p>}
+    <div inert={dirty}>
+    {record ? <HintAssetEditor key={revision} api={api} initial={record} member={member} embedded
+      onBack={() => {}} onDirty={setHintDirty} onSaving={setBusy}
+      onSaved={(updated) => saved(updated, false)} onContinue={() => {}} />
+      : <section><h2>ヒント画像</h2><p>下書きを保存</p></section>}
+    <section id="publication-section" tabIndex={-1} aria-label="写真試験と公開">
+      <h2>写真試験と公開</h2>
+      {!record && <p>下書きを保存</p>}
+      {newerVersion && <p role="alert">別の操作で下書きが更新されました。
+        <button type="button" disabled={busy || dirty || hintDirty} onClick={() => { setRecord(remote.quest); setReloadKey(key => key + 1) }}>最新の内容を読み込む</button>
+      </p>}
+      {lastTrialRevision !== null && lastTrialRevision !== revision && <p role="status">変更あり・再テスト</p>}
+      {record && <PublicationWorkspace key={revision} api={api} initial={record} approvedAssets embedded blocked={dirty || hintDirty}
+        photoTestSource={photoTestSource} areaUnclassified={areaUnclassified}
+        onBack={() => navigate('list')} onFix={fix} onPublished={onPublished} onBusy={setBusy}
+        onTrialConfirmed={() => setLastTrialRevision(record.draftRevision)}
+        readiness={readiness} readinessFailed={result.status === 'error'} onReadinessRetry={retry} />}
+    </section>
+    </div></div>
   </section>
 }

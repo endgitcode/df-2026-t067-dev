@@ -63,7 +63,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
     if (!quest) return
     const found = result.value.items.find((item): item is ManagedQuest => 'draft' in item && item.questId === quest)
     const clear = () => { const url = new URL(location.href); url.searchParams.delete('quest'); url.searchParams.delete('step'); history.replaceState(null, '', url) }
-    if (step && !['target', 'conditions', 'content', 'hints', 'publication'].includes(step)) { clear(); return }
+    if (step && !['1', '2', '3', '4', 'target', 'conditions', 'content', 'hints', 'publication'].includes(step)) { clear(); return }
     if (found || (quest === 'new' && !areaUnclassified)) queueMicrotask(() => setEditor({ kind: 'draft', initial: found ?? null }))
     else if (quest !== 'new') {
       void api.getManagedQuest(member.orgId, quest).then(record => {

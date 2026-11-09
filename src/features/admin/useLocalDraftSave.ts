@@ -5,8 +5,9 @@ import { normalizeHintAssets } from './hintAssets'
 import { useRequestAction } from '../../shared/useRequestAction'
 
 export interface LocalDraftConnection {
+  saveBlocked?: boolean
   taskFocused?: boolean
-  workflowPart?: 1 | 2 | 3
+  workflowPart?: 1 | 2 | 3 | 'all'
   onDirty?: (dirty: boolean) => void
   onSaving?: (busy: boolean) => void
   onWorkflowSave?: (record: ManagedQuest, advance: boolean) => void
@@ -32,7 +33,8 @@ function saveFailure(cause: unknown, attemptedCreate: boolean): SaveState {
 }
 
 export function useLocalDraftSave(connection?: LocalDraftConnection) {
-  const [record, setRecord] = useState(connection?.initial ?? null)
+  const [localRecord, setRecord] = useState(connection?.initial ?? null)
+  const record = connection?.workflowPart === 'all' ? connection.initial : localRecord
   const [state, setState] = useState<SaveState>({ status: 'idle' })
   const upload = useRef<(DraftAsset & { key: string }) | null>(null)
   const begin = useRequestAction()

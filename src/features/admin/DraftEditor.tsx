@@ -46,24 +46,24 @@ export default function DraftEditor({ draft, setDraft, materialChanged, sampleCo
   }
 
   return <section className="form-section draft-editor" aria-labelledby="draft-heading">
-    <h2 id="draft-heading" ref={headingRef} tabIndex={-1} className={workflow ? "sr-only" : undefined}>{workflow ? '問題文とヒント' : '文章編集'}</h2>
+    <h2 id="draft-heading" ref={headingRef} tabIndex={-1} >{workflow ? '問題とヒント' : '文章編集'}</h2>
     {!workflow && <p className="demo-notice" role="note">非公開素材</p>}
     {materialChanged && <p className="field-error" role="status">素材が変更されています。下書きを確認してください。</p>}
     {allowSample && <div className="sample-actions">
       <button type="button" onClick={() => edited ? setSampleConfirm(true) : loadSample()}>サンプル</button>
       {sampleConfirm && <div className="confirm-inline" role="group" aria-label="サンプル置換の確認"><p>現在の下書きをサンプルで置き換えますか？</p><button type="button" onClick={() => setSampleConfirm(false)}>キャンセル</button><button type="button" onClick={loadSample}>置き換える</button></div>}
     </div>}
-    <label>タイトル{workflow && <small className="required-mark">必須</small>}<input aria-label="タイトル" placeholder="例：丘の上で回るものは？" id="workflow-title" aria-describedby={requiredErrors && !draft.title.trim() ? "title-error" : undefined} aria-required={workflow} aria-invalid={requiredErrors && !draft.title.trim()} value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></label>
+    <label>タイトル<input aria-label="タイトル" placeholder="例：丘の上で回るものは？" id="workflow-title" aria-describedby={requiredErrors && !draft.title.trim() ? "title-error" : undefined} aria-required={workflow} aria-invalid={requiredErrors && !draft.title.trim()} value={draft.title} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></label>
     {requiredErrors && !draft.title.trim() && <p id="title-error" className="field-error">タイトルを入力してください。</p>}
-    <label>問題文{workflow && <small className="required-mark">必須</small>}<textarea aria-label="問題文" placeholder="例：町を見渡す丘に、風を受けて回るものが並んでいます。" id="workflow-question" aria-describedby={requiredErrors && !draft.question.trim() ? "question-error" : undefined} aria-required={workflow} aria-invalid={requiredErrors && !draft.question.trim()} rows={4} value={draft.question} onChange={event => setDraft(current => ({ ...current, question: event.target.value }))} /></label>
+    <label>問題文<textarea aria-label="問題文" placeholder="例：町を見渡す丘に、風を受けて回るものが並んでいます。" id="workflow-question" aria-describedby={requiredErrors && !draft.question.trim() ? "question-error" : undefined} aria-required={workflow} aria-invalid={requiredErrors && !draft.question.trim()} rows={4} value={draft.question} onChange={event => setDraft(current => ({ ...current, question: event.target.value }))} /></label>
     {requiredErrors && !draft.question.trim() && <p id="question-error" className="field-error">問題文を入力してください。</p>}
     <fieldset><legend id="workflow-hints" tabIndex={-1}>ヒント</legend>
-      {draft.hints.slice(0, visibleHints).map((hint, index) => <label key={index}>ヒント {index + 1}{workflow && <small className="required-mark">必須</small>}<textarea aria-label={`ヒント ${index + 1}`} placeholder={['例：大まかな地域', '例：近くの目印', '例：ほぼ答え'][index]} id={'workflow-hint-' + index} aria-describedby={requiredErrors && !hint.trim() ? 'hint-error-' + index : undefined} aria-required={workflow} aria-invalid={requiredErrors && !hint.trim()} rows={2} value={hint} onChange={event => setDraft(current => ({ ...current, hints: current.hints.map((item, itemIndex) => itemIndex === index ? event.target.value : item) as DraftFields['hints'] }))} />{requiredErrors && !hint.trim() && <span id={'hint-error-' + index} className="field-error">ヒントを入力してください。</span>}</label>)}
+      {draft.hints.slice(0, visibleHints).map((hint, index) => <label key={index}>ヒント {index + 1}<textarea aria-label={`ヒント ${index + 1}`} placeholder={['例：大まかな地域', '例：近くの目印', '例：ほぼ答え'][index]} id={'workflow-hint-' + index} aria-describedby={requiredErrors && !hint.trim() ? 'hint-error-' + index : undefined} aria-required={workflow} aria-invalid={requiredErrors && !hint.trim()} rows={2} value={hint} onChange={event => setDraft(current => ({ ...current, hints: current.hints.map((item, itemIndex) => itemIndex === index ? event.target.value : item) as DraftFields['hints'] }))} />{requiredErrors && !hint.trim() && <span id={'hint-error-' + index} className="field-error">ヒントを入力してください。</span>}</label>)}
 
       {visibleHints < 3 && <button type="button" onClick={() => setRevealedHints(visibleHints + 1)}>次のヒントを書く</button>}
     </fieldset>
     <h3>非公開</h3>
-    <label>特徴{workflow && <small className="required-mark">必須</small>}<textarea aria-label="特徴" placeholder={"写真で見える色・形・文字を1行に1つ\n例：赤い三角屋根\n例：白い文字盤の時計が柱の上にある"} id="workflow-features" aria-describedby={requiredErrors && featuresInvalid ? "features-error" : undefined} aria-required={workflow} aria-invalid={requiredErrors && featuresInvalid} rows={3} value={draft.verifiedFeatures} onChange={event => setDraft(current => ({ ...current, verifiedFeatures: event.target.value }))} /></label>
+    <label>特徴<textarea aria-label="特徴" placeholder={"写真で見える色・形・文字を1行に1つ\n例：赤い三角屋根\n例：白い文字盤の時計が柱の上にある"} id="workflow-features" aria-describedby={requiredErrors && featuresInvalid ? "features-error" : undefined} aria-required={workflow} aria-invalid={requiredErrors && featuresInvalid} rows={3} value={draft.verifiedFeatures} onChange={event => setDraft(current => ({ ...current, verifiedFeatures: event.target.value }))} /></label>
     {requiredErrors && featuresInvalid && <p id="features-error" className="field-error">特徴を1〜20行で、1行300文字以内で入力してください。</p>}
     <div className="feature-line-builder">
       <label>特徴を1行で追加<input value={featureLine} onChange={event => setFeatureLine(event.target.value)} placeholder="例：赤い三角屋根がある" /></label>

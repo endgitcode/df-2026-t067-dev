@@ -6,7 +6,7 @@ import { PhotoRightsInput } from './PhotoRightsInput'
 import { normalizeHintAssets } from './hintAssets'
 import { useLocalDraftSave } from './useLocalDraftSave'
 
-export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1, rightsAssist = false, backLabel = '謎一覧へ', onContinue, onDirty, onSaving, onSaved }:  { api: ApiClient; initial: ManagedQuest; member: OrgMembership; onBack: () => void; initialSlot?: number; rightsAssist?: boolean; backLabel?: string; onContinue?: (record: ManagedQuest) => void; onDirty?: (dirty: boolean) => void; onSaving?: (busy: boolean) => void; onSaved?: (record: ManagedQuest) => void }) {
+export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1, rightsAssist = false, backLabel = '謎一覧へ', onContinue, onDirty, onSaving, onSaved, embedded = false }:  { embedded?: boolean; api: ApiClient; initial: ManagedQuest; member: OrgMembership; onBack: () => void; initialSlot?: number; rightsAssist?: boolean; backLabel?: string; onContinue?: (record: ManagedQuest) => void; onDirty?: (dirty: boolean) => void; onSaving?: (busy: boolean) => void; onSaved?: (record: ManagedQuest) => void }) {
   const { record, state, save } = useLocalDraftSave({ api, initial, member, onBack, ...(onContinue ? { workflowPart: 3, onDirty, onSaving } : {}) })
   const [slot, setSlot] = useState(initialSlot)
   const [file, setFile] = useState<File | null>(null)
@@ -24,10 +24,11 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
   const statusRef = useRef<HTMLParagraphElement>(null)
   useEffect(() => { if (state.status === 'saved') statusRef.current?.focus() }, [state.status])
   useEffect(() => {
+    if (embedded && !file) return
     const listener = () => input.current?.form?.requestSubmit()
     document.addEventListener('admin-save-draft', listener)
     return () => document.removeEventListener('admin-save-draft', listener)
-  }, [])
+  }, [embedded, file])
   function clearSelection() {
     setFile(null)
     onDirty?.(false)
@@ -55,11 +56,11 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
 
   return <section className="form-section" aria-labelledby="hint-asset-title">
     <h2 id="hint-asset-title">ヒント画像</h2>
-    <button type="button" disabled={state.status === 'saving'} onClick={onBack}>{backLabel}</button>
+    {!embedded && <button type="button" disabled={state.status === 'saving'} onClick={onBack}>{backLabel}</button>}
     {current.draft.content.hints.map((hint, index) => {
       const number = index + 1
       const assetId = assets[index] ?? (number === 1 ? current.draft.hintAssetId : null)
-      return <section className="form-section" key={number} aria-label={`ヒント ${number}`}>
+      return <section className="form-section" key={number} aria-label={`ヒント ${number}の画像`}>
         <h3>ヒント {number}</h3><p>{hint.trim() || '未入力'}</p>
         {assetId && <button type="button" disabled={blocked} onClick={() => remove(number)}>ヒント {number}の画像を外す</button>}
       </section>
@@ -82,13 +83,13 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
         {!onContinue && reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替え写真の公開権を確認</label>}
         {file && !valid && <p id="hint-photo-error" role="alert" className="field-error">JPEG・PNG・WebP／4MB以下</p>}
         {activeSlots.length === 0 && <p role="note">ヒント未入力</p>}
-        <div className={onContinue && file ? "admin-list-actions admin-save-bar" : undefined}>
+        <div className={onContinue && file && !embedded ? "admin-list-actions admin-save-bar" : undefined}>
         <button type="submit" disabled={!valid || (!onContinue && (!rights.trim() || reuseNeeded)) || activeSlots.length === 0}>画像を保存</button>
-        {onContinue && file && <button type="submit" value="next" className="workflow-primary" disabled={!valid}>保存して次へ</button>}
+        {!embedded && onContinue && file && <button type="submit" value="next" className="workflow-primary" disabled={!valid}>保存して次へ</button>}
         </div>
       </fieldset>
     </form>
-    {onContinue && !file && <div className="admin-list-actions admin-save-bar"><button type="button" className="workflow-primary" disabled={blocked} onClick={() => onContinue(current)}>試験・公開へ</button></div>}
+    {!embedded && onContinue && !file && <div className="admin-list-actions admin-save-bar"><button type="button" className="workflow-primary" disabled={blocked} onClick={() => onContinue(current)}>試験・公開へ</button></div>}
     {onContinue && file && <button type="button" disabled={blocked} onClick={clearSelection}>選択を取り消す</button>}
     {state.status === 'saving' && <p role="status">保存中</p>}
     {state.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}>保存済み</p>}

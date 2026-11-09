@@ -70,17 +70,17 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
       {candidate.address && <p>住所候補：{candidate.address}</p>}
       <button type="button" onClick={() => edit({ name: candidate.name ?? input.name, address: candidate.address ?? input.address })}>名前・住所を使う</button>
     </div>}
-    <label>場所の名前<small className="required-mark">必須</small><input aria-describedby={invalid && !input.name.trim() ? "spot-name-error" : undefined} aria-label="場所の名前" value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
+    <label>場所の名前<input aria-describedby={invalid && !input.name.trim() ? "spot-name-error" : undefined} aria-label="場所の名前" value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
        placeholder="例：風見の丘公園" onChange={(event) => edit({ name: event.target.value })} /></label>
     {invalid && !input.name.trim() && <p id="spot-name-error" className="field-error">場所の名前を入力</p>}
-    <label>住所<small className="required-mark">必須</small><input aria-describedby={invalid && !input.address.trim() ? "spot-address-error" : undefined} aria-label="住所" value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
+    <label>住所<input aria-describedby={invalid && !input.address.trim() ? "spot-address-error" : undefined} aria-label="住所" value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
        placeholder="例：青葉みらい市風見1-2-3" onChange={(event) => edit({ address: event.target.value })} /></label>
     {invalid && !input.address.trim() && <p id="spot-address-error" className="field-error">住所を入力</p>}
     <div className="field-pair">
-      <label>緯度<small className="required-mark">必須</small><input aria-describedby={(latitudeInvalid || (invalid && !input.latitude.trim())) ? "spot-latitude-error" : undefined} inputMode="decimal" aria-label="緯度" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={(latitudeInvalid || (invalid && !input.latitude.trim()))}
+      <label>緯度<input aria-describedby={(latitudeInvalid || (invalid && !input.latitude.trim())) ? "spot-latitude-error" : undefined} inputMode="decimal" aria-label="緯度" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={(latitudeInvalid || (invalid && !input.latitude.trim()))}
         onChange={(event) => edit({ latitude: event.target.value })} /></label>
     {(latitudeInvalid || (invalid && !input.latitude.trim())) && <p id="spot-latitude-error" className="field-error">緯度は-90〜90</p>}
-      <label>経度<small className="required-mark">必須</small><input aria-describedby={(longitudeInvalid || (invalid && !input.longitude.trim())) ? "spot-longitude-error" : undefined} inputMode="decimal" aria-label="経度" value={input.longitude} maxLength={32} aria-required="true" aria-invalid={(longitudeInvalid || (invalid && !input.longitude.trim()))}
+      <label>経度<input aria-describedby={(longitudeInvalid || (invalid && !input.longitude.trim())) ? "spot-longitude-error" : undefined} inputMode="decimal" aria-label="経度" value={input.longitude} maxLength={32} aria-required="true" aria-invalid={(longitudeInvalid || (invalid && !input.longitude.trim()))}
         onChange={(event) => edit({ longitude: event.target.value })} /></label>
     {(longitudeInvalid || (invalid && !input.longitude.trim())) && <p id="spot-longitude-error" className="field-error">経度は-180〜180</p>}
     </div>

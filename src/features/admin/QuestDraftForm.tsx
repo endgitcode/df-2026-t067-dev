@@ -72,6 +72,7 @@ function AccessInput({ value, onChange, builder }: { value: string; onChange: (v
 
 export default function QuestDraftForm({ connection, teamPreview = false }: { connection?: LocalDraftConnection; teamPreview?: boolean } = {}) {
   const part = connection?.workflowPart
+  const onePage = part === 'all'
   const focused = connection?.taskFocused === true || part !== undefined
   const initial = connection?.initial?.draft
   const [name, setName] = useState(initial?.materials.name ?? '')
@@ -272,8 +273,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const referenceMissing = !photo && !referenceAssetId
   const features = draft.verifiedFeatures.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
   const featuresMissing = !features.length || features.length > 20 || features.some((line) => line.length > 300)
-  const requiredTarget = showRequired && part === 1
-  const requiredContent = showRequired && part === 3
+  const requiredTarget = showRequired && (part === 1 || onePage)
+  const requiredContent = showRequired && (part === 3 || onePage)
 
   function saveDraft(destination?: 'areas' | 'publication' | 1 | 2 | 3 | 'next') {
     reset()
@@ -284,15 +285,21 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       setStep('A03')
       return
     }
-    if (destination === 'next') {
+    if (destination === 'next' || onePage) {
       const missingHint = draft.hints.findIndex((hint) => !hint.trim())
-      const required = part === 1 ? [
+      const targetFields = [
         targetMissing && 'workflow-target-name', referenceMissing && 'workflow-reference',
         (!spot || spot === 'incomplete') && 'workflow-spot',
-      ] : part === 2 ? [(!spot || spot === 'incomplete') && 'workflow-spot-needed'] : part === 3 ? [
+      ]
+      const contentFields = [
         !draft.title.trim() && 'workflow-title', !draft.question.trim() && 'workflow-question',
         missingHint !== -1 && 'workflow-hint-' + missingHint, featuresMissing && 'workflow-features',
-      ] : []
+      ]
+      // 下書き案の取得には、先に対象・写真・場所を保存する必要がある。
+      const required = onePage ? [...targetFields, ...(record?.draft.afterClear.spot ? contentFields : [])]
+        : part === 1 ? targetFields
+        : part === 2 ? [(!spot || spot === 'incomplete') && 'workflow-spot-needed']
+        : part === 3 ? contentFields : []
       const firstMissing = required.find(Boolean)
       if (firstMissing) {
         setShowRequired(true)
@@ -323,12 +330,13 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       return
     }
     if (!record && !name.trim() && !draft.title.trim()) { setDraftEntryError('撮るものを入力'); setInputError('撮るもの・タイトルを入力'); return }
-    const legacyHintAssetId = record?.draft.hintAssetId ?? null
-    const hintAssetIds = record?.draft.hintAssetIds ?? (legacyHintAssetId ? [legacyHintAssetId, null, null] : undefined)
+    const savedDraft = onePage ? connection?.initial?.draft ?? record?.draft : record?.draft
+    const legacyHintAssetId = savedDraft?.hintAssetId ?? null
+    const hintAssetIds = savedDraft?.hintAssetIds ?? (legacyHintAssetId ? [legacyHintAssetId, null, null] : undefined)
     void save({
       materials: { name, evidence, requiresBoat, requiresPaidFacility, price: normalizePrice(price), photoNote, photoRights: part && photo ? '' : photoRights },
       content: draft, afterClear: { access, hours, promoComment, explanation, ...(spot ? { spot } : {}) }, referenceAssetId,
-      hintAssetId: record?.draft.hintAssetIds ? legacyHintAssetId : null,
+      hintAssetId: savedDraft?.hintAssetIds ? legacyHintAssetId : null,
       ...(hintAssetIds ? { hintAssetIds } : {}),
     }, photo ? { file: photo.file, purpose: 'reference', photoRights } : undefined, (saved) => {
       setAppliedDraft(null)
@@ -343,7 +351,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   }
 
   useEffect(() => {
-    const listener = () => saveDraft()
+    const listener = () => { if (!connection?.saveBlocked) saveDraft() }
     document.addEventListener('admin-save-draft', listener)
     return () => document.removeEventListener('admin-save-draft', listener)
   })
@@ -364,16 +372,16 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         : '検証環境'
       : '未保存・再読込で消去・AI未接続'}</p></>}
 
-    {step === 'A03' ? <form onSubmit={event => {
+    {(onePage || step === 'A03') && <form onSubmit={event => {
       event.preventDefault()
       if (focused) { enterDraft(); return }
       if (validateHours() && validateMaterials()) setShowSummary(true)
     }}>
-      {part !== 2 && <><section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1} className={part ? "sr-only" : undefined}>非公開</h2>
+      {part !== 2 && <><section className="form-section" aria-labelledby="target-heading"><h2 id="target-heading" ref={a03HeadingRef} tabIndex={-1} className={part && !onePage ? "sr-only" : undefined}>非公開</h2>
 
-        <label>撮るもの<small className="required-mark">必須</small><input aria-label="撮るもの" id="workflow-target-name" ref={nameRef} aria-required={Boolean(part) || !focused} aria-invalid={Boolean((requiredTarget || draftEntryError) && targetMissing)} aria-describedby={(draftEntryError || requiredTarget) && targetMissing ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
+        <label>撮るもの<input aria-label="撮るもの" id="workflow-target-name" ref={nameRef} aria-required={Boolean(part) || !focused} aria-invalid={Boolean((requiredTarget || draftEntryError) && targetMissing)} aria-describedby={(draftEntryError || requiredTarget) && targetMissing ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {(draftEntryError || requiredTarget) && targetMissing && <p id="name-error" className="field-error">撮るものを入力</p>}
-        <label className="file-label">正解の写真{part && <small className="required-mark">必須</small>}<input aria-label="正解の写真" id="workflow-reference" className="reference-photo-input" ref={inputRef} type="file" accept={PHOTO_UPLOAD_ACCEPT} aria-required={Boolean(part)} aria-invalid={Boolean(photoError) || (requiredTarget && referenceMissing)} aria-describedby="photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
+        <label className="file-label">正解の写真<input aria-label="正解の写真" id="workflow-reference" className="reference-photo-input" ref={inputRef} type="file" accept={PHOTO_UPLOAD_ACCEPT} aria-required={Boolean(part)} aria-invalid={Boolean(photoError) || (requiredTarget && referenceMissing)} aria-describedby="photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
 
         {!photo && referenceAssetId && <p>保存済みの参考写真 <button type="button" onClick={() => {
           setReferenceAssetId(null); markMaterialChange()
@@ -441,9 +449,10 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {!focused && <button type="submit">入力内容を確認</button>}
       {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2>{!connection && <p>画面内の確認表示です。送信・保存はしていません。</p>}<dl><dt>自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市・青葉みらい市の行政区域'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用時間</dt><dd>{hours || '未入力'}</dd><dt>紹介</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の権利</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影範囲</dt><dd>{areaStatus}</dd></dl></section>}
       </>}
-    </form> : step === 'A04' ? <>
+    </form>}
+    {(onePage || step === 'A04') && <>
       <DraftEditor draft={draft} setDraft={editDraft} materialChanged={materialChanged} sampleConfirm={sampleConfirm}
-        setSampleConfirm={setSampleConfirm} onBack={() => setStep('A03')} workflow={part === 3} requiredErrors={requiredContent} featuresInvalid={featuresMissing} onPreview={enterPreview} headingRef={a04HeadingRef} omitMemo={focused} allowSample={!connection} />
+        setSampleConfirm={setSampleConfirm} onBack={() => setStep('A03')} workflow={part === 3 || onePage} requiredErrors={requiredContent} featuresInvalid={featuresMissing} onPreview={enterPreview} headingRef={a04HeadingRef} omitMemo={focused} allowSample={!connection} />
       {appliedDraft && <div role="status" className="admin-operation-notice">反映済み・未保存<button type="button" onClick={() => { editDraft(appliedDraft); setAppliedDraft(null); document.getElementById('workflow-title')?.focus() }}>元に戻す</button></div>}
       {connection && record && <DraftCandidate key={record.draftRevision + ':' + draftEdit} api={connection.api} saved={record} current={draft} omitNotes={focused} onApply={next => {
         const merged = focused ? { ...next, draftingNotes: draft.draftingNotes } : next
@@ -453,7 +462,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         const id = first === 'hints' ? 'workflow-hint-' + draft.hints.findIndex((hint, index) => hint !== merged.hints[index]) : first === 'verifiedFeatures' ? 'workflow-features' : first === 'draftingNotes' ? 'workflow-notes' : 'workflow-' + first
         document.getElementById(id)?.focus()
       }} />}
-    </> : <>
+    </>}
+    {!onePage && step === 'A05' && <>
       {!part && <section className="form-section" aria-label="不足項目">
         <p><strong>不足項目</strong></p>
         {materialMissing.length === 0 && contentMissing.length === 0
@@ -466,16 +476,16 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       </section>}
       <TravelerPreview challengeContent={{ title: draft.title, question: draft.question, hints: draft.hints, requiresBoat, requiresPaidFacility, price, photoNote }} afterClearContent={{ access, hours, promoComment, explanation }} mode={previewMode} onModeChange={setPreviewMode} headingRef={a05HeadingRef} onEdit={() => { setVisitedDraft(true); setStep('A04') }} areaLabel={areaLabel} /></>}
     </div>
-    {part === 1 && exploration?.source === 'N03' && <footer className="helper">出典：国土交通省 国土数値情報「行政区域」{exploration.year}年版を加工</footer>}
+    {(part === 1 || onePage) && exploration?.source === 'N03' && <footer className="helper">出典：国土交通省 国土数値情報「行政区域」{exploration.year}年版を加工</footer>}
     {connection && <section className="form-section" aria-label="下書きの保存">
       {saveState.status === 'saved' && <p role="status" tabIndex={-1} ref={statusRef}>保存済み</p>}
       {saveState.status === 'error' && <p role="alert">{saveState.message}</p>}
       {inputError && <p role="alert">{inputError}</p>}
       <div className="admin-list-actions admin-save-bar">
-        <button type="button" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => {
+        <button type="button" className={onePage ? "workflow-primary" : undefined} disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => {
           saveDraft()
-        }}>{saving ? '保存中' : '下書きを保存'}</button>
-        {part && <button type="button" className="workflow-primary" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('next')}>保存して次へ</button>}
+        }}>{saving ? '保存中' : onePage ? '保存' : '下書きを保存'}</button>
+        {part && !onePage && <button type="button" className="workflow-primary" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('next')}>保存して次へ</button>}
         {!part && connection.onContinue && <details className="save-continue">
           <summary>保存先</summary>
           <div className="admin-list-actions">

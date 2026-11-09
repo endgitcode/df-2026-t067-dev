@@ -66,8 +66,8 @@ function PhotoTrial({ expected, disabled, feedback, onTest, onSelection }:   {
   </form>
 }
 
-export function PublicationWorkspace({ api, initial, onBack, onPublished, rightsAssist = false, backLabel = '謎一覧へ', photoTestSource = 'mock', areaUnclassified = false, approvedAssets = false, onFix, onBusy, onTrialConfirmed, readiness, readinessFailed, onReadinessRetry }: {
-  api: ApiClient; initial: ManagedQuest; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; approvedAssets?: boolean; onFix?: (field: ReviewField) => void; onBusy?: (busy: boolean) => void; onTrialConfirmed?: () => void;
+export function PublicationWorkspace({ api, initial, onBack, onPublished, rightsAssist = false, backLabel = '謎一覧へ', photoTestSource = 'mock', areaUnclassified = false, approvedAssets = false, onFix, onBusy, onTrialConfirmed, readiness, readinessFailed, onReadinessRetry, embedded = false, blocked = false }: {
+  embedded?: boolean; blocked?: boolean; api: ApiClient; initial: ManagedQuest; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; approvedAssets?: boolean; onFix?: (field: ReviewField) => void; onBusy?: (busy: boolean) => void; onTrialConfirmed?: () => void;
   readiness?: ReviewSubmission; readinessFailed?: boolean; onReadinessRetry?: () => void; onBack: () => void; onPublished: () => void
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -90,7 +90,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   const [failure, setFailure] = useState<Failure | null>(null)
   const begin = useRequestAction()
   const { orgId, questId, draftRevision } = quest
-  const disabled = busy || !!failure?.stale
+  const disabled = blocked || busy || !!failure?.stale
   const photoValid = photo !== null && photo.size > 0 && photo.size <= PHOTO_UPLOAD_MAX_BYTES &&
     PHOTO_UPLOAD_MIME_TYPES.includes(photo.type)
   const missing = approvedAssets ? readiness?.missing ?? [] : reviewMissing
@@ -198,8 +198,8 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   }
 
   return <section className="form-section" aria-labelledby="publication-workspace-title">
-    <h2 id="publication-workspace-title" className={onFix ? "sr-only" : undefined}>試験・公開</h2>
-    <button type="button" onClick={onBack}>{backLabel}</button>
+    <h2 id="publication-workspace-title" className={embedded ? "sr-only" : undefined}>試験・公開</h2>
+    {!embedded && <button type="button" onClick={onBack}>{backLabel}</button>}
     {areaUnclassified && <p role="alert">地域未設定・公開不可</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">確認中</p>}
