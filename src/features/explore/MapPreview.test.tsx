@@ -269,6 +269,82 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('fits a single filtered area to its boundary shape and caps the zoom instead of diving to street level', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let zoom = 5
+    const idleCallbacks: Array<() => void> = []
+    const boundsSeen: Array<{ points: Array<{ lat: number; lng: number }> }> = []
+    const setZoom = vi.fn((next: number) => { zoom = next })
+    // 実挙動の再現：範囲が実質1点だと fitBounds は最大倍率まで寄る。
+    const fitBounds = vi.fn((bounds: { points: Array<{ lat: number; lng: number }> }) => { boundsSeen.push(bounds); zoom = 20 })
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn(), setZoom, getZoom: () => zoom,
+      addListener: (name: string, callback: () => void) => { if (name === 'idle') idleCallbacks.push(callback); return { remove() {} } } }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    class LatLngBounds { points: Array<{ lat: number; lng: number }> = []; extend(point: { lat: number; lng: number }) { this.points.push(point) } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const areaB: PublicArea = { areaId: 'area-b', label: 'B', publishedCount: 2, marker: { latitude: 43, longitude: 141 },
+      publicGeometry: { type: 'Polygon', coordinates: [[[141, 43], [142, 43], [142, 44], [141, 44], [141, 43]]] } }
+    const both = [...areas, areaB]
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={both} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
+    fitBounds.mockClear(); setZoom.mockClear(); boundsSeen.length = 0
+    // 北海道だけに絞る（対象は1地域）。範囲はピンの1点ではなく境界形状から作り、
+    // 完了後の倍率も上限までに留める（D-60 追記）。
+    rerender(<ConfiguredMapPreview areas={[areaB]} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    expect(boundsSeen[0].points).toHaveLength(5)
+    expect(boundsSeen[0].points).toContainEqual({ lat: 43, lng: 141 })
+    expect(boundsSeen[0].points).toContainEqual({ lat: 44, lng: 142 })
+    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
+    expect(setZoom).toHaveBeenCalledWith(12)
+    expect(zoom).toBe(12)
+    unmount()
+    delete window.google
+  })
+
+  it('records the capped camera after a selection fit that overshoots, so a re-tap at that position deselects', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let center = { lat: 36.2048, lng: 138.2529 }
+    let zoom = 5
+    const idleCallbacks: Array<() => void> = []
+    const setZoom = vi.fn((next: number) => { zoom = next })
+    const fitBounds = vi.fn(() => { center = { lat: 35.5, lng: 139.5 }; zoom = 20 })
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn(), setZoom,
+      getCenter: () => ({ lat: () => center.lat, lng: () => center.lng }), getZoom: () => zoom,
+      addListener: (name: string, callback: () => void) => { if (name === 'idle') idleCallbacks.push(callback); return { remove() {} } } }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    const instances: Marker[] = []
+    class Marker {
+      setMap() {}
+      click?: () => void
+      constructor() { instances.push(this) }
+      addListener(name: string, callback: () => void) { if (name === 'click') this.click = callback; return { remove() {} } }
+    }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const onSelectArea = vi.fn()
+    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" onSelectArea={onSelectArea} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(instances).toHaveLength(1))
+    // 同じ idle リスナーが2回要る：1回目で上限まで引き、2回目で確定位置として記録する。
+    const fireIdle = () => act(() => { [...idleCallbacks].forEach((callback) => callback()) })
+    fireIdle()
+    expect(setZoom).toHaveBeenCalledWith(12)
+    fireIdle()
+    // カメラが（上限適用後の）フィット位置にあるので、再タップは寄せ直しではなく選択解除になる。
+    fitBounds.mockClear()
+    act(() => instances[0].click?.())
+    expect(onSelectArea).toHaveBeenCalledWith('area-a')
+    expect(fitBounds).not.toHaveBeenCalled()
+    unmount()
+    delete window.google
+  })
+
   it('triggers a map resize once the layout settles in wide mode and fits the selection exactly once', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.stubGlobal('matchMedia', (query: string) => ({

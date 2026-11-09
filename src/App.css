@@ -96,7 +96,8 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 /* 開閉ボタンは押しやすい44px級にし、開状態の見た目とシェブロンで状態を返す（D-59）。 */
 .filter-toggle { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; transition: background-color 150ms var(--ease-out); }
 .filter-toggle[aria-expanded="true"] { background: var(--ui-soft); }
-.filter-toggle-chevron { font-size: 10px; line-height: 1; transition: transform 200ms var(--ease-out); }
+.filter-toggle-chevron { display: inline-flex; transition: transform 200ms var(--ease-out); }
+.filter-toggle-chevron .icon { width: 16px; height: 16px; }
 .filter-toggle-chevron.is-open { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .filter-toggle-chevron { transition: none; } }
 .filter-chip[aria-pressed="true"] { background: var(--ui-accent); }

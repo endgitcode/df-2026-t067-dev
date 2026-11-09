@@ -25,6 +25,10 @@ const JAPAN = { lat: 36.2048, lng: 138.2529 }
 const MIN_ZOOM = 4.5
 const INITIAL_ZOOM = 5
 const MAX_ZOOM = 20
+// フィットで寄せる倍率の上限（D-60 追記）。対象が実質1点だと fitBounds が最大倍率まで
+// 寄ってしまい、ピン1つと空白の地図になる。地域の境界や周辺の道路が見える程度に留める。
+// 利用者が自分で寄せる操作（最大20）と現在地への寄せ（14）は対象外。
+const FIT_MAX_ZOOM = 12
 const LOCATION_ZOOM = 14
 const LOCATION_DEADLINE_MS = 10_000
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
@@ -72,6 +76,26 @@ function areaFitPoints(area: PublicArea): Array<{ lat: number; lng: number }> | 
   const points: Array<{ lat: number; lng: number }> = []
   validPolygons.forEach((polygon) => polygon.forEach((ring) => ring.forEach(([lng, lat]) => points.push({ lat, lng }))))
   return points
+}
+
+// フィットの結果が上限より寄っていたら上限まで引く。実際に引いたら true を返す
+// （引いた場合は次の idle でカメラが確定する）。
+function clampFitZoom(instance: MapInstance): boolean {
+  try {
+    const zoom = instance.getZoom()
+    if (zoom !== undefined && zoom > FIT_MAX_ZOOM) { instance.setZoom(FIT_MAX_ZOOM); return true }
+  } catch { /* カメラが読めなければ上限なしで続ける。 */ }
+  return false
+}
+
+// 記録を伴わないフィット向け：完了（idle）後に一度だけ上限を適用する。
+function clampFitZoomOnIdle(instance: MapInstance): void {
+  try {
+    const listener = instance.addListener('idle', () => {
+      try { listener.remove() } catch { /* SDK teardown is best effort. */ }
+      clampFitZoom(instance)
+    })
+  } catch { /* リスナーを付けられない環境では上限なしで続ける。 */ }
 }
 
 export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, onDeselectQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
@@ -217,8 +241,10 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         if (pendingFitListeners.current === myListeners) pendingFitListeners.current = []
       }
       const idleListener = instance.addListener('idle', () => {
+        if (interrupted) { settle(); return }
+        // 寄り過ぎていたら上限まで引き、次の idle で確定した位置を記録する（D-60 追記）。
+        if (clampFitZoom(instance)) return
         settle()
-        if (interrupted) return
         try {
           const center = instance.getCenter?.()
           if (center) fittedCamera.current = { map: instance, areaId: area.areaId, center: { lat: center.lat(), lng: center.lng() }, zoom: instance.getZoom() ?? INITIAL_ZOOM }
@@ -399,7 +425,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
               if (fitPoints) for (const fitPoint of fitPoints) { bounds.extend(fitPoint); fitted = true }
               else { bounds.extend({ lat: point.lat, lng: point.lng }); fitted = true }
             }
-            if (fitted) instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+            if (fitted) { instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current)); clampFitZoomOnIdle(instance) }
           }))
           created.push(marker)
           continue
@@ -450,6 +476,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         }
         if (fitted) {
           instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+          clampFitZoomOnIdle(instance)
           initialFitDone.current = instance
         }
       }
@@ -501,10 +528,11 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     } catch { failArea() }
   }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest, fitToArea])
 
-  // 地方・都道府県の絞り込みで地域の集合が変わったら、その範囲のピン全体へ地図を
-  // 寄せる（D-60）。絞っても地図が日本全体のままだと、絞った結果が空っぽに見えた。
+  // 地方・都道府県の絞り込みで地域の集合が変わったら、その範囲へ地図を寄せる（D-60）。
+  // 絞っても地図が日本全体のままだと、絞った結果が空っぽに見えた。
   // 解除して全件に戻れば、初期表示と同じ全ピンの範囲へ戻る。読み込み中の一時的な
   // 空は範囲変更として扱わない。地域選択中は選択フィットが優先する。
+  // 範囲は地域の境界形状から作り、寄せ過ぎは上限で抑える（D-60 追記）。
   const lastAreasKey = useRef<{ map: MapInstance; key: string } | null>(null)
   useEffect(() => {
     const instance = map.current
@@ -520,6 +548,13 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     let fitted = false
     for (const area of areas) {
       if (area.publishedCount < 1) continue
+      // 範囲はピンの位置ではなく地域の境界形状で作る（D-60 追記）。ピン位置だけだと
+      // 対象が1地域の時に範囲が実質1点になり、最大倍率まで寄ってしまった。
+      const fitPoints = areaFitPoints(area)
+      if (fitPoints) {
+        for (const point of fitPoints) { bounds.extend(point); fitted = true }
+        continue
+      }
       const position = areaPinPosition(area)
       if (!position) continue
       bounds.extend(position)
@@ -528,6 +563,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     if (!fitted) return
     if (showPublicAreas) instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
     else instance.fitBounds(bounds)
+    clampFitZoomOnIdle(instance)
   }, [areas, selectedAreaId, status, showPublicAreas, wideViewport])
 
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))

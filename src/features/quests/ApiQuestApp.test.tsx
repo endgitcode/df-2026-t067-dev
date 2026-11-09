@@ -755,9 +755,14 @@ describe('APIから問題を表示', () => {
     await screen.findByRole('button', { name: '川辺の謎を開く' })
     const toggle = screen.getByRole('button', { name: '場所で絞る' })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    // 開閉の目印は文字グリフではなくアイコンで出し、開状態で向きが変わる（D-59 追随）。
+    const chevron = toggle.querySelector('.filter-toggle-chevron')
+    expect(chevron?.querySelector('svg')).not.toBeNull()
+    expect(chevron).not.toHaveClass('is-open')
     expect(screen.queryByRole('button', { name: '関東' })).not.toBeInTheDocument()
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(toggle.querySelector('.filter-toggle-chevron')).toHaveClass('is-open')
     expect(screen.getByRole('button', { name: '関東' })).toBeVisible()
     // 「全国」チップは置かない。何も選んでいない状態が全国（D-55）。
     expect(screen.queryByRole('button', { name: '全国' })).not.toBeInTheDocument()
