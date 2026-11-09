@@ -91,12 +91,13 @@ function answerFailure(cause: unknown): Failure {
   }
 }
 
-export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSubmissionStarted }: {
+export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSubmissionStarted, onSubmissionResolved }: {
   context: DemoAnswerContext
   photo: Blob
   metadata: CaptureMetadata
   disabled: boolean
   onSubmissionStarted: () => void
+  onSubmissionResolved?: () => void
 }) {
   const onOpenDiscovery = context.onOpenDiscovery
   const dataMode = context.dataMode
@@ -187,11 +188,14 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
       if (active.current !== operation) return
       const nextReceipt = receiptView(response, dataMode, receipt?.attemptId)
       setReceipt(nextReceipt)
+      if (!nextReceipt.canCheck) onSubmissionResolved?.()
     } catch (cause) {
       if (active.current !== operation) return
       const next = answerFailure(cause)
       if (next.reload) setReceipt(null)
       setFailure(next)
+      // 受付結果が不明な通信失敗・取消では写真と冪等キーを保持する。
+      if (!receipt && next.retake) onSubmissionResolved?.()
     } finally {
       clearTimeout(operation.deadline)
       if (active.current === operation) { active.current = null; setPending(false) }
