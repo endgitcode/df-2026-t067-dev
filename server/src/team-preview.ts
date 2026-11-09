@@ -56,7 +56,7 @@ export async function createTeamPreviewRuntime(config: TeamPreviewConfig) {
     const policy = { maximum: 10, windowMs: 60_000 }
     const uploadLimiter = new DemoAnswerStore()
     const shared = {
-      db, photos, verifier, teamPreview: { allowedUids: config.allowedUids, webDirectory },
+      db, photos, verifier, teamPreview: { allowedUids: config.allowedUids, webDirectory }, spotGeocodingApiKey: config.spotGeocodingApiKey,
       assets: new FirestoreOrgAssetStore(db, photos), drafts: new FirestoreManagedDraftStore(db), publication: photos,
       photoTest: { matcher: await createFixturePhotoMatcher(), source: 'mock' as const },
       suggestDraft: { source: 'mock' as const, suggest: await createFixtureDraftSuggester() },

@@ -1,15 +1,41 @@
 import { ShootingAreasMap } from './ShootingAreasMap'
 import { initialSpotInput, parseDurableMapsLink, parseMapsSpotLink, spotPosition, type DurableMapsLink, type SpotInput } from './mapsSpotLink'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { SpotAddressInput, SpotAddressLookup } from '../../shared/api/admin-spot-address'
 
-export function SpotEditor({ input, onChange, durable = false }: { input: SpotInput; onChange(input: SpotInput): void; durable?: boolean }) {
+type Lookup = (orgId: string, input: SpotAddressInput, call?: { signal?: AbortSignal }) => Promise<SpotAddressLookup>
+
+export function SpotEditor({ input, onChange, durable = false, orgId, canLookupSpotAddress = false, lookupSpotAddress }: {
+  input: SpotInput; onChange(input: SpotInput): void; durable?: boolean; orgId?: string
+  canLookupSpotAddress?: boolean; lookupSpotAddress?: Lookup
+}) {
   const [message, setMessage] = useState('')
   const [showMap, setShowMap] = useState(false)
-  const [reference, setReference] = useState<DurableMapsLink | null>(null)
+  const [reference, setLinkReference] = useState<DurableMapsLink | null>(null)
+  const [addressLookup, setAddressLookup] = useState<SpotAddressLookup | null>(null)
+  const [lookingUp, setLookingUp] = useState(false)
+  const lookupRequest = useRef<AbortController | null>(null)
+  useEffect(() => () => {
+    lookupRequest.current?.abort()
+    lookupRequest.current = null
+  }, [])
   const point = spotPosition(input.latitude, input.longitude)
   const referencePosition = reference?.kind === 'place' ? reference.position : null
 
-  function readLink() {
+  function clearAddressLookup() {
+    lookupRequest.current?.abort()
+    lookupRequest.current = null
+    setAddressLookup(null)
+    setLookingUp(false)
+  }
+
+  function setReference(link: DurableMapsLink | null) {
+    clearAddressLookup()
+    setLinkReference(link)
+  }
+
+  async function readLink() {
+    if (lookupRequest.current) return
     if (durable) {
       const link = parseDurableMapsLink(input.url)
       setReference(link)
@@ -23,6 +49,24 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
       if (link.kind === 'short') setMessage('短縮リンクを開き、表示されたURLを貼り直してください。手入力でも登録できます。')
       else if (position) setMessage('座標候補を入力しました。スポット名・住所・位置を確認してください。')
       else setMessage('施設名・住所・位置は、地図や自治体の資料で確認して入力してください。')
+      const lookupInput: SpotAddressInput | null = link.kind !== 'place' ? null : link.position
+        ? { position: link.position, ...(link.googlePlaceId ? { googlePlaceId: link.googlePlaceId } : {}) }
+        : link.googlePlaceId ? { googlePlaceId: link.googlePlaceId } : null
+      if (lookupInput && canLookupSpotAddress && orgId && lookupSpotAddress) {
+        const controller = new AbortController()
+        lookupRequest.current = controller
+        setLookingUp(true)
+        try {
+          const result = await lookupSpotAddress(orgId, lookupInput, { signal: controller.signal })
+          if (!controller.signal.aborted) {
+            setAddressLookup(result.orgId === orgId ? result : { orgId, status: 'unavailable' })
+          }
+        } catch {
+          if (!controller.signal.aborted) setAddressLookup({ orgId, status: 'unavailable' })
+        } finally {
+          if (lookupRequest.current === controller) { setLookingUp(false); lookupRequest.current = null }
+        }
+      }
       return
     }
     const result = parseMapsSpotLink(input.url)
@@ -32,6 +76,7 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
   }
 
   function edit(changes: Partial<SpotInput>) {
+    if ('latitude' in changes || 'longitude' in changes) clearAddressLookup()
     onChange({ ...input, googlePlaceId: undefined, ...changes })
   }
 
@@ -45,7 +90,16 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
         else onChange({ ...input, url })
         setMessage('')
       }} /></label>
-    <button type="button" onClick={readLink}>{durable ? 'リンクから場所を取得' : 'リンクから位置候補を読み取る'}</button>
+    <button type="button" disabled={lookingUp} onClick={readLink}>{durable ? 'リンクから場所を取得' : 'リンクから位置候補を読み取る'}</button>
+    {lookingUp && <p role="status">住所候補を確認しています…</p>}
+    {addressLookup && <div aria-live="polite" className="spot-address-candidate">
+      {addressLookup.status === 'candidate' ? <>
+        <p>{addressLookup.source === 'place' ? 'Place IDの住所候補' : '座標周辺の住所候補'}：{addressLookup.address}</p>
+        <small><span translate="no">Google Maps</span> の候補です。住所欄には反映されません。資料で確認してから手入力してください。</small>
+      </> : <p role="status">{addressLookup.status === 'no-result' ? '住所候補は見つかりませんでした。確認済み住所を手入力してください。'
+        : addressLookup.status === 'conflict' ? '場所の住所候補を一意に確認できませんでした。確認済み住所を手入力してください。'
+        : '住所候補を取得できませんでした。確認済み住所を手入力してください。'}</p>}
+    </div>}
     {message && <p role="status">{message}</p>}
     {reference?.kind === 'short' && <a href={reference.href} target="_blank" rel="noreferrer">Google Mapsで短縮リンクを開く（新しいタブ）</a>}
     {reference?.kind === 'place' && reference.label && <p>リンク内の名称候補：{reference.label}</p>}
@@ -53,7 +107,7 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
       <p>Place ID候補：<code>{reference.googlePlaceId}</code>。場所との対応は未確認です。</p>
       {referencePosition && <button type="button" onClick={() => {
         const { latitude, longitude } = referencePosition
-        edit({ latitude: String(latitude), longitude: String(longitude) })
+        onChange({ ...input, latitude: String(latitude), longitude: String(longitude), googlePlaceId: undefined })
       }}>リンクの座標候補を使う（Place IDは保存しない）</button>}
     </>}
     {input.googlePlaceId && <p>Google Mapsの場所IDを登録済み</p>}

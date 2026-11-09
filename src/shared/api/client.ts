@@ -1,5 +1,6 @@
 import { parseDraftRevisionRequest, parseDraftSuggestion, parseManagedQuest, parseManagedQuestDraft, parseManagedShootingAreas, parseOrgAssetMetadata, parseOrgMembership, parsePauseManagedQuest, parsePhotoTestMetadata, parsePhotoTestResult, parsePublishManagedQuest, parseReviewSubmission, parseSubmitReview, parseUpdateManagedQuest, parseUpdateShootingAreas, parseUploadedOrgAsset } from './admin'
 import type { AssetPurpose, ManagedQuestDraft, PauseManagedQuest, PhotoTestMetadata, PublishManagedQuest, UpdateManagedQuest, UpdateShootingAreas } from './admin'
+import { parseSpotAddressInput, parseSpotAddressLookup, type SpotAddressInput } from './admin-spot-address'
 import { DISCOVERY_PHOTO_MAX_BYTES } from './types'
 import type { AttemptResult, CaptureMetadata, Decoder, ReportInput } from './types'
 import {
@@ -150,6 +151,7 @@ function liveAttempt(input: unknown, allowDemo = false): AttemptResult {
 }
 
 export function createApiClient(options: ApiClientOptions = {}) {
+  const canLookupSpotAddress = options.expectedDataMode === 'durable-local' || options.expectedDataMode === 'team-preview'
   const decodeAttempt = (input: unknown) => liveAttempt(input, options.expectedDataMode === 'demo')
   const base = (options.basePath ?? '/api/v1').replace(/\/+$/, '')
   if (!/^\/[A-Za-z0-9/_-]+$/.test(base) || base.includes('//')) throw new ApiError('INVALID_INPUT')
@@ -282,6 +284,16 @@ export function createApiClient(options: ApiClientOptions = {}) {
     },
     async getOrgAssetPhoto(orgId: string, assetId: string, call: CallOptions = {}) {
       return requestPhoto('/orgs/' + id(orgId) + '/assets/' + id(assetId) + '/photo', { ...call, authenticated: true, assets: true })
+    },
+    canLookupSpotAddress,
+    async lookupSpotAddress(orgId: string, input: SpotAddressInput, call: CallOptions = {}) {
+      if (!canLookupSpotAddress) throw new ApiError('INVALID_INPUT')
+      const body = adminInput(parseSpotAddressInput, input)
+      return request('/orgs/' + id(orgId) + '/spot-address', (data) => {
+        const result = parseSpotAddressLookup(data)
+        if (result.orgId !== orgId) throw new ContractError('spotAddressResult.orgId')
+        return result
+      }, { ...call, authenticated: true, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     },
     async listMemberships(query: Pick<ListQuery, 'cursor' | 'limit'> = {}, call: CallOptions = {}) {
       return request('/me/memberships' + queryString(query), (data) => parsePage(data, parseOrgMembership), { ...call, authenticated: true })
