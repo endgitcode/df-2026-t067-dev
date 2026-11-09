@@ -187,7 +187,10 @@ it('recovers a public hint image after revision and removes it after publication
     await user.keyboard('{Enter}')
     expect(await screen.findByRole('heading', { name: '改版後の問題' })).toBeVisible()
     expect(screen.getByRole('button', { name: '公開情報を更新' })).toHaveFocus()
-    await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
+    // D-65: in team-preview the detail lives in the list and stays open across a
+    // reload, and there is no open/close toggle button anymore.
+    expect(screen.queryByRole('button', { name: '問題を見てみる' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '問題を閉じる' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'ヒント画像を見る' }))
     const revisedImage = await screen.findByAltText('改版後の問題のヒント画像')
     fireEvent.load(revisedImage)
@@ -218,8 +221,8 @@ it('recovers a public hint image after revision and removes it after publication
     await user.keyboard('{Enter}')
     expect(await screen.findByRole('heading', { name: '問題はありません' })).toBeVisible()
     expect(screen.getByRole('button', { name: '公開情報を更新' })).toHaveFocus()
-    // 一覧の行から選んだ場合は地域まで選択されているため、0件の文言は地域向けになる。
-    expect(screen.getByText('この地域には問題がありません。地図や地方の絞り込みから別の地域をお選びください。')).toBeVisible()
+    // D-65: 一覧の行から選んでも地域は選択されないため、0件の文言は全国向けになる。
+    expect(screen.getByText('現在選べる問題はありません。')).toBeVisible()
     expect(screen.queryByRole('heading', { name: '改版後の問題' })).not.toBeInTheDocument()
     expect(screen.queryByAltText('改版後の問題のヒント画像')).not.toBeInTheDocument()
     expect(fetcher).toHaveBeenCalledWith(imagePath(1), expect.anything())
