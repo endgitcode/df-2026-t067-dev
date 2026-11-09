@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { createApiClient } from '../../shared/api'
@@ -147,7 +147,7 @@ it('shows record thumbnails and releases their Blob URLs when opening a detail',
   }
   const { container } = render(<OwnerDiscoveries api={api} />)
   const openRecord = await screen.findByRole('button', { name: discovery.placeName })
-  expect(container.querySelector('.record-thumbnail')).toHaveAttribute('src', 'blob:record-thumb')
+  await waitFor(() => expect(container.querySelector('.record-thumbnail')).toHaveAttribute('src', 'blob:record-thumb'))
   expect(openRecord).toBeEnabled()
   await user.click(openRecord)
   expect(await screen.findByRole('heading', { name: discovery.placeName })).toBeVisible()

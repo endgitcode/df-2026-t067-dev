@@ -32,11 +32,12 @@ function RecordPhoto({ blob }: { blob: Blob }) {
   return <img ref={image} className="photo-preview" alt="本人の記録写真" />
 }
 
-function RecordThumbnail({ api, id }: { api: ApiClient; id: string }) {
+function RecordThumbnail({ api, id, active }: { api: ApiClient; id: string; active: boolean }) {
   const placeholder = useRef<HTMLSpanElement>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
+    if (!active) return
     const controller = new AbortController()
     let objectUrl: string | null = null
     let observer: IntersectionObserver | undefined
@@ -66,7 +67,7 @@ function RecordThumbnail({ api, id }: { api: ApiClient; id: string }) {
       controller.abort()
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [api, id])
+  }, [active, api, id])
   if (photoUrl) return <img className="record-thumbnail" src={photoUrl} alt="" />
   return <span ref={placeholder} className="record-thumbnail-placeholder" aria-hidden="true">{failed ? '写真なし' : '写真を読み込み中'}</span>
 }
@@ -123,7 +124,7 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
   </section>
 }
 
-export function OwnerDiscoveries({ api, initialId, visit = 0 }: { api: ApiClient; initialId?: string; visit?: number }) {
+export function OwnerDiscoveries({ api, initialId, visit = 0, active = true }: { api: ApiClient; initialId?: string; visit?: number; active?: boolean }) {
   const [selected, setSelected] = useState<string | null>(initialId ?? null)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   const [deleted, setDeleted] = useState(false)
@@ -158,7 +159,7 @@ export function OwnerDiscoveries({ api, initialId, visit = 0 }: { api: ApiClient
     {items.length === 0 ? <p>自分の記録はまだありません。</p> : <ul className="record-list">
       {items.map((record) => <li key={record.discoveryId}>
         <button type="button" className="record-list-item secondary-button" onClick={() => { setDeleted(false); setSelected(record.discoveryId) }}>
-          <RecordThumbnail api={api} id={record.discoveryId} />
+          <RecordThumbnail key={`${record.discoveryId}:${active}`} api={api} id={record.discoveryId} active={active} />
           <span>{record.placeName}</span>
         </button>
         <RecordDate date={record.firstClearedAt} />
