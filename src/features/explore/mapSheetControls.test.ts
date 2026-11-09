@@ -311,15 +311,15 @@ describe('mobile fullbleed finish', () => {
 describe('look and spacing (D-54)', () => {
   it('drops the half-length divider under the quest details and the offset shadows on rows, tabs and the account icon', () => {
     expect(css).not.toContain('.quest-details { border-top')
-    expect(css).toContain('.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; transition: background-color 150ms var(--ease-out); }')
+    expect(css).toMatch(/\.traveler-list-row \{[^}]*box-shadow: none;/)
     expect(css).not.toContain('body.explore-fullbleed .account-icon-button { box-shadow')
     expect(css).not.toContain('box-shadow: 6px 0 0 var(--ui-line)')
     // パネル本体の影は D-66 で外した（右端は枠線2pxだけになる）。
     expect(css).toContain('body.explore-fullbleed .explore-side-panel {')
     expect(css).toContain('position: fixed; top: var(--pc-sidebar-chrome-h); bottom: 0; left: 0;')
     expect(css).toContain('border-radius: 0; padding: 0 10px 16px;')
-    expect(css).toContain('body.explore-fullbleed .explore-side-panel .explore-quest-card {')
-    expect(css).toContain('border: 0; border-radius: var(--radius-s);')
+    expect(css).not.toContain('body.explore-fullbleed .explore-side-panel .explore-quest-card {')
+    expect(css).toContain('border: 2px solid var(--ui-line); border-radius: 12px;')
   })
 
   it('aligns the floating title chip line with the panel side, open and collapsed', () => {
@@ -335,7 +335,7 @@ describe('look and spacing (D-54)', () => {
     expect(css).toContain('position: relative; flex: 0 0 auto;')
     expect(css).toContain('flex: none; max-height: none; overflow: visible; padding-bottom: 12px;')
     expect(css).not.toContain('.explore-side-panel .explore-list::after')
-    expect(css).toContain('.explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }')
+    expect(css).toContain('.explore-quest-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }')
     expect(css).toContain('overflow-y: auto; scrollbar-gutter: stable;')
     expect(css).toContain('display: flex; flex-direction: column;')
   })

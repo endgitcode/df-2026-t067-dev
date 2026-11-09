@@ -246,7 +246,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))
         }} />{label}
       </label>)}
-      <button type="button" disabled={!ready || areaUnclassified} onClick={publish}>この版を公開</button>
+      <button className="workflow-primary" type="button" disabled={!ready || areaUnclassified} onClick={publish}>この版を公開</button>
     </fieldset>
   </section>
 }

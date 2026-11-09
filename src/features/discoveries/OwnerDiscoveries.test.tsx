@@ -212,7 +212,9 @@ it.each([0, 1])('shows record details and validates the published title (version
   expect(within(table).getByRole('columnheader', { name: '日付' })).toBeVisible()
   const row = within(table).getByRole('row', { name: new RegExp(spot.name) })
   expect(await within(row).findByAltText('')).toBeInTheDocument()
-  expect(within(row).getByText(spot.name)).toBeVisible()
+  expect(row).toHaveClass('traveler-list-row', 'traveler-list-row-photo')
+  expect(within(row).getByText(spot.name)).toHaveClass('traveler-row-title')
+  expect(within(row).getByText('2026/11/5').closest('td')).toHaveClass('traveler-row-meta')
 
   await user.click(within(row).getByText('2026/11/5'))
   const dialog = await screen.findByRole('dialog', { name: '記録詳細' })
