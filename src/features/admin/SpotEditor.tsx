@@ -59,7 +59,7 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
     {input.googlePlaceId && <p>Google Mapsの場所IDを登録済み</p>}
     <label>スポット名・施設名<input value={input.name} maxLength={200}
       onChange={(event) => edit({ name: event.target.value })} /></label>
-    <label>確認済み住所<input value={input.address} maxLength={1000}
+    <label>確認済み住所<input value={input.address} maxLength={1000} placeholder="住所を手入力"
       onChange={(event) => edit({ address: event.target.value })} /></label>
     <div className="field-pair">
       <label>スポットの緯度<input inputMode="decimal" value={input.latitude} maxLength={32}
@@ -71,6 +71,6 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
     {showMap && <ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} spot={point}
       onSelect={(latitude, longitude) => edit({ latitude: String(latitude), longitude: String(longitude) })} />}
     {(input.name || input.address || input.latitude || input.longitude || input.googlePlaceId || (durable && input.url)) &&
-      <button type="button" onClick={() => { onChange(initialSpotInput()); setReference(null); setMessage('') }}>スポットの入力を消す</button>}
+      <button type="button" className="spot-clear-button" onClick={() => { onChange(initialSpotInput()); setReference(null); setMessage('') }}>スポットの入力を消す</button>}
   </fieldset>
 }
