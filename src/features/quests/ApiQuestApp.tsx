@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import App from '../../App'
+import { Icon } from '../../components/Icon'
 import type { AuthClient } from '../auth/authTypes'
 import { ApiError, createApiClient } from '../../shared/api/client'
 import type { LocalApiDataMode } from '../../shared/api/client'
@@ -272,7 +273,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // 押し下げられないよう、開閉はアニメーションさせる。
   const filterSummary = activeRegion ? `場所で絞る：${activeRegion}${activePrefecture ? `・${activePrefecture}` : ''}` : '場所で絞る'
   const filterControls = <div className="map-filter-panel">
-    <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={() => setFilterOpen((value) => !value)}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true">▾</span></button>
+    <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={() => setFilterOpen((value) => !value)}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
     <div className={'map-filter-chips-wrap' + (filterOpen ? ' is-open' : '')} aria-hidden={!filterOpen}>
       <div className="map-filter-chips-inner">
         <div className="map-filter-chips" role="group" aria-label="地方">
