@@ -4,7 +4,7 @@ export type PublicGeometry =
   | { type: 'MultiPolygon'; coordinates: LngLat[][][] }
 export interface Position { latitude: number; longitude: number }
 export interface SessionIdentity { uid: string }
-/** 公開区域の境界の出典。N03 の場合は登録年度も併せて公開し、出典表示に使う（D-70）。 */
+/** 公開区域の境界の出典。N03 の場合は登録年度も併せて公開し、出典表示に使う（D-71）。 */
 export type PublicAreaBoundary =
   | { source: 'N03'; year: number }
   | { source: 'fixture' }

@@ -351,7 +351,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
     })
   }, [hintIdentity, open])
   return (
-    <article className={'quest-card' + (open ? ' is-open' : '')} aria-labelledby={`${detailsId}-title`}>
+    <article className={'quest-card' + (open ? ' is-open' : '') + (hideToggle ? ' is-in-list' : '')} aria-labelledby={`${detailsId}-title`}>
       <header className="quest-card-heading">
         <div className="quest-meta"><span className="area-label"><Icon name="pin" />{areaLabel}</span>{quest.questNumber && <span className="quest-number-label">No. {quest.questNumber}</span>}<span className="sample-label">{sourceLabel}</span></div>
         <div className="quest-title-row">

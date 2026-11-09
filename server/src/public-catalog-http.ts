@@ -46,7 +46,7 @@ export function readPublicArea(row: DocumentSnapshot, publishedCount: number) {
   // Same rule for the standard municipality code (D-30): areas that span
   // several municipalities (e.g. Tokyo's special wards) stay unset.
   const municipalityCode = row.get('municipalityCode')
-  // The boundary attribution follows the same fail-closed rule (D-70): only a
+  // The boundary attribution follows the same fail-closed rule (D-71): only a
   // stored N03 source with a valid registered year reaches the public
   // catalog, because the traveler-facing credit is the only consumer. Fixture
   // tags and missing or invalid values leave the source unstated instead of
