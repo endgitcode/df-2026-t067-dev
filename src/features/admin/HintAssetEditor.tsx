@@ -66,14 +66,14 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
         <label>設定するヒント<select value={slot} onChange={(event) => setSlot(Number(event.target.value))}>
           {activeSlots.map((number) => <option value={number} key={number}>ヒント {number}</option>)}
         </select></label>
-        <label htmlFor="workflow-hint-image">ヒント画像</label><span className="photo-picker"><span aria-hidden="true">写真を選ぶ</span><input id="workflow-hint-image" ref={input} type="file" accept={PHOTO_UPLOAD_ACCEPT}
+        <label>ヒント画像<input id="workflow-hint-image" ref={input} type="file" accept={PHOTO_UPLOAD_ACCEPT}
           onChange={(event) => {
             const next = event.target.files?.[0] ?? null
             if (rightsAssist && next && previousPhoto.current && rights.trim()) setReuseNeeded(true)
             if (next) previousPhoto.current = next
             setFile(next)
             onDirty?.(next !== null)
-          }} /></span>
+          }} /></label>
         {!onContinue && (rightsAssist ? <PhotoRightsInput key={file ? `${slot}:${file.name}:${file.lastModified}` : `empty:${slot}`} purpose="public_hint" label="画像の出典と利用権" value={rights} onChange={value => { setRights(value); setReuseNeeded(false) }} /> : <label>画像の出典と利用権<textarea value={rights} onChange={event => setRights(event.target.value)} /></label>)}
         {!onContinue && reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替えた写真を公開ヒントに使う権利を確認し、入力済みの権利文を適用する</label>}
         {file && !valid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
