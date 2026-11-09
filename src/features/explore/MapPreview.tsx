@@ -207,6 +207,11 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 地域を選ぶ直前のカメラ（中心・ズーム）。選択を解除したら、初期表示ではなくこの状態へ戻す。
   const preSelectionCamera = useRef<{ map: MapInstance; center: { lat: number; lng: number }; zoom: number } | null>(null)
   const initialFitDone = useRef<MapInstance | null>(null)
+  // 初期フィットを実行した時点のレイアウトシグネチャ。レイアウト確定側の effect が、
+  // 確定後のシグネチャと食い違う時だけ初期フィットを合わせ直すために使う（D-72）。
+  const initialFitSignature = useRef<string | null>(null)
+  // レイアウト（シート方式／パネル方式）の確定シグネチャ。確定側の effect が記録する。
+  const settledLayout = useRef('')
   const lastAreaSelection = useRef<{ map: MapInstance; areaId: string } | null>(null)
   const areaFailureTimer = useRef<number | undefined>(undefined)
   const cancelLocationRequest = (updateState = true) => {
@@ -225,6 +230,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const fittedCamera = useRef<{ map: MapInstance; areaId: string; center: { lat: number; lng: number }; zoom: number } | null>(null)
   // フィット完了の記録待ちリスナー（idle／dragstart）。次のフィット開始時に打ち切る。
   const pendingFitListeners = useRef<Array<{ remove(): void }>>([])
+  // 地図が使える時は全画面マップ＋ボトムシート（sheetMode）、PC幅ではシートの代わりに
+  // 左サイドバーのパネルへ同じ一覧を出す（panelMode、D-34）。全画面化の扱いはシートと同じ。
+  // フィット系のコールバック（fitInitialAreas）がレイアウトシグネチャの算出に使うため、
+  // この位置で定義する。
+  const sheetMode = status === 'ready' && showPublicAreas
+  const panelMode = sheetMode && wideViewport
   // 地域の範囲へ地図をフィットさせる共通処理。選択時フィットと、再タップ時の再フィットで使う。
   // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
   // 実際に見えている領域の中央に来るようにする。
@@ -277,6 +288,29 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     } catch { /* リスナーを付けられない環境では記録を諦める。 */ }
     return true
   }, [showPublicAreas, wideViewport])
+  // 初期表示のフィット（ピンが立つ地域全体を「実際に見えている領域」へ収める）。
+  // マーカー生成時の初回と、レイアウト確定後に実サイズへ合わせ直す時（D-72）の
+  // 両方から使う。フィットした時点のレイアウトシグネチャを記録しておき、確定側は
+  // 「確定前のシグネチャでフィット済み」の時だけ合わせ直す（同じ確定では二度直さない）。
+  const fitInitialAreas = useCallback((instance: MapInstance): boolean => {
+    const google = window.google?.maps
+    if (!google?.LatLngBounds) return false
+    const bounds = new google.LatLngBounds()
+    let fitted = false
+    for (const area of areas) {
+      if (area.publishedCount < 1) continue
+      const position = areaPinPosition(area)
+      if (!position) continue
+      bounds.extend(position)
+      fitted = true
+    }
+    if (!fitted) return false
+    instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+    clampFitZoomOnIdle(instance)
+    initialFitDone.current = instance
+    initialFitSignature.current = `${sheetMode}:${panelMode}`
+    return true
+  }, [areas, wideViewport, sheetMode, panelMode])
   // カメラが、その地域へのフィット完了位置に（実質）留まっているか。
   const cameraAtFit = useCallback((instance: MapInstance, areaId: string): boolean => {
     const snapshot = fittedCamera.current
@@ -486,29 +520,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         created.push(marker)
       }
       // 初期表示は、ピンが立つ地域全体が「実際に見えている領域」に収まるよう一度だけフィットする。
-      if (initialFitDone.current !== instance && !fitAreaId && google.LatLngBounds) {
-        const bounds = new google.LatLngBounds()
-        let fitted = false
-        for (const area of areas) {
-          if (area.publishedCount < 1) continue
-          const position = areaPinPosition(area)
-          if (!position) continue
-          bounds.extend(position)
-          fitted = true
-        }
-        if (fitted) {
-          instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
-          clampFitZoomOnIdle(instance)
-          initialFitDone.current = instance
-        }
-      }
+      if (initialFitDone.current !== instance && !fitAreaId) fitInitialAreas(instance)
     } catch { /* ピンは補助表示のため、失敗しても地図本体は使える状態を保つ。 */ }
     return () => {
       active = false
       for (const listener of listeners) { try { listener.remove() } catch { /* SDK teardown is best effort. */ } }
       for (const marker of created) { try { marker.setMap(null) } catch { /* SDK teardown is best effort. */ } }
     }
-  }, [areas, selectedAreaId, fitAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom])
+  }, [areas, selectedAreaId, fitAreaId, onSelectArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas])
 
   useEffect(() => {
     const instance = map.current
@@ -525,9 +544,14 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
         instance.setCenter(saved.center)
         instance.setZoom(saved.zoom)
         preSelectionCamera.current = null
-      } else {
+      } else if (lastViewportSelection.current?.map === instance && lastViewportSelection.current.key !== '') {
+        // この地図で選択が実際に処理された後の解除で、直前カメラが読めなかった時だけ
+        // 初期表示（日本中心）へ戻す。
         instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM)
       }
+      // 初期マウント時（この地図でまだ選択が処理されていない時）はカメラに触らない。
+      // 初期カメラはマーカー側の初期フィットが決めるもので、ここで日本中心＋初期ズームを
+      // 書くと、同じコミットで走る初期フィットと競合して初期表示が崩れた（D-72）。
       fittedCamera.current = null
       lastViewportSelection.current = { map: instance, key: '' }
       return
@@ -640,9 +664,8 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 絞り込みは呼び出し側が済ませた quests をそのまま並べる。
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
   // シート表示は問題の件数に依存させない。絞り込みで0件になってもシートと全画面を維持し、空表示を出す。
-  const sheetMode = status === 'ready' && showPublicAreas
-  // PC幅ではシートの代わりに左サイドバーのパネルへ同じ一覧を出す（D-34）。全画面化の扱いはシートと同じ。
-  const panelMode = sheetMode && wideViewport
+  // （sheetMode／panelMode の定義は、フィット系のコールバックが使うため前方の
+  // フィット共通処理の前に置く。）
   const [browseBelowMap, setBrowseBelowMap] = useState(false)
   const belowMap = sheetMode && !panelMode && browseBelowMap
   const belowMapList = useRef<HTMLElement>(null)
@@ -750,13 +773,13 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   // 促し、未フィットの選択があればフィットをやり直す。
   // サイドバーの開閉はフローティング化（D-38）でコンテナの大きさが変わらなくなったため、
   // ここでの対象に含めない（開閉では resize も再フィットもしない）。
-  const settledLayout = useRef('')
   useEffect(() => {
     if (!sheetMode) return
     const instance = map.current
     if (!instance) return
     const signature = `${sheetMode}:${panelMode}`
-    if (settledLayout.current !== signature) {
+    const signatureChanged = settledLayout.current !== signature
+    if (signatureChanged) {
       settledLayout.current = signature
       try { window.google?.maps?.event.trigger?.(instance, 'resize') } catch { /* サイズ再認識は補助であり、失敗しても地図は使える。 */ }
     }
@@ -764,8 +787,13 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     if (fitAreaId && !alreadyFitted) {
       lastViewportSelection.current = null
       setFitRequest((value) => value + 1)
+    } else if (!fitAreaId && signatureChanged && initialFitDone.current === instance && initialFitSignature.current !== signature) {
+      // 未選択の初期フィットがレイアウト確定前の大きさで走っていたら、確定後の実サイズで
+      // 合わせ直す（D-72）。マーカーは作り直さず、フィットだけを掛け直す。確定と同じ
+      // シグネチャでフィット済みなら何もしない（利用者の操作を邪魔しない）。
+      fitInitialAreas(instance)
     }
-  }, [sheetMode, panelMode, fitKey, fitAreaId])
+  }, [sheetMode, panelMode, fitKey, fitAreaId, fitInitialAreas])
 
   // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
   // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。
