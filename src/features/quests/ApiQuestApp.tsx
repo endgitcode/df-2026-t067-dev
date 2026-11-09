@@ -15,6 +15,11 @@ type Result = {
 }
 type RefreshSnapshot = { api: Api; questId: string; version: number }
 
+function questNumberKey(quest: PublicQuest): readonly [number, number] | null {
+  const match = quest.questNumber ? /^(\d{1,2})-(\d+)$/.exec(quest.questNumber) : null
+  return match ? [Number(match[1]), Number(match[2])] : null
+}
+
 function readSelectionFromUrl() {
   const params = new URLSearchParams(window.location.search)
   return { areaId: params.get('area') ?? '', questId: params.get('quest') ?? '' }
@@ -242,7 +247,15 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   }
 
   const visibleAreaIds = useMemo(() => new Set(regionAreas.map((area) => area.areaId)), [regionAreas])
-  const visibleChoices = activeRegion ? choices.filter((item) => visibleAreaIds.has(item.areaId)) : choices
+  // 一覧の並びは問題番号（都道府県コード→連番）の昇順に統一する（D-59）。API の
+  // 返却順は地域の登録順で北から南にも番号順にもなっておらず、見る人に規則性が
+  // 伝わらなかった。番号が無い問題は番号付きの後ろに、元の順序のまま置く。
+  const visibleChoices = [...(activeRegion ? choices.filter((item) => visibleAreaIds.has(item.areaId)) : choices)]
+    .sort((a, b) => {
+      const ka = questNumberKey(a); const kb = questNumberKey(b)
+      if (ka && kb) return ka[0] - kb[0] || ka[1] - kb[1]
+      return ka ? -1 : kb ? 1 : 0
+    })
   // 表示上の「選択中の問題」は、実際に選択されている問題だけを指す。一覧の先頭を
   // 勝手に選択扱いすると、URL や詳細に出ている問題と別の問題が選択中として
   // 見えてしまう。先頭問題の自動選択は読み込み側が選択状態と URL を更新して行う。
@@ -259,7 +272,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // 押し下げられないよう、開閉はアニメーションさせる。
   const filterSummary = activeRegion ? `場所で絞る：${activeRegion}${activePrefecture ? `・${activePrefecture}` : ''}` : '場所で絞る'
   const filterControls = <div className="map-filter-panel">
-    <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={() => setFilterOpen((value) => !value)}>{filterSummary}</button>
+    <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={() => setFilterOpen((value) => !value)}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true">▾</span></button>
     <div className={'map-filter-chips-wrap' + (filterOpen ? ' is-open' : '')} aria-hidden={!filterOpen}>
       <div className="map-filter-chips-inner">
         <div className="map-filter-chips" role="group" aria-label="地方">

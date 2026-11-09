@@ -200,7 +200,7 @@ describe('mobile fullbleed finish', () => {
 describe('look and spacing (D-54)', () => {
   it('drops the half-length divider under the quest details and the offset shadows on rows, tabs and the account icon', () => {
     expect(css).not.toContain('.quest-details { border-top')
-    expect(css).toContain('.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; }')
+    expect(css).toContain('.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; transition: background-color 150ms var(--ease-out); }')
     expect(css).not.toContain('body.explore-fullbleed .account-icon-button { box-shadow')
     expect(css).not.toContain('box-shadow: 6px 0 0 var(--ui-line)')
     // 影はフローティングパネル本体には残す。
@@ -229,7 +229,7 @@ describe('filter motion (D-55)', () => {
     expect(css).toContain('.map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }')
     expect(css).toContain('.map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible;')
     expect(css).toContain('@media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }')
-    expect(css).toContain('.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }')
+    expect(css).toContain('.filter-chip { flex: none; min-height: 40px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }')
   })
 
   it('glides the floating elements sideways when the PC sidebar collapses', () => {
