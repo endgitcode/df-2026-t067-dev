@@ -239,7 +239,7 @@ describe('ExploreBottomSheet stage measure', () => {
     parentHeight = 500
     for (const handler of listeners.get('resize') ?? []) handler(new Event('resize'))
     fireEvent.click(screen.getByRole('button', { name: '謎リストを広げる' }))
-    // usable 500 → half = max(128, round(275)) = 275
+    // usable 500 → half = max(SHEET_PEEK_HEIGHT, round(275)) = 275
     expect(sheet.style.height).toBe('275px')
     unmount()
     expect(viewport.removeEventListener).toHaveBeenCalled()
