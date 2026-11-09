@@ -334,6 +334,21 @@ it('fetches each public hint only on explicit request, retries failures, and giv
   ])
 })
 
+it('centers hint actions without the sequential fine-print note', async () => {
+  const user = userEvent.setup()
+  const quest = { ...demoQuest, hintCount: 2 }
+  const getHint = vi.fn(async ({ index }: { index: number }) => ({
+    questId: quest.questId, version: quest.version, index, text: `hint-${index}`,
+  }))
+  render(<QuestDetails quest={quest} areaLabel="港区" open disabled={false} buttonLabel="挑戦する" note="" onToggle={vi.fn()} onStart={vi.fn()} getHint={getHint} />)
+  const button = screen.getByRole('button', { name: 'ヒント1を見る' })
+  expect(button).toBeVisible()
+  expect(screen.queryByText('ヒントは順番に開けます。最終案内は含みません。')).not.toBeInTheDocument()
+  expect(button.parentElement).toHaveClass('hint-item')
+  await user.click(button)
+  expect(await screen.findByText('hint-1')).toBeVisible()
+})
+
 it('resets unlocked hint buttons when the quest version changes', async () => {
   const user = userEvent.setup()
   const quest = { ...demoQuest, hintCount: 2 }
