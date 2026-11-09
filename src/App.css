@@ -532,9 +532,11 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed.explore-sidebar-collapsed {
     --pc-sidebar-w: var(--pc-sidebar-rail-w);
   }
-  /* 左カラムの地（畳んでも帯が途切れない） */
+  /* 左カラムの地（畳んでも帯が途切れない）。
+     z-index は site-header(25) より下にし、ヘッダー内の fixed ロゴ／ナビが
+     帯に隠れないようにする（子の z-index はヘッダーのスタッキング文脈内）。 */
   body.explore-fullbleed::before {
-    content: ""; position: fixed; top: 0; left: 0; bottom: 0; z-index: 29;
+    content: ""; position: fixed; top: 0; left: 0; bottom: 0; z-index: 20;
     width: var(--pc-sidebar-w); background: var(--ui-surface);
     border-right: 1px solid color-mix(in srgb, var(--ui-line) 28%, transparent);
     pointer-events: none; transition: width 200ms var(--ease-out);
@@ -544,7 +546,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   }
   /* アカウントだけ右上。ブランドはサイドバー最上段へ移す。 */
   body.explore-fullbleed .site-header {
-    position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 25;
+    position: fixed; top: 0; right: 0; left: var(--pc-sidebar-offset); z-index: 32;
     grid-template-columns: 1fr auto; padding-left: 12px;
   }
   body.explore-fullbleed .brand {
@@ -571,6 +573,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
     gap: 2px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h);
     padding: 4px 8px; background: var(--ui-surface); border: 0; border-radius: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ui-line) 22%, transparent);
   }
   body.explore-fullbleed .desktop-nav a,
   body.explore-fullbleed .desktop-nav button {
@@ -632,18 +635,38 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     margin-top: 12px; padding-top: 12px;
     border-top: 1px solid color-mix(in srgb, var(--ui-line) 22%, transparent);
   }
+  /* サイドバー内の読み込み／エラー枠は中央カード型にしない（幅・12vh余白・影がはみ出す） */
+  body.explore-fullbleed .explore-side-panel .api-load-state {
+    width: 100%; max-width: 100%; margin: 8px 0 0; padding: 12px;
+    box-shadow: none; overflow-wrap: anywhere;
+  }
+  body.explore-fullbleed .explore-side-panel .api-load-state h1,
+  body.explore-fullbleed .explore-side-panel .api-load-state h2 { font-size: 16px; margin-bottom: 8px; }
+  body.explore-fullbleed .explore-side-panel .api-load-state > button { width: 100%; }
+
   /* 畳み：アイコン帯。一覧は隠し、ロゴ／ナビ／開閉は残す */
   body.explore-fullbleed.explore-sidebar-collapsed .brand-copy { display: none; }
-  body.explore-fullbleed.explore-sidebar-collapsed .brand { width: var(--pc-sidebar-rail-w); justify-content: center; padding: 0; }
-  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { left: 6px; top: calc(var(--pc-sidebar-brand-h) - 2px); }
-  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav {
-    top: calc(var(--pc-sidebar-brand-h) + 44px); height: auto; padding: 4px;
+  /* 畳み: 約56px。上段にロゴマーク＋開閉、その下にナビアイコンだけ */
+  body.explore-fullbleed.explore-sidebar-collapsed .brand {
+    width: var(--pc-sidebar-rail-w); height: 44px; justify-content: center; padding: 0; gap: 0;
   }
-  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 28px; height: 28px; }
+  body.explore-fullbleed.explore-sidebar-collapsed .brand-mark .icon { width: 18px; height: 18px; }
+  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {
+    left: 6px; top: 44px; width: 44px; height: 44px;
+  }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav {
+    top: 92px; height: auto; padding: 4px 4px; gap: 4px;
+  }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .nav-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav a,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav button {
-    justify-content: center; padding: 10px 0;
+    justify-content: center; align-items: center; padding: 0; min-height: 44px; width: 100%;
   }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 22px; height: 22px; flex: none; }
+
   body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel {
     opacity: 0; visibility: hidden; pointer-events: none;
     transition-delay: 0s, 200ms;
@@ -734,6 +757,13 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }
   body.explore-fullbleed .brand-mark .icon { width: 19px; height: 19px; }
   body.explore-fullbleed .brand-copy { font-size: 13px; }
+  /* 問題詳細を開いてシートをスクロールすると、浮きのロゴ／アカウントが
+     問題タイトルに重なる（実地目視）。詳細表示中は両者を隠し、閉じたら戻す。 */
+  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,
+  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area {
+    visibility: hidden;
+    pointer-events: none;
+  }
   /* スマホ幅では縁なし表示でもナビは下部タブバーのまま（D-32）。浮動ピルにはしない。
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
   body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }

@@ -181,7 +181,8 @@ describe('PC sidebar layout integrity', () => {
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace')
     expect(css).toContain('body.explore-fullbleed .sidebar-toggle {')
     expect(css).toContain('width: 44px; height: 44px;')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { left: 6px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
+    expect(css).toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
   })
 })
 
@@ -220,6 +221,23 @@ describe('mobile fullbleed finish', () => {
     expect(css).toContain('.explore-quest-detail { margin-top: 10px; }')
   })
 
+  it('hides the floating brand and account while quest detail is open on mobile', () => {
+    expect(css).toContain('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,')
+    expect(css).toContain('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area {')
+    expect(css).toContain(
+      'body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,\n'
+      + '  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area {\n'
+      + '    visibility: hidden;\n'
+      + '    pointer-events: none;\n'
+      + '  }',
+    )
+    // スマホ幅メディアクエリ内に置く（max-width: 980px）。PC サイドバー規則の外。
+    const mobileAt = css.indexOf('@media (max-width: 980px) {\n  /* ページ側の下部余白は持たない（D-73）')
+    const ruleAt = css.indexOf('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,')
+    expect(mobileAt).toBeGreaterThan(-1)
+    expect(ruleAt).toBeGreaterThan(mobileAt)
+  })
+
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
     expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; }')
     expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
@@ -243,7 +261,7 @@ describe('look and spacing (D-54)', () => {
   })
 
   it('aligns the floating title chip line with the panel side, open and collapsed', () => {
-    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 25;')
+    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 32;')
     expect(css).toContain('grid-template-columns: 1fr auto; padding-left: 12px;')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-rail-w); }')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-rail-w) + 12px); }')
@@ -382,5 +400,32 @@ describe('button widths and records alignment (D-74)', () => {
     const mediaAt = css.indexOf('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand')
     expect(mediaAt).toBeGreaterThan(-1)
     expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { background: transparent; border-bottom: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }')
+  })
+})
+
+
+describe('PC sidebar containment and collapsed rail', () => {
+  it('keeps api-load-state inside the side panel without the page-center card margins', () => {
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .api-load-state {')
+    expect(css).toContain('width: 100%; max-width: 100%; margin: 8px 0 0;')
+    expect(css).not.toContain('body.explore-fullbleed .explore-side-panel .api-load-state { width: min(100% - 40px, 620px);')
+  })
+
+  it('keeps brand mark, toggle and nav icons on the collapsed ~56px rail', () => {
+    expect(css).toContain('--pc-sidebar-rail-w: 56px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 28px; height: 28px; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 22px; height: 22px; flex: none; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
+    expect(css).toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
+  })
+})
+
+
+describe('PC sidebar stacking', () => {
+  it('keeps the sidebar rail ::before under the header chrome so logo/nav stay visible', () => {
+    expect(css).toContain('body.explore-fullbleed::before {')
+    expect(css).toContain('z-index: 20;')
+    expect(css).toContain('body.explore-fullbleed .site-header {')
+    expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 32;')
   })
 })
