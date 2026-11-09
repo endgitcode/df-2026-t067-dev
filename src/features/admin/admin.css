@@ -58,8 +58,48 @@
 .admin-demo .capture-map > p,
 .admin-demo .capture-map > [role="alert"] { margin: 12px; }
 .admin-demo .capture-map + .spot-clear-button { margin-block-start: 12px; }
-.spot-location-actions { padding: 8px; }
-.spot-location-actions p { margin: 6px 0 0; }
+.spot-map-viewport { position: relative; }
+.spot-map-controls {
+  position: absolute;
+  right: 17px;
+  bottom: 32px;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+.admin-demo .spot-map-controls button {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.spot-map-zoom {
+  border: var(--ui-border-width) solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  overflow: hidden;
+}
+.admin-demo .spot-map-zoom button + button { border-top: var(--ui-border-width) solid var(--ui-line); }
+.admin-demo .spot-map-controls .spot-map-locate {
+  width: 48px;
+  height: 48px;
+  border: var(--ui-border-width) solid var(--ui-line);
+  border-radius: 50%;
+  box-shadow: var(--ui-control-shadow);
+}
+.admin-demo .spot-map-controls button:hover:not(:disabled) { background: var(--ui-tint); }
+.admin-demo .spot-map-controls button:disabled { background: var(--ui-disabled); color: var(--ui-muted); }
+.admin-demo .spot-map-controls button:focus-visible { outline-offset: -4px; }
+.spot-map-controls .icon { width: 18px; height: 18px; }
+.spot-map-locate .icon { width: 20px; height: 20px; fill: currentColor; stroke: none; }
 .spot-address-candidate { margin-block: 10px; padding: 8px 12px; border: 1px solid var(--ui-line); border-radius: var(--ui-radius); }
 .spot-address-candidate p { margin: 4px 0; }
 .summary dl { display: grid; grid-template-columns: minmax(150px, .7fr) 1fr; gap: 8px 16px; }

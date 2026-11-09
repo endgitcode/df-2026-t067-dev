@@ -60,13 +60,23 @@ it('moves the spot picker to the current location only on request and leaves the
   const user = userEvent.setup()
   vi.stubGlobal('navigator', Object.assign(Object.create(navigator), { geolocation: { getCurrentPosition } }))
   try {
-    loader.loadGoogleMaps.mockResolvedValue({ Map: function () { return { setCenter, setZoom } }, Marker,
-      event: { addListener: () => ({ remove() {} }) } })
+    let zoom = 17
+    let onZoom = () => {}
+    const map = { setCenter, getZoom: () => zoom, setZoom: (value: number) => { zoom = value; setZoom(value); onZoom() } }
+    loader.loadGoogleMaps.mockResolvedValue({ Map: function () { return map }, Marker,
+      event: { addListener: (_map: unknown, event: string, callback: () => void) => {
+        if (event === 'zoom_changed') onZoom = callback
+        return { remove() {} }
+      } } })
     const { ShootingAreasMap } = await import('./ShootingAreasMap')
     const view = render(<ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} onSelect={onSelect}
       spot={{ latitude: 35, longitude: 135 }} pickPlace />)
-    const locate = await screen.findByRole('button', { name: '現在地へ移動' })
+    const locate = await screen.findByRole('button', { name: '現在地へ戻る' })
     expect(getCurrentPosition).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: '地図を拡大' }))
+    expect(setZoom).toHaveBeenLastCalledWith(18)
+    await user.click(screen.getByRole('button', { name: '地図を縮小' }))
+    expect(setZoom).toHaveBeenLastCalledWith(17)
     await user.click(locate)
     expect(locate).toBeDisabled()
     act(() => getCurrentPosition.mock.calls[0][1]?.({ code: 1 } as GeolocationPositionError))
@@ -77,10 +87,12 @@ it('moves the spot picker to the current location only on request and leaves the
     expect(setCenter).toHaveBeenLastCalledWith({ lat: 36, lng: 136 })
     expect(Marker).toHaveBeenCalledTimes(1)
     expect(onSelect).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: '地図の表示を戻す' }))
+    expect(setCenter).toHaveBeenLastCalledWith({ lat: 35, lng: 135 })
     await user.click(locate)
     view.unmount()
     act(() => getCurrentPosition.mock.calls[2][0](position))
-    expect(setCenter).toHaveBeenCalledTimes(2)
+    expect(setCenter).toHaveBeenCalledTimes(3)
   } finally {
     vi.unstubAllGlobals()
   }
