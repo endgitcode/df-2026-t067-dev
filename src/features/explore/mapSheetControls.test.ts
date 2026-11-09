@@ -169,7 +169,7 @@ describe('mobile bottom tab bar (D-32)', () => {
   it('stacks the area chip after the filter flow so one and two filter rows cannot overlap it', () => {
     expect(mapPreview).toContain('<div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline">')
     expect(css).toContain('.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;')
-    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
+    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 20px; right: 20px; }')
     expect(css).not.toContain('body.explore-fullbleed .map-topline { top:')
     expect(css).toContain('.map-topline.is-sidebar { position: absolute; top: calc(env(safe-area-inset-top) + 88px);')
     expect(css).toContain('.map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; min-width: 0; }')
@@ -315,7 +315,7 @@ describe('mobile fullbleed finish', () => {
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
     expect(css).toContain('body.explore-fullbleed .brand-mark { width: 30px; height: 30px; border-radius: 12px; }')
     expect(css).toContain('body.explore-fullbleed .brand-copy { font-size: 13px; }')
-    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }')
+    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 20px; right: 20px; }')
   })
 })
 
@@ -356,7 +356,7 @@ describe('look and spacing (D-54)', () => {
 // トグル化とアニメーション（D-55）: 「場所で絞る」の開閉を高さと透明度で滑らせる。
 describe('filter motion (D-55)', () => {
   it('animates the filter chips wrap with the shared ease-out token and respects reduced motion', () => {
-    expect(css).toContain('.map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }')
+    expect(css).toContain('.map-filter-chips-wrap { width: min(100%, 640px); display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }')
     expect(css).toContain('.map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible;')
     expect(css).toContain('@media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }')
     expect(css).toContain('.filter-chip { flex: none; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }')
@@ -541,5 +541,32 @@ describe('traveler navigation selection (D-85)', () => {
     expect(css).toContain('height: 40px; padding: 8px 10px; border-radius: 12px;')
     expect(css).not.toMatch(/box-shadow: var\(--ui-(?:control-|hover-)?shadow/)
     expect(css).not.toContain('box-shadow: -3px 3px')
+  })
+})
+
+describe('場所パネルの一体化とチップ配置', () => {
+  it('共通の白枠でつなぎ、2〜4列・44px以上・影なしで表示する', () => {
+    expect(css).toContain('.filter-disclosure.is-open { width: min(100%, 640px); border: 2px solid var(--ui-line); border-radius: 16px; background: var(--ui-surface); box-shadow: none;')
+    expect(css).toContain('.filter-disclosure.is-open > .filter-toggle { width: 100%; justify-content: space-between; border: 0;')
+    expect(css).toContain('.filter-accordion { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;')
+    expect(css).toContain('.filter-accordion, .filter-accordion-body { grid-template-columns: repeat(4, minmax(0, 1fr)); }')
+    expect(css).toContain('.filter-accordion-row[aria-expanded="true"] { background: var(--ui-ink); color: var(--ui-surface); }')
+    expect(css).toContain('.map-filter-overlay .filter-disclosure.is-open { width: 100%; }')
+  })
+})
+
+
+describe('場所フィルターとアカウントの間隔', () => {
+  it('Maps準備中も開閉共通の外枠で左20pxとアカウント左の8pxを確保する', () => {
+    const flow = css.match(/\.map-filter-flow \{([^}]+)\}/)?.[1] ?? ''
+    expect(flow).toContain('margin: 12px 20px 0;')
+    expect(flow).toContain('width: min(640px, calc(100% - 20px - var(--account-slot-right) - var(--account-slot-size) - 8px));')
+    // 開状態にも選択チップ行にも別の位置指定を設けず、同じ親の左端・上端を使う。
+    expect(css).not.toMatch(/\.filter-disclosure\.is-open\s*\{[^}]*(?:position|left|top):/)
+    expect(mapPreview).toContain('<div className="map-filter-flow">{topOverlay}</div>')
+    for (const [viewport, accountRight] of [[320, 10], [390, 10], [980, 10], [981, 20], [1440, 20]]) {
+      const panelRight = 20 + Math.min(640, viewport - 20 - accountRight - 44 - 8)
+      expect(viewport - accountRight - 44 - panelRight).toBeGreaterThanOrEqual(8)
+    }
   })
 })

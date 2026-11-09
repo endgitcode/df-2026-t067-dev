@@ -347,7 +347,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const toggleRegionAccordion = (region: string) => {
     setOpenRegions((current) => current.includes(region)
       ? current.filter((item) => item !== region)
-      : [...current, region])
+      : [region])
   }
   const openPlaceFilter = () => {
     setFilterOpen((value) => {
@@ -356,7 +356,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
         // 開いた直後は選択中の地方を展開しておく。
         setOpenRegions(REGIONS.filter((region) =>
           activeRegions.includes(region.name)
-          || region.prefectures.some((pref) => activePrefectures.includes(pref))).map((region) => region.name))
+          || region.prefectures.some((pref) => activePrefectures.includes(pref))).map((region) => region.name).slice(0, 1))
       }
       return next
     })
@@ -367,7 +367,49 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const filterSummary = selectedPlaceCount > 0 ? `場所で絞る：${selectedPlaceCount}件` : '場所で絞る'
   const selectedArea = availableAreas.find((area) => area.areaId === selectedAreaId)
   const filterControls = <div ref={filterPanelRef} className="map-filter-panel">
-    <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={openPlaceFilter}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
+    <div className={'filter-disclosure' + (filterOpen ? ' is-open' : '')}>
+      <button type="button" className={'filter-toggle' + (selectedPlaceCount > 0 ? ' has-filter' : '')} aria-expanded={filterOpen} onClick={openPlaceFilter}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
+      <div className={'map-filter-chips-wrap' + (filterOpen ? ' is-open' : '')} aria-hidden={!filterOpen}>
+        <div className="map-filter-chips-inner">
+          <div className="filter-accordion" role="list" aria-label="地方から選ぶ">
+            {REGIONS.map((region) => {
+              const expanded = openRegions.includes(region.name)
+              const summary = regionRowSummary(region.name, activeRegions, activePrefectures)
+              const panelId = `place-filter-${region.name}`
+              return <div key={region.name} className={'filter-accordion-item' + (summary.whole || summary.count > 0 ? ' has-selection' : '')} role="listitem">
+                <button type="button" className="filter-accordion-row" aria-expanded={expanded} aria-controls={panelId}
+                  aria-label={summary.label ? `${region.name}、${summary.label}` : region.name}
+                  onClick={() => toggleRegionAccordion(region.name)}>
+                  <span className="filter-accordion-name">{region.name}</span>
+                  {summary.label ? <span className="filter-accordion-count" aria-hidden="true">{summary.label}</span> : null}
+                </button>
+              </div>
+            })}
+          </div>
+          {REGIONS.filter((region) => openRegions.includes(region.name)).map((region) => {
+            const summary = regionRowSummary(region.name, activeRegions, activePrefectures)
+            const panelId = `place-filter-${region.name}`
+            return <div key={region.name}>
+                <div id={panelId} className="filter-accordion-body" role="group" aria-label={`${region.name}の都道府県`}>
+                  <button type="button" className="filter-check" aria-pressed={summary.whole}
+                    onClick={() => toggleRegionWhole(region.name)}>
+                    <span className="filter-check-box" aria-hidden="true">{summary.whole ? '✓' : ''}</span>
+                    {regionWholeLabel(region.name)}
+                  </button>
+                  {region.prefectures.map((prefecture) => {
+                    const pressed = isPrefectureEffectivelySelected(region.name, prefecture, activeRegions, activePrefectures)
+                    return <button key={prefecture} type="button" className="filter-check" aria-pressed={pressed}
+                      onClick={() => togglePrefecture(prefecture)}>
+                      <span className="filter-check-box" aria-hidden="true">{pressed ? '✓' : ''}</span>
+                      {prefecture}
+                    </button>
+                  })}
+                </div>
+            </div>
+          })}
+        </div>
+      </div>
+    </div>
     {dataMode !== 'demo' && selectedArea && <div className="map-filter-selection">
       <button type="button" className="filter-chip" aria-label={`${selectedArea.label}のしぼり込みを外す`} onClick={() => resetAreaSelection()}>{selectedArea.label} <span aria-hidden="true">×</span></button>
       <span role="status">{visibleChoices.length}件の謎</span>
@@ -377,41 +419,6 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       {activePrefectures.map((prefecture) => <button key={`p-${prefecture}`} type="button" className="filter-chip" aria-label={`${prefecture}の絞り込みを解除`} onClick={() => togglePrefecture(prefecture)}>{prefecture} <span aria-hidden="true">×</span></button>)}
       <button type="button" className="filter-chip filter-clear-all" onClick={clearPlaceFilter}>すべて解除</button>
     </div>}
-    <div className={'map-filter-chips-wrap' + (filterOpen ? ' is-open' : '')} aria-hidden={!filterOpen}>
-      <div className="map-filter-chips-inner">
-        <div className="filter-accordion" role="list" aria-label="地方から選ぶ">
-          {REGIONS.map((region) => {
-            const expanded = openRegions.includes(region.name)
-            const summary = regionRowSummary(region.name, activeRegions, activePrefectures)
-            const panelId = `place-filter-${region.name}`
-            return <div key={region.name} className={'filter-accordion-item' + (summary.whole || summary.count > 0 ? ' has-selection' : '')} role="listitem">
-              <button type="button" className="filter-accordion-row" aria-expanded={expanded} aria-controls={panelId}
-                aria-label={summary.label ? `${region.name}、${summary.label}` : region.name}
-                onClick={() => toggleRegionAccordion(region.name)}>
-                <span className="filter-accordion-name">{region.name}</span>
-                {summary.label ? <span className="filter-accordion-count" aria-hidden="true">{summary.label}</span> : null}
-                <span className={'filter-accordion-chevron' + (expanded ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span>
-              </button>
-              {expanded && <div id={panelId} className="filter-accordion-body" role="group" aria-label={`${region.name}の都道府県`}>
-                <button type="button" className="filter-check" aria-pressed={summary.whole}
-                  onClick={() => toggleRegionWhole(region.name)}>
-                  <span className="filter-check-box" aria-hidden="true">{summary.whole ? '✓' : ''}</span>
-                  {regionWholeLabel(region.name)}
-                </button>
-                {region.prefectures.map((prefecture) => {
-                  const pressed = isPrefectureEffectivelySelected(region.name, prefecture, activeRegions, activePrefectures)
-                  return <button key={prefecture} type="button" className="filter-check" aria-pressed={pressed}
-                    onClick={() => togglePrefecture(prefecture)}>
-                    <span className="filter-check-box" aria-hidden="true">{pressed ? '✓' : ''}</span>
-                    {prefecture}
-                  </button>
-                })}
-              </div>}
-            </div>
-          })}
-        </div>
-      </div>
-    </div>
   </div>
   // 問題の選択は全モード共通で「リストの項目を押す」形に統一する（ドロップダウンは置かない）。
   // 地図のカードと同じく、押した問題の詳細を開くところまでを担う。
