@@ -142,6 +142,28 @@ describe('ExploreQuestList', () => {
     expect(onOpenQuest).not.toHaveBeenCalled()
   })
 
+  it('開閉の枠は全行に常時マウントされ、選択では開状態のクラスだけが切り替わる（D-59追記）', async () => {
+    const detail = <div><h3>港の時計台の詳細</h3></div>
+    const { container, rerender } = render(<ExploreQuestList areas={areas} quests={quests} onOpenQuest={() => {}} detailContent={detail} />)
+    // 未選択でも全行に枠があり、開いている行は無い。枠が常駐していることで、
+    // 閉じた高さ（0fr）が確定した状態からクラス切り替えで遷移が始められる。
+    const wraps = container.querySelectorAll('.explore-quest-detail-wrap')
+    expect(wraps).toHaveLength(quests.length)
+    expect(container.querySelector('.explore-quest-detail-wrap.is-open')).not.toBeInTheDocument()
+    const firstWrap = wraps[0]
+    // 選択されると、枠の要素自体は差し替わらず、対象の行の枠に is-open が付くだけ。
+    rerender(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q1" onOpenQuest={() => {}} detailContent={detail} />)
+    expect(container.querySelectorAll('.explore-quest-detail-wrap')[0]).toBe(firstWrap)
+    expect(firstWrap).toHaveClass('is-open')
+    expect(container.querySelectorAll('.explore-quest-detail-wrap')[1]).not.toHaveClass('is-open')
+    expect(firstWrap.querySelector('h3')).not.toBeNull()
+    // 選択を外すと is-open が外れ、閉じ終わるまで内容は枠の中に残ってから外れる。
+    rerender(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="" onOpenQuest={() => {}} detailContent={detail} />)
+    expect(firstWrap).not.toHaveClass('is-open')
+    expect(firstWrap.querySelector('h3')).not.toBeNull()
+    await waitFor(() => expect(firstWrap.querySelector('h3')).toBeNull())
+  })
+
   it('選択中の行の再タップは、解除の受け口が無ければアコーディオンを閉じるだけにする', async () => {
     const user = userEvent.setup()
     const onOpenQuest = vi.fn()

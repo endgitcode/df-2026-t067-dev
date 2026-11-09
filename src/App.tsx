@@ -76,6 +76,8 @@ async function getPreviewHint(input: { questId: string; expectedVersion: number;
   return { questId: input.questId, version: input.expectedVersion, index: input.index, text: demoQuestHints[input.index - 1] }
 }
 
+const emptyClearedByQuest: ReadonlyMap<string, string> = new Map()
+
 function waitForSignedIn(authClient: AuthClient, signal: AbortSignal): Promise<boolean> {
   if (authClient.getSnapshot().status === 'signed-in') return Promise.resolve(true)
   return new Promise((resolve) => {
@@ -107,7 +109,6 @@ function waitForSignedIn(authClient: AuthClient, signal: AbortSignal): Promise<b
 
 export default function App({ authClient: providedClient, apiClient: providedApi, onStartChallenge, onReloadQuest, getHint: providedGetHint, questStale: providedQuestStale = false, onHintVersionStale, quest: externalQuest, mapAreas = [], mapQuests = [], mapQuestsLoading = false, onOpenQuest, onDeselectQuest, selectedAreaId = '', onSelectArea, areaLabel: externalAreaLabel, openQuestRequest, questPicker, catalogFallback, mapOverlay, onMapSheetModeChange, apiMode = false, apiDataMode = 'demo', teamAnswerTrial: teamAnswerTrialProp = false }: AppProps = {}) {
   const [openState, setOpenState] = useState<{ quest?: PublicQuest; open: boolean }>({ open: false })
-  const isQuestOpen = openState.quest === externalQuest && openState.open
   const [openedRequest, setOpenedRequest] = useState<typeof openQuestRequest>()
   if (openQuestRequest && openQuestRequest !== openedRequest && externalQuest?.questId === openQuestRequest.questId) {
     setOpenedRequest(openQuestRequest)
@@ -120,12 +121,10 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   // 選択状態）も同様に隠すだけで壊さないため、タブ往復でフィルタ・一覧・地図・選択が
   // 食い違わない（往復の前後で状態は visibility だけが変わる）。
   const [recordsVisited, setRecordsVisited] = useState(false)
+  // 記録画面へ入るたびに数え、一覧の取り直しの合図にする。画面は常駐させる
+  // （D-53）ため、合図が無いと初回の取得結果がセッション中ずっと残ってしまう。
+  const [recordsVisit, setRecordsVisit] = useState(0)
   const questCard = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (isQuestOpen && openedRequest && document.querySelector('.is-browsing-below-map')) {
-      scrollBelowHeader(questCard.current?.querySelector<HTMLElement>('.quest-card-heading h3') ?? questCard.current)
-    }
-  }, [isQuestOpen, openedRequest])
   const authClient = useMemo(() => providedClient ?? createFirebaseAuthClient(), [providedClient])
   const auth = useSyncExternalStore(authClient.subscribe, authClient.getSnapshot, authClient.getSnapshot)
   const source = readDataSource(import.meta.env.VITE_QUEST_DATA_SOURCE, import.meta.env.DEV)
@@ -146,6 +145,19 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const content = connection.result.status === 'ready' ? connection.result.value : null
   const quest = externalQuest ?? (!apiMode && !catalogFallback && content ? (({ areaLabel: _area, ...dto }) => dto)(content) : null)
   const areaLabel = externalAreaLabel ?? content?.areaLabel ?? demoAreaLabel
+  // 詳細は、地図が使える表示（共有検証・永続）では一覧の選択中の行の直下へアコーディオンとして
+  // 差し込む（D-46）。対象の問題が一覧に無い使い方（固定問題の埋め込み等）と、それ以外
+  // （スタンドアロンのデモ表示等）では従来どおりレールに置く。
+  const detailInList = (teamPreview || durableLocal) && Boolean(quest) && mapQuests.some((item) => item.questId === quest?.questId)
+  // 一覧の中の詳細は、選択されている間は常に開いているものとして扱う（D-65）。閉じる
+  // 受け口は一覧の行の再タップによる選択解除（D-55）だけであり、詳細側に開閉状態は
+  // 持たせない（開閉ボタンも出さない）。レールに置く使い方では従来どおり開閉状態が決める。
+  const isQuestOpen = detailInList ? Boolean(quest) : openState.quest === externalQuest && openState.open
+  useEffect(() => {
+    if (isQuestOpen && openedRequest && document.querySelector('.is-browsing-below-map')) {
+      scrollBelowHeader(questCard.current?.querySelector<HTMLElement>('.quest-card-heading h3') ?? questCard.current)
+    }
+  }, [isQuestOpen, openedRequest])
   // PC（広い画面）では挑戦の主導線をスマホへ受け渡す。その問題の詳細を直接開くURLをQRにする。
   const handoffUrl = useMemo(() => {
     if (!quest) return undefined
@@ -207,6 +219,49 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const openRef = useRef(isQuestOpen)
   const visiblePending = pending?.client === authClient ? pending.kind : null
   const notice = connectionNotice(auth, durableLocal || teamPreview)
+  // 本人のクリア済み問題（questId → 記録ID）。クリアは1人1問につき1回だけで、
+  // クリア済みの問題は再挑戦できない（D-64）。詳細の開始導線の置き換えと一覧の
+  // バッジに使う表示専用の情報であり、再挑戦の最終的な防止はサーバー側が担う。
+  // 記録画面と同じ条件（ログイン済み・本人確認が取れている時）で本人の記録を読み、
+  // 失敗した時は「未クリア扱い」で従来表示に倒す。
+  const [clearedState, setClearedState] = useState<{ uid: string; byQuest: ReadonlyMap<string, string> } | null>(null)
+  const [clearedRefresh, setClearedRefresh] = useState(0)
+  const clearedByQuest = clearedState && uid !== null && clearedState.uid === uid ? clearedState.byQuest : emptyClearedByQuest
+  const clearedQuestIds = useMemo(() => new Set(clearedByQuest.keys()), [clearedByQuest])
+  useEffect(() => {
+    // 対象は実モード（共有検証・永続）だけ。デモ表示は後退のため新機能の対象に
+    // しない（AGENTS.md の方針）。取得回数の契約（認証まわりの呼び出し回数など）を
+    // 乱さないよう、デモでは一切取得しない。
+    if (!(durableLocal || teamPreview) || !localApiMode || uid === null || visiblePending !== null || serverIdentity.result?.status !== 'ready') return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const byQuest = new Map<string, string>()
+        let cursor: string | undefined
+        // 本人のクリア数は多くならないが、ページングは上限を決めて最後まで読む。
+        for (let page = 0; page < 10; page++) {
+          const result = await api.listDiscoveries({ limit: 100, cursor }, { signal: controller.signal })
+          for (const item of result.items) if (!byQuest.has(item.questId)) byQuest.set(item.questId, item.discoveryId)
+          cursor = result.nextCursor ?? undefined
+          if (!cursor) break
+        }
+        if (!controller.signal.aborted) setClearedState({ uid, byQuest })
+      } catch { /* 表示だけの情報のため、失敗時は未取得として従来表示にする。 */ }
+    })()
+    return () => controller.abort()
+  }, [api, durableLocal, teamPreview, localApiMode, uid, visiblePending, serverIdentity.result, clearedRefresh])
+  // クリア確定後の退出点（記録を開く／クリア画面から地図へ戻る）で、セッション内
+  // でもクリア済みへ即時反映する（D-64）。一覧を取り直さずに詳細・バッジへ出す。
+  const noteCleared = useCallback((questId: string, discoveryId: string) => {
+    setClearedState((current) => {
+      if (uid === null) return current
+      const base = current && current.uid === uid ? current.byQuest : emptyClearedByQuest
+      if (base.get(questId) === discoveryId) return current
+      const next = new Map(base)
+      next.set(questId, discoveryId)
+      return { uid, byQuest: next }
+    })
+  }, [uid])
 
   useLayoutEffect(() => {
     if (selectedQuest.current?.questId !== quest?.questId || selectedQuest.current?.version !== quest?.version) {
@@ -300,8 +355,10 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   }
 
   function navigateToRecords(open: boolean) {
-    if (!open) setRecordDestination(null)
-    else setRecordsVisited(true)
+    // 記録画面から戻る時はクリア済み一覧を取り直す。記録の削除でクリアが
+    // 解かれている場合に、詳細側の表示も追いつかせるため（D-64）。
+    if (!open) { setRecordDestination(null); setClearedRefresh((value) => value + 1) }
+    else { setRecordsVisited(true); setRecordsVisit((value) => value + 1) }
     closeCamera()
     selectionGeneration.current++
     setFeedback(null)
@@ -319,13 +376,10 @@ export default function App({ authClient: providedClient, apiClient: providedApi
 
   const exploreFeedback = !isQuestOpen && feedback
     ? <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p> : null
-  // 詳細は、地図が使える表示（共有検証・永続）では一覧の選択中の行の直下へアコーディオンとして
-  // 差し込む（D-46）。対象の問題が一覧に無い使い方（固定問題の埋め込み等）と、それ以外
-  // （スタンドアロンのデモ表示等）では従来どおりレールに置く。
-  const detailInList = (teamPreview || durableLocal) && Boolean(quest) && mapQuests.some((item) => item.questId === quest?.questId)
+  const clearedDiscoveryId = quest && uid !== null ? clearedByQuest.get(quest.questId) : undefined
   const questDetailBlock = (
               !railFallback && <div ref={questCard}>
-                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={!teamPreview && apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} handoffUrl={handoffUrl}
+                {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel={!teamPreview && apiMode ? '公開APIデモデータ' : undefined} open={isQuestOpen} hideToggle={detailInList} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
                   onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
@@ -338,13 +392,15 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       : auth.status === 'signed-out' ? 'Googleのログイン画面を開きます。キャンセルしてもこの問題に戻れます。'
                         : auth.status === 'checking' ? 'ログイン状態の確認後に操作できます。'
                           : 'ログイン機能は準備中です。問題はそのまま閲覧できます。'}
-                  feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) { closeCamera(); /* 一覧の中の詳細では、「問題を閉じる」は行の再タップによる選択解除（D-55）と結果を一致させる（D-60）。詳細だけ畳んで選択を残すと、閉じたつもりでも中途半端な開き状態が残った。レールに置く使い方では選択の受け口が無いため、従来どおり詳細の開閉だけを行う。 */ if (detailInList && onDeselectQuest) onDeselectQuest() } setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
-                    {!questStale && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
+                  clearedDiscoveryId={clearedDiscoveryId} onOpenDiscovery={(id) => { setRecordDestination({ auth, id }); navigateToRecords(true) }}
+                  feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) closeCamera(); /* 開閉ボタンはレールに置く使い方（選択の受け口が無い場合）だけに出る（D-65）。一覧の中の詳細ではボタン自体を出さず、閉じる操作は行の再タップによる選択解除（D-55）に一本化したため、ここで選択解除まで連動させる配線は不要になった（旧 D-60 の配線は廃止）。 */ setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
+                    {!questStale && !clearedDiscoveryId && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
                       key={JSON.stringify([uid, quest.questId, quest.version, captureRevision])} api={api} quest={quest} dataMode={apiDataMode}
                       autoStart={durableLocal && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
                       canAutoStart={() => startIntent !== null && startIntent.generation === selectionGeneration.current && startIntent.expires > Date.now() && openRef.current && authClient.getSnapshot() === startIntent.auth}
                       onAutoStartConsumed={() => setStartIntent(null)}
-                      onOpenDiscovery={durableLocal ? (id) => { setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
+                      onOpenDiscovery={durableLocal || teamAnswerTrial ? (id) => { noteCleared(quest.questId, id); setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
+                      onReturnToMap={(discoveryId) => { if (discoveryId) noteCleared(quest.questId, discoveryId) }}
                       onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
                     {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
                     {cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} />}
@@ -436,7 +492,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {auth.status === 'checking' && <p role="status">ログイン状態を確認しています…</p>}
           {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">{notice.description}</p>}
           {uid !== null && visiblePending === null && (serverIdentity.result?.status === 'ready'
-            ? <OwnerDiscoveries key={uid} api={api} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
+            ? <OwnerDiscoveries key={uid} api={api} visit={recordsVisit} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
             : serverIdentity.result?.status === 'error'
               ? <><p role="alert">ログインを確認できませんでした。</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></>
               : <p role="status">ログインを確認しています…</p>)}
@@ -453,7 +509,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} questsLoading={mapQuestsLoading} onOpenQuest={onOpenQuest} onDeselectQuest={quest && selectedAreaId === quest.areaId ? onDeselectQuest : undefined} selectedQuestId={quest?.questId ?? ''} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} questsLoading={mapQuestsLoading} onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} selectedQuestId={quest?.questId ?? ''} clearedQuestIds={clearedQuestIds} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
 
 {!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>

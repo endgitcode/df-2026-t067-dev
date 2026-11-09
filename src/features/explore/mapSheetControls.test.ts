@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
+const readCss = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8').replace(/\r\n?/g, '\n')
+const css = readCss('src/App.css')
 const PLAIN_FIXED = '.map-preview-shell.has-sheet .map-controls { bottom: 72px; }'
 const mapPreview = readFileSync(resolve(process.cwd(), 'src/features/explore/MapPreview.tsx'), 'utf8')
 
@@ -47,6 +48,7 @@ describe('mobile bottom tab bar (D-32)', () => {
   it('pins the mobile nav to the bottom as a tab bar with a shared height token', () => {
     expect(css).toContain(':root { --mobile-tabbar-h: calc(70px + env(safe-area-inset-bottom, 0px)); }')
     expect(css).toContain('.mobile-nav { position: fixed; bottom: 0; left: 0; right: 0;')
+    expect(css).toContain('background: var(--ui-surface); touch-action: pan-x; }')
     expect(css).toContain('.mobile-nav [aria-current="page"] { background: var(--ui-accent);')
   })
 
@@ -114,7 +116,7 @@ describe('PC floating sidebar (D-38)', () => {
 })
 
 describe('rounded corner scale (D-35)', () => {
-  const themeCss = readFileSync(resolve(process.cwd(), 'src/theme.css'), 'utf8')
+  const themeCss = readCss('src/theme.css')
 
   it('defines a three-step radius scale and keeps --ui-radius as the middle alias', () => {
     expect(themeCss).toContain('--radius-s: 10px;')
@@ -156,7 +158,7 @@ describe('PC sidebar layout integrity', () => {
 
 // UI の動き（D-42）: 入場は CSS、開閉は transition、曲線と尺はトークンで統一する。
 describe('UI motion (D-42)', () => {
-  const themeCss = readFileSync(resolve(process.cwd(), 'src/theme.css'), 'utf8')
+  const themeCss = readCss('src/theme.css')
 
   it('defines the strong easing tokens in the theme', () => {
     expect(themeCss).toContain('--ease-out: cubic-bezier(0.23, 1, 0.32, 1);')
@@ -234,5 +236,21 @@ describe('filter motion (D-55)', () => {
 
   it('glides the floating elements sideways when the PC sidebar collapses', () => {
     expect(css).toContain('body.explore-fullbleed .site-header, body.explore-fullbleed .map-topline, body.explore-fullbleed .map-location-status.is-floating { transition: left 200ms var(--ease-out); }')
+  })
+})
+
+// 記録画面のタブ位置（D-60 追記）: 非探索画面でもタブ群を探索画面のナビカードと
+// 同じ左のライン（左カラム上段）に置く。CSS の実測は jsdom ではできないため、
+// 規則の置き場所（記録画面が表示されている間だけ・PC 幅だけ）で担保する。
+describe('records view tab position (D-60 addendum)', () => {
+  it('pins the tab group as the nav card at the left column line while records are shown', () => {
+    const mediaAt = css.indexOf('@media (min-width: 981px) {\n  body:has(.owner-records:not([hidden])) .desktop-nav')
+    expect(mediaAt).toBeGreaterThan(-1)
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav { position: fixed; top: 16px; left: 16px; z-index: 30; display: flex; align-items: center; gap: 8px; width: 380px; height: 68px; padding: 12px 16px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }')
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav a, body:has(.owner-records:not([hidden])) .desktop-nav button { flex: 1 1 0; justify-content: center; }')
+    // ブランドはカードの右へ逃がし、重ならないようにする。
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { padding-left: calc(16px + 380px + 24px); }')
+    // 探索画面のナビカード（fullbleed）と同じ寸法であること。
+    expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h);')
   })
 })

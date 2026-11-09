@@ -128,14 +128,18 @@ function getPhotoIdentity(getPhoto?: HintPhoto) {
   return identity
 }
 
-function ProtectedHintImage({ getPhoto, questId, version, index, alt, hidden, onLoad, onError }: {
+function ProtectedHintImage({ getPhoto, questId, version, index, alt, hidden, active, onLoad, onError }: {
   getPhoto: HintPhoto; questId: string; version: number; index?: number; alt: string; hidden: boolean
+  /** 開いている間だけ取得する。閉じ始めたら進行中の取得を破棄し、閉じた後の
+      遅延解決でオブジェクトURLを作らない（従来はアンマウントが担っていた）。 */
+  active: boolean
   onLoad(): void; onError(error?: unknown): void
 }) {
   const [source, setSource] = useState<string>()
   const onErrorRef = useRef(onError)
   useEffect(() => { onErrorRef.current = onError }, [onError])
   useEffect(() => {
+    if (!active) return
     const controller = new AbortController()
     let url: string | undefined
     void (index === undefined ? getPhoto(questId, version, { signal: controller.signal }) : getPhoto(questId, version, index, { signal: controller.signal })).then((photo) => {
@@ -147,7 +151,7 @@ function ProtectedHintImage({ getPhoto, questId, version, index, alt, hidden, on
       controller.abort()
       if (url) URL.revokeObjectURL(url)
     }
-  }, [getPhoto, index, questId, version])
+  }, [active, getPhoto, index, questId, version])
   return source && <img src={source} alt={alt} className="optional-hint-image"
     style={{ display: hidden ? 'none' : undefined }} onLoad={onLoad} onError={onError} />
 }
@@ -164,6 +168,13 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
   const attemptRef = useRef(0)
   const finishedAttemptRef = useRef(-1)
   const timeoutRef = useRef<number | null>(null)
+  // 閉じる間は最後の内容を保持し、畳むアニメーション（280ms）の後に外す
+  // （D-59 追記、行アコーディオンと同じ考え方）。
+  const [closing, setClosing] = useState(false)
+  const closeTimerRef = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+  }, [])
 
   useEffect(() => {
     if (!expanded || status !== 'loading') return
@@ -216,8 +227,18 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
           if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current)
           timeoutRef.current = null
           setExpanded(false)
-          setStatus('loading')
+          // 状態の初期化は畳み終わってから。中身は closing の間保持する。
+          setClosing(true)
+          if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+          closeTimerRef.current = window.setTimeout(() => {
+            closeTimerRef.current = null
+            setClosing(false)
+            setStatus('loading')
+          }, 300)
         } else {
+          if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+          closeTimerRef.current = null
+          setClosing(false)
           onReloadNeeded(false)
           attemptRef.current++
           finishedAttemptRef.current = -1
@@ -228,7 +249,13 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
       }}>
       {expanded ? 'ヒント画像を閉じる' : 'ヒント画像を見る'}
     </button>}
-    {expanded && <div className="optional-hint-content" aria-live="polite">
+    {/* 開閉の枠は行アコーディオン（D-59）と同じく常時マウントし、開状態のクラスだけで
+        grid-template-rows を切り替える（D-59 追記）。中身は開いている間と、閉じ終わる
+        までの間だけが持つ。 */}
+    <div className={'optional-hint-content-wrap' + (expanded ? ' is-open' : '')}
+      aria-hidden={!expanded || undefined}>
+      <div className="optional-hint-content-clip">
+      {(expanded || closing) && <div className="optional-hint-content" aria-live="polite">
       {status === 'loading' && <p role="status">ヒント画像を読み込み中…</p>}
       {(status === 'error' || status === 'timeout') && <div role="alert"><p>{status === 'timeout' ? '読み込みがタイムアウトしました。再試行できます。' : 'ヒント画像を読み込めませんでした。'}</p>
         <button type="button" className="optional-hint-retry" onClick={() => {
@@ -240,8 +267,8 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
           setStatus('loading')
         }}>再試行</button>
       </div>}
-      {expanded && status === 'reload' && <div role="alert"><p>公開情報が変わった可能性があります。問題を読みなおしてください。</p></div>}
-      {expanded && status === 'auth' && <div role="alert"><p>{authCode === 'UNAUTHENTICATED'
+      {status === 'reload' && <div role="alert"><p>公開情報が変わった可能性があります。問題を読みなおしてください。</p></div>}
+      {status === 'auth' && <div role="alert"><p>{authCode === 'UNAUTHENTICATED'
         ? 'ヒント画像を表示できません。ページを開き直してから再試行してください。'
         : 'ヒント画像へのアクセスが拒否されました。もう一度お試しください。'}</p>
         <button type="button" className="optional-hint-retry" onClick={() => {
@@ -255,12 +282,14 @@ function OptionalHintImage({ url, quest, index, inline = false, getPhoto, onRetr
       </div>}
       {(status === 'loading' || status === 'loaded') && (getPhoto
         ? <ProtectedHintImage key={attempt} getPhoto={getPhoto} questId={quest.questId} version={quest.version} index={index}
-          alt={alt} hidden={status !== 'loaded'}
+          alt={alt} hidden={status !== 'loaded'} active={expanded}
           onLoad={onLoad} onError={onError} />
         : <img key={attempt} src={url} alt={alt} className="optional-hint-image"
         style={{ display: status === 'loaded' ? undefined : 'none' }}
         onLoad={onLoad} onError={onError} />)}
-    </div>}
+      </div>}
+      </div>
+    </div>
   </div>
 }
 
@@ -281,11 +310,22 @@ interface QuestDetailsProps {
   onReloadQuest?(event?: MouseEvent<HTMLButtonElement>): void
   children?: ReactNode
   hideStartAction?: boolean
+  /** 一覧の中の詳細（D-46 のアコーディオン）では開閉ボタンを出さない（D-65）。
+      閉じる操作は一覧の行の再タップによる選択解除（D-55）に一本化し、詳細の中に
+      別の閉じ方を持たせない。レールに置く使い方（固定問題の埋め込み・デモ表示等、
+      選択の受け口が無い場合）では従来どおりこのボタンが開閉を担う。 */
+  hideToggle?: boolean
   stale?: boolean
   handoffUrl?: string
+  /** ログイン中の本人がこの問題をクリア済みの時の記録ID（D-64）。渡されたら
+      挑戦開始の導線は出さず、「クリア済み」表示と記録への導線に置き換える。
+      クリアは1人1問につき1回だけで、再挑戦はできない。 */
+  clearedDiscoveryId?: string
+  /** 「自分の記録を見る」の受け口。クリア済み表示から本人の記録詳細へ進む。 */
+  onOpenDiscovery?: (discoveryId: string) => void
 }
 
-export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, note, sourceLabel = '架空のサンプル問題', feedback, onToggle, onStart, children, hideStartAction = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl }: QuestDetailsProps) {
+export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, note, sourceLabel = '架空のサンプル問題', feedback, onToggle, onStart, children, hideStartAction = false, hideToggle = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl, clearedDiscoveryId, onOpenDiscovery }: QuestDetailsProps) {
   const wideViewport = useWideViewport()
   const [qrVisible, setQrVisible] = useState(true)
   const handoffActive = Boolean(handoffUrl) && wideViewport
@@ -321,13 +361,13 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
         {open && (reloadNeededHints.size > 0 || questStale) && <button type="button" className="quest-reload-subtle" onClick={onReloadQuest}>問題を読みなおす</button>}
       </header>
       <div className="quest-card-content">
-        <button type="button" className={'quest-toggle' + (open ? ' is-open' : '')}
+        {!hideToggle && <button type="button" className={'quest-toggle' + (open ? ' is-open' : '')}
           aria-expanded={open} aria-controls={detailsId} onClick={() => {
             setReloadNeededState({ identity: hintIdentity, open: !open, indexes: new Set() })
             onToggle()
           }}>
           <span>{open ? '問題を閉じる' : '問題を見てみる'}</span><Icon name="arrow" />
-        </button>
+        </button>}
         {open && (
           <section id={detailsId} className="quest-details" aria-label="サンプル問題の詳細">
             <h4>この場所はどこ？</h4>
@@ -340,7 +380,16 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
             })} />
             {hintUrl && !questStale && <OptionalHintImage key={`image:${hintIdentity}`} url={hintUrl} quest={quest} getPhoto={getHintPhoto}
               onVersionChanged={markImageVersionChanged} onReloadNeeded={markImageReloadNeeded} />}
-            {!hideStartAction && (handoffActive ? <div className="quest-handoff">
+            {clearedDiscoveryId ? <div className="quest-cleared-action">
+              {/* クリア済みの問題は再挑戦できない（D-64）。開始導線（QRの受け渡しを含む）は
+                  丸ごと出さず、記録への導線だけを置く。hideStartAction は撮影フローが
+                  使える時に開始ボタンの二重化を防ぐためのものなので、クリア済み表示は
+                  その gate の対象にしない（gate の中に入れると、肝心のログイン中本人に
+                  何も出なくなってしまう）。 */}
+              <p className="quest-cleared-label"><Icon name="check" />クリア済み</p>
+              <p className="unavailable-note">この問題はクリア済みのため、再挑戦はできません。初回の写真と日付は「自分の記録」に保存されています。</p>
+              {onOpenDiscovery && <button type="button" className="primary-button" onClick={() => onOpenDiscovery(clearedDiscoveryId)}>自分の記録を見る</button>}
+            </div> : !hideStartAction && (handoffActive ? <div className="quest-handoff">
               <button type="button" className="primary-button" aria-expanded={qrVisible} onClick={() => setQrVisible((value) => !value)}>
                 スマホで挑戦する
               </button>

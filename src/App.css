@@ -237,6 +237,19 @@ button.explore-quest-card { cursor: pointer; }
 .clear-celebration-badge { position: relative; z-index: 1; display: grid; place-items: center; width: 54px; height: 54px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%; background: var(--ui-tint); color: var(--ui-ink); box-shadow: var(--ui-control-shadow); }
 .clear-celebration-badge .icon { width: 28px; height: 28px; }
 .clear-celebration-spark { position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -5px 0 0 -5px; border: 2px solid var(--ui-line); border-radius: 50%; pointer-events: none; }
+.clear-celebration-large { height: 148px; margin-top: 0; }
+.clear-celebration-large .clear-celebration-badge { width: 100px; height: 100px; }
+.clear-celebration-large .clear-celebration-badge .icon { width: 50px; height: 50px; }
+.clear-celebration-large .clear-celebration-spark { width: 12px; height: 12px; margin: -6px 0 0 -6px; }
+/* 初回クリア時の全画面クリア画面（D-63）。テーマ色の地に、面のカードを浮かせる。 */
+.clear-screen { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; overflow-y: auto; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); background: var(--ui-accent); animation: view-fade-in 200ms var(--ease-out); }
+.clear-screen-card { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(420px, 100%); padding: 26px 22px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); box-shadow: var(--ui-shadow); text-align: center; animation: content-rise-in 280ms var(--ease-out); }
+.clear-screen-title { margin: 0; font-size: 34px; font-weight: var(--ui-weight-display); letter-spacing: -.02em; line-height: 1.2; }
+.clear-screen-title:focus { outline: none; }
+.clear-screen-quest { margin: 0; font-size: 17px; font-weight: var(--ui-weight-strong); }
+.clear-screen-photo { width: 100%; max-height: 280px; object-fit: cover; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); }
+.clear-screen-date { margin: 0; color: var(--ui-muted); font-size: 13px; }
+.clear-screen-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 4px; }
 .quest-details h4 { font-size: 15px; font-weight: var(--ui-weight-strong); margin-bottom: 14px; }
 .clue-text { border-left: 2px solid var(--ui-muted); padding-left: 12px; color: var(--ui-muted); font-size: 13px; line-height: 1.95; margin-bottom: 16px; }
 .sample-note { background: var(--ui-muted); padding: 10px 12px; border-radius: var(--ui-radius); color: var(--ui-muted); font-size: 12px; line-height: 1.7; margin-bottom: 18px; }
@@ -244,6 +257,10 @@ button.explore-quest-card { cursor: pointer; }
 .primary-button:hover:not(:disabled) { background: var(--ui-ink); }
 .primary-button:disabled { border-color: var(--ui-line); background: var(--ui-muted); color: var(--ui-muted); }
 .unavailable-note { font-size: 12px; color: var(--ui-muted); line-height: 1.8; margin-top: 9px; }
+/* クリア済み表示（D-64）：開始導線の代わりに置く。一覧バッジと同じ淡緑で揃える。 */
+.quest-cleared-action { display: grid; gap: 10px; justify-items: start; }
+.quest-cleared-label { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 13px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
+.quest-cleared-action .unavailable-note { margin-top: 0; }
 .quest-handoff { display: grid; gap: 10px; }
 .quest-handoff-panel { display: grid; justify-items: center; gap: 8px; }
 .quest-qr { width: 176px; height: 176px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: #fff; }
@@ -281,7 +298,7 @@ button.explore-quest-card { cursor: pointer; }
   .page { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
   .owner-records { padding-bottom: calc(var(--mobile-tabbar-h) + 20px); }
   /* 主要な行き先は画面下のタブバーに置く（Google マップのスマホアプリと同型、D-32）。 */
-  .mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: stretch; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: var(--ui-border-width) solid var(--ui-line); background: var(--ui-surface); }
+  .mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: stretch; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: var(--ui-border-width) solid var(--ui-line); background: var(--ui-surface); touch-action: pan-x; }
   .mobile-nav a, .mobile-nav button { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 52px; border: var(--ui-border-width) solid transparent; border-radius: var(--ui-radius); padding: 4px 6px; background: transparent; font-size: 12px; color: var(--ui-muted); }
   .mobile-nav [aria-current="page"] { background: var(--ui-accent); border-color: var(--ui-line); color: var(--ui-accent-ink); font-weight: var(--ui-weight-strong); box-shadow: var(--ui-control-shadow); }
   .mobile-nav .icon { width: 20px; height: 20px; }
@@ -411,6 +428,12 @@ button.explore-quest-card { cursor: pointer; }
 .optional-hint { margin: 0 0 18px; }
 .optional-hint-toggle, .optional-hint-content button { min-height: 44px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); padding: 9px 14px; font: inherit; cursor: pointer; }
 .optional-hint-content { margin-top: 12px; color: var(--ui-muted); font-size: 13px; line-height: 1.7; }
+/* ヒント画像の開閉も高さで滑らせる（D-59 追記）。行アコーディオンと同じ
+   grid-template-rows 方式で、閉じる時は visibility の切り替えを遷移の終わりに遅らせる。 */
+.optional-hint-content-wrap { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 280ms var(--ease-out), visibility 0s linear 280ms; }
+.optional-hint-content-wrap.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows 280ms var(--ease-out), visibility 0s; }
+.optional-hint-content-clip { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .optional-hint-content-wrap { transition: none; } }
 .optional-hint-image { display: block; width: 100%; max-width: 100%; height: auto; max-height: 70vh; object-fit: contain; border-radius: var(--ui-radius); }
 @media (max-width: 640px) {
   .hint-item .optional-hint-image { max-height: min(320px, 45svh); }
@@ -510,6 +533,20 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* 閉じる時はカードを少し左へ滑らせながら消し、非表示への切り替えは遷移の
      終わりに遅らせる（D-42）。開く時は逆向きに即座に出る。地図とヘッダーは動かさない。 */
   body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel { opacity: 0; visibility: hidden; transform: translateX(-12px); pointer-events: none; transition-delay: 0s, 0s, 200ms; }
+}
+
+/* 記録画面（非探索）でも、タブ群は探索画面のナビカードと同じ左のラインに置く
+   （D-60 追記）。通常ヘッダーは内容を 1440px 列へ中央寄せするため、そのままだと
+   タブが画面中央寄り（広い画面では x≈447、ブランドの右）に出て、左カラム上段の
+   カード内にある探索画面のタブと基点が揃わなかった。記録画面が表示されている
+   間だけ、PC ではタブをナビカード（上・左 16px、幅 380px、高さ 68px、閉状態と
+   同じ枠線と角丸）として固定し、ブランドはカードの右へ逃がす。寸法の変数
+   （--pc-sidebar-*）は fullbleed の下でしか定義されないため、揃える値を直接書く
+   （探索側の寸法を変える時はここも合わせること）。 */
+@media (min-width: 981px) {
+  body:has(.owner-records:not([hidden])) .desktop-nav { position: fixed; top: 16px; left: 16px; z-index: 30; display: flex; align-items: center; gap: 8px; width: 380px; height: 68px; padding: 12px 16px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }
+  body:has(.owner-records:not([hidden])) .desktop-nav a, body:has(.owner-records:not([hidden])) .desktop-nav button { flex: 1 1 0; justify-content: center; }
+  body:has(.owner-records:not([hidden])) .site-header { padding-left: calc(16px + 380px + 24px); }
 }
 
 @media (max-width: 980px) {

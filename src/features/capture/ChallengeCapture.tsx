@@ -25,8 +25,10 @@ function failure(cause: unknown): Extract<StartState, { status: 'error' }> {
 
 // The parent keys this component by verified user, selected quest/version and
 // navigation revision. Leaving any of them disposes the operation and camera.
-export function ChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, autoStart = false, canAutoStart, onAutoStartConsumed, dataMode = 'demo' }: {
+export function ChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, onReturnToMap, autoStart = false, canAutoStart, onAutoStartConsumed, dataMode = 'demo' }: {
   api: ApiClient; quest: PublicQuest; onReloadQuest: () => void; autoStart?: boolean; canAutoStart?: () => boolean; onAutoStartConsumed?: () => void; dataMode?: LocalApiDataMode; onOpenDiscovery?: (id: string) => void
+  // クリア画面の「地図に戻る」が押された通知。カメラを閉じた後に呼び出し側へ返す。
+  onReturnToMap?: (discoveryId?: string) => void
 }) {
   const [state, setState] = useState<StartState>({ status: 'idle' })
   const [cameraOpen, setCameraOpen] = useState(false)
@@ -111,6 +113,6 @@ export function ChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, a
       {state.reload && <button type="button" className="retry-button" onClick={onReloadQuest}>問題を読み直す</button>}
     </div>}
     {state.status === 'ready' && cameraOpen && <CameraPreview onClose={closeCamera}
-      answer={{ api, challengeId: state.challenge.challengeId, onReloadQuest, dataMode, onOpenDiscovery }} />}
+      answer={{ api, challengeId: state.challenge.challengeId, onReloadQuest, dataMode, onOpenDiscovery, questTitle: quest.title, onReturnToMap: (discoveryId) => { closeCamera(); onReturnToMap?.(discoveryId) } }} />}
   </>
 }

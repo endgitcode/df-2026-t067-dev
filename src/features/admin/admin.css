@@ -57,6 +57,7 @@
 }
 .admin-demo .capture-map > p,
 .admin-demo .capture-map > [role="alert"] { margin: 12px; }
+.admin-demo .capture-map + .spot-clear-button { margin-block-start: 12px; }
 .summary dl { display: grid; grid-template-columns: minmax(150px, .7fr) 1fr; gap: 8px 16px; }
 .summary dt { font-weight: var(--ui-weight-strong); }
 .summary dd { margin: 0; overflow-wrap: anywhere; }

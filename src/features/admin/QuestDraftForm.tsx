@@ -356,7 +356,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         <div className="private-setting"><strong>非公開の撮影地点・半径</strong><span>{areaStatus}</span><small>{connection ? '撮影可能範囲：中心から半径1km（固定）' : '安全上、値や入力欄を表示しません。'}</small></div>
       </section>
       {connection && <section className="form-section" aria-label="対象スポット登録">
-        <SpotEditor input={spotInput} durable={connection.taskFocused || teamPreview}
+        <SpotEditor input={spotInput} durable={connection.taskFocused || teamPreview} orgId={connection.member.orgId}
+          canLookupSpotAddress={connection.api.canLookupSpotAddress} lookupSpotAddress={connection.api.lookupSpotAddress}
           onChange={(input) => { setSpotInput(input); setInputError(''); markMaterialChange() }} />
       </section>}
       <section className="form-section" aria-labelledby="conditions-heading"><h2 id="conditions-heading">挑戦前に伝える条件</h2><p className="helper">旅行者に公開されます。安全上の制約や必要な費用がある場合は必ず記載してください。</p>

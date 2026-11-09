@@ -22,3 +22,12 @@
 ローダーのキー注入・script重複防止・callback、通信失敗後の再試行、タイムアウト時の後始末、地図生成中の認証失敗と画面再表示でも失敗を保持することをテストします。公開境界のGeoJSON座標順・穴・選択クリック・古い図形の破棄・demo非表示・SDKレイヤー例外後の再試行・選択地域への範囲合わせと同地域再描画時の表示維持、現在地取得の許可拒否・取得失敗・遅延応答の無視、初期ズーム5・現在地表示ズーム14・12を超える拡大・上限20と下限3をMaps SDK/Geolocationモックで確認します。実際の地図表示、ズーム20での実地図の詳細度、実測位、Cloud設定、HTTPリファラー制限、請求設定は未検証です。地図APIの設定・有効化や課金はこの変更では行っていません。
 
 公式資料：[Maps JavaScript APIの直接読み込み](https://developers.google.com/maps/documentation/javascript/load-maps-js-api)、[認証失敗イベント](https://developers.google.com/maps/documentation/javascript/events)。
+
+## 管理画面の住所候補
+
+- `durable-local` と共有検証モードでは、A03の通常リンクから得たPlace IDまたは座標を、所属確認付きの `POST /api/v1/orgs/:orgId/spot-address` に送る。入力にURLや下書きの内容は含めない。既存の下書き・公開・旅行者向けAPIは同じ契約で動作する。
+- Google Geocoding API v4の固定HTTPSホストを使い、リダイレクトを拒否する。Place IDと座標の両方がある場合、応答のIDが異なるか位置が約50mを超えて離れていれば候補を返さない。座標のみの照会では付近の住所を参考表示する。外部通信は4.5秒・応答本文32 KiBまで。1プロセスあたり同時4件、毎分全体30件・同一利用者6件に制限する。
+- 承認後、Geocoding API用のサーバーキーを `QUEST_GOOGLE_GEOCODING_API_KEY` に設定する。キーはViteの地図表示キーと分離し、API制限・実行環境に応じた制限・プロジェクト側のクォータと課金通知を設定する。キーが未設定または形式不正なら住所照会を無効にし、管理画面では手入力できる。キー値、送信座標、候補住所をアプリのログ・保存先に記録しない。
+- 応答は `private, no-store`。候補はGoogle Mapsの出典を添えて表示し、下書きや公開版には転記しない。Googleの保存条件に合わせ、保存欄は自治体が独自に確認した情報に使う。公開の利用規約・プライバシーポリシーと表示上の出典は実環境への設定前に確認する。
+
+[場所IDの住所照会](https://developers.google.com/maps/documentation/geocoding/places-geocoding)・[逆ジオコーディング](https://developers.google.com/maps/documentation/geocoding/reverse-geocoding)・[利用条件と出典](https://developers.google.com/maps/documentation/geocoding/policies)
