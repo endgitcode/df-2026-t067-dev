@@ -181,7 +181,8 @@ describe('PC sidebar layout integrity', () => {
     expect(css).not.toContain('body.explore-fullbleed.explore-sidebar-collapsed .explore-workspace')
     expect(css).toContain('body.explore-fullbleed .sidebar-toggle {')
     expect(css).toContain('width: 44px; height: 44px;')
-    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle { left: 6px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
+    expect(css).toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
   })
 })
 
@@ -382,5 +383,22 @@ describe('button widths and records alignment (D-74)', () => {
     const mediaAt = css.indexOf('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand')
     expect(mediaAt).toBeGreaterThan(-1)
     expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { background: transparent; border-bottom: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }')
+  })
+})
+
+
+describe('PC sidebar containment and collapsed rail', () => {
+  it('keeps api-load-state inside the side panel without the page-center card margins', () => {
+    expect(css).toContain('body.explore-fullbleed .explore-side-panel .api-load-state {')
+    expect(css).toContain('width: 100%; max-width: 100%; margin: 8px 0 0;')
+    expect(css).not.toContain('body.explore-fullbleed .explore-side-panel .api-load-state { width: min(100% - 40px, 620px);')
+  })
+
+  it('keeps brand mark, toggle and nav icons on the collapsed ~56px rail', () => {
+    expect(css).toContain('--pc-sidebar-rail-w: 56px;')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 28px; height: 28px; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 22px; height: 22px; flex: none; }')
+    expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
+    expect(css).toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
   })
 })
