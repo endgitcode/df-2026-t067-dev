@@ -74,3 +74,23 @@ test('listOwned はカーソルで続きを返し、地域でも絞れる', asyn
   const area = await store.listOwned('user-1', { areaId: 'area-1' })
   assert.deepEqual(area.items.map((item) => item.discoveryId), ['disc-a', 'disc-c'])
 })
+
+test('listOwned は該当0件でもカーソルの本人・地域と形式を検証する', async () => {
+  const store = new FirestoreDiscoveryStore(fakeDb([
+    record('disc-a', 'user-1', 300), record('disc-b', 'user-1', 200),
+  ]), photos)
+  const first = await store.listOwned('user-1', { areaId: 'area-1', limit: 1 })
+  assert.ok(first.nextCursor)
+  for (const [uid, areaId] of [['user-1', 'different-area'], ['other-owner', 'area-1']]) {
+    assert.deepEqual(await store.listOwned(uid, { areaId }), { items: [], nextCursor: null })
+    await assert.rejects(store.listOwned(uid, { areaId, cursor: first.nextCursor }), { code: 'INVALID_INPUT' })
+    await assert.rejects(store.listOwned(uid, { areaId, cursor: 'malformed' }), { code: 'INVALID_INPUT' })
+  }
+  const empty = new FirestoreDiscoveryStore(fakeDb([]), photos)
+  assert.deepEqual(await empty.listOwned('user-1', { areaId: 'area-1', cursor: first.nextCursor }),
+    { items: [], nextCursor: null })
+  const invalidPosition = JSON.parse(Buffer.from(first.nextCursor, 'base64url').toString())
+  invalidPosition.after = 'invalid-position'
+  await assert.rejects(empty.listOwned('user-1', { areaId: 'area-1',
+    cursor: Buffer.from(JSON.stringify(invalidPosition)).toString('base64url') }), { code: 'INVALID_INPUT' })
+})
