@@ -296,6 +296,7 @@ button.explore-quest-card { cursor: pointer; }
   .desktop-nav { display: none; }
   .explore-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .map-preview-shell { position: relative; top: 0; }
+  .map-controls, .explore-sheet-reopen, .map-state button { touch-action: none; overscroll-behavior: none; }
   .map-preview { height: 420px; }
   .map-preview-shell.has-sheet { height: max(520px, calc(100svh - 224px)); min-height: 520px; }
   .map-filter-overlay { top: 74px; }
@@ -331,7 +332,6 @@ button.explore-quest-card { cursor: pointer; }
   .map-location-status.is-floating { left: 12px; margin: 0; max-width: calc(100% - 84px); }
   .demo-map-label { font-size: 12px; padding: 3px 5px; }
   .map-controls { right: 11px; bottom: 72px; }
-  .map-controls, .explore-sheet-reopen, .map-state button { touch-action: none; overscroll-behavior: none; }
   /* スマホでは右下の地図操作をシートの高さと無関係な位置に固定する。 */
   .map-preview-shell.has-sheet .map-controls { bottom: 72px; }
   .map-zoom button { width: 44px; height: 44px; }

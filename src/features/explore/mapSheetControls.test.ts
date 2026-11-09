@@ -37,8 +37,14 @@ describe('map controls placement with the bottom sheet', () => {
 })
 
 describe('mobile map control swipe handling', () => {
-  it('prevents page scrolling from map controls while leaving the sheet and lists scrollable', () => {
-    expect(css).toContain('.map-controls, .explore-sheet-reopen, .map-state button { touch-action: none; overscroll-behavior: none; }')
+  it('prevents page scrolling from map controls throughout the mobile-width range while leaving the sheet and lists scrollable', () => {
+    const touchRule = '.map-controls, .explore-sheet-reopen, .map-state button { touch-action: none; overscroll-behavior: none; }'
+    const mobileWidthAt = css.indexOf('@media (max-width: 980px)')
+    const phoneWidthAt = css.indexOf('@media (max-width: 640px)')
+    expect(mobileWidthAt).toBeGreaterThan(-1)
+    expect(phoneWidthAt).toBeGreaterThan(mobileWidthAt)
+    expect(css.indexOf(touchRule)).toBeGreaterThan(mobileWidthAt)
+    expect(css.indexOf(touchRule)).toBeLessThan(phoneWidthAt)
     expect(css).not.toContain('.explore-sheet { touch-action: none;')
     expect(css).not.toContain('.explore-quest-list { touch-action: none;')
     expect(mapPreview).toContain('const mapControlGestureProps = {')
