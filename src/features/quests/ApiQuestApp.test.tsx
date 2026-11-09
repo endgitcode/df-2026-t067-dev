@@ -344,6 +344,22 @@ describe('APIから問題を表示', () => {
     expect(screen.queryByRole('button', { name: '地図へ戻る' })).not.toBeInTheDocument()
   })
 
+  it('一覧の中の詳細で「問題を閉じる」を押すと、選択解除まで完了する', async () => {
+    const user = userEvent.setup()
+    const api = apiFixture()
+    render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="team-preview" teamAnswerTrial />)
+    const pickerButton = await screen.findByRole('button', { name: '一覧表示用タイトルを開く' })
+    await user.click(pickerButton)
+    // 共有検証では選択と同時に詳細が開く。
+    expect(await screen.findByRole('button', { name: '問題を閉じる' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '問題を閉じる' }))
+    // 詳細だけが畳まれるのではなく、行の再タップ（D-55）と同じく選択解除まで完了し、
+    // カード自体が消える（D-60）。「問題を見てみる」の中途半端な状態は残らない。
+    await waitFor(() => expect(screen.queryByRole('button', { name: '問題を見てみる' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('heading', { name: first.title })).not.toBeInTheDocument()
+    expect(pickerButton).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('一覧の並びは問題番号の昇順（北から南）に統一する', async () => {
     const fukuoka: PublicQuest = { ...second, questId: 'quest-fukuoka', title: '福岡の謎', questNumber: '40-01' }
     const sapporo: PublicQuest = { ...first, questId: 'quest-sapporo', title: '札幌の謎', questNumber: '01-01' }

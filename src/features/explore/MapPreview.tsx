@@ -501,6 +501,35 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     } catch { failArea() }
   }, [selectedAreaId, areas, showPublicAreas, status, areaAttempt, wideViewport, fitRequest, fitToArea])
 
+  // 地方・都道府県の絞り込みで地域の集合が変わったら、その範囲のピン全体へ地図を
+  // 寄せる（D-60）。絞っても地図が日本全体のままだと、絞った結果が空っぽに見えた。
+  // 解除して全件に戻れば、初期表示と同じ全ピンの範囲へ戻る。読み込み中の一時的な
+  // 空は範囲変更として扱わない。地域選択中は選択フィットが優先する。
+  const lastAreasKey = useRef<{ map: MapInstance; key: string } | null>(null)
+  useEffect(() => {
+    const instance = map.current
+    if (!API_KEY || !instance || status !== 'ready' || areas.length === 0) return
+    const key = areas.map((area) => area.areaId).sort().join(',')
+    const previous = lastAreasKey.current
+    lastAreasKey.current = { map: instance, key }
+    if (!previous || previous.map !== instance || previous.key === key) return
+    if (selectedAreaId) return
+    const google = window.google?.maps
+    if (!google?.LatLngBounds) return
+    const bounds = new google.LatLngBounds()
+    let fitted = false
+    for (const area of areas) {
+      if (area.publishedCount < 1) continue
+      const position = areaPinPosition(area)
+      if (!position) continue
+      bounds.extend(position)
+      fitted = true
+    }
+    if (!fitted) return
+    if (showPublicAreas) instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+    else instance.fitBounds(bounds)
+  }, [areas, selectedAreaId, status, showPublicAreas, wideViewport])
+
   const changeZoom = (delta: number) => map.current?.setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, (map.current.getZoom() ?? zoom) + delta)))
   const reset = () => { cancelLocationRequest(); setLocationStatus(''); map.current?.setCenter(JAPAN); map.current?.setZoom(INITIAL_ZOOM) }
   const locate = () => {

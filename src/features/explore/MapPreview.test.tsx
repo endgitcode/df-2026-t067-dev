@@ -242,6 +242,33 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('refits when the filtered area set changes and returns to all areas when cleared', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const map = { ...mapInstance, fitBounds, setCenter: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const areaB: PublicArea = { areaId: 'area-b', label: 'B', publishedCount: 2, marker: { latitude: 43, longitude: 141 },
+      publicGeometry: { type: 'Polygon', coordinates: [[[141, 43], [142, 43], [142, 44], [141, 44], [141, 43]]] } }
+    const both = [...areas, areaB]
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={both} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    // 地方で絞る（地域の集合が減る）と、その範囲へ寄せる（D-60）。
+    rerender(<ConfiguredMapPreview areas={[areaB]} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(2))
+    // 同じ集合のままでは寄せ直さない。
+    rerender(<ConfiguredMapPreview areas={[areaB]} />)
+    expect(fitBounds).toHaveBeenCalledTimes(2)
+    // 絞り込みを解除すると全地域の範囲へ戻る。
+    rerender(<ConfiguredMapPreview areas={both} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(3))
+    unmount()
+    delete window.google
+  })
+
   it('triggers a map resize once the layout settles in wide mode and fits the selection exactly once', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.stubGlobal('matchMedia', (query: string) => ({
