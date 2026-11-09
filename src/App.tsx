@@ -137,7 +137,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const wideViewport = useWideViewport()
   // PC幅では、地図の下に通常フローで出ていたレール（問題の選択・詳細・注意書き）を左サイドバーの
   // パネル内へ寄せ、探索画面を「サイドバー＋地図」だけで完結させる（D-34 の集約の仕上げ）。
-  const panelArrangement = wideViewport && (teamPreview || durableLocal)
+  // demo でも PC 幅は Cursor 風サイドバーへ載せる（ローカルデモ／審査確認用。team-preview と同じ殻）。
+  const panelArrangement = wideViewport && (teamPreview || durableLocal || apiMode)
   const showRecords = localApiMode && recordsOpen
   const api = useMemo(() => providedApi ?? createApiClient({ getIdToken: () => authClient.getIdToken(),
     expectedDataMode: localApiMode ? apiDataMode : undefined }), [providedApi, authClient, localApiMode, apiDataMode])
@@ -148,7 +149,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   // 詳細は、地図が使える表示（共有検証・永続）では一覧の選択中の行の直下へアコーディオンとして
   // 差し込む（D-46）。対象の問題が一覧に無い使い方（固定問題の埋め込み等）と、それ以外
   // （スタンドアロンのデモ表示等）では従来どおりレールに置く。
-  const detailInList = (teamPreview || durableLocal) && Boolean(quest) && mapQuests.some((item) => item.questId === quest?.questId)
+  // team-preview / durable は幅を問わず一覧内詳細。demo の PC サイドバー時だけ同様にする。
+  const detailInList = (teamPreview || durableLocal || panelArrangement) && Boolean(quest) && mapQuests.some((item) => item.questId === quest?.questId)
   // 一覧の中の詳細は、選択されている間は常に開いているものとして扱う（D-65）。閉じる
   // 受け口は一覧の行の再タップによる選択解除（D-55）だけであり、詳細側に開閉状態は
   // 持たせない（開閉ボタンも出さない）。レールに置く使い方では従来どおり開閉状態が決める。
@@ -444,10 +446,11 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {/* 画面遷移のタブは2つともボタンで揃える（片方だけリンクだと URL のハッシュが
               残ったり消えたりして、URL と表示の対応が分かりにくくなるため）。 */}
           <button type="button" className={showRecords ? undefined : 'nav-active'} aria-current={showRecords ? undefined : 'page'}
-            onClick={navigateToExplore}><Icon name="map" />謎を探す</button>
+            aria-label="謎を探す" onClick={navigateToExplore}><Icon name="search" /><span className="nav-label">謎を探す</span></button>
           {(!teamPreview || teamAnswerTrial) && <button type="button" className={showRecords ? 'nav-active' : undefined} aria-current={showRecords ? 'page' : undefined}
+            aria-label={!localApiMode ? '自分の記録（準備中）' : '自分の記録'}
             disabled={!localApiMode || visiblePending !== null} onClick={() => navigateToRecords(true)}>
-            <Icon name="book" />自分の記録{!localApiMode && <span>準備中</span>}
+            <Icon name="book" /><span className="nav-label">自分の記録{!localApiMode && <span className="nav-prep">準備中</span>}</span>
           </button>}
         </nav>
         <div className="account-area">
@@ -513,7 +516,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           </div>
 
           <div className="explore-workspace">
-            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview} quests={mapQuests} questsLoading={mapQuestsLoading} onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} selectedQuestId={quest?.questId ?? ''} clearedQuestIds={clearedQuestIds} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
+            <MapPreview areas={mapAreas} selectedAreaId={selectedAreaId} onSelectArea={onSelectArea} showPublicAreas={durableLocal || teamPreview || apiMode} quests={mapQuests} questsLoading={mapQuestsLoading} onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} selectedQuestId={quest?.questId ?? ''} clearedQuestIds={clearedQuestIds} topOverlay={mapOverlay} showBoundaryCredit={teamPreview} fillSelectedAreaOnly={teamPreview} panelExtra={panelArrangement ? panelContent : undefined} onSheetModeChange={onMapSheetModeChange} questScrollTarget={questCard} questDetail={detailInList ? questDetailBlock : undefined} viewActive={!showRecords} />
 
 {!panelArrangement && <aside className="quest-rail" aria-label="選べる謎">{railContent}</aside>}
           </div>
@@ -542,8 +545,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             event.stopPropagation()
           }
         }}>
-        <button type="button" aria-current={showRecords ? undefined : 'page'} onClick={navigateToExplore}><Icon name="map" /><span>謎を探す</span></button>
-        {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} disabled={!localApiMode || visiblePending !== null}
+        <button type="button" aria-current={showRecords ? undefined : 'page'} aria-label="謎を探す" onClick={navigateToExplore}><Icon name="search" /><span>謎を探す</span></button>
+        {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} aria-label={!localApiMode ? '自分の記録（準備中）' : '自分の記録'} disabled={!localApiMode || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{!localApiMode && <small>準備中</small>}</span></button>}
       </nav>
     </>

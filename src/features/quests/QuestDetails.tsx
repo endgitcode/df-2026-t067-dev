@@ -22,19 +22,35 @@ function getHintIdentity(getHint?: GetHint) {
   return identity
 }
 
-function HintItem({ quest, index, getHint, getHintPhoto, onVersionChanged, onReloadNeeded, onReady }: {
-  quest: PublicQuest; index: number; getHint: GetHint; getHintPhoto?: HintPhoto; onVersionChanged(): void; onReloadNeeded(index: number, needed: boolean): void; onReady(index: number): void
-}) {
-  const { questId, version } = quest
-  const toggleRef = useRef<HTMLButtonElement>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [state, setState] = useState<{ status: 'idle' | 'loading' | 'ready' | 'error' | 'changed'; text?: string; message?: string; reloadNeeded?: boolean }>({ status: 'idle' })
+type HintLoadState = { status: 'idle' | 'loading' | 'ready' | 'error' | 'changed'; text?: string; message?: string }
+
+function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onReloadNeeded }: { quest: PublicQuest; getHint?: GetHint; getHintPhoto?: HintPhoto; stale: boolean; onVersionChanged(): void; onReloadNeeded(index: number, needed: boolean): void }) {
+  const { questId, version, hintCount } = quest
+  const [changed, setChanged] = useState(false)
+  const [opened, setOpened] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(1)
+  const [unlockedThrough, setUnlockedThrough] = useState(1)
+  const [cache, setCache] = useState<Record<number, string>>({})
+  const [state, setState] = useState<HintLoadState>({ status: 'idle' })
   const controllerRef = useRef<AbortController | null>(null)
   const timeoutRef = useRef<number | null>(null)
   const generation = useRef(0)
-  useEffect(() => () => { generation.current++; controllerRef.current?.abort(); if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current) }, [])
+  const nextRef = useRef<HTMLButtonElement>(null)
+  const openRef = useRef<HTMLButtonElement>(null)
 
-  async function load() {
+  useEffect(() => () => {
+    generation.current++
+    controllerRef.current?.abort()
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current)
+  }, [])
+
+  async function load(index: number) {
+    if (cache[index]) {
+      setCurrentIndex(index)
+      setState({ status: 'ready', text: cache[index] })
+      onReloadNeeded(index, false)
+      return
+    }
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
@@ -48,71 +64,96 @@ function HintItem({ quest, index, getHint, getHintPhoto, onVersionChanged, onRel
       setState({ status: 'error', message: '取得がタイムアウトしました。再試行できます。' })
     }, 10_000)
     timeoutRef.current = timeout
-    setExpanded(true)
+    setOpened(true)
+    setCurrentIndex(index)
     onReloadNeeded(index, false)
     setState({ status: 'loading' })
     try {
-      const hint = await getHint({ questId, expectedVersion: version, index }, { signal: controller.signal })
+      const hint = await getHint!({ questId, expectedVersion: version, index }, { signal: controller.signal })
       if (controller.signal.aborted || generation.current !== currentGeneration) return
+      setCache((current) => ({ ...current, [index]: hint.text }))
       setState({ status: 'ready', text: hint.text })
-      onReady(index)
+      setUnlockedThrough((current) => Math.max(current, index + 1))
+      queueMicrotask(() => nextRef.current?.focus())
     } catch (error) {
       if (generation.current !== currentGeneration) return
       if (error instanceof ApiError && error.code === 'QUEST_CHANGED') {
         setState({ status: 'changed' })
+        setChanged(true)
         onVersionChanged()
       } else if (controller.signal.aborted && !timedOut) return
       else {
         const reloadNeeded = error instanceof ApiError && (error.code === 'NOT_FOUND' || error.code === 'INVALID_INPUT')
         onReloadNeeded(index, reloadNeeded)
         setState({ status: 'error', message: timedOut ? '取得がタイムアウトしました。再試行できます。'
-        : error instanceof ApiError && error.code === 'NOT_FOUND' ? 'このヒントは見つかりません（404）。問題を読み直してください。'
-          : error instanceof ApiError && error.code === 'INVALID_INPUT' ? 'ヒント番号が無効です。問題を読み直してください。'
-            : error instanceof ApiError && error.code === 'INVALID_RESPONSE' ? 'ヒントの応答を確認できませんでした。'
-              : 'ヒントを取得できませんでした。通信を確認して再試行してください。' })
+          : error instanceof ApiError && error.code === 'NOT_FOUND' ? 'このヒントは見つかりません（404）。問題を読み直してください。'
+            : error instanceof ApiError && error.code === 'INVALID_INPUT' ? 'ヒント番号が無効です。問題を読み直してください。'
+              : error instanceof ApiError && error.code === 'INVALID_RESPONSE' ? 'ヒントの応答を確認できませんでした。'
+                : 'ヒントを取得できませんでした。通信を確認して再試行してください。' })
       }
-    } finally { window.clearTimeout(timeout); if (timeoutRef.current === timeout) timeoutRef.current = null }
+    } finally {
+      window.clearTimeout(timeout)
+      if (timeoutRef.current === timeout) timeoutRef.current = null
+    }
   }
 
-  return <div className="hint-item">
-    <button ref={toggleRef} type="button" aria-expanded={expanded} onClick={() => {
-      if (expanded) {
-        if (state.status === 'loading') {
-          generation.current++; controllerRef.current?.abort()
-          if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current)
-          timeoutRef.current = null
-        }
-        setExpanded(false); setState({ status: 'idle' })
-        onReloadNeeded(index, false)
-      }
-      else void load()
-    }}>{state.status === 'loading' ? `ヒント${index}を取得中（閉じる）` : expanded ? `ヒント${index}を閉じる` : `ヒント${index}を見る`}</button>
-    {expanded && state.status === 'loading' && <p role="status">ヒントを取得しています。</p>}
-    {expanded && state.status === 'ready' && <><p>{state.text}</p>
-      {quest.hintImages?.[index - 1] && <OptionalHintImage url={quest.hintImages[index - 1]!} quest={quest}
-        index={index} inline getPhoto={getHintPhoto} onRetryFocus={() => toggleRef.current?.focus()} onVersionChanged={onVersionChanged}
-        onReloadNeeded={(needed) => onReloadNeeded(index, needed)} />}
-    </>}
-    {expanded && state.status === 'error' && <div role="alert"><p>{state.message}</p>
-      <button type="button" className="hint-retry" onClick={() => {
-        toggleRef.current?.focus()
-        void load()
-      }}>ヒント{index}を再試行</button>
-    </div>}
-    {expanded && state.status === 'changed' && <div role="alert"><p>問題の版が変わりました。古いヒントと挑戦を無効にしました。</p><button type="button" onClick={onVersionChanged}>最新版の問題を読み直す</button></div>}
-  </div>
-}
+  function cancelLoad() {
+    generation.current++
+    controllerRef.current?.abort()
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current)
+    timeoutRef.current = null
+    onReloadNeeded(currentIndex, false)
+    if (cache[currentIndex]) setState({ status: 'ready', text: cache[currentIndex] })
+    else {
+      setOpened(false)
+      setState({ status: 'idle' })
+      queueMicrotask(() => openRef.current?.focus())
+    }
+  }
 
-function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onReloadNeeded }: { quest: PublicQuest; getHint?: GetHint; getHintPhoto?: HintPhoto; stale: boolean; onVersionChanged(): void; onReloadNeeded(index: number, needed: boolean): void }) {
-  const [changed, setChanged] = useState(false)
-  const [unlockedThrough, setUnlockedThrough] = useState(1)
   if (stale || changed) return <div role="alert" className="hint-version-changed"><p>問題の版が変わりました。すべてのヒントと挑戦を無効にしました。</p></div>
   if (!getHint) return null
-  if (!quest.hintCount) return <p className="hints-note">この問題には通常ヒントがありません。</p>
+  if (!hintCount) return <p className="hints-note">この問題には通常ヒントがありません。</p>
+
+  const canGoBack = opened && currentIndex > 1
+  const showNext = state.status === 'ready' && currentIndex < hintCount
+
   return <div className="quest-hints" aria-label="段階ヒント">
     <h4>段階ヒント</h4>
-    {Array.from({ length: Math.min(quest.hintCount, unlockedThrough) }, (_, offset) => offset + 1).map(index =>
-      <HintItem key={`${quest.questId}:${quest.version}:${index}`} quest={quest} index={index} getHint={getHint} getHintPhoto={getHintPhoto} onVersionChanged={() => { setChanged(true); onVersionChanged() }} onReloadNeeded={onReloadNeeded} onReady={(readyIndex) => setUnlockedThrough(current => Math.max(current, readyIndex + 1))} />)}
+    {!opened && <button ref={openRef} type="button" className="hint-open" onClick={() => void load(1)}>ヒントを見る</button>}
+    {opened && <div className="hint-card" aria-live="polite">
+      <div className="hint-card-toolbar">
+        <div className="hint-card-steps" aria-label={`ヒント ${currentIndex} / ${hintCount}`}>
+          {Array.from({ length: hintCount }, (_, offset) => offset + 1).map((index) => {
+            const reachable = index <= Math.max(unlockedThrough - 1, currentIndex) && (cache[index] || index === currentIndex)
+            return <button key={index} type="button" className={'hint-step' + (index === currentIndex ? ' is-current' : '')}
+              aria-current={index === currentIndex ? 'step' : undefined}
+              disabled={!reachable || state.status === 'loading'}
+              onClick={() => { if (index !== currentIndex) void load(index) }}>{index}</button>
+          })}
+          <span className="hint-step-total">/ {hintCount}</span>
+        </div>
+        {canGoBack && <button type="button" className="hint-back" disabled={state.status === 'loading'} onClick={() => void load(currentIndex - 1)}>戻る</button>}
+      </div>
+      {state.status === 'loading' && <>
+        <p role="status">ヒントを取得しています。</p>
+        <button type="button" className="hint-cancel" onClick={cancelLoad}>キャンセル</button>
+      </>}
+      {state.status === 'ready' && <>
+        <p className="hint-card-text">{state.text}</p>
+        {quest.hintImages?.[currentIndex - 1] && <OptionalHintImage url={quest.hintImages[currentIndex - 1]!} quest={quest}
+          index={currentIndex} inline getPhoto={getHintPhoto} onRetryFocus={() => { (document.querySelector('.hint-step.is-current') as HTMLButtonElement | null)?.focus() }}
+          onVersionChanged={() => { setChanged(true); onVersionChanged() }}
+          onReloadNeeded={(needed) => onReloadNeeded(currentIndex, needed)} />}
+      </>}
+      {state.status === 'error' && <div role="alert"><p>{state.message}</p>
+        <button type="button" className="hint-retry" onClick={() => void load(currentIndex)}>ヒントを再試行</button>
+      </div>}
+      {state.status === 'changed' && <div role="alert"><p>問題の版が変わりました。古いヒントと挑戦を無効にしました。</p><button type="button" onClick={onVersionChanged}>最新版の問題を読み直す</button></div>}
+      {showNext && <button ref={nextRef} type="button" className="hint-next"
+        disabled={state.status !== 'ready' || currentIndex + 1 > unlockedThrough}
+        onClick={() => void load(currentIndex + 1)}>次へ</button>}
+    </div>}
   </div>
 }
 

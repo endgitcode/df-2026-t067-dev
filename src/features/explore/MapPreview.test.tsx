@@ -870,6 +870,27 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('settles without refit requests when the selected area has no area data', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const map = { ...mapInstance, fitBounds }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    // 対象地域のデータが無い選択では、再フィットを要求し続けて描画が終わらなく
+    // なることがあった（Issue #129）。地域未指定（既定値）と空配列の明示の両方で、
+    // 表示が落ち着いて再描画にも耐えることを固定する。
+    const { rerender, unmount } = render(<ConfiguredMapPreview selectedAreaId="area-missing" />)
+    expect(await screen.findByRole('button', { name: '現在地へ戻る' })).toBeVisible()
+    rerender(<ConfiguredMapPreview areas={[]} selectedAreaId="area-missing" />)
+    rerender(<ConfiguredMapPreview areas={[]} selectedAreaId="area-other-missing" />)
+    expect(await screen.findByRole('button', { name: '現在地へ戻る' })).toBeVisible()
+    expect(fitBounds).not.toHaveBeenCalled()
+    unmount()
+    delete window.google
+  })
+
   it('ignores a location callback arriving after the ten second deadline', async () => {
     vi.useFakeTimers()
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
