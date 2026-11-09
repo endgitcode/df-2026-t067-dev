@@ -40,7 +40,7 @@ export function useLocalDraftSave(connection?: LocalDraftConnection) {
   async function save(draft: ManagedQuestDraft, asset: DraftAsset | undefined, onSaved: (record: ManagedQuest) => void) {
     if (!connection || (state.status === 'error' && state.reload)) return
     if (asset && !connection.workflowPart && !asset.photoRights.trim()) {
-      setState({ status: 'error', message: '写真の出典と利用権を入力してください。' })
+      setState({ status: 'error', message: '写真の権利を入力' })
       return
     }
     let attemptedCreate = false

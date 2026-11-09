@@ -8,7 +8,7 @@ import { PublicationWorkspace } from './PublicationWorkspace'
 
 type Part = 'target' | 'conditions' | 'content' | 'hints' | 'publication'
 type Destination = { part: Part; field?: ReviewField } | 'list'
-const steps = ['対象と参考写真', '条件と案内', '問題とヒント', '写真試験と公開']
+const steps = ['非公開', '条件と案内', '問題とヒント', '写真試験と公開']
 const defaultParts: Part[] = ['target', 'conditions', 'content', 'publication']
 const stepNumber: Record<Part, number> = { target: 1, conditions: 2, content: 3, hints: 3, publication: 4 }
 const inputTargets: Partial<Record<ReviewField, string>> = {
@@ -142,7 +142,7 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
     <header className="workflow-heading">
       <h2 ref={heading} tabIndex={-1}>STEP {step}　{steps[step - 1]}</h2>
       <QuestStatusBadge status={record?.status ?? 'draft'} />
-      {part !== 'publication' && <button type="button" disabled={busy} onClick={() => navigate('list')}>問題一覧へ戻る</button>}
+      {part !== 'publication' && <button type="button" disabled={busy} onClick={() => navigate('list')}>謎一覧へ</button>}
     </header>
     {pending && <div role="alertdialog" aria-label="未保存の入力" className="unsaved-dialog" tabIndex={-1} ref={dialog} onKeyDown={event => {
       if (event.key === 'Escape') { setPending(null); heading.current?.focus() }
@@ -153,29 +153,29 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
         else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) { event.preventDefault(); buttons[0].focus() }
       }
     }}>
-      <p>STEP {step}の未保存の入力があります。</p>
+      <p>STEP {step}・未保存</p>
       <button type="button" disabled={busy} onClick={() => document.dispatchEvent(new Event('admin-save-draft'))}>保存して移動</button>
       <button type="button" disabled={busy} onClick={() => move(pending)}>保存せず移動</button>
       <button type="button" disabled={busy} onClick={() => { setPending(null); heading.current?.focus() }}>とどまる</button>
     </div>}
-    {part === 'conditions' && <p>撮影範囲は、STEP 1で保存した対象スポットの位置を中心に半径1kmです。
-      {missing.includes('targetSpot') || missing.includes('shootingAreas') ? ' STEP 1でスポットを保存してください。' : ' 設定済みです。'}</p>}
+    {part === 'conditions' && <p>撮影範囲・半径1km
+      {missing.includes('targetSpot') || missing.includes('shootingAreas') ? '・場所を保存' : '・設定済み'}</p>}
     {part === 'hints' && record ? <HintAssetEditor api={api} initial={record} member={member}
-      onBack={() => navigate({ part: 'content' })} backLabel="問題文に戻る" onDirty={setDirty} onSaving={setBusy}
+      onBack={() => navigate({ part: 'content' })} backLabel="問題文へ" onDirty={setDirty} onSaving={setBusy}
       onSaved={(updated) => saved(updated, false)} onContinue={(updated) => { setRecord(updated); if (!pending) move({ part: 'publication' }) }} />
       : part !== 'publication' && <QuestDraftForm key={part} teamPreview={teamPreview} connection={{
         workflowPart: part === 'conditions' ? 2 : part === 'content' ? 3 : 1,
         api, initial: record, member, onBack, onWorkflowSave: saved, onDirty: setDirty, onSaving: setBusy,
       }} />}
-    {part === 'publication' && !record && <p>STEP 1〜3のいずれかで下書きを保存すると、公開準備を始められます。</p>}
+    {part === 'publication' && !record && <p>下書きを保存</p>}
     {part === 'publication' && newerVersion && <p role="alert">別の操作で下書きが更新されました。
       <button type="button" disabled={busy} onClick={() => setRecord(remote.quest)}>最新の内容を読み込む</button>
     </p>}
     {part === 'publication' && lastTrialRevision !== null && lastTrialRevision !== revision &&
-      <p role="status">内容を変えたので、もう一度テストしてください。</p>}
+      <p role="status">変更あり・再テスト</p>}
     {record && openedPublication && <div hidden={part !== 'publication'}>
       <PublicationWorkspace key={revision} api={api} initial={record} approvedAssets photoTestSource={photoTestSource}
-        areaUnclassified={areaUnclassified} onBack={() => navigate('list')} backLabel="問題一覧へ戻る"
+        areaUnclassified={areaUnclassified} onBack={() => navigate('list')} backLabel="謎一覧へ"
         onFix={fix} onPublished={onPublished} onBusy={setBusy} onTrialConfirmed={() => setLastTrialRevision(record.draftRevision)}
         readiness={readiness} readinessFailed={result.status === 'error'} onReadinessRetry={retry} />
     </div>}

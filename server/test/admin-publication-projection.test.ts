@@ -40,7 +40,7 @@ test('formats public conditions on separate lines without the paid category pref
     requiresBoat: true, price: '有料：大人500円', photoNote: '足元に注意',
   } } }
   assert.equal(projectManagedQuest(quest, 4).quest.visitConditions,
-    '船上・海上からの撮影が必要。\n料金：大人500円\n撮影の注意：足元に注意')
+    '船上・海上\n料金：大人500円\n注意：足元に注意')
 })
 
 test('does not publish unconfirmed prices or their unverified details', () => {

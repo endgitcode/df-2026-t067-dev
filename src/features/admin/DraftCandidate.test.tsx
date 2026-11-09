@@ -27,7 +27,7 @@ it('applies only the checked fields of a candidate', async () => {
   await user.click(screen.getByText('下書き案を取り込む'))
   await user.click(screen.getByRole('button', { name: '下書き案を取得' }))
   expect(await screen.findByText('案の題名')).toBeVisible()
-  await user.click(screen.getByLabelText('タイトル'))
+  await user.click(screen.getByLabelText('タイトルを反映'))
   await user.click(screen.getByRole('button', { name: 'この案を編集欄に入れる' }))
   expect(onApply).toHaveBeenCalledExactlyOnceWith({ ...candidate, title: '今の題名' })
 })

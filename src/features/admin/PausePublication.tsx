@@ -8,11 +8,11 @@ type Failure = { message: string; reload?: true }
 
 function pauseFailure(cause: unknown): Failure {
   if (cause instanceof ApiError) {
-    if (cause.code === 'QUEST_CHANGED') return { message: '公開内容が変わりました。最新の一覧を確認してください。', reload: true }
-    if (cause.code === 'QUEST_UNAVAILABLE') return { message: 'この謎は公開されていません。最新の一覧を確認してください。', reload: true }
-    if (cause.code === 'FORBIDDEN') return { message: '公開担当者の権限を確認できません。', reload: true }
+    if (cause.code === 'QUEST_CHANGED') return { message: '公開内容に変更・一覧を再読込', reload: true }
+    if (cause.code === 'QUEST_UNAVAILABLE') return { message: '未公開・一覧を再読込', reload: true }
+    if (cause.code === 'FORBIDDEN') return { message: '公開権限を確認', reload: true }
   }
-  return { message: '休止を確認できませんでした。同じ理由で再試行できます。' }
+  return { message: '休止未確認・再試行' }
 }
 
 const pauseCategories = ['安全上の問題', '権利の問題', '内容の誤り', '自治体からの依頼', 'その他'] as const
@@ -37,7 +37,7 @@ export function PausePublication({ api, orgId, questId, version, onPaused, onRel
     event.preventDefault()
     if (!valid || failure?.reload) return
     const operation = begin(() => {
-      setFailure({ message: '休止の確認に時間がかかっています。同じ理由で再試行できます。' })
+      setFailure({ message: '休止確認中断・再試行' })
       setPending(false)
     })
     if (!operation) return
@@ -56,11 +56,11 @@ export function PausePublication({ api, orgId, questId, version, onPaused, onRel
 
   if (!open) return <button type="button" className="danger-button" ref={trigger} onClick={() => {
     setCategory(''); setReason(''); setFailure((current) => current?.reload ? current : null); setOpen(true)
-  }}>公開を休止</button>
+  }}>休止</button>
   return <form aria-label="公開休止" onSubmit={pause}>
-    <p>この謎の公開を止めます。旅行者は新しく挑戦できなくなります。</p>
-    <label>休止の種類<select ref={categoryInput} value={category} disabled={pending} onChange={(event) => setCategory(event.target.value)}>
-      <option value="">選んでください</option>
+    <p>公開停止・新規挑戦停止</p>
+    <label>種類<select ref={categoryInput} value={category} disabled={pending} onChange={(event) => setCategory(event.target.value)}>
+      <option value="">選択</option>
       {pauseCategories.map((item) => <option key={item} value={item}>{item}</option>)}
     </select></label>
     <label>休止理由<textarea required={category === 'その他'} maxLength={1000 - (category ? category.length + 1 : 0)} rows={2} value={reason} disabled={pending}
@@ -68,8 +68,8 @@ export function PausePublication({ api, orgId, questId, version, onPaused, onRel
     {failure && <p role="alert">{failure.message}</p>}
     <div className="admin-list-actions">
       <button type="button" disabled={pending} onClick={() => setOpen(false)}>キャンセル</button>
-      {failure?.reload ? <button type="button" onClick={onReload}>最新の問題一覧を確認</button>
-        : <button type="submit" className="danger-button" disabled={pending || !valid}>{pending ? '休止を確認しています…' : '公開を休止する'}</button>}
+      {failure?.reload ? <button type="button" onClick={onReload}>最新の謎一覧を確認</button>
+        : <button type="submit" className="danger-button" disabled={pending || !valid}>{pending ? '休止を確認しています…' : '休止する'}</button>}
     </div>
   </form>
 }

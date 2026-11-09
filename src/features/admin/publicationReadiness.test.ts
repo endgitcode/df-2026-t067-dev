@@ -26,8 +26,8 @@ it('lists every missing saved item plus the review step for a draft', () => {
     },
   }
   expect(remainingWork(empty)).toEqual([
-    '撮る“もの”の名前（非公開）', '写真の利用権', '正解の写真', '撮影できる範囲（非公開）',
-    '問題タイトル', '問題文', '3本のヒント', 'AIが見分けるための特徴（非公開）', '確認依頼',
+    '撮るもの', '写真の利用権', '正解の写真', '撮影範囲',
+    'タイトル', '問題文', '3本のヒント', '特徴', '確認依頼',
   ])
 })
 
@@ -39,8 +39,8 @@ it('points at the publisher step once review is pending', () => {
 it('rejects feature text the server review would reject', () => {
   const tooMany = Array.from({ length: 21 }, (_, index) => `特徴${index}`).join('\n')
   expect(remainingWork({ ...complete, draft: { ...complete.draft, content: { ...complete.draft.content, verifiedFeatures: tooMany } } }))
-    .toContain('AIが見分けるための特徴（非公開）')
+    .toContain('特徴')
   const tooLong = 'あ'.repeat(301)
   expect(remainingWork({ ...complete, draft: { ...complete.draft, content: { ...complete.draft.content, verifiedFeatures: tooLong } } }))
-    .toContain('AIが見分けるための特徴（非公開）')
+    .toContain('特徴')
 })

@@ -126,10 +126,10 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
   function locate() {
     const geolocation = navigator.geolocation
     if (!geolocation?.getCurrentPosition) {
-      setLocationStatus('この端末では現在地を取得できません。地図から場所を選べます。')
+      setLocationStatus('現在地未対応・地図で選択')
       return
     }
-    const retryMessage = '現在地を取得できませんでした。もう一度お試しください。'
+    const retryMessage = '現在地取得失敗・再試行'
     const operation = beginLocation(() => { setLocating(false); setLocationStatus(retryMessage) })
     if (!operation) return
     setLocating(true)
@@ -148,8 +148,8 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
           return
         }
         setCurrentLocation({ latitude, longitude })
-        finish('現在地の周辺を表示しました。登録する場所を地図で選んでください。')
-      }, (error) => finish(error.code === 1 ? '位置情報が許可されていません。ブラウザのサイト設定で許可して、もう一度お試しください。' : retryMessage),
+        finish('現在地周辺・場所を選択')
+      }, (error) => finish(error.code === 1 ? '位置情報未許可・サイト設定で許可' : retryMessage),
       { enableHighAccuracy: false, maximumAge: 0, timeout: 10_000 })
     } catch {
       finish(retryMessage)
@@ -169,8 +169,8 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
       </div>}
     </div>}
     {pickPlace && locationStatus && <p role="status">{locationStatus}</p>}
-    {status === 'missing' && <p>地図の設定がないため、下の数値入力で設定できます。</p>}
-    {status === 'loading' && <p role="status">地図を読み込んでいます…</p>}
-    {status === 'error' && <div role="alert"><p>地図を読み込めませんでした。入力は保持されています。数値入力で設定できます。</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>地図を再試行</button></div>}
+    {status === 'missing' && <p>地図未設定・座標を入力</p>}
+    {status === 'loading' && <p role="status">地図を読込中</p>}
+    {status === 'error' && <div role="alert"><p>地図読込失敗・座標を入力</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>地図を再試行</button></div>}
   </div>
 }

@@ -27,18 +27,18 @@ it('uses only the latest map candidates after explicit confirmation', async () =
     </>
   }
   render(<Harness />)
-  await user.click(screen.getByRole('button', { name: '地図を開いて場所を選ぶ' }))
+  await user.click(screen.getByRole('button', { name: '地図' }))
   await user.click(screen.getByRole('button', { name: '地図の場所A' }))
   await user.click(screen.getByRole('button', { name: '地図の場所B' }))
   expect(await screen.findByText('名称候補：地図の名称候補')).toBeVisible()
   expect(screen.getByText('住所候補：地図の住所候補')).toBeVisible()
-  expect(screen.getByLabelText('住所（クリア後に表示）')).toHaveValue('')
+  expect(screen.getByLabelText('住所')).toHaveValue('')
   await act(() => finishFirst({ name: '古い候補' }))
   expect(screen.queryByText(/古い候補/)).not.toBeInTheDocument()
   expect(screen.getByTestId('spot')).toHaveTextContent('incomplete')
-  await user.click(screen.getByRole('button', { name: 'この名前と住所を使う' }))
-  expect(screen.getByLabelText('場所の名前（クリア後に表示）')).toHaveValue('地図の名称候補')
-  expect(screen.getByLabelText('住所（クリア後に表示）')).toHaveValue('地図の住所候補')
+  await user.click(screen.getByRole('button', { name: '名前・住所を使う' }))
+  expect(screen.getByLabelText('場所の名前')).toHaveValue('地図の名称候補')
+  expect(screen.getByLabelText('住所')).toHaveValue('地図の住所候補')
   expect(JSON.parse(screen.getByTestId('spot').textContent ?? '')).toEqual({
     name: '地図の名称候補', address: '地図の住所候補', position: { latitude: 36, longitude: 136 }, googlePlaceId: 'new',
   })
@@ -52,13 +52,27 @@ it('keeps manually entered values when a map candidate omits them', async () => 
     return <MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={setInput} />
   }
   render(<Harness />)
-  await user.click(screen.getByRole('button', { name: '地図を開いて場所を選ぶ' }))
+  await user.click(screen.getByRole('button', { name: '地図' }))
   await user.click(screen.getByRole('button', { name: '地図の場所A' }))
   await screen.findByText('住所候補：候補の住所')
-  await user.type(screen.getByLabelText('場所の名前（クリア後に表示）'), '手入力の場所')
-  await user.click(screen.getByRole('button', { name: 'この名前と住所を使う' }))
-  expect(screen.getByLabelText('場所の名前（クリア後に表示）')).toHaveValue('手入力の場所')
-  expect(screen.getByLabelText('住所（クリア後に表示）')).toHaveValue('候補の住所')
-  expect(screen.getByLabelText('スポットの緯度')).toHaveValue('35')
-  expect(screen.getByLabelText('スポットの経度')).toHaveValue('135')
+  await user.type(screen.getByLabelText('場所の名前'), '手入力の場所')
+  await user.click(screen.getByRole('button', { name: '名前・住所を使う' }))
+  expect(screen.getByLabelText('場所の名前')).toHaveValue('手入力の場所')
+  expect(screen.getByLabelText('住所')).toHaveValue('候補の住所')
+  expect(screen.getByLabelText('緯度')).toHaveValue('35')
+  expect(screen.getByLabelText('経度')).toHaveValue('135')
+})
+
+
+it('toggles the map with the same button', async () => {
+  const user = userEvent.setup()
+  render(<MapSpotEditor input={initialSpotInput()} invalid={false} orgId="fixture" onChange={vi.fn()} />)
+  const toggle = screen.getByRole('button', { name: '地図' })
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await user.click(toggle)
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByRole('button', { name: '地図の場所A' })).toBeVisible()
+  await user.click(toggle)
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('button', { name: '地図の場所A' })).not.toBeInTheDocument()
 })
