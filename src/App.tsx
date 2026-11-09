@@ -41,8 +41,8 @@ type AppProps = {
   authClient?: AuthClient
   onStartChallenge?: (selection: ChallengeSelection) => void | Promise<unknown>
   quest?: PublicQuest
-  filterRegion?: string
-  filterPrefecture?: string
+  filterRegion?: string | readonly string[]
+  filterPrefecture?: string | readonly string[]
   mapAreas?: PublicArea[]
   mapQuests?: PublicQuest[]
   /** 問題一覧の読み込み中。一覧に「0件／空です」を一瞬出さないために MapPreview へ渡す。 */

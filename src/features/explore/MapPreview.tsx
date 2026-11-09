@@ -109,7 +109,7 @@ function clampFitZoomOnIdle(instance: MapInstance): void {
 const EMPTY_AREAS: PublicArea[] = []
 
 export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefecture = '', selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, onDeselectQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
-  filterRegion?: string; filterPrefecture?: string
+  filterRegion?: string | readonly string[]; filterPrefecture?: string | readonly string[]
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; questsLoading?: boolean; onOpenQuest?: (questId: string) => void; onDeselectQuest?: () => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
   /** 探索画面が前面にあるか。記録画面の表示中は探索側を隠したまま常駐させるため、
@@ -652,7 +652,9 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   useEffect(() => {
     const instance = map.current
     if (!API_KEY || !instance || status !== 'ready' || areas.length === 0) return
-    const key = `${filterRegion}:${filterPrefecture}:${areas.map((area) => area.areaId).sort().join(',')}`
+    const regionKey = Array.isArray(filterRegion) ? filterRegion.join(',') : filterRegion
+    const prefectureKey = Array.isArray(filterPrefecture) ? filterPrefecture.join(',') : filterPrefecture
+    const key = `${regionKey}:${prefectureKey}:${areas.map((area) => area.areaId).sort().join(',')}`
     const previous = lastAreasKey.current
     lastAreasKey.current = { map: instance, key }
     if (!previous || previous.map !== instance || previous.key === key || fitAreaId) return

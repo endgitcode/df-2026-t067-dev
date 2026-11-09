@@ -23,5 +23,11 @@ describe('exploration area hierarchy', () => {
       expect(getRegionAreas(areas, region, '').map((item) => item.areaId)).not.toContain('unknown')
     }
   })
-})
 
+  it('keeps areas that match any selected region or prefecture (OR)', () => {
+    const areas = [area('tokyo', '川辺エリア', '13'), area('hokkaido', '北のエリア', '01'), area('osaka', '森エリア', '27')]
+    expect(getRegionAreas(areas, ['関東', '北海道'], []).map((item) => item.areaId).sort()).toEqual(['hokkaido', 'tokyo'])
+    expect(getRegionAreas(areas, [], ['東京都', '北海道']).map((item) => item.areaId).sort()).toEqual(['hokkaido', 'tokyo'])
+    expect(getRegionAreas(areas, ['関東'], ['北海道']).map((item) => item.areaId).sort()).toEqual(['hokkaido', 'tokyo'])
+  })
+})
