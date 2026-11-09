@@ -389,7 +389,8 @@ button.explore-quest-card { cursor: pointer; }
 .quest-card-heading { padding: 20px 24px; border-bottom: var(--ui-border-width) solid var(--ui-line); background: var(--ui-tint); }
 .quest-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .quest-title-row h3 { min-width: 0; overflow-wrap: anywhere; }
-.owner-records { display: grid; gap: 16px; max-width: 720px; margin: 0 auto; }
+/* 記録画面の列は中央に寄せず、探索画面と同じ左のラインに揃える（D-60）。幅の上限は読みやすさのために残す。 */
+.owner-records { display: grid; gap: 16px; max-width: 720px; }
 /* 記録画面と探索画面は hidden で切り替える（アンマウントしない）。display を
    指定している要素では hidden が負けるため、明示的に打ち消す。 */
 .owner-records[hidden], .explore-view[hidden] { display: none; }
