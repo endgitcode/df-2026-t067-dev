@@ -204,6 +204,35 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('fits to the selected quest area without an area selection and restores the camera when the quest is deselected (D-65)', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const fitBounds = vi.fn()
+    const setCenter = vi.fn()
+    const setZoom = vi.fn()
+    const map = { ...mapInstance, fitBounds, setCenter, setZoom }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+    ]
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} onOpenQuest={vi.fn()} />)
+    // 初期表示（未選択）は全ピンの範囲へ1回だけ寄せる。
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    fitBounds.mockClear()
+    setCenter.mockClear()
+    // 地域を選ばず問題だけを選んでも、所属地域へ寄せる（D-44 の寄せは維持する）。
+    rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="q1" onOpenQuest={vi.fn()} />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    // 問題の選択を外すと、選択直前のカメラへ戻る（#43 の復元も維持する）。
+    rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="" onOpenQuest={vi.fn()} />)
+    await waitFor(() => expect(setCenter).toHaveBeenCalled())
+    unmount()
+    delete window.google
+  })
+
   it('fits the selected area above the bottom sheet when quests are shown in a sheet', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
@@ -1067,6 +1096,42 @@ describe('Google map panel', () => {
     await user.click(screen.getByRole('button', { name: '謎リストを広げる' }))
     expect(sheet).toHaveAttribute('data-snap', 'peek')
     HTMLElement.prototype.scrollIntoView = originalScrollIntoView
+    unmount()
+    delete window.google
+  })
+
+  it('keeps every quest in the sheet list when one is selected and routes a re-tap of the selected row to deselect (D-65)', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    const map = { ...mapInstance, fitBounds: vi.fn() }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    class Marker { setMap() {} addListener() { return { remove() {} } } }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const { userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    const onOpenQuest = vi.fn()
+    const onDeselectQuest = vi.fn()
+    const quests: PublicQuest[] = [
+      { questId: 'q1', version: 1, title: '港の時計台', clue: '大きな時計が見える場所', areaId: 'area-a', visitConditions: '', hintCount: 3 },
+      { questId: 'q2', version: 1, title: '博多の灯台', clue: '海に突き出た灯台', areaId: 'area-b', visitConditions: '', hintCount: 2 },
+    ]
+    const detail = <div><h3>博多の灯台の詳細</h3></div>
+    const { container, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="q2"
+      onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} questDetail={detail} />)
+    await waitFor(() => expect(container.querySelector('.explore-sheet')).not.toBeNull())
+    // スマホのシートでも PC と同じモデル：選択中の問題の所属地域で一覧は絞られず、
+    // 他の地域の問題も残り、詳細は選択中の行の直下にだけ開く。
+    const selectedRow = screen.getByRole('button', { name: '博多の灯台の詳細を見る' })
+    expect(selectedRow).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
+    expect(selectedRow.closest('li')).toContainElement(screen.getByRole('heading', { name: '博多の灯台の詳細' }))
+    // 選択中の行の再タップは選択解除へ、別の行は選択として伝える。
+    await user.click(selectedRow)
+    expect(onDeselectQuest).toHaveBeenCalledTimes(1)
+    expect(onOpenQuest).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
+    expect(onOpenQuest).toHaveBeenCalledWith('q1')
     unmount()
     delete window.google
   })
