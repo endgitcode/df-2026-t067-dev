@@ -7,22 +7,21 @@ export interface SpotInput {
   latitude: string
   longitude: string
   googlePlaceId?: string
-  confirmed: boolean
-  requiresConfirmation?: boolean
+  hasImportedLink?: boolean
 }
 
 export function initialSpotInput(spot?: ConfirmedSpot): SpotInput {
   return { url: '', name: spot?.name ?? '', address: spot?.address ?? '',
     latitude: spot ? String(spot.position.latitude) : '', longitude: spot ? String(spot.position.longitude) : '',
-    googlePlaceId: spot?.googlePlaceId, confirmed: Boolean(spot) }
+    googlePlaceId: spot?.googlePlaceId }
 }
 
-export function confirmedSpot(input: SpotInput): ConfirmedSpot | null | 'incomplete' {
+export function spotForDraft(input: SpotInput): ConfirmedSpot | null | 'incomplete' {
   if (![input.name, input.address, input.latitude, input.longitude, input.googlePlaceId ?? ''].some((value) => value.trim())) {
-    return input.requiresConfirmation ? 'incomplete' : null
+    return input.hasImportedLink ? 'incomplete' : null
   }
   const position = spotPosition(input.latitude, input.longitude)
-  if (!position || !input.name.trim() || !input.address.trim() || !input.confirmed) return 'incomplete'
+  if (!position || !input.name.trim() || !input.address.trim()) return 'incomplete'
   return { name: input.name.trim(), address: input.address.trim(), position,
     ...(input.googlePlaceId ? { googlePlaceId: input.googlePlaceId } : {}) }
 }

@@ -24,7 +24,7 @@ A03の「リンクから場所を取得」は、許可したGoogle MapsのHTTPS�
 
 `maps.app.goo.gl` と旧 `goo.gl/maps` の短縮リンクには、Google Mapsで開いて長いURLを貼り直す導線を表示する。自動展開や外部APIへの通信は行わない。座標を取得できない場合は管理地図または数値入力を使える。URLから抽出したPlace IDは、独自に入力した座標との対応が未検証なので保存しない。
 
-スポット名と住所は自治体自身が資料や現地で確認した情報を入力する。位置・名称・住所の確認を選択すると保存できる。編集すると再確認が必要になる。Google Mapsの表示には既存のキーを使い、未設定時も数値入力で続行できる。[Maps URL仕様](https://developers.google.com/maps/documentation/urls/get-started)・[Places APIの保存条件](https://developers.google.com/maps/documentation/places/web-service/policies)を参照する。Places・逆ジオコーディングは未接続。住所等のAPIレスポンスの永続保存は行わず、導入時に利用条件、保存期間、キー、課金を確認する。
+スポット名と住所は自治体自身が資料や現地で確認した情報を入力する。スポットを登録する場合、名称・住所・有効な座標を入力すると下書きに保存できる。Google Mapsの表示には既存のキーを使い、未設定時も数値入力で続行できる。[Maps URL仕様](https://developers.google.com/maps/documentation/urls/get-started)・[Places APIの保存条件](https://developers.google.com/maps/documentation/places/web-service/policies)を参照する。Places・逆ジオコーディングは未接続。住所等のAPIレスポンスの永続保存は行わず、導入時に利用条件、保存期間、キー、課金を確認する。
 
 短縮URLのサーバー展開とPlacesによる名称・住所・位置・Place IDの照会はA担当の接続事項。許可ホスト・DNSと転送先の検証、所属確認、専用キーと利用枠、候補の出典表示、保存可能な情報との分離を契約レビューで確認する。
 
