@@ -48,8 +48,9 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
         const latitude = event.latLng.lat(), longitude = event.latLng.lng()
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return
         const id = pickPlace && event.placeId && /^[A-Za-z0-9_-]{1,512}$/.test(event.placeId) ? event.placeId : undefined
-        if (id) event.stop?.()
-        latest.current.onSelect(latitude, longitude, id ? {
+        if (!id) { latest.current.onSelect(latitude, longitude); return }
+        event.stop?.()
+        latest.current.onSelect(latitude, longitude, {
           id, loadDetails: import.meta.env.VITE_GOOGLE_MAPS_PLACES_PICKER === 'true' && google.importLibrary
             ? async () => {
               const { Place } = await google.importLibrary!('places')
@@ -57,7 +58,7 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
               await place.fetchFields({ fields: ['displayName', 'formattedAddress'] })
               return { name: place.displayName ?? undefined, address: place.formattedAddress ?? undefined }
             } : undefined,
-        } : undefined)
+        })
       })
       dispose = () => { listener.remove() }
       if (authFailed) { dispose(); return }
