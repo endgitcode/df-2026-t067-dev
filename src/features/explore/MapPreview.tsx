@@ -109,9 +109,12 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
   const [locationStatus, setLocationStatus] = useState('')
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
 
+  // 結果メッセージは常駐させない。成功は5秒、案内を含む失敗は読む時間を取って
+  // 10秒で消す（D-58）。閉じるボタンでも即座に消せる。取得中は確定まで消さない。
   useEffect(() => {
-    if (!locationStatus.startsWith(LOCATION_SUCCESS_MESSAGE)) return
-    const timeout = window.setTimeout(() => setLocationStatus(''), 5000)
+    if (!locationStatus || locationStatus === '現在地を取得しています…') return
+    const timeout = window.setTimeout(() => setLocationStatus(''),
+      locationStatus.startsWith(LOCATION_SUCCESS_MESSAGE) ? 5000 : 10_000)
     return () => window.clearTimeout(timeout)
   }, [locationStatus])
   // 位置情報の送信案内は常駐させず、そのセッションで初めて現在地を使う時に結果メッセージへ一度だけ添える（D-28）。
@@ -701,7 +704,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       {sheetMode && mapControls}
       {/* 地図が使えない時は浮かせず、地図の下に通常フローで出して絞り込み自体は失わせない。 */}
       {status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
-      {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status">{locationStatus}</div>}
+      {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status"><span>{locationStatus}</span><button type="button" className="map-location-status-close" aria-label="位置情報の表示を閉じる" onClick={() => setLocationStatus('')}>×</button></div>}
       {sheetMode
         ? panelMode
           ? <>
