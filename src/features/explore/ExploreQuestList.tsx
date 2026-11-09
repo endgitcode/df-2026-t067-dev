@@ -32,11 +32,9 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   // アコーディオンを閉じた問題。選択解除の受け口が無い使われ方でのみ使い、
   // 選択自体は変えず、詳細の表示だけを畳む（受け口がある場合は再タップ＝選択解除）。
   const [closedQuestId, setClosedQuestId] = useState('')
-  // 詳細の開閉は高さアニメーションで滑らせる（D-59）。開く時はマウントの次フレームで
-  // 開状態のクラスを付け、閉じる時は最後の内容を保持したまま畳んでから外す
-  // （「場所で絞る」と同じ grid-template-rows 方式）。状態の追随は App.tsx の
+  // 詳細の開閉は高さアニメーションで滑らせる（D-59、方式は下記の追記で変更）。
+  // 閉じる時は最後の内容を保持したまま畳んでから外す。状態の追随は App.tsx の
   // ディープリンク処理と同じく、レンダー中に前回値と比較して調整する形に揃える。
-  const [enteredQuestId, setEnteredQuestId] = useState('')
   const [prevExpandedQuestId, setPrevExpandedQuestId] = useState('')
   const [lastDetail, setLastDetail] = useState<{ questId: string; content: ReactNode } | null>(null)
   const [closingDetail, setClosingDetail] = useState<{ questId: string; content: ReactNode } | null>(null)
@@ -52,16 +50,9 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   }
   if (expandedQuestId !== prevExpandedQuestId) {
     setPrevExpandedQuestId(expandedQuestId)
-    setEnteredQuestId('')
     if (lastDetail && lastDetail.questId !== expandedQuestId) setClosingDetail(lastDetail)
     else if (closingDetail?.questId === expandedQuestId) setClosingDetail(null)
   }
-
-  useEffect(() => {
-    if (!expandedQuestId) return
-    const frame = requestAnimationFrame(() => setEnteredQuestId(expandedQuestId))
-    return () => cancelAnimationFrame(frame)
-  }, [expandedQuestId])
 
   // 閉じ終わったら保持していた内容を外す（遷移 280ms の後に外れるよう少し長く取る）。
   useEffect(() => {
@@ -126,14 +117,20 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
                     : { 'aria-pressed': selectedQuestId ? quest.questId === selectedQuestId : undefined })}
                   aria-label={`${quest.title}の詳細を見る`} onClick={() => handleRowClick(quest.questId)}>{content}</button>
                 : <div className="explore-quest-card">{content}</div>}
-              {(expanded || closing) && <div className={'explore-quest-detail-wrap' + (expanded && enteredQuestId === quest.questId ? ' is-open' : '')}
+              {/* 開閉の枠は「場所で絞る」と同じく常時マウントし、開状態のクラスだけで
+                  grid-template-rows を切り替える（D-59 追記）。展開の瞬間にマウントして
+                  次フレームでクラスを足す形では、閉じた高さ（0fr）が画面に確定する前に
+                  開状態へ変わり、遷移の開始値が無いため実物ではアニメーションが
+                  起きなかった。枠が常駐していれば 0fr が確定済みで、クラスの切り替えが
+                  そのまま遷移になる。中身は開いている行（と、閉じ終わるまでの行）だけが持つ。 */}
+              <div className={'explore-quest-detail-wrap' + (expanded ? ' is-open' : '')}
                 aria-hidden={!expanded || undefined}>
                 <div className="explore-quest-detail-clip">
                   {expanded
                     ? <div ref={detailRef} className="explore-quest-detail">{detailContent}</div>
-                    : <div className="explore-quest-detail">{closingDetail?.content}</div>}
+                    : closing && <div className="explore-quest-detail">{closingDetail?.content}</div>}
                 </div>
-              </div>}
+              </div>
             </li>
           })}
         </ul>}
