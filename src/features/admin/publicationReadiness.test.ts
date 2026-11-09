@@ -32,7 +32,7 @@ it('lists every missing saved item plus the review step for a draft', () => {
 })
 
 it('points at the publisher step once review is pending', () => {
-  expect(remainingWork({ ...complete, status: 'review_pending' })).toEqual(['公開担当の確認と公開'])
+  expect(remainingWork({ ...complete, status: 'review_pending' })).toEqual(['公開前のチェックと公開'])
   expect(remainingWork(complete)).toEqual(['確認依頼'])
 })
 

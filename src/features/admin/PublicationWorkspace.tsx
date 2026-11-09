@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError, parsePublishManagedQuest } from '../../shared/api'
-import type { ApiClient, ManagedQuest, OrgMembership, PhotoDecision, PublishManagedQuest, ReviewField } from '../../shared/api'
+import type { ApiClient, ManagedQuest, PhotoDecision, PublishManagedQuest, ReviewField } from '../../shared/api'
 import { PhotoRightsInput } from './PhotoRightsInput'
 import { fixturePngUrl, matchFixturePngBase64, otherFixturePngBase64 } from './photoTestFixtures'
 import { useRequestAction } from '../../shared/useRequestAction'
@@ -39,8 +39,8 @@ function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
   }
 }
 
-export function PublicationWorkspace({ api, initial, member, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock', areaUnclassified = false }: {
-  api: ApiClient; initial: ManagedQuest; member: OrgMembership; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; onBack: () => void; onPublished: () => void
+export function PublicationWorkspace({ api, initial, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock', areaUnclassified = false }: {
+  api: ApiClient; initial: ManagedQuest; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; onBack: () => void; onPublished: () => void
 }) {
   const [quest, setQuest] = useState(initial)
   const [photo, setPhoto] = useState<File | null>(null)
@@ -108,7 +108,7 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
   }
 
   function publish() {
-    if (!ready || member.role !== 'publisher') return
+    if (!ready) return
     void perform((signal) => api.publishManagedQuest(orgId, questId, parsePublishManagedQuest({
       expectedDraftRevision: draftRevision, matchTestId: proofs.MATCH, mismatchTestId: proofs.WRONG_TARGET,
       confirmations: Object.fromEntries(checked.map((item) => [item, true])),
@@ -151,27 +151,20 @@ export function PublicationWorkspace({ api, initial, member, onBack, onPublished
     {proofs.WRONG_TARGET && <p role="status">別対象の試験を確認しました。</p>}
     {outcome === 'IMAGE_UNCERTAIN' && <p role="status">{realPhotoTest ? '試験写真を確認できませんでした。対象がはっきり写った別の写真でお試しください。' : '試験写真を確認できませんでした。別の合成写真でお試しください。'}</p>}
     <fieldset disabled={disabled}>
-      <legend>確認依頼</legend>
-      <button type="button" onClick={review}>この版の確認を依頼</button>
+      <legend>公開条件の確認</legend>
+      <button type="button" onClick={review}>この版の公開条件を確認</button>
       {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
       {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{reviewLabels[item]}</li>)}</ul></>}
     </fieldset>
-    {member.role === 'publisher' ? <fieldset disabled={disabled || !reviewed}>
-      <legend>公開担当者の確認</legend>
+    <fieldset disabled={disabled || !reviewed}>
+      <legend>公開前のチェック</legend>
+      {!reviewed && <p>この版の公開条件を確認し、この画面で一致と別対象の写真試験を行うとチェックできます。</p>}
       {confirmationLabels.map(([item, label]) => <label key={item} className="check-option">
         <input type="checkbox" checked={checked.includes(item)} onChange={(event) => {
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))
         }} />{label}
       </label>)}
       <button type="button" disabled={!ready} onClick={publish}>この版を公開</button>
-    </fieldset> : <fieldset disabled>
-      <legend>公開担当者の確認</legend>
-      <p>公開の確認と実行は公開担当が行います。編集担当は確認依頼までを行ってください。</p>
-      <p>写真試験の結果はこの画面を開いている間だけ保持されるため、公開担当が自分の画面で写真試験を再度実施してから公開します。</p>
-      {confirmationLabels.map(([, label]) => <label key={label} className="check-option">
-        <input type="checkbox" checked={false} readOnly />{label}
-      </label>)}
-      <button type="button" disabled>この版を公開</button>
-    </fieldset>}
+    </fieldset>
   </section>
 }

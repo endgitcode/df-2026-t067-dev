@@ -99,8 +99,7 @@ export class FirestoreManagedPublication {
 
   private async readPublishable(tx: Transaction, uid: string, orgId: string, questId: string, revision: number) {
     const owned = await this.drafts.readOwned(tx, uid, orgId, questId)
-    const { quest, member, zones } = owned
-    requirePublisher(member)
+    const { quest, zones } = owned
     if (quest.draftRevision !== revision) throw draftConflict()
     if (quest.status !== 'review_pending' && quest.status !== 'published') throw reviewRequired()
     const { referenceAssetId, hintAssetId, content } = quest.draft

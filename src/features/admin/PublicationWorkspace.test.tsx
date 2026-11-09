@@ -25,7 +25,7 @@ it('publishes only after both saved-version photo tests, review, and explicit co
   const publishManagedQuest = vi.fn().mockResolvedValue({ ...initial, status: 'published', publishedVersion: 1 })
   const api = { ...createApiClient(), testManagedQuest, submitManagedQuestReview, publishManagedQuest }
   const published = vi.fn()
-  render(<PublicationWorkspace api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={published} />)
+  render(<PublicationWorkspace api={api} initial={initial} onBack={vi.fn()} onPublished={published} />)
   const publish = screen.getByRole('button', { name: 'この版を公開' })
   expect(publish).toBeDisabled()
   const match = new File(['match'], 'match.png', { type: 'image/png' })
@@ -41,7 +41,7 @@ it('publishes only after both saved-version photo tests, review, and explicit co
   expect(await screen.findByText('別対象の試験を確認しました。')).toBeVisible()
   expect(testManagedQuest.mock.calls.map((call) => call[2].expectedDraftRevision)).toEqual([4, 4])
   expect(testManagedQuest.mock.calls[0][2].idempotencyKey).not.toEqual(testManagedQuest.mock.calls[1][2].idempotencyKey)
-  await user.click(screen.getByRole('button', { name: 'この版の確認を依頼' }))
+  await user.click(screen.getByRole('button', { name: 'この版の公開条件を確認' }))
   expect(await screen.findByText('この下書きは確認待ちです。')).toBeVisible()
   expect(publish).toBeDisabled()
   for (const field of screen.getAllByRole('checkbox')) await user.click(field)
@@ -54,16 +54,14 @@ it('publishes only after both saved-version photo tests, review, and explicit co
   expect(published).toHaveBeenCalledOnce()
 })
 
-it('keeps publishing unavailable for an editor and stops work on an old draft', async () => {
+it('keeps publishing unavailable without verification and stops work on an old draft', async () => {
   const user = userEvent.setup()
   const submitManagedQuestReview = vi.fn().mockRejectedValue(new ApiError('DRAFT_CONFLICT'))
   const api = { ...createApiClient(), submitManagedQuestReview }
-  render(<PublicationWorkspace api={api} initial={initial} member={{ ...org, role: 'editor' }} onBack={vi.fn()} onPublished={vi.fn()} />)
-  expect(screen.getByText('公開の確認と実行は公開担当が行います。編集担当は確認依頼までを行ってください。')).toBeVisible()
-  expect(screen.getByText(/公開担当が自分の画面で写真試験を再度実施してから公開します/)).toBeVisible()
+  render(<PublicationWorkspace api={api} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
   expect(screen.getByRole('button', { name: 'この版を公開' })).toBeDisabled()
   for (const checkbox of screen.getAllByRole('checkbox')) expect(checkbox).toBeDisabled()
-  const review = screen.getByRole('button', { name: 'この版の確認を依頼' })
+  const review = screen.getByRole('button', { name: 'この版の公開条件を確認' })
   await user.click(review)
   expect(await screen.findByRole('alert')).toHaveTextContent('下書きの版が変わりました')
   expect(review).toBeDisabled()
@@ -73,7 +71,7 @@ it('keeps publishing unavailable for an editor and stops work on an old draft', 
 it('requires explicit rights application to a replacement private test photo', async () => {
   const user = userEvent.setup()
   const testManagedQuest = vi.fn().mockResolvedValue({ orgId: org.orgId, questId: initial.questId, draftRevision: 4, source: 'mock', testId: 't', outcome: 'MATCH' })
-  render(<PublicationWorkspace rightsAssist api={{ ...createApiClient(), testManagedQuest }} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  render(<PublicationWorkspace rightsAssist api={{ ...createApiClient(), testManagedQuest }} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
   await user.upload(screen.getByLabelText('試験写真'), new File(['a'], 'a.png', { type: 'image/png' }))
   await user.type(screen.getByLabelText('試験写真の利用権'), 'A用の権利文')
   await user.upload(screen.getByLabelText('試験写真'), new File(['b'], 'b.png', { type: 'image/png' }))
@@ -85,7 +83,7 @@ it('requires explicit rights application to a replacement private test photo', a
 })
 
 it('offers the exact fixture photos for download and explains fixtures-only recording', () => {
-  render(<PublicationWorkspace api={createApiClient()} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  render(<PublicationWorkspace api={createApiClient()} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
   expect(screen.getByText(/この検証環境の写真試験は、次の合成写真でのみ結果を記録します/)).toBeVisible()
   const match = screen.getByRole('link', { name: /一致用の合成写真/ })
   expect(match).toHaveAttribute('download', 'match.png')
@@ -100,7 +98,7 @@ it('guides real-photo tests and accepts real results in answer-trial photo test 
   const user = userEvent.setup()
   const testManagedQuest = vi.fn().mockResolvedValue({ orgId: org.orgId, questId: initial.questId, draftRevision: 4, source: 'real', testId: 'real-match', outcome: 'MATCH' })
   const api = { ...createApiClient(), testManagedQuest }
-  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
   expect(screen.getByText(/写真試験は実写真で照合します/)).toBeVisible()
   expect(screen.getByText(/回答と共用の送信枠（上限20回）を1回消費します/)).toBeVisible()
   expect(screen.queryByRole('link', { name: /合成写真/ })).not.toBeInTheDocument()
@@ -114,7 +112,7 @@ it('rejects a mock result in real photo test mode', async () => {
   const user = userEvent.setup()
   const testManagedQuest = vi.fn().mockResolvedValue({ orgId: org.orgId, questId: initial.questId, draftRevision: 4, source: 'mock', testId: 'mock-match', outcome: 'MATCH' })
   const api = { ...createApiClient(), testManagedQuest }
-  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
   await user.type(screen.getByLabelText('試験写真の利用権'), '自作の対象を自分で撮影した写真')
   await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.jpg', { type: 'image/jpeg' }))
   await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
@@ -126,7 +124,7 @@ it('explains a system error in real photo test mode without fixture wording', as
   const user = userEvent.setup()
   const testManagedQuest = vi.fn().mockRejectedValue(new ApiError('SYSTEM_ERROR'))
   const api = { ...createApiClient(), testManagedQuest }
-  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  render(<PublicationWorkspace photoTestSource="real" api={api} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
   await user.type(screen.getByLabelText('試験写真の利用権'), '自作の対象を自分で撮影した写真')
   await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.jpg', { type: 'image/jpeg' }))
   await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
@@ -139,7 +137,7 @@ it('explains that a real photo leaves no record when the fixture matcher rejects
   const user = userEvent.setup()
   const testManagedQuest = vi.fn().mockRejectedValue(new ApiError('SYSTEM_ERROR'))
   const api = { ...createApiClient(), testManagedQuest }
-  render(<PublicationWorkspace api={api} initial={initial} member={org} onBack={vi.fn()} onPublished={vi.fn()} />)
+  render(<PublicationWorkspace api={api} initial={initial} onBack={vi.fn()} onPublished={vi.fn()} />)
   await user.type(screen.getByLabelText('試験写真の利用権'), '自分の写真')
   await user.upload(screen.getByLabelText('試験写真'), new File(['real'], 'real-photo.png', { type: 'image/png' }))
   await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
