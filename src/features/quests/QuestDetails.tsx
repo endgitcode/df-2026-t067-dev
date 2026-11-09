@@ -341,6 +341,7 @@ interface QuestDetailsProps {
   buttonLabel: string
   note: string
   sourceLabel?: string
+  detailsLabel?: string
   feedback?: { error: boolean; text: string } | null
   onToggle(): void
   onStart(selection: ChallengeSelection): void | Promise<unknown>
@@ -365,7 +366,7 @@ interface QuestDetailsProps {
   onOpenDiscovery?: (discoveryId: string) => void
 }
 
-export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, note, sourceLabel = '架空のサンプル問題', feedback, onToggle, onStart, children, hideStartAction = false, hideToggle = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl, clearedDiscoveryId, onOpenDiscovery }: QuestDetailsProps) {
+export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, note, sourceLabel = '架空のサンプル問題', detailsLabel = 'サンプル問題の詳細', feedback, onToggle, onStart, children, hideStartAction = false, hideToggle = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl, clearedDiscoveryId, onOpenDiscovery }: QuestDetailsProps) {
   const wideViewport = useWideViewport()
   const [qrVisible, setQrVisible] = useState(true)
   const handoffActive = Boolean(handoffUrl) && wideViewport
@@ -409,7 +410,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
           <span>{open ? '問題を閉じる' : '問題を見てみる'}</span><Icon name="arrow" />
         </button>}
         {open && (
-          <section id={detailsId} className="quest-details" aria-label="サンプル問題の詳細">
+          <section id={detailsId} className="quest-details" aria-label={detailsLabel}>
             <h4>この場所はどこ？</h4>
             <p className="clue-text">{quest.clue}</p>
             <p className="sample-note">{quest.visitConditions}</p>

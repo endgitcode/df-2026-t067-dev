@@ -369,7 +369,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     setSelectedId(questId)
     setOpenQuestRequest((previous) => ({ questId, sequence: (previous?.sequence ?? 0) + 1 }))
   }
-  const FallbackHeading = dataMode === 'team-preview' ? 'h2' : 'h1'
+  const FallbackHeading = dataMode !== 'demo' ? 'h2' : 'h1'
   // 読み込み済みで未選択（D-56）の時はフォールバック枠を出さない。出るのは
   // 読み込み中・0件・エラーの時だけであり、未選択は探索画面の一覧で完結する。
   // 地図が使える表示では読み込み中を一覧のスケルトン行だけに一本化し、大きな
@@ -377,7 +377,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // 読み込み中もこの枠が進捗を伝える。
   const fallback = !quest && state !== 'ready' && !(state === 'loading' && mapSheetMode) ? <section className="api-load-state" aria-live="polite">
       {dataMode !== 'team-preview' && <p className="eyebrow">{dataMode === 'durable-local' ? '永続API・ローカル' : '公開APIデモ'}</p>}
-      <FallbackHeading id={dataMode === 'team-preview' ? undefined : 'explore-title'}>{state === 'loading' ? '問題を読み込んでいます' : state === 'empty' ? '問題はありません' : '問題を読み込めませんでした'}</FallbackHeading>
+      <FallbackHeading id={dataMode !== 'demo' ? undefined : 'explore-title'}>{state === 'loading' ? '問題を読み込んでいます' : state === 'empty' ? '問題はありません' : '問題を読み込めませんでした'}</FallbackHeading>
       {state === 'loading' && <p role="status">問題の一覧を取得しています。</p>}
       {state === 'empty' && <p>{selectedAreaId ? 'この地域には問題がありません。地図や地方の絞り込みから別の地域をお選びください。' : '現在選べる問題はありません。'}</p>}
       {state === 'error' && <p role="alert">{current?.missing
@@ -385,7 +385,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
         : '通信状況を確認して、もう一度お試しください。'}</p>}
       {state !== 'loading' && <button type="button" onClick={(event) => reload(event)} disabled={refreshing}>再試行</button>}
       {!mapSheetMode && refreshControl}
-      {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode !== 'team-preview' && filterControls}{!mapSheetMode && picker}</>}
+      {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode === 'demo' && filterControls}{!mapSheetMode && picker}</>}
     </section> : undefined
   return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && (!activeRegion || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={regionAreas} mapQuests={visibleChoices} mapQuestsLoading={state === 'loading' && visibleChoices.length === 0} onOpenQuest={openQuestFromMap} onDeselectQuest={deselectQuest} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
     areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
