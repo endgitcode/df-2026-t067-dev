@@ -1,5 +1,20 @@
 /* neobrutalism: UI presentation only; no application state or API changes. */
 :root {
+  /* Shared type and spacing steps (UI policy §5). */
+  --fs-12: 12px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-28: 28px;
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-12: 12px;
+  --sp-16: 16px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+  --sp-48: 48px;
+  --sp-64: 64px;
   --ui-bg: #faf8f1;
   --ui-surface: #ffffff;
   --ui-ink: #1d1d1b;
@@ -59,6 +74,7 @@
 body { margin: 0; min-width: 320px; min-height: 100dvh; background: var(--ui-blue, #c5e8f5); }
 html:has(body.explore-fullbleed) { background: var(--ui-blue, #c5e8f5); }
 button, input, textarea, select { font: inherit; }
+input, textarea, select { font-size: var(--fs-16); }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
