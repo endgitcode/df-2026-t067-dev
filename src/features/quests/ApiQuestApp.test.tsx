@@ -264,7 +264,7 @@ describe('APIから問題を表示', () => {
     expect(JSON.parse(String(start?.body))).toEqual({ questId: first.questId, expectedVersion: first.version })
     expect(getUserMedia).toHaveBeenCalledTimes(1)
     await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
-    expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+    expect(await screen.findByText('まだ記録がありません')).toBeVisible()
     const read = fetcher.mock.calls.find(([path]) => String(path).startsWith('/api/v1/me/discoveries?'))
     expect(new Headers(read?.[1]?.headers).get('Authorization')).toBe('Bearer test-token')
   })
@@ -276,6 +276,28 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp dataMode="durable-local" authClient={signedOutAuth()} />)
     expect(await screen.findByRole('heading', { name: '問題を読み込めませんでした' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: '問題はありません' })).not.toBeInTheDocument()
+  })
+
+  it('記録が0件なら主ボタンから探索へ戻りURLとタブも切り替わる', async () => {
+    const user = userEvent.setup()
+    const snapshot = { status: 'signed-in' as const, user: { uid: 'owner', displayName: null } }
+    const authClient = { ...signedOutAuth(), getSnapshot: () => snapshot, getIdToken: async () => 'test-token' }
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (path) => new Response(JSON.stringify(
+      path === '/api/v1/session' ? { uid: snapshot.user.uid }
+        : String(path).startsWith('/api/v1/quests?') ? page([first]) : page([]),
+    ), { headers: { 'Content-Type': 'application/json', 'X-Quest-Data-Mode': 'durable-local' } })))
+    window.history.replaceState(null, '', '/?view=records')
+    render(<ApiQuestApp dataMode="durable-local" authClient={authClient} />)
+    const records = screen.getByRole('region', { name: '自分の記録' })
+    const explore = await within(records).findByRole('button', { name: '謎を探しに行く' })
+    expect(explore).toHaveClass('primary-button')
+    expect(within(records).getByText('まだ記録がありません')).toBeVisible()
+    await user.click(explore)
+    expect(records).not.toBeVisible()
+    expect(screen.getByRole('heading', { name: '全国から謎を探す' })).toBeVisible()
+    expect(window.location.search).not.toContain('view=records')
+    expect(within(screen.getByRole('navigation', { name: '主要ナビゲーション' }))
+      .getByRole('button', { name: '謎を探す' })).toHaveAttribute('aria-current', 'page')
   })
 
   it.each(['empty', 'error'] as const)('keeps owner records available when the public catalog is %s', async (state) => {
@@ -293,7 +315,7 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} authClient={authClient} />)
     await screen.findByRole('heading', { name: state === 'empty' ? '問題はありません' : '問題を読み込めませんでした' })
     await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
-    expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+    expect(await screen.findByText('まだ記録がありません')).toBeVisible()
     const read = fetcher.mock.calls.find(([path]) => String(path).startsWith('/api/v1/me/discoveries?'))
     expect(new Headers(read?.[1]?.headers).get('Authorization')).toBe('Bearer demo-token')
     expect(api.getQuest).not.toHaveBeenCalled()
@@ -312,7 +334,7 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} authClient={authClient} />)
     await waitFor(() => expect(finishCatalog).toBeTypeOf('function'))
     await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
-    expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+    expect(await screen.findByText('まだ記録がありません')).toBeVisible()
     await act(async () => finishCatalog(page([first])))
     // カタログの読み込みが終わっても、未選択の間は詳細を取得しない（D-56）。
     expect(api.getQuest).not.toHaveBeenCalled()
@@ -343,7 +365,7 @@ describe('APIから問題を表示', () => {
     const nav = () => within(screen.getByRole('navigation', { name: '主要ナビゲーション' }))
     const discoveryReads = () => fetcher.mock.calls.filter(([path]) => String(path).startsWith('/api/v1/me/discoveries?'))
     await user.click(nav().getByRole('button', { name: '自分の記録' }))
-    expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+    expect(await screen.findByText('まだ記録がありません')).toBeVisible()
     expect(discoveryReads()).toHaveLength(1)
     // 探索へ戻り、記録が増えてから記録画面へ入り直す。画面は常駐したままなので、
     // 入り直しのたびに取り直されなければ、空表示が居座って新しい記録が出ない。
@@ -389,7 +411,7 @@ describe('APIから問題を表示', () => {
     // 記録タブへ行き、探索へ戻る。往復の前後で4つの状態が一致したままであること。
     const nav = () => within(screen.getByRole('navigation', { name: '主要ナビゲーション' }))
     await user.click(nav().getByRole('button', { name: '自分の記録' }))
-    expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+    expect(await screen.findByText('まだ記録がありません')).toBeVisible()
     // 探索側はアンマウントされず、絞り込みも保持されている（隠れているだけ）。
     expect(screen.getByTestId('map-state')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '場所で絞る：1件', hidden: true })).toBeInTheDocument()
@@ -1562,7 +1584,7 @@ it('hands the selected durable quest B and its version through login to challeng
   await user.click(screen.getByRole('button', { name: '撮影を終了' }))
   expect(stop).toHaveBeenCalledOnce()
   await user.click(within(screen.getByRole('navigation', { name: '主要ナビゲーション' })).getByRole('button', { name: '自分の記録' }))
-  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(await screen.findByText('まだ記録がありません')).toBeVisible()
   const recordRead = fetcher.mock.calls.find(([path]) => String(path).startsWith('/api/v1/me/discoveries?'))!
   expect(new Headers(recordRead[1]?.headers).get('Authorization')).toBe('Bearer traveler-token')
 })

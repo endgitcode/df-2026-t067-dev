@@ -511,7 +511,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {auth.status === 'checking' && <p role="status">ログイン状態を確認しています…</p>}
           {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">ログインすると記録が見られます</p>}
           {uid !== null && visiblePending === null && (serverIdentity.result?.status === 'ready'
-            ? <OwnerDiscoveries key={uid} api={api} visit={recordsVisit} active={showRecords} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
+            ? <OwnerDiscoveries key={uid} api={api} onExplore={navigateToExplore} visit={recordsVisit} active={showRecords} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
             : serverIdentity.result?.status === 'error'
               ? <><p role="alert">ログインを確認できませんでした。</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></>
               : <p role="status">ログインを確認しています…</p>)}

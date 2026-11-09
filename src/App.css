@@ -474,7 +474,7 @@ button.explore-quest-card { cursor: pointer; }
 .quest-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .quest-title-row h3 { min-width: 0; overflow-wrap: anywhere; }
 /* 記録画面の列は中央に寄せず、探索画面と同じ左のラインに揃える（D-60）。幅の上限は読みやすさのために残す。 */
-/* D-82: PC・スマホとも白いカードに収め、本文列は720pxを上限とする。 */
+/* D-82/D-83: 白いカードに収め、PC幅の外側余白と幅は下の規則で指定する。 */
 .owner-records { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; width: 100%; max-width: 720px; padding: 20px; align-content: start; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); box-shadow: none; }
 /* 記録画面と探索画面は hidden で切り替える（アンマウントしない）。display を
    指定している要素では hidden が負けるため、明示的に打ち消す。 */
@@ -833,9 +833,9 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 /* 記録画面でも左サイドバー（ロゴ＋縦ナビ）を残し、右側だけ中身を切替（Cursor Web 風） */
 @media (min-width: 981px) {
   body:has(.owner-records:not([hidden])) .owner-records {
-    margin-left: var(--pc-sidebar-w);
-    width: calc(100% - var(--pc-sidebar-w));
-    max-width: 720px;
+    margin: 32px 32px 32px calc(var(--pc-sidebar-w) + 32px);
+    width: calc(100% - var(--pc-sidebar-w) - 64px);
+    max-width: 1080px;
   }
 }
 
