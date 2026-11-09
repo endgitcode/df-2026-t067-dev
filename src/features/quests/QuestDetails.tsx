@@ -413,7 +413,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
           <section id={detailsId} className="quest-details" aria-label={detailsLabel}>
             <h4>この場所はどこ？</h4>
             <p className="clue-text">{quest.clue}</p>
-            <p className="sample-note">{quest.visitConditions}</p>
+            {quest.visitConditions.trim() && <p className="sample-note">{quest.visitConditions}</p>}
             <QuestHints key={`hints:${hintIdentity}`} quest={quest} getHint={getHint} getHintPhoto={getHintPhoto} stale={questStale} onVersionChanged={() => { setStaleHintIdentity(hintIdentity); onHintVersionChanged() }} onReloadNeeded={(index, needed) => setReloadNeededState(current => {
               const indexes = current.identity === hintIdentity && current.open === open ? new Set(current.indexes) : new Set<number>()
               if (needed) indexes.add(index); else indexes.delete(index)

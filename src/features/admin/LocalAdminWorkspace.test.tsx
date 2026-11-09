@@ -202,9 +202,9 @@ it.each(['demo', 'durable-local'] as const)('uses the selected %s API mode and d
     expect(await screen.findByText('利用できる所属がありません。')).toBeVisible()
     expect(screen.getByText(dataMode === 'demo' ? /一時的な保存先に保存/ : /検証環境の保存先に保存/)).toBeVisible()
     if (dataMode === 'demo') {
-      expect(screen.getByRole('link', { name: /ログインなしで試せる架空フォーム/ })).toHaveAttribute('href', '/admin-demo')
+      expect(screen.getByRole('link', { name: /ログインなしで試せるフォーム/ })).toHaveAttribute('href', '/admin-demo')
     } else {
-      expect(screen.queryByRole('link', { name: /ログインなしで試せる架空フォーム/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /ログインなしで試せるフォーム/ })).not.toBeInTheDocument()
     }
   } finally { vi.unstubAllGlobals() }
 })

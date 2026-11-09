@@ -61,7 +61,7 @@ test('startup fixture is confined to its owner and stays deleted until restart',
   const { items } = await owner.listDiscoveries({ areaId: 'demo-area' })
   assert.equal(items.length, 1)
   const [record] = items
-  assert.equal(record.placeName, '架空のデモ記録')
+  assert.equal(record.placeName, '広場の時計')
   assert.deepEqual(await owner.getDiscovery(record.discoveryId), record)
   assert.equal((await owner.getDiscoveryPhoto(record.discoveryId)).type, 'image/jpeg')
   assert.deepEqual((await other.listDiscoveries()).items, [])

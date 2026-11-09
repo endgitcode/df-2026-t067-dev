@@ -64,8 +64,8 @@ export async function createDurableLocalRuntime(config: DurableLocalConfig) {
       }
       if (!current.exists) {
         tx.create(quest, { publishedVersion: version, status: 'published', orgId })
-        tx.create(published, { placeId, areaId: publicArea.areaId, placeName: '架空の対象',
-          descriptionSnapshot: '永続APIの確認用に作った架空の記録です。', revealedLocation: { latitude: 0, longitude: 0 }, answerMaterial })
+        tx.create(published, { placeId, areaId: publicArea.areaId, placeName: '広場の時計',
+          descriptionSnapshot: '', revealedLocation: { latitude: 0, longitude: 0 }, answerMaterial })
       } else {
         // Older local fixtures have no private reference fields yet.
         if (savedOrg === undefined) tx.update(quest, { orgId })

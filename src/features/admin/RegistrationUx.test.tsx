@@ -87,7 +87,7 @@ it('does not offer the fictional sample loader in the connected form', () => {
     member: { orgId: 'org', areaId: 'area', label: '架空自治体', role: 'editor' }, onBack: vi.fn() }} />)
   fireEvent.click(screen.getByRole('button', { name: '下書き・編集へ' }))
   expect(screen.getByLabelText('問題タイトル')).toBeVisible()
-  expect(screen.queryByRole('button', { name: '架空サンプルを読み込む（AI未使用）' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'サンプルを読み込む（AI未使用）' })).not.toBeInTheDocument()
 })
 it('focuses the photo rights field before saving a newly selected connected photo', async () => {
   vi.stubGlobal('URL', { createObjectURL: () => 'blob:fixture', revokeObjectURL: vi.fn() })
