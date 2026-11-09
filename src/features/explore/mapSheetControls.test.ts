@@ -89,6 +89,10 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).toContain('body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; }')
     expect(css).toContain('body.explore-fullbleed .map-browse-shortcut.is-return-to-map { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }')
     expect(css).toContain('body.explore-fullbleed .map-browse-shortcut[inert] { visibility: hidden; pointer-events: none; }')
+    // 詳細末尾が「地図に戻る」に隠れないよう、表示中だけ下部余白を足す
+    expect(css).toContain('body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .quest-rail {')
+    expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h) + 80px);')
+    expect(css).toContain('body.explore-fullbleed:has(.map-browse-shortcut.is-return-to-map:not([inert])) .below-map-quests {')
     expect(css).not.toContain('bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 10px); z-index: 6;')
     // 同じ固定位置のまま、通常時・ドラッグ中ともシート（z-index 7）の背面に残す。
     expect(css).toContain('.explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4;')
