@@ -1029,6 +1029,7 @@ describe('Google map panel', () => {
     expect(instances[0].options.position).toEqual({ lat: 35.5, lng: 139.5 })
     expect(instances[0].options.title).toBe('Aの探索エリア（2問）')
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
+    expect(iconUrl).toContain('viewBox="-2 -2 40 48"')
     expect(iconUrl).toContain('#4eb8d0')
     expect(iconUrl).toContain('>2<')
     // 連動リストには地図下に問題カードが並ぶ（代表点の注記は置かない、D-39）。
@@ -1086,6 +1087,7 @@ describe('Google map panel', () => {
     await waitFor(() => expect(instances).toHaveLength(1))
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
     // 選択中のピンもホバーと同じ赤。ピン本体に黄色（#f6d84a）は使わない（黄色は地域の塗りだけ）。
+    expect(iconUrl).toContain('viewBox="-2 -2 40 48"')
     expect(iconUrl).toContain('fill="#e7473f"')
     expect(iconUrl).not.toContain('#f6d84a')
     expect(iconUrl).not.toContain('>1<')
@@ -1357,6 +1359,7 @@ describe('Google map panel', () => {
     marker.listeners.get('mouseover')?.()
     const hoverIcon = decodeURIComponent(marker.icons.at(-1)?.url ?? '')
     expect(hoverIcon).toContain('width="42"')
+    expect(hoverIcon).toContain('viewBox="-2 -2 40 48"')
     expect(hoverIcon).toContain('fill="#e7473f" stroke=')
     marker.listeners.get('mouseout')?.()
     const baseIcon = decodeURIComponent(marker.icons.at(-1)?.url ?? '')
