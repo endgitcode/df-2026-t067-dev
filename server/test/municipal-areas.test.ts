@@ -59,7 +59,7 @@ test('allows explicitly tagged fixtures only for memberships without municipalit
   assert.equal(readMunicipalArea(record({ municipalityCode: undefined }), { areaId: 'municipality-13101' }), null)
 })
 
-test('fixture areas keep resolving when the area carries a D-30 public municipality code (D-68)', () => {
+test('fixture areas keep resolving when the area carries a D-30 public municipality code (D-69)', () => {
   // 共有環境の郡山（demo-area-koriyama）の実データ形：境界は fixture、地域側にだけ
   // D-30 の公開用コード 07203 があり、所属にはコードが無い。これで下書き作成が
   // 503 になっていた回帰を固定する。所属側にコードがある場合は従来どおり弾く。

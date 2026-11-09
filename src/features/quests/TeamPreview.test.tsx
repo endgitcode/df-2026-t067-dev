@@ -187,7 +187,7 @@ it('recovers a public hint image after revision and removes it after publication
     await user.keyboard('{Enter}')
     expect(await screen.findByRole('heading', { name: '改版後の問題' })).toBeVisible()
     expect(screen.getByRole('button', { name: '公開情報を更新' })).toHaveFocus()
-    await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
+    // 一覧の中の詳細には開閉ボタンは無く、選択中は常に開いている（D-65）。
     await user.click(screen.getByRole('button', { name: 'ヒント画像を見る' }))
     const revisedImage = await screen.findByAltText('改版後の問題のヒント画像')
     fireEvent.load(revisedImage)
@@ -218,8 +218,8 @@ it('recovers a public hint image after revision and removes it after publication
     await user.keyboard('{Enter}')
     expect(await screen.findByRole('heading', { name: '問題はありません' })).toBeVisible()
     expect(screen.getByRole('button', { name: '公開情報を更新' })).toHaveFocus()
-    // 一覧の行から選んだ場合は地域まで選択されているため、0件の文言は地域向けになる。
-    expect(screen.getByText('この地域には問題がありません。地図や地方の絞り込みから別の地域をお選びください。')).toBeVisible()
+    // 一覧の行から選んでも地域は選択されないため（D-65）、0件の文言は全域向けになる。
+    expect(screen.getByText('現在選べる問題はありません。')).toBeVisible()
     expect(screen.queryByRole('heading', { name: '改版後の問題' })).not.toBeInTheDocument()
     expect(screen.queryByAltText('改版後の問題のヒント画像')).not.toBeInTheDocument()
     expect(fetcher).toHaveBeenCalledWith(imagePath(1), expect.anything())
