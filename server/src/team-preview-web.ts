@@ -27,7 +27,12 @@ export async function serveTeamPreviewWeb(directory: string, request: IncomingMe
     if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') return false
     throw error
   }
-  response.writeHead(200, { 'Content-Type': contentType, 'Content-Length': bytes.length })
+  // Only successful public build files may override the HTTP server's no-store default.
+  const hashed = asset && /-[A-Za-z0-9_-]{8}\.(?:js|css|svg|woff2)$/.test(asset)
+  response.writeHead(200, {
+    'Content-Type': contentType, 'Content-Length': bytes.length,
+    'Cache-Control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
+  })
   response.end(request.method === 'HEAD' ? undefined : bytes)
   return true
 }
