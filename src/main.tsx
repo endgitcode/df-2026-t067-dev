@@ -1,36 +1,26 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { createModuleLoadGuard } from './moduleLoadGuard'
 
 // Build-time React HTML remains visible until this root commits the real app.
 // Deliberate replacement: URL, auth and viewport are browser-owned initial state.
 const root = createRoot(document.getElementById('root')!)
+const { load } = createModuleLoadGuard(root)
 
 if (import.meta.env.VITE_QUEST_DATA_SOURCE === 'team-preview') {
   if (window.location.pathname === '/admin') {
-    void import('./features/admin/LocalAdminWorkspace').then(({ LocalAdminWorkspace }) => {
-      root.render(<StrictMode><LocalAdminWorkspace dataMode="team-preview" /></StrictMode>)
-    })
+    void load(import('./features/admin/LocalAdminWorkspace'), ({ LocalAdminWorkspace }) => <StrictMode><LocalAdminWorkspace dataMode="team-preview" /></StrictMode>)
   } else {
-    void import('./features/quests/TeamPreview').then(({ TeamPreview }) => {
-      root.render(<StrictMode><TeamPreview /></StrictMode>)
-    })
+    void load(import('./features/quests/TeamPreview'), ({ TeamPreview }) => <StrictMode><TeamPreview /></StrictMode>)
   }
 } else if (import.meta.env.DEV && window.location.pathname === '/admin-local') {
-  void import('./features/admin/LocalAdminWorkspace').then(({ LocalAdminWorkspace }) => {
-    root.render(<StrictMode><LocalAdminWorkspace dataMode={import.meta.env.VITE_QUEST_DATA_SOURCE === 'durable-local' ? 'durable-local' : 'demo'} /></StrictMode>)
-  })
+  void load(import('./features/admin/LocalAdminWorkspace'), ({ LocalAdminWorkspace }) => <StrictMode><LocalAdminWorkspace dataMode={import.meta.env.VITE_QUEST_DATA_SOURCE === 'durable-local' ? 'durable-local' : 'demo'} /></StrictMode>)
 } else if (window.location.pathname === '/admin-demo') {
-  void import('./features/admin-demo/AdminDemo').then(({ default: AdminDemo }) => {
-    root.render(<StrictMode><AdminDemo /></StrictMode>)
-  })
+  void load(import('./features/admin-demo/AdminDemo'), ({ default: AdminDemo }) => <StrictMode><AdminDemo /></StrictMode>)
 } else if (import.meta.env.DEV) {
   const dataMode = import.meta.env.VITE_QUEST_DATA_SOURCE === 'durable-local' ? 'durable-local' : 'demo'
-  void import('./features/quests/ApiQuestApp').then(({ ApiQuestApp: App }) => {
-    root.render(<StrictMode><App dataMode={dataMode} /></StrictMode>)
-  })
+  void load(import('./features/quests/ApiQuestApp'), ({ ApiQuestApp: App }) => <StrictMode><App dataMode={dataMode} /></StrictMode>)
 } else {
   // Hosting has no local API server. Preserve its existing offline preview.
-  void import('./App').then(({ default: App }) => {
-    root.render(<StrictMode><App /></StrictMode>)
-  })
+  void load(import('./App'), ({ default: App }) => <StrictMode><App /></StrictMode>)
 }
