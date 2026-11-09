@@ -64,7 +64,7 @@ test('durable publishing freezes the tested version and pausing stops all public
       const action = afterHintRead
       afterHintRead = undefined
       await action?.()
-      if (revokeDuringHintRead) await publisherMembership.update({ role: 'editor' })
+      if (revokeDuringHintRead) await publisherMembership.update({ active: false })
       return picture
     },
   }
@@ -133,7 +133,8 @@ test('durable publishing freezes the tested version and pausing stops all public
   duplicate = false
   const mismatch = await compare(image(otherSyntheticPng), 'mismatch', draftRevision)
   const input = { expectedDraftRevision: draftRevision, matchTestId: match.testId, mismatchTestId: mismatch.testId, confirmations }
-  await assert.rejects(editor.publishManagedQuest(orgId, questId, input), { code: 'FORBIDDEN' })
+  await assert.rejects(editor.publishManagedQuest(orgId, questId, input), { code: 'REVIEW_REQUIRED' })
+  await assert.rejects(second.api('other').publishManagedQuest(orgId, questId, input), { code: 'FORBIDDEN' })
   await assert.rejects(second.api('other').publishManagedQuest('other-org', questId, input), { code: 'NOT_FOUND' })
   await assert.rejects(publisher.publishManagedQuest(orgId, questId, input), { code: 'REVIEW_REQUIRED' })
   const unsafeHint = await editor.uploadOrgAsset(orgId, { purpose: 'public_hint', photoRights: '合成画像',
@@ -156,10 +157,10 @@ test('durable publishing freezes the tested version and pausing stops all public
   revokeDuringHintRead = true
   await assert.rejects(publisher.publishManagedQuest(orgId, questId, input), { code: 'FORBIDDEN' })
   revokeDuringHintRead = false
-  await publisherMembership.update({ role: 'publisher' })
+  await publisherMembership.update({ active: true })
   await assert.rejects(traveler.getQuest(questId), { code: 'NOT_FOUND' })
   await assert.rejects(teamTraveler.getQuest(questId), { code: 'NOT_FOUND' })
-  const published = await publisher.publishManagedQuest(orgId, questId, input)
+  const published = await editor.publishManagedQuest(orgId, questId, input)
   assert.equal(published.publishedVersion, 1)
   assert.equal(published.questNumber, '13-01')
   assert.deepEqual(await second.api('publisher').publishManagedQuest(orgId, questId, input), published)

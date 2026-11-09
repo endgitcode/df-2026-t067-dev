@@ -207,3 +207,9 @@
   text-decoration: none;
 }
 .admin-account-panel a:hover { text-decoration: underline; }
+
+.admin-quest-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: .85rem; }
+.admin-quest-status { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border: 1px solid var(--ui-line); border-radius: 999px; font-weight: var(--ui-weight-strong); background: var(--ui-surface); }
+.admin-quest-status[data-status="published"] { background: var(--ui-tint); }
+.admin-quest-status[data-status="review_pending"] { background: var(--ui-soft); }
+.admin-quest-status[data-status="paused"] { background: var(--ui-disabled); }

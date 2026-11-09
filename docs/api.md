@@ -92,7 +92,7 @@
 | POST /orgs/:orgId/quests/:questId/generate | 編集・公開 | 保存済みの版に対する下書き候補。ローカルの設定と素材条件は19節 |
 | POST /orgs/:orgId/quests/:questId/test | 編集・公開 | 特定draftRevisionと試験写真で照合。発見記録は作らない |
 | POST /orgs/:orgId/quests/:questId/submit-review | 編集・公開 | `expectedDraftRevision`を指定し、確認待ちの下書きまたは不足項目を返す。詳細は17節 |
-| POST /orgs/:orgId/quests/:questId/publish | 公開 | expectedDraftRevision、確認項目、該当版の試験記録で公開。開発用実装は18節 |
+| POST /orgs/:orgId/quests/:questId/publish | 自組織の有効な所属 | expectedDraftRevision、確認項目、該当版の試験記録で公開。開発用実装は18節 |
 | POST /orgs/:orgId/quests/:questId/pause | 公開・運営 | 理由を記録し、新規挑戦と進行中の確定を禁止。開発用実装は18節 |
 | GET /orgs/:orgId/reports | 公開 | 自組織の報告一覧。開発用実装は20節 |
 
@@ -205,7 +205,7 @@ Firestore / Storage、写真判定・本人記録・自治体API・クラウド�
 
 開発サーバーの架空データ専用。`demo` と `durable-local` で使える。自組織の`publisher`のみ実行でき、本文の受信後にも所属と役割を確認する。両操作は200で`ManagedQuest`を返す。
 
-- `publishManagedQuest(orgId, questId, input)` は`expectedDraftRevision`、`matchTestId`、`mismatchTestId`と`confirmations`を送る。確認項目は`fictionalData`、`visitConditions`、`photoRights`、`shootingArea`、`testCases`の全てが`true`。公開担当者が架空データ・訪問条件・画像の権利と公開範囲・撮影範囲・試験ケースを確認する。
+- `publishManagedQuest(orgId, questId, input)` は`expectedDraftRevision`、`matchTestId`、`mismatchTestId`と`confirmations`を送る。確認項目は`fictionalData`、`visitConditions`、`photoRights`、`shootingArea`、`testCases`の全てが`true`。自組織に有効な所属がある担当者が架空データ・訪問条件・画像の権利と公開範囲・撮影範囲・試験ケースを確認する。公開処理は所属と下書き版を再確認する。
 - 現在の確認待ち下書きと、同じ組織・問題・下書き版でサーバーが記録した`MATCH`と`WRONG_TARGET`が必要。正規化後に同じ画像の試験は使えない。版違いは409 `DRAFT_CONFLICT`、確認不足は409 `REVIEW_REQUIRED`、試験不足は409 `PHOTO_TEST_REQUIRED`。任意の公開ヒント画像は同組織の`public_hint`素材で、参考写真と同じ正規化画像は拒否する。
 - 公開時に問題文、訪問条件、段階ヒント、任意のヒント画像を版へ固定する。撮影範囲、参考素材ID、確認済み特徴も同じ版へ固定し、公開中の版を指定したサーバー内の照合条件取得に限って参照できる。旅行者の一覧・詳細に返す`shootingConditions`は`requiresBoat`と`requiresPaidFacility`のbooleanだけを持つ。料金と撮影注意は`visitConditions`で読める。ヒント画像は公開中の版を指定した`GET /quests/:questId/hint-image?expectedVersion=...`でJPEGを取得する。下書き編集後も旅行者は旧公開版を使い、再公開時に新しい版へ切り替わる。
 - `pauseManagedQuest(orgId, questId, {expectedPublishedVersion, reason})` は空白を除いた1〜1000文字の理由を記録する。休止中は公開GETから外し、新規挑戦・回答受付は409 `QUEST_UNAVAILABLE`。同じ版・理由の再送は重ねて休止しない。初回の休止でdraftRevisionを進めるため、再公開には新しい版の確認依頼と写真試験が必要。再公開後、旧版の挑戦での回答は409 `QUEST_CHANGED`。

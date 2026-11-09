@@ -12,7 +12,7 @@ import { expectError, startServer } from './helpers'
 const confirmations = { fictionalData: true, visitConditions: true, photoRights: true, shootingArea: true, testCases: true } as const
 const image = (bytes: Uint8Array) => new Blob([new Uint8Array(bytes)], { type: 'image/png' })
 
-test('only a publisher can publish tested versions and pause the public snapshot', async (t) => {
+test('organization members can publish tested versions while only publishers can pause', async (t) => {
   const fixtureMatcher = await createFixturePhotoMatcher()
   const assets = new DemoAssetStore()
   const admin = new DemoAdminStore({ assetLookup: (assetId) => assets.metadata(assetId) })
@@ -22,9 +22,9 @@ test('only a publisher can publish tested versions and pause the public snapshot
   const { base } = await startServer(t, {
     verifier: { verify: async (uid) => ({ uid }) },
     memberships: async (uid): Promise<OrgMembership[]> => {
-      if (uid === 'traveler') return []
+      if (uid === 'traveler' || (uid === 'publisher' && revokeOnRecheck && ++publisherChecks === 2)) return []
       return [{ orgId: uid === 'other' ? 'other-org' : 'demo-org', label: '架空',
-        role: uid === 'editor' || (uid === 'publisher' && revokeOnRecheck && ++publisherChecks === 2) ? 'editor' : 'publisher', areaId: 'demo-area' }]
+        role: uid === 'editor' ? 'editor' : 'publisher', areaId: 'demo-area' }]
     },
     admin,
     adminAssets: assets,
@@ -69,7 +69,8 @@ test('only a publisher can publish tested versions and pause the public snapshot
   const mismatch = await compare(image(otherSyntheticPng), 'mismatch', 2)
   assert.equal(mismatch.outcome, 'WRONG_TARGET')
   const body = { expectedDraftRevision: 2, matchTestId: match.testId, mismatchTestId: mismatch.testId, confirmations }
-  await expectError(await send('/publish', 'editor', body), 403, 'FORBIDDEN')
+  await expectError(await send('/publish', 'editor', body), 409, 'REVIEW_REQUIRED')
+  await expectError(await send('/publish', 'other', body), 403, 'FORBIDDEN')
   await expectError(await send('/publish', 'other', body, endpoint.replace(org, 'other-org')), 404, 'NOT_FOUND')
   await expectError(await send('/publish', 'publisher', body), 409, 'REVIEW_REQUIRED')
   const duplicateHint = await editor.uploadOrgAsset(org, { purpose: 'public_hint', photoRights: '自作合成',
@@ -84,7 +85,7 @@ test('only a publisher can publish tested versions and pause the public snapshot
   revokeOnRecheck = true
   await expectError(await send('/publish', 'publisher', body), 403, 'FORBIDDEN')
   revokeOnRecheck = false
-  assert.equal((await publisher.publishManagedQuest(org, id, body)).publishedVersion, 1)
+  assert.equal((await editor.publishManagedQuest(org, id, body)).publishedVersion, 1)
   assert.equal((await (await send('/publish', 'publisher', body)).json() as { publishedVersion: number }).publishedVersion, 1)
   const firstMaterial = {
     orgId: org, referenceAssetId: reference.assetId, features: ['非公開の確認済み特徴'],

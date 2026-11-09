@@ -28,7 +28,7 @@ export function QuestTaskWorkspace({ api, initial, member, onBack }: {
   return <section aria-label="一件の公開準備">
     <h1>{record.draft.content.title || '無題の下書き'}の公開準備</h1>
     {destination === 'areas' ? <ShootingAreasEditor enableMap api={api} orgId={member.orgId} questId={record.questId} onBack={returnToDraft} backLabel="本文編集へ戻る" />
-      : destination === 'publication' ? <PublicationWorkspace rightsAssist api={api} initial={record} member={member} onBack={returnToDraft} onPublished={returnToDraft} backLabel="本文編集へ戻る" />
+      : destination === 'publication' ? <PublicationWorkspace rightsAssist api={api} initial={record} onBack={returnToDraft} onPublished={returnToDraft} backLabel="本文編集へ戻る" />
         : <HintAssetEditor rightsAssist api={api} initial={record} member={member} initialSlot={destination} onBack={returnToDraft} backLabel="本文編集へ戻る" />}
   </section>
 }

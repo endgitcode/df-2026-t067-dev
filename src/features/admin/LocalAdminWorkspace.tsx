@@ -18,7 +18,7 @@ import './admin.css'
 const statusLabels: Record<ManagedQuest['status'], string> = {
   draft: '下書き', review_pending: '確認待ち', published: '公開中', paused: '休止中',
 }
-const roleLabels: Record<OrgMembership['role'], string> = { editor: '編集担当', publisher: '公開担当' }
+const statusIcons: Record<ManagedQuest['status'], string> = { draft: '✎', review_pending: '◷', published: '✓', paused: 'Ⅱ' }
 
 function formatDateTime(iso: string) {
   const date = new Date(iso)
@@ -57,12 +57,12 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
   if (editor?.kind === 'draft') return <QuestDraftForm teamPreview={teamPreview} connection={{ api, member, initial: editor.initial, onBack: closeEditor }} />
   if (editor?.kind === 'areas') return <ShootingAreasEditor enableMap={durable || teamPreview} api={api} orgId={member.orgId} questId={editor.questId} onBack={closeEditor} />
   if (editor?.kind === 'hint') return <HintAssetEditor rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor} />
-  if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} photoTestSource={photoTestSource} api={api} initial={editor.initial} member={member} areaUnclassified={areaUnclassified} onBack={closeEditor}
+  if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} photoTestSource={photoTestSource} api={api} initial={editor.initial} areaUnclassified={areaUnclassified} onBack={closeEditor}
     onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
 
   return <section className="form-section" aria-labelledby="org-workspace-title">
     <h2 id="org-workspace-title">{heading}</h2>
-    <p>{member.label}・{roleLabels[member.role]}</p>
+    <p>{member.label}</p>
     {areaUnclassified && <p role="alert">この組織の地域は都道府県コードが未設定（未分類）のため、新しい問題を作成できず、既存の下書きも公開できません。</p>}
     {notice && <p role="status">{notice}</p>}
     {member.role === 'publisher' && !teamPreview && <div className="admin-list-actions">
@@ -77,8 +77,15 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
         : '一覧を読み込めませんでした。'}</p><button type="button" onClick={retry}>一覧を読み直す</button></>}
     {result.status === 'ready' && (result.value.items.length === 0 ? <p>{section === 'quests' ? '問題はまだありません。' : '報告はまだありません。'}</p>
       : <ul className="admin-read-list">{result.value.items.map((item) => 'draft' in item
-        ? <li key={item.questId}><strong>{item.draft.content.title || '無題の下書き'}</strong>
-          <p>{statusLabels[item.status]}{item.questNumber && <> ・ No. {item.questNumber}</>}</p>
+        ? <li key={item.questId}>
+          <p className="admin-quest-status-row">
+            <span className="admin-quest-status" data-status={item.status}>
+              <span aria-hidden="true">{statusIcons[item.status]}</span>{statusLabels[item.status]}
+            </span>
+            {item.publishedVersion !== null && item.status !== 'published' && <span>公開版あり</span>}
+            {item.questNumber && <span>No. {item.questNumber}</span>}
+          </p>
+          <strong>{item.draft.content.title || '無題の下書き'}</strong>
           <details><summary>詳細</summary>
             <p>問題 {item.questId}・下書き版 {item.draftRevision}{item.publishedVersion !== null && '・公開版 ' + item.publishedVersion}</p>
           </details>
@@ -128,7 +135,7 @@ function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiC
       {result.status === 'ready' && (result.value.items.length === 0 ? <p>利用できる所属がありません。</p>
         : <ul className="admin-read-list">{result.value.items.map((member) => <li key={member.orgId}>
           <button type="button" aria-pressed={member.orgId === selected} onClick={() => setSelected(member.orgId)}>
-            {member.label}・{roleLabels[member.role]}
+            {member.label}
           </button></li>)}</ul>)}
       <Pager cursor={cursor} next={result.status === 'ready' ? result.value.nextCursor : undefined}
         onMove={(next) => { setSelected(null); setCursor(next) }} />
