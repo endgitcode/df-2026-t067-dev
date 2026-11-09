@@ -75,7 +75,8 @@ it('links to the spot position without a place id, and omits the link when no sp
   await user.click(await screen.findByRole('button', { name: discovery.placeName }))
   expect(await screen.findByText('徒歩5分')).toBeVisible()
   expect(screen.queryByRole('link', { name: 'Google マップを開く' })).not.toBeInTheDocument()
-  expect(screen.getByText('住所情報なし')).toBeVisible()
+  expect(screen.queryByText('住所情報なし')).not.toBeInTheDocument()
+  expect(screen.queryByText('住所', { exact: true })).not.toBeInTheDocument()
 })
 
 it('confirms deletion, checks a known receipt without resending, and refreshes the list after completion', async () => {
@@ -213,7 +214,7 @@ it.each([0, 1])('shows record details and validates the published title (version
   expect(await within(row).findByAltText('')).toBeInTheDocument()
   expect(within(row).getByText(spot.name)).toBeVisible()
 
-  await user.click(within(row).getByText('2026年11月5日'))
+  await user.click(within(row).getByText('2026/11/5'))
   const dialog = await screen.findByRole('dialog', { name: '記録詳細' })
   expect(within(dialog).getByRole('img', { name: '本人の記録写真' })).toBeVisible()
   expect(within(dialog).getByText(discovery.descriptionSnapshot)).toBeVisible()
@@ -362,4 +363,33 @@ it('opens changed destinations and reopens the same destination on a new visit',
   expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
   rerender(<OwnerDiscoveries api={api} visit={4} initialId="record-b" />)
   expect(await screen.findByText('record-b')).toBeVisible()
+})
+
+
+it.each(['', '   '])('omits blank address and duplicate quest name in the detail (%j)', async (address) => {
+  const user = userEvent.setup()
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = () => 'blob:synthetic-record'
+    static revokeObjectURL = vi.fn()
+  })
+  const name = '架空の時計'
+  const record = { ...discovery, descriptionSnapshot: ' ', afterClear: {
+    access: ' ', hours: '', promoComment: ' ', explanation: '',
+    spot: { name, address, position: { latitude: 35, longitude: 139 } },
+  } }
+  const api = { ...createApiClient(),
+    listDiscoveries: vi.fn().mockResolvedValue({ items: [record], nextCursor: null }),
+    getDiscovery: vi.fn().mockResolvedValue(record),
+    getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
+    getQuest: vi.fn().mockResolvedValue({ title: name, version: record.questVersion }),
+  }
+  render(<OwnerDiscoveries api={api} />)
+  await user.click(await screen.findByRole('button', { name }))
+  const dialog = within(await screen.findByRole('dialog'))
+  await waitFor(() => expect(dialog.queryByText('読み込み中…')).not.toBeInTheDocument())
+  expect(dialog.getAllByText(name)).toHaveLength(1)
+  for (const label of ['問題の名前', '住所', 'アクセス', '利用時間', '自治体からの紹介', '解説']) {
+    expect(dialog.queryByText(label, { exact: true })).not.toBeInTheDocument()
+  }
+  expect(dialog.getByRole('button', { name: '記録を削除' })).toHaveClass('secondary-button', 'record-delete')
 })
