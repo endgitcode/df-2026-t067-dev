@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SetStateAction } from 'react'
 import { SpotEditor } from './SpotEditor'
-import { confirmedSpot, initialSpotInput } from './mapsSpotLink'
+import { initialSpotInput, spotForDraft } from './mapsSpotLink'
 import './admin.css'
 import { PhotoRightsInput } from './PhotoRightsInput'
 import { HoursInput } from './HoursInput'
@@ -262,9 +262,9 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       setStep('A03')
       return
     }
-    const spot = confirmedSpot(spotInput)
+    const spot = spotForDraft(spotInput)
     if (spot === 'incomplete') {
-      setInputError('対象スポットの位置・名称・住所を入力し、確認欄を選択してください。')
+      setInputError('対象スポットの名称・住所と、有効な緯度・経度を入力してください。')
       setStep('A03')
       return
     }

@@ -9,7 +9,7 @@ import QuestDraftForm from './QuestDraftForm'
 const member: OrgMembership = { orgId: 'test-org', areaId: 'n03-00001-2025', label: 'テスト自治体', role: 'editor',
   municipalityCode: '00001', exploration: { source: 'N03', name: '区域テスト', municipalityCode: '00001', year: 2025 } }
 
-it('reads a Maps pin, requires confirmation after editing, and restores the saved spot independently of the capture range', async () => {
+it('saves a complete Maps spot without a confirmation checkbox and restores it independently of the capture range', async () => {
   const user = userEvent.setup()
   const createManagedQuest = vi.fn<typeof api.createManagedQuest>(async (orgId, draft) => ({
     orgId, areaId: member.areaId, questId: 'test-quest', draftRevision: 1, publishedVersion: null,
@@ -24,12 +24,14 @@ it('reads a Maps pin, requires confirmation after editing, and restores the save
   expect(screen.getByLabelText('スポットの緯度')).toHaveValue('36')
   await user.type(screen.getByLabelText('スポット名・施設名'), '施設')
   await user.type(screen.getByLabelText('確認済み住所'), '確認住所')
-  await user.click(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' }))
+  expect(screen.queryByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).not.toBeInTheDocument()
   await user.clear(screen.getByLabelText('スポットの経度'))
-  await user.type(screen.getByLabelText('スポットの経度'), '141')
+  await user.type(screen.getByLabelText('スポットの経度'), '181')
   await user.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect(createManagedQuest).not.toHaveBeenCalled()
-  await user.click(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' }))
+  expect(screen.getByText('対象スポットの名称・住所と、有効な緯度・経度を入力してください。')).toBeVisible()
+  await user.clear(screen.getByLabelText('スポットの経度'))
+  await user.type(screen.getByLabelText('スポットの経度'), '141')
   await user.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect(await screen.findByText('下書きを保存しました。')).toBeVisible()
   const saved = await createManagedQuest.mock.results[0].value
@@ -38,16 +40,13 @@ it('reads a Maps pin, requires confirmation after editing, and restores the save
   render(<QuestDraftForm teamPreview connection={{ ...connection, initial: saved }} />)
   expect(screen.getByLabelText('確認済み住所')).toHaveValue('確認住所')
   expect(screen.getByLabelText('スポットの経度')).toHaveValue('141')
-  expect(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).toBeChecked()
   expect(screen.getByLabelText('Google Maps共有URL')).toHaveValue('')
   await user.type(screen.getByLabelText('Google Maps共有URL'), 'https://www.google.com/maps/search/?api=1&query=place_id:ChIJ_other')
-  expect(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).not.toBeChecked()
   await user.click(screen.getByRole('button', { name: 'リンクから場所を取得' }))
   expect(screen.getByText('ChIJ_other')).toBeVisible()
   expect(screen.getByLabelText('スポット名・施設名')).toHaveValue('')
   expect(screen.getByLabelText('確認済み住所')).toHaveValue('')
   expect(screen.getByLabelText('スポットの緯度')).toHaveValue('')
-  expect(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).toBeDisabled()
 })
 
 it('leaves manual inputs usable after an unresolved short link', async () => {
@@ -61,7 +60,8 @@ it('leaves manual inputs usable after an unresolved short link', async () => {
   await user.type(screen.getByLabelText('スポットの経度'), '140')
   await user.type(screen.getByLabelText('スポット名・施設名'), '施設')
   await user.type(screen.getByLabelText('確認済み住所'), '住所')
-  expect(screen.getByRole('checkbox', { name: '位置・スポット名・住所を確認した' })).toBeEnabled()
+  expect(screen.getByLabelText('スポットの緯度')).toHaveValue('36')
+  expect(screen.getByLabelText('確認済み住所')).toHaveValue('住所')
 })
 
 it('parses only permitted Maps links and separates labels, coordinate pins and Place IDs', () => {

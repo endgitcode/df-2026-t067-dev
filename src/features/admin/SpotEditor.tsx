@@ -18,7 +18,7 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
         return
       }
       const position = link.kind === 'place' && !link.googlePlaceId ? link.position : null
-      onChange({ ...initialSpotInput(), url: input.url, requiresConfirmation: true,
+      onChange({ ...initialSpotInput(), url: input.url, hasImportedLink: true,
         ...(position ? { latitude: String(position.latitude), longitude: String(position.longitude) } : {}) })
       if (link.kind === 'short') setMessage('短縮リンクを開き、表示されたURLを貼り直してください。手入力でも登録できます。')
       else if (position) setMessage('座標候補を入力しました。スポット名・住所・位置を確認してください。')
@@ -27,13 +27,12 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
     }
     const result = parseMapsSpotLink(input.url)
     setMessage(result.message)
-    if (!result.position && !result.googlePlaceId) return
-    onChange({ ...input, googlePlaceId: result.googlePlaceId, confirmed: false,
-      ...(result.position ? { latitude: String(result.position.latitude), longitude: String(result.position.longitude) } : {}) })
+    if (!result.position) return
+    edit({ latitude: String(result.position.latitude), longitude: String(result.position.longitude) })
   }
 
   function edit(changes: Partial<SpotInput>) {
-    onChange({ ...input, ...(durable ? { googlePlaceId: undefined } : {}), ...changes, confirmed: false })
+    onChange({ ...input, googlePlaceId: undefined, ...changes })
   }
 
   return <fieldset>
@@ -64,15 +63,13 @@ export function SpotEditor({ input, onChange, durable = false }: { input: SpotIn
       onChange={(event) => edit({ address: event.target.value })} /></label>
     <div className="field-pair">
       <label>スポットの緯度<input inputMode="decimal" value={input.latitude} maxLength={32}
-        onChange={(event) => edit({ latitude: event.target.value, googlePlaceId: undefined })} /></label>
+        onChange={(event) => edit({ latitude: event.target.value })} /></label>
       <label>スポットの経度<input inputMode="decimal" value={input.longitude} maxLength={32}
-        onChange={(event) => edit({ longitude: event.target.value, googlePlaceId: undefined })} /></label>
+        onChange={(event) => edit({ longitude: event.target.value })} /></label>
     </div>
     <button type="button" aria-expanded={showMap} onClick={() => setShowMap(!showMap)}>{showMap ? '確認地図を閉じる' : '確認地図を開く'}</button>
     {showMap && <ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} spot={point}
-      onSelect={(latitude, longitude) => edit({ latitude: String(latitude), longitude: String(longitude), googlePlaceId: undefined })} />}
-    <label><input type="checkbox" checked={input.confirmed} disabled={!point || !input.name.trim() || !input.address.trim()}
-      onChange={(event) => onChange({ ...input, confirmed: event.target.checked })} />位置・スポット名・住所を確認した</label>
+      onSelect={(latitude, longitude) => edit({ latitude: String(latitude), longitude: String(longitude) })} />}
     {(input.name || input.address || input.latitude || input.longitude || input.googlePlaceId || (durable && input.url)) &&
       <button type="button" onClick={() => { onChange(initialSpotInput()); setReference(null); setMessage('') }}>スポットの入力を消す</button>}
   </fieldset>
