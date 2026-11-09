@@ -9,7 +9,6 @@ import { answerTransaction, processingError, questChanged, validDigest } from '.
 import { hasSpotShootingArea } from './firestore-managed-drafts'
 import type { FirestoreManagedDraftStore } from './firestore-managed-drafts'
 import { readOrgAssetRecord } from './firestore-org-assets'
-import { isPhotoApproved, photoApprovalRequired } from './admin-photo-approvals'
 import { requirePublisher } from './firestore-org-memberships'
 import { draftPhotoFeatures } from './photo-match'
 import { maximumCatalogEntries } from './public-catalog-http'
@@ -44,11 +43,6 @@ export class FirestoreManagedPublication {
       if (!matchDigest || !mismatchDigest || matchDigest === mismatchDigest) {
         throw new HttpError(409, 'PHOTO_TEST_REQUIRED', 'この下書き版で、異なる写真の一致と別対象の試験が必要です。')
       }
-      const [matchApproved, mismatchApproved] = await Promise.all([
-        isPhotoApproved(this.db, tx, orgId, 'photo_test', match.get('approvalDigest')),
-        isPhotoApproved(this.db, tx, orgId, 'photo_test', mismatch.get('approvalDigest')),
-      ])
-      if (!matchApproved || !mismatchApproved) throw photoApprovalRequired()
       if (quest.status === 'published') return quest
 
       const area = await tx.get(this.db.collection('areas').doc(quest.areaId))
@@ -119,7 +113,7 @@ export class FirestoreManagedPublication {
       ...hintAssetIds.map((assetId) => this.readAsset(tx, orgId, assetId, 'public_hint')),
     ])
     const features = draftPhotoFeatures(content.verifiedFeatures)
-    const missing = missingReviewFields(quest, { reference: reference !== null, public_hint: hint !== null }, { reference: true, hints: true })
+    const missing = missingReviewFields(quest, { reference: reference !== null, public_hint: hint !== null }, { requirePhotoRights: false, hintsAvailable: true })
     if (!reference || !features || !zones.length || zones.some(({ radiusMeters }) => radiusMeters !== CAPTURE_ZONE_RADIUS_METERS) || missing.length ||
       hintAssetIds.some((assetId, index) => assetId !== null && hintAssets[index] === null)) throw reviewRequired()
     return { ...owned, reference, hint, hintAssets, features }
@@ -129,7 +123,6 @@ export class FirestoreManagedPublication {
     if (!assetId) return null
     const asset = readOrgAssetRecord(await tx.get(this.db.collection('orgAssets').doc(assetId)), orgId)
     if (!asset?.generation || asset.asset.purpose !== purpose) return null
-    if (!await isPhotoApproved(this.db, tx, orgId, purpose, asset.approvalDigest)) throw photoApprovalRequired()
     return { assetId, generation: asset.generation }
   }
 }

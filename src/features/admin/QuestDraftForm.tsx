@@ -330,7 +330,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
         <span className="helper">{focused ? '公開までに必須' : '必須（次へ進むとき）'}</span><label>対象名<input id="workflow-target-name" ref={nameRef} aria-required={!focused} aria-invalid={Boolean(draftEntryError && !name.trim())} aria-describedby={draftEntryError && !name.trim() ? "name-error" : undefined} value={name} onChange={event => { setName(event.target.value); markMaterialChange() }} placeholder="例：広場の時計" /></label>
         {draftEntryError && !name.trim() && <p id="name-error" className="field-error">対象名を入力してください。</p>}
         <span className="helper">{part ? '公開までに必須・非公開' : '任意（後で登録可・非公開の照合用）'}</span><label className="file-label">参考写真（公開ヒントには自動流用しません）<input id="workflow-reference" className="reference-photo-input" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help photo-error" onChange={event => { if (choosePhoto(event.target.files?.[0])) markMaterialChange(); event.currentTarget.value = '' }} /></label>
-        <p id="photo-help" className="helper">{connection ? 'JPEG / PNG / WebP、送信上限4 MiB。' + (part ? '事前承認済みの画像を使ってください。' : '合成素材を使ってください。')
+        <p id="photo-help" className="helper">{connection ? 'JPEG / PNG / WebP、送信上限4 MiB。' + (part ? '照合に使う許可がある写真を選んでください。' : '合成素材を使ってください。')
           : 'JPEG / PNG / WebP、選択上限5 MB。参考写真の選択・プレビューのみです。'}</p>
         {!photo && referenceAssetId && <p>保存済みの参考写真 <button type="button" onClick={() => {
           setReferenceAssetId(null); markMaterialChange()

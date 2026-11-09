@@ -23,8 +23,8 @@ export function remainingWork(quest: ManagedQuest, approvedAssets = false): stri
   if (content.hints.some((hint) => !hint.trim())) items.push('3本のヒント')
   if (!hasValidFeatures(content.verifiedFeatures)) items.push('現地で確かめた見た目の特徴')
   if (quest.status === 'draft') items.push(approvedAssets ? '写真試験と公開条件の確認' : '確認依頼')
-  else if (quest.status === 'review_pending') items.push('公開前のチェックと公開')
-  else if (quest.status === 'paused') items.push('再公開の条件確認と公開前のチェック')
+  else if (quest.status === 'review_pending') items.push('写真試験と公開')
+  else if (quest.status === 'paused') items.push('再公開の条件確認と写真試験')
   return items
 }
 

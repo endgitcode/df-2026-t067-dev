@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict'
-import { approveFixture } from './photo-approval-fixtures'
-import { photoApprovalDigest, photoApprovalId } from '../src/admin-photo-approvals'
 import { createHash } from 'node:crypto'
 import { Storage } from '@google-cloud/storage'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
@@ -95,7 +93,6 @@ test('durable publishing freezes the tested version and pausing stops all public
   const hints = [hint]
   for (const [index, background] of ['#123456', '#abcdef'].entries()) {
     const bytes = await sharp({ create: { width: 2, height: 2, channels: 3, background } }).png().toBuffer()
-    await approveFixture(db, orgId, 'public_hint', photoApprovalDigest(bytes))
     hints.push(await editor.uploadOrgAsset(orgId, { purpose: 'public_hint', photoRights: '合成画像',
       photo: image(bytes), idempotencyKey: 'hint-' + index }))
   }
@@ -130,21 +127,12 @@ test('durable publishing freezes the tested version and pausing stops all public
   const compare = (photo: Blob, idempotencyKey: string, revision: number) => editor.testManagedQuest(orgId, questId, {
     photo, idempotencyKey, expectedDraftRevision: revision,
   })
-  const missingApproval = await editor.submitManagedQuestReview(orgId, questId, draftRevision)
-  assert(missingApproval.missing.includes('referenceApproval'))
-  assert(missingApproval.missing.includes('hintApproval'))
-  await assert.rejects(compare(image(syntheticPng), 'match', draftRevision), { code: 'PHOTO_APPROVAL_REQUIRED' })
-  await approveFixture(db, orgId, 'reference', photoApprovalDigest(syntheticPng))
-  await approveFixture(db, orgId, 'public_hint', photoApprovalDigest(otherSyntheticPng))
-  await approveFixture(db, orgId, 'public_hint', photoApprovalDigest(syntheticPng))
-  await approveFixture(db, orgId, 'photo_test', photoApprovalDigest(syntheticPng))
-  await approveFixture(db, orgId, 'photo_test', photoApprovalDigest(otherSyntheticPng))
   const match = await compare(image(syntheticPng), 'match', draftRevision)
   duplicate = true
   const reused = await compare(image(syntheticPng), 'duplicate', draftRevision)
   duplicate = false
   const mismatch = await compare(image(otherSyntheticPng), 'mismatch', draftRevision)
-  const input = { expectedDraftRevision: draftRevision, matchTestId: match.testId, mismatchTestId: mismatch.testId, confirmations }
+  const input = { expectedDraftRevision: draftRevision, matchTestId: match.testId, mismatchTestId: mismatch.testId }
   await assert.rejects(editor.publishManagedQuest(orgId, questId, input), { code: 'REVIEW_REQUIRED' })
   await assert.rejects(second.api('other').publishManagedQuest(orgId, questId, input), { code: 'FORBIDDEN' })
   await assert.rejects(second.api('other').publishManagedQuest('other-org', questId, input), { code: 'NOT_FOUND' })
@@ -172,14 +160,6 @@ test('durable publishing freezes the tested version and pausing stops all public
   await publisherMembership.update({ active: true })
   await assert.rejects(traveler.getQuest(questId), { code: 'NOT_FOUND' })
   await assert.rejects(teamTraveler.getQuest(questId), { code: 'NOT_FOUND' })
-  const hintApproval = db.collection('adminPhotoApprovals').doc(photoApprovalId(orgId, 'public_hint', photoApprovalDigest(otherSyntheticPng)))
-  await hintApproval.update({ active: false })
-  await assert.rejects(editor.publishManagedQuest(orgId, questId, input), { code: 'PHOTO_APPROVAL_REQUIRED' })
-  await hintApproval.update({ active: true })
-  const matchApproval = db.collection('adminPhotoApprovals').doc(photoApprovalId(orgId, 'photo_test', photoApprovalDigest(syntheticPng)))
-  await matchApproval.update({ active: false })
-  await assert.rejects(editor.publishManagedQuest(orgId, questId, input), { code: 'PHOTO_APPROVAL_REQUIRED' })
-  await matchApproval.update({ active: true })
   const published = await editor.publishManagedQuest(orgId, questId, input)
   assert.equal(published.publishedVersion, 1)
   assert.equal(published.questNumber, '13-01')

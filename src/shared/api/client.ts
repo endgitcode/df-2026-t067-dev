@@ -379,7 +379,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
       }, { ...call, authenticated: true, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     },
     async publishManagedQuest(orgId: string, questId: string, input: PublishManagedQuest, call: CallOptions = {}) {
-      const body = adminInput((value) => parsePublishManagedQuest(value, input.confirmations.photoRights === undefined), input)
+      const body = adminInput((value) => parsePublishManagedQuest(value, options.expectedDataMode === 'durable-local' || options.expectedDataMode === 'team-preview' ||
+        (input.confirmations !== undefined && input.confirmations.photoRights === undefined)), input)
       return request('/orgs/' + id(orgId) + '/quests/' + id(questId) + '/publish', (data) => {
         const quest = managed(orgId, questId)(data)
         if (quest.status !== 'published' || quest.draftRevision !== body.expectedDraftRevision) throw new ContractError('publication.identity')
