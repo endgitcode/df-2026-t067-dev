@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createApiClient } from '../../shared/api'
 import type { ApiClient, LocalApiDataMode, ManagedQuest, ManagedReport, OrgMembership, Page } from '../../shared/api'
 import { reportCategoryLabels } from '../../shared/reportLabels'
 import { useRemote } from '../../shared/useRemote'
-import type { AuthClient } from '../auth/authTypes'
+import type { AuthClient, AuthUser } from '../auth/authTypes'
 import { AuthError, createFirebaseAuthClient } from '../auth/firebaseAuth'
 import { useServerIdentity } from '../explore/useQuestConnection'
 import { PausePublication } from './PausePublication'
@@ -137,6 +137,45 @@ function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiC
   </>
 }
 
+function AdminAccountMenu({ user, pending, onLogout }: {
+  user: AuthUser
+  pending: boolean
+  onLogout: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const menu = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const panelId = useId()
+  const name = user.displayName?.trim()
+
+  useEffect(() => {
+    if (!open) return
+    function closeOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !menu.current?.contains(event.target)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    return () => document.removeEventListener('pointerdown', closeOutside)
+  }, [open])
+
+  return <div className="admin-account" ref={menu} onKeyDown={(event) => {
+    if (open && event.key === 'Escape') {
+      event.preventDefault()
+      setOpen(false)
+      trigger.current?.focus()
+    }
+  }}>
+    <button type="button" className="admin-account-trigger" ref={trigger} aria-label="アカウントメニュー"
+      aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)}>
+      {user.photoURL ? <img src={user.photoURL} alt="" /> : <span aria-hidden="true">{name ? Array.from(name).slice(0, 2).join('') : '担当'}</span>}
+    </button>
+    <div className="admin-account-panel" id={panelId} hidden={!open}>
+      <p>{name || 'ログイン中のアカウント'}</p>
+      <a href="/">旅行者画面へ</a>
+      <button type="button" disabled={pending} onClick={onLogout}>{pending ? 'ログアウト中…' : 'ログアウト'}</button>
+    </div>
+  </div>
+}
+
 export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: providedApi, dataMode = 'demo' }: { authClient?: AuthClient; apiClient?: ApiClient; dataMode?: LocalApiDataMode } = {}) {
   const authClient = useMemo(() => providedAuth ?? createFirebaseAuthClient(), [providedAuth])
   const api = useMemo(() => providedApi ?? createApiClient({ expectedDataMode: dataMode, getIdToken: authClient.getIdToken }), [providedApi, authClient, dataMode])
@@ -166,16 +205,20 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
   }
 
   return <main className="admin-demo">
-    <header className="admin-header"><h1>{teamPreview ? '自治体向け共有検証' : '自治体向けローカル管理'}</h1><a href="/">旅行者画面へ</a></header>
+    <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header'}>
+      <h1>{teamPreview ? '自治体向け共有検証' : '自治体向けローカル管理'}</h1>
+      {auth.status === 'signed-in'
+        ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
+        : <a href="/">旅行者画面へ</a>}
+    </header>
     <p className="demo-notice">{teamPreview ? '架空のデータを使ってください。公開した問題と公開ヒントは誰でも閲覧できます。'
       : '架空の組織と検証用の保存先を使います。' + (dataMode === 'durable-local' ? '下書きと報告は検証環境の保存先に保存されます。' : '下書きと報告は一時的な保存先に保存されます。')}</p>
-    <section className="form-section" aria-label="担当者ログイン">
+    {(auth.status !== 'signed-in' || error) && <section className="form-section" aria-label="担当者ログイン">
       {auth.status === 'signed-out' && <button type="button" disabled={pending} onClick={() => void authenticate('login')}>Googleログイン</button>}
-      {auth.status === 'signed-in' && <button type="button" disabled={pending} onClick={() => void authenticate('logout')}>ログアウト</button>}
       {(pending || auth.status === 'checking') && <p role="status">ログイン状態を確認しています…</p>}
       {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p>Googleログインの設定を確認してください。</p>}
       {error && <p role="alert">{error}</p>}
-    </section>
+    </section>}
     {!pending && auth.status === 'signed-in' && (identity.result?.status === 'ready' ? <Memberships key={auth.user.uid} api={api} teamPreview={teamPreview} durable={dataMode === 'durable-local'} photoTestSource={photoTestSource} />
       : identity.result?.status === 'error' ? <div className="form-section"><p role="alert">{teamPreview && identity.result.code === 'FORBIDDEN'
         ? 'このアカウントは共有検証に招待されていません。' : 'ログインを確認できませんでした。'}</p>
