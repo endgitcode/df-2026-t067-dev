@@ -116,9 +116,9 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
    閉じている間の非表示への切り替えは、シートと同じく遷移の終わりに遅らせる。 */
 .map-filter-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: auto; }
 .filter-stage-label { margin: 4px 2px 0; font-size: 14px; font-weight: 600; }
-.map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }
+.map-filter-chips-wrap { width: min(100%, 640px); display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }
 .map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s; }
-.map-filter-chips-inner { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 0; overflow: hidden; }
+.map-filter-chips-inner { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 0; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }
 /* 地域チップは折り返して全件見せる（D-73）。横スクロール前提だと狭幅で右端の
    チップが途中で切れ、横に送れることも伝わらなかった（実地目視：390pxで「中…」、
@@ -128,27 +128,31 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .filter-chip { flex: none; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
 /* 開閉ボタンは押しやすい44px級にし、開状態の見た目とシェブロンで状態を返す（D-59）。 */
 .filter-toggle { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; transition: background-color 150ms var(--ease-out); }
-.filter-toggle[aria-expanded="true"] { background: var(--ui-soft); }
+.filter-toggle.has-filter { background: var(--ui-accent); }
+.filter-disclosure { max-width: 100%; }
+.filter-disclosure.is-open { width: min(100%, 640px); border: 2px solid var(--ui-line); border-radius: 16px; background: var(--ui-surface); box-shadow: none; pointer-events: auto; }
+.filter-disclosure.is-open > .filter-toggle { width: 100%; justify-content: space-between; border: 0; border-radius: 16px; padding: 8px 12px; background: var(--ui-surface); }
+.filter-disclosure.is-open .map-filter-chips-inner { padding: 0 12px 12px; max-height: min(52dvh, 440px); overflow-y: auto; }
+.map-filter-chips-inner > div { width: 100%; }
 .filter-toggle-chevron { display: inline-flex; transition: transform 200ms var(--ease-out); }
 .filter-toggle-chevron .icon { width: 16px; height: 16px; }
 .filter-toggle-chevron.is-open { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .filter-toggle-chevron { transition: none; } }
-.filter-accordion { display: flex; flex-direction: column; gap: 4px; width: min(100%, 360px); max-height: min(52vh, 440px); overflow: auto; pointer-events: auto; padding: 2px; }
-.filter-accordion-item { display: flex; flex-direction: column; gap: 2px; width: 100%; }
-.filter-accordion-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
-.filter-accordion-item.has-selection > .filter-accordion-row { background: var(--ui-soft); }
+.filter-accordion { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; pointer-events: auto; padding: 4px 0; }
+.filter-accordion-item { min-width: 0; }
+.filter-accordion-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; border: 2px solid var(--ui-line); border-radius: 12px; background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; box-shadow: none; cursor: pointer; }
+.filter-accordion-row[aria-expanded="true"] { background: var(--ui-ink); color: var(--ui-surface); }
 .filter-accordion-name { flex: 1 1 auto; }
-.filter-accordion-count { flex: none; font-size: 12px; color: var(--ui-muted); font-weight: 600; }
-.filter-accordion-chevron { display: inline-flex; flex: none; transition: transform 200ms var(--ease-out); }
-.filter-accordion-chevron .icon { width: 16px; height: 16px; }
-.filter-accordion-chevron.is-open { transform: rotate(180deg); }
-.filter-accordion-body { display: flex; flex-direction: column; gap: 2px; padding: 2px 4px 8px 8px; }
-.filter-check { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
+.filter-accordion-count { flex: none; font-size: 12px; font-weight: 600; }
+.filter-accordion-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 4px 0; }
+@media (min-width: 480px) {
+  .filter-accordion, .filter-accordion-body { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.filter-check { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px; border: 2px solid var(--ui-line); border-radius: 12px; background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
 .filter-check:hover, .filter-check:focus-visible { background: var(--ui-soft); }
 .filter-check[aria-pressed="true"] { background: color-mix(in srgb, var(--ui-accent) 55%, var(--ui-surface)); }
 .filter-check-box { flex: none; width: 18px; height: 18px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; background: var(--ui-surface); }
 .filter-check[aria-pressed="true"] .filter-check-box { background: var(--ui-accent); }
-@media (prefers-reduced-motion: reduce) { .filter-accordion-chevron { transition: none; } }
 .filter-chip[aria-pressed="true"] { background: var(--ui-accent); }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .api-load-state .map-filter-panel { margin-top: 18px; }
@@ -363,7 +367,7 @@ button.traveler-list-row { cursor: pointer; }
   .map-filter-overlay { top: 74px; }
   /* 開いている間だけ一覧シート（7）の手前へ。閉じると通常の重なり順に戻す。 */
   .map-filter-overlay:has(.filter-toggle[aria-expanded="true"]) { z-index: 8; }
-  .map-filter-overlay .filter-accordion { padding: 8px; border: 2px solid var(--ui-line); border-radius: 16px; background: var(--ui-surface); box-shadow: none; }
+  .map-filter-overlay .filter-disclosure.is-open { width: 100%; }
   .quest-card { display: block; }
   .demo-note { max-width: 570px; }
   /* フッター廃止（D-39）に伴い、下部タブバーと重ならないための余白はページ側で確保する。 */
@@ -398,7 +402,7 @@ button.traveler-list-row { cursor: pointer; }
   .map-controls { right: 11px; bottom: 72px; }
   .map-zoom button { width: 44px; height: 44px; }
   .map-preview-shell.has-sheet { height: max(480px, calc(100svh - 224px)); min-height: 480px; }
-  .map-filter-overlay { top: 112px; left: 12px; right: 12px; }
+  .map-filter-overlay { top: 112px; left: 20px; right: 20px; }
   .explore-sheet { left: 0; right: 0; bottom: 0; z-index: 7; width: auto; border-left: 0; border-right: 0; border-bottom: 0; border-radius: var(--radius-l) var(--radius-l) 0 0; box-shadow: none; }
   .explore-sheet[data-snap="closed"]:not(.is-dragging) { z-index: 5; }
   .explore-quest-list { max-height: 300px; }
@@ -860,7 +864,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   }
   /* スマホ幅では縁なし表示でもナビは下部タブバーのまま（D-32）。浮動ピルにはしない。
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
-  body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 12px; right: 12px; }
+  body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top) + 58px); left: 20px; right: 20px; }
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
   /* 地図操作はシートの高さに関係なくシェル内の一定位置に置く。シートに覆われた
      ボタンは MapPreview が実矩形で判定し、個別に操作不能にする。 */
