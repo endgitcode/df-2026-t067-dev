@@ -350,3 +350,28 @@
 .admin-login-heading { margin-top: clamp(40px, 12vh, 120px); }
 
 .admin-demo .google-continue { padding: 12px 40px; background: #fff; border-width: 1px; border-radius: 8px; color: #202124; }
+
+/* 各工程の主操作をパネル幅にそろえ、保存などの副操作は残す。 */
+.admin-demo .workflow-primary,
+.admin-demo .submit-button { position: static; display: block; width: 100%; margin-inline: 0; min-width: 0; }
+.admin-list-actions:has(> .workflow-primary) { flex-direction: column; align-items: stretch; }
+.admin-workflow:has(.workflow-primary) .submit-button,
+.admin-workflow:has(.workflow-primary) .submit-button:hover {
+  background: var(--ui-surface); color: var(--ui-ink);
+}
+.admin-workflow:has(.unsaved-dialog) .workflow-primary:not(.unsaved-dialog .workflow-primary) {
+  background: var(--ui-surface); color: var(--ui-ink);
+}
+@media (max-width: 980px) {
+  .admin-quest-list { display: flex; flex-direction: column; min-height: 70dvh; }
+  .admin-quest-list > .workflow-primary { order: 1; margin-top: auto; }
+  /* 文書内の下端に置く。地図・キーボード・確認ダイアログを覆わない。 */
+  .admin-demo .admin-save-bar { position: static; display: flex; flex-direction: column; gap: 8px; padding: 0 0 env(safe-area-inset-bottom, 0px); margin: 16px 0 0; border: 0; }
+  .admin-demo .admin-list-actions > .workflow-primary { order: 1; }
+  .admin-demo .admin-workflow { padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 981px) {
+  .admin-demo .admin-save-bar,
+  .admin-demo .workflow-primary,
+  .admin-demo .submit-button { position: static; width: 100%; }
+}

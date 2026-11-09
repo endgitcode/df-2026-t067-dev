@@ -92,7 +92,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
   if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} photoTestSource={photoTestSource} api={api} initial={editor.initial} areaUnclassified={areaUnclassified} onBack={closeEditor}
     onPublished={published} />
 
-  return <section className="form-section" aria-labelledby="org-workspace-title" ref={listRoot}>
+  return <section className="form-section admin-quest-list" aria-labelledby="org-workspace-title" ref={listRoot}>
     <h2 id="org-workspace-title" tabIndex={-1} ref={listHeading}>{heading}</h2>
     <p>{member.label}</p>
     {areaUnclassified && <p role="alert">地域未設定・作成不可・公開不可</p>}

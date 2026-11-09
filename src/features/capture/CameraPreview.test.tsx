@@ -100,7 +100,7 @@ describe('local camera preview', () => {
     expect(await screen.findByRole('button', { name: '送る' })).toBeDisabled()
   })
 
-  it('スマホは丸シャッター、確認後は送るだけを主操作にして撮り直しで戻る', async () => {
+  it('スマホは幅いっぱいのシャッター、確認後は送るだけを主操作にして撮り直しで戻る', async () => {
     const media = setup()
     const view = render(<CameraPreview onClose={media.onClose} />)
     await loadFrame(media.stream)
@@ -694,8 +694,8 @@ describe('confirm photo layout CSS', () => {
     const { resolve } = await import('node:path')
     const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
     expect(css).toMatch(/\.camera-overlay \.camera-video, \.camera-overlay \.photo-preview \{[^}]*position: relative/)
-    expect(css).toMatch(/\.camera-overlay \.camera-shutter-controls \{[^}]*grid-template-columns: 1fr 76px 1fr/ )
-    expect(css).toMatch(/\.camera-overlay \.camera-shutter \{[^}]*grid-column: 2;[^}]*width: 76px; height: 76px;[^}]*border-radius: 50%/ )
+    expect(css).toMatch(/\.camera-overlay \.camera-shutter-controls \{[^}]*display: block; width: 100%/ )
+    expect(css).toMatch(/\.camera-overlay \.camera-shutter \{[^}]*width: 100%; height: 64px;[^}]*border-radius: var\(--ui-radius, 16px\)/ )
     expect(css).not.toMatch(/\.camera-overlay \.camera-video, \.camera-overlay \.photo-preview \{[^}]*position: absolute; inset: 0/)
     expect(css).toMatch(/\.camera-overlay \.camera-video, \.camera-overlay \.photo-preview \{[^}]*flex: 1 1 auto/)
   })

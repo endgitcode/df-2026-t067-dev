@@ -152,7 +152,7 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
       }
     }}>
       <p>STEP {step}・未保存</p>
-      <button type="button" disabled={busy} onClick={() => document.dispatchEvent(new Event('admin-save-draft'))}>保存して移動</button>
+      <button type="button" className="workflow-primary" disabled={busy} onClick={() => document.dispatchEvent(new Event('admin-save-draft'))}>保存して移動</button>
       <button type="button" disabled={busy} onClick={() => move(pending)}>保存せず移動</button>
       <button type="button" disabled={busy} onClick={() => { setPending(null); heading.current?.focus() }}>とどまる</button>
     </div>}

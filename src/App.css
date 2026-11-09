@@ -1075,10 +1075,52 @@ body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; 
   .map-filter-panel .filter-accordion { max-height: 60dvh; border: 0; border-radius: 0; padding: 0; }
 }
 
-/* 撮影操作は中央下。左右は補助操作のために空ける。 */
-.camera-overlay .camera-shutter-controls { display: grid; grid-template-columns: 1fr 76px 1fr; align-items: center; }
-.camera-overlay .camera-shutter { grid-column: 2; justify-self: center; width: 76px; height: 76px; min-height: 76px; padding: 0; border-radius: 50%; border: 3px solid var(--ui-ink); box-shadow: inset 0 0 0 5px var(--ui-surface); }
+/* 撮影操作もパネル幅の主ボタンにそろえる。 */
+.camera-overlay .camera-shutter-controls { display: block; width: 100%; }
+.camera-overlay .camera-shutter { width: 100%; height: 64px; min-height: 64px; padding: 0; border-radius: var(--ui-radius, 16px); border: 3px solid var(--ui-ink); box-shadow: inset 0 0 0 5px var(--ui-surface); }
 
 /* 一覧内は共通カードの上paddingを重ねない。条件表示・再読込は残す。 */
 .traveler-shell .quest-card.is-in-list .quest-card-heading { padding: 0 16px; }
 .traveler-shell .quest-card.is-in-list .quest-card-content { padding: 0 16px 16px; }
+
+/* 主操作はパネル幅、副操作とナビは白地。操作の有無は各画面が管理する。 */
+.primary-button,
+.api-load-state > button { position: static; width: 100%; min-width: 0; box-sizing: border-box; border-radius: var(--ui-radius, 16px); }
+.traveler-shell .quest-toggle,
+.traveler-shell .quest-toggle:hover:not(:disabled),
+body.explore-fullbleed .explore-sheet-reopen,
+body.explore-fullbleed .explore-sheet-reopen:hover {
+  background: var(--ui-surface); color: var(--ui-ink);
+}
+/* カメラ内に主操作がある間、背面の開始操作は副として扱う。 */
+.quest-details:has(.camera-panel) > .primary-button,
+.quest-details:has(.camera-panel) > .primary-button:hover:not(:disabled) {
+  background: var(--ui-surface); color: var(--ui-ink);
+}
+
+@media (max-width: 980px) {
+  /* シート自体が下ナビを避けるため、内部の主操作に固定座標を持たせない。 */
+  .quest-details { display: flex; flex-direction: column; min-height: min(60dvh, 480px); gap: 12px; }
+  .quest-details > .primary-button,
+  .quest-details > .quest-cleared-action,
+  .quest-details > .quest-handoff { margin-top: auto; order: 1; }
+  .quest-details > .unavailable-note { order: 2; }
+  .camera-panel.camera-overlay > .camera-actions { margin-top: auto; }
+  .camera-actions > .primary-button { order: 1; }
+  .camera-panel > .camera-actions:has(.primary-button) { order: 1; }
+  .camera-panel > .camera-actions:has(.primary-button):has(~ .camera-actions) { order: 2; }
+  .clear-screen-card { min-height: min(80dvh, 720px); }
+  .clear-screen-actions { margin-top: auto; }
+  .clear-screen-actions > .primary-button { order: 1; }
+  .owner-records:has(> .primary-button) { display: flex; flex-direction: column; min-height: calc(100dvh - var(--mobile-tabbar-h) - 120px - env(safe-area-inset-top, 0px)); }
+  .owner-records > .primary-button { margin-top: auto; }
+}
+@media (min-width: 981px) {
+  .primary-button,
+  .camera-panel .primary-button,
+  .clear-screen-actions .primary-button { position: static; width: 100%; }
+}
+
+/* 判定確認が残る回復状態では撮り直しを副操作にする。 */
+.camera-actions:has(.primary-button) ~ .camera-actions > .primary-button,
+.camera-actions:has(.primary-button) ~ .camera-actions > .primary-button:hover:not(:disabled) { background: var(--ui-surface); color: var(--ui-ink); }
