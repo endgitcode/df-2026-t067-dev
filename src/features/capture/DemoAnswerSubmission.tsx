@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { ApiError } from '../../shared/api'
 import { ClearCelebration } from './ClearCelebration'
+import { ClearScreen } from './ClearScreen'
 import type { ApiClient, AttemptOutcome, AttemptResult, CaptureMetadata, LocalApiDataMode } from '../../shared/api'
 
 export interface DemoAnswerContext {
@@ -8,6 +9,10 @@ export interface DemoAnswerContext {
   challengeId: string
   onReloadQuest: () => void
   onOpenDiscovery?: (id: string) => void
+  // クリア画面の「地図に戻る」用。撮影を終えて探索画面へ戻す操作を呼び出し側が渡す。
+  onReturnToMap?: () => void
+  // クリア画面に出す問題タイトル。
+  questTitle?: string
   dataMode?: LocalApiDataMode
 }
 
@@ -111,9 +116,23 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   const openedDiscovery = useRef<string | null>(null)
   useEffect(() => {
     if (!receipt?.discoveryId || !onOpenDiscovery || openedDiscovery.current === receipt.discoveryId) return
+    // 初回クリアはクリア画面（D-63）を挟むため自動では開かず、「自分の記録を見る」
+    // ボタンからの遷移だけにする。クリア済み（ALREADY_CLEARED）は従来どおり自動で開く。
+    if (receipt.cleared) return
     openedDiscovery.current = receipt.discoveryId
     onOpenDiscovery(receipt.discoveryId)
   }, [receipt, onOpenDiscovery])
+  const [clearScreenClosed, setClearScreenClosed] = useState(false)
+  const showClearScreen = Boolean(receipt?.cleared && !clearScreenClosed)
+  function viewRecord() {
+    if (!receipt?.discoveryId || !onOpenDiscovery) { setClearScreenClosed(true); return }
+    openedDiscovery.current = receipt.discoveryId
+    onOpenDiscovery(receipt.discoveryId)
+  }
+  function returnToMap() {
+    setClearScreenClosed(true)
+    context.onReturnToMap?.()
+  }
 
   useEffect(() => {
     if (!failure?.retryAfterSeconds) return
@@ -178,7 +197,9 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   }
 
   return <div className="camera-actions" aria-label="開発用の回答受付">
-    {receipt?.cleared && <ClearCelebration />}
+    {showClearScreen && <ClearScreen questTitle={context.questTitle} photo={photo}
+      onViewRecord={viewRecord} onReturnToMap={returnToMap} />}
+    {receipt?.cleared && !showClearScreen && <ClearCelebration />}
     {receipt && <p role="status">{receipt.message}</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {pollLimit && <p role="status">自動確認をいったん終了しました。処理の失敗ではありません。同じ受付IDで再確認できます。</p>}

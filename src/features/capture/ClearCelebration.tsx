@@ -15,15 +15,18 @@ const SPARKS = [
   { x: 26, y: 36, delay: 0.22, color: 'var(--ui-accent)' },
 ] as const
 
-export function ClearCelebration() {
+export function ClearCelebration({ large = false }: { large?: boolean }) {
   const reduce = useReducedMotion()
+  // 全画面のクリア画面（D-63）では主役として拡大する。きらめきの届く距離も
+  // バッジの大きさに合わせて広げる（相対関係は通常サイズと同じに保つ）。
+  const reach = large ? 2.1 : 1
   return (
-    <div className="clear-celebration" aria-hidden="true">
+    <div className={large ? 'clear-celebration clear-celebration-large' : 'clear-celebration'} aria-hidden="true">
       {!reduce && SPARKS.map((spark) => (
         <motion.span key={`${spark.x}:${spark.y}`} className="clear-celebration-spark"
           style={{ background: spark.color }}
           initial={{ opacity: 0, x: 0, y: 0, scale: 1 }}
-          animate={{ opacity: [0, 1, 0], x: spark.x, y: spark.y, scale: 0.35 }}
+          animate={{ opacity: [0, 1, 0], x: spark.x * reach, y: spark.y * reach, scale: 0.35 }}
           transition={{ duration: 0.55, delay: spark.delay, ease: [0.23, 1, 0.32, 1] }} />
       ))}
       <motion.span className="clear-celebration-badge"

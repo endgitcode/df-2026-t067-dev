@@ -111,6 +111,6 @@ export function ChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, a
       {state.reload && <button type="button" className="retry-button" onClick={onReloadQuest}>問題を読み直す</button>}
     </div>}
     {state.status === 'ready' && cameraOpen && <CameraPreview onClose={closeCamera}
-      answer={{ api, challengeId: state.challenge.challengeId, onReloadQuest, dataMode, onOpenDiscovery }} />}
+      answer={{ api, challengeId: state.challenge.challengeId, onReloadQuest, dataMode, onOpenDiscovery, questTitle: quest.title, onReturnToMap: closeCamera }} />}
   </>
 }

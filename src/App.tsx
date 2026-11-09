@@ -347,7 +347,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       autoStart={durableLocal && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
                       canAutoStart={() => startIntent !== null && startIntent.generation === selectionGeneration.current && startIntent.expires > Date.now() && openRef.current && authClient.getSnapshot() === startIntent.auth}
                       onAutoStartConsumed={() => setStartIntent(null)}
-                      onOpenDiscovery={durableLocal ? (id) => { setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
+                      onOpenDiscovery={durableLocal || teamAnswerTrial ? (id) => { setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
                       onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
                     {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
                     {cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} />}
