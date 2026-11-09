@@ -57,7 +57,7 @@ function ReportForm({ api, questId, dataMode }: { api: ApiClient; questId: strin
       onChange={(event) => { setText(event.target.value); edited() }} /></label>
     {state.status === 'error' && <p role="alert">{state.message}</p>}
     <button type="submit" className="secondary-button" disabled={state.status === 'sending' || !text.trim()}>
-      {state.status === 'sending' ? '受付を確認しています…' : dataMode === 'durable-local' ? '報告を送信' : 'デモ報告を送信'}
+      {state.status === 'sending' ? '受付を確認しています…' : dataMode === 'durable-local' ? '報告を送信' : '報告を送信'}
     </button>
   </form>
 }

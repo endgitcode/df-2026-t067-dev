@@ -206,7 +206,7 @@ describe('local camera preview', () => {
     expect(screen.queryByText(/「写真と位置を|で判定します|テスト送信で写真/)).not.toBeInTheDocument()
     expect(document.querySelector('.camera-overlay > p.sample-note')).toBeNull()
     expect(screen.getByRole('button', { name: '反時計回りに回転' })).toBeEnabled()
-    await media.user.click(screen.getByRole('button', { name: '写真と位置をデモ送信' }))
+    await media.user.click(screen.getByRole('button', { name: '写真と位置を送信' }))
     await waitFor(() => expect(submitAnswer).toHaveBeenCalledOnce())
     const { photo, metadata } = submitAnswer.mock.calls[0][0]
     expect(photo).toBe(media.createObjectURL.mock.calls[1][0])
@@ -320,7 +320,7 @@ describe('local camera preview', () => {
     render(<CameraPreview onClose={media.onClose} answer={answer} />)
     await loadFrame(media.stream)
     await media.user.click(screen.getByRole('button', { name: '撮影する' }))
-    await media.user.click(screen.getByRole('button', { name: '写真と位置をデモ送信' }))
+    await media.user.click(screen.getByRole('button', { name: '写真と位置を送信' }))
     // 送信後は回転操作を出さない（判定・受付フローに一本化）。
     expect(screen.queryByRole('button', { name: '反時計回りに回転' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '時計回りに回転' })).not.toBeInTheDocument()
@@ -340,7 +340,7 @@ describe('local camera preview', () => {
     await loadFrame(media.stream)
     await media.user.click(screen.getByRole('button', { name: '撮影する' }))
     await media.user.click(screen.getByRole('button', { name: '時計回りに回転' }))
-    const send = screen.getByRole('button', { name: '写真と位置をデモ送信' })
+    const send = screen.getByRole('button', { name: '写真と位置を送信' })
     expect(send).toBeDisabled()
     fireEvent.click(send)
     expect(submitAnswer).not.toHaveBeenCalled()
@@ -358,7 +358,7 @@ describe('local camera preview', () => {
     render(<CameraPreview onClose={media.onClose} answer={answer} />)
     await loadFrame(media.stream)
     await media.user.click(screen.getByRole('button', { name: '撮影する' }))
-    await media.user.click(screen.getByRole('button', { name: '写真と位置をデモ送信' }))
+    await media.user.click(screen.getByRole('button', { name: '写真と位置を送信' }))
     // 判定・受付待ち中は待ち面だけ。撮り直しや終了、結果確認ボタンは出さない。
     expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toBeVisible()
     expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
