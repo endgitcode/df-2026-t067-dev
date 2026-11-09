@@ -92,8 +92,13 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 @media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }
 .map-filter-chips { display: flex; gap: 8px; max-width: 100%; overflow-x: auto; padding: 2px; pointer-events: auto; scrollbar-width: none; }
 .map-filter-chips::-webkit-scrollbar { display: none; }
-.filter-chip { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
-.filter-toggle { flex: none; min-height: 36px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; }
+.filter-chip { flex: none; min-height: 40px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
+/* 開閉ボタンは押しやすい44px級にし、開状態の見た目とシェブロンで状態を返す（D-59）。 */
+.filter-toggle { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; transition: background-color 150ms var(--ease-out); }
+.filter-toggle[aria-expanded="true"] { background: var(--ui-soft); }
+.filter-toggle-chevron { font-size: 10px; line-height: 1; transition: transform 200ms var(--ease-out); }
+.filter-toggle-chevron.is-open { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .filter-toggle-chevron { transition: none; } }
 .filter-chip[aria-pressed="true"] { background: var(--ui-accent); }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .api-load-state .map-filter-panel { margin-top: 18px; }
@@ -114,8 +119,14 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
    行には出さず、詳細は選択中の行の直下にアコーディオンで開く。 */
 /* 一覧の行にオフセットシャドウは付けない（D-54）。影は浮き上がりの区別が要る
    箇所（フローティングパネル本体など）だけに残す。 */
-.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; }
+.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; transition: background-color 150ms var(--ease-out); }
 button.explore-quest-card { cursor: pointer; }
+/* 行のホバーはチップと同じ尺（背景色150ms）で返す。タッチでは残らないよう
+   ホバー可能な入力の時だけに限る（D-59）。 */
+@media (hover: hover) and (pointer: fine) {
+  button.explore-quest-card:hover { background: var(--ui-soft); }
+  button.explore-quest-card.is-selected:hover { background: var(--ui-accent-hover); }
+}
 .explore-quest-list li.is-highlighted .explore-quest-card { background: var(--ui-soft); }
 .explore-quest-card.is-selected { background: var(--ui-accent); }
 .explore-quest-title { flex: 1; min-width: 0; font-size: 13px; font-weight: var(--ui-weight-strong); }
@@ -123,6 +134,12 @@ button.explore-quest-card { cursor: pointer; }
 .quest-number-label { color: var(--ui-muted); border-left: var(--ui-border-width) solid var(--ui-line); padding-left: 8px; font-size: 12px; font-weight: var(--ui-weight-strong); }
 .explore-quest-cleared { flex: none; padding: 3px 8px; font-size: 11px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
 .explore-quest-detail { margin-top: 10px; }
+/* アコーディオンの押し広げも高さで滑らせる（D-59）。「場所で絞る」と同じ
+   grid-template-rows 方式で、閉じる時は visibility の切り替えを遷移の終わりに遅らせる。 */
+.explore-quest-detail-wrap { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 280ms var(--ease-out), visibility 0s linear 280ms; }
+.explore-quest-detail-wrap.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows 280ms var(--ease-out), visibility 0s; }
+.explore-quest-detail-clip { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .explore-quest-detail-wrap { transition: none; } }
 .explore-sheet { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; flex-direction: column; width: min(560px, calc(100% - 24px)); overflow: hidden; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow); transition: height 300ms var(--ease-drawer), visibility 0s; }
 .explore-sheet.is-dragging { transition: none; }
 .explore-sheet-reopen { display: none; }

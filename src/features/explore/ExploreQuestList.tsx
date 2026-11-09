@@ -32,11 +32,43 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
   // アコーディオンを閉じた問題。選択解除の受け口が無い使われ方でのみ使い、
   // 選択自体は変えず、詳細の表示だけを畳む（受け口がある場合は再タップ＝選択解除）。
   const [closedQuestId, setClosedQuestId] = useState('')
+  // 詳細の開閉は高さアニメーションで滑らせる（D-59）。開く時はマウントの次フレームで
+  // 開状態のクラスを付け、閉じる時は最後の内容を保持したまま畳んでから外す
+  // （「場所で絞る」と同じ grid-template-rows 方式）。状態の追随は App.tsx の
+  // ディープリンク処理と同じく、レンダー中に前回値と比較して調整する形に揃える。
+  const [enteredQuestId, setEnteredQuestId] = useState('')
+  const [prevExpandedQuestId, setPrevExpandedQuestId] = useState('')
+  const [lastDetail, setLastDetail] = useState<{ questId: string; content: ReactNode } | null>(null)
+  const [closingDetail, setClosingDetail] = useState<{ questId: string; content: ReactNode } | null>(null)
   // ピンで選ばれた地域の問題は先頭に寄せ、シートを開いた時にスクロールなしで先頭に出るようにする。
   const orderedQuests = highlightArea
     ? [...quests.filter((quest) => quest.areaId === highlightArea.areaId), ...quests.filter((quest) => quest.areaId !== highlightArea.areaId)]
     : quests
   const expandedQuestId = detailContent && selectedQuestId && closedQuestId !== selectedQuestId ? selectedQuestId : ''
+
+  // 開いている間は最新の詳細を覚える（閉じる時に保持する内容）。
+  if (expandedQuestId && detailContent && (lastDetail?.questId !== expandedQuestId || lastDetail.content !== detailContent)) {
+    setLastDetail({ questId: expandedQuestId, content: detailContent })
+  }
+  if (expandedQuestId !== prevExpandedQuestId) {
+    setPrevExpandedQuestId(expandedQuestId)
+    setEnteredQuestId('')
+    if (lastDetail && lastDetail.questId !== expandedQuestId) setClosingDetail(lastDetail)
+    else if (closingDetail?.questId === expandedQuestId) setClosingDetail(null)
+  }
+
+  useEffect(() => {
+    if (!expandedQuestId) return
+    const frame = requestAnimationFrame(() => setEnteredQuestId(expandedQuestId))
+    return () => cancelAnimationFrame(frame)
+  }, [expandedQuestId])
+
+  // 閉じ終わったら保持していた内容を外す（遷移 280ms の後に外れるよう少し長く取る）。
+  useEffect(() => {
+    if (!closingDetail) return
+    const timeout = window.setTimeout(() => setClosingDetail(null), 300)
+    return () => window.clearTimeout(timeout)
+  }, [closingDetail])
 
   useEffect(() => {
     if (!scrollToHighlight || !highlightArea || !listRef.current) return
@@ -80,6 +112,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
           {orderedQuests.map((quest) => {
             const cleared = clearedQuestIds?.has(quest.questId) ?? false
             const expanded = quest.questId === expandedQuestId
+            const closing = !expanded && closingDetail?.questId === quest.questId
             const content = <>
               <span className="explore-quest-title">{quest.title}</span>
               {quest.questNumber && <span className="explore-quest-number">No. {quest.questNumber}</span>}
@@ -93,7 +126,14 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
                     : { 'aria-pressed': selectedQuestId ? quest.questId === selectedQuestId : undefined })}
                   aria-label={`${quest.title}の詳細を見る`} onClick={() => handleRowClick(quest.questId)}>{content}</button>
                 : <div className="explore-quest-card">{content}</div>}
-              {expanded && detailContent && <div ref={detailRef} className="explore-quest-detail">{detailContent}</div>}
+              {(expanded || closing) && <div className={'explore-quest-detail-wrap' + (expanded && enteredQuestId === quest.questId ? ' is-open' : '')}
+                aria-hidden={!expanded || undefined}>
+                <div className="explore-quest-detail-clip">
+                  {expanded
+                    ? <div ref={detailRef} className="explore-quest-detail">{detailContent}</div>
+                    : <div className="explore-quest-detail">{closingDetail?.content}</div>}
+                </div>
+              </div>}
             </li>
           })}
         </ul>}

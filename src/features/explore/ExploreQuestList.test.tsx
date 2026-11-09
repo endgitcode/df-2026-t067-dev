@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ExploreQuestList } from './ExploreQuestList'
@@ -50,9 +50,10 @@ describe('ExploreQuestList', () => {
     expect(row.closest('li')).toContainElement(detailElement)
     expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' }).closest('li')).not.toContainElement(detailElement)
     // 選択中の行をもう一度押すと、選択は変えずに閉じる（onOpenQuest は呼ばない）。
+    // 閉じる間は高さアニメーションのため内容が残り、終わると外れる（D-59）。
     await user.click(row)
     expect(onOpenQuest).not.toHaveBeenCalled()
-    expect(screen.queryByRole('heading', { name: '港の時計台の詳細' })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('heading', { name: '港の時計台の詳細' })).not.toBeInTheDocument())
     expect(row).toHaveAttribute('aria-expanded', 'false')
     // もう一度押すと開き直す。
     await user.click(row)
@@ -148,7 +149,8 @@ describe('ExploreQuestList', () => {
       detailContent={<div>詳細コンテンツ</div>} onOpenQuest={onOpenQuest} />)
     expect(screen.getByText('詳細コンテンツ')).toBeVisible()
     await user.click(screen.getByRole('button', { name: '港の時計台の詳細を見る' }))
-    expect(screen.queryByText('詳細コンテンツ')).not.toBeInTheDocument()
+    // 閉じるアニメーション（D-59）が終わると内容は外れる。
+    await waitFor(() => expect(screen.queryByText('詳細コンテンツ')).not.toBeInTheDocument())
     expect(onOpenQuest).not.toHaveBeenCalled()
   })
 })

@@ -344,6 +344,19 @@ describe('APIから問題を表示', () => {
     expect(screen.queryByRole('button', { name: '地図へ戻る' })).not.toBeInTheDocument()
   })
 
+  it('一覧の並びは問題番号の昇順（北から南）に統一する', async () => {
+    const fukuoka: PublicQuest = { ...second, questId: 'quest-fukuoka', title: '福岡の謎', questNumber: '40-01' }
+    const sapporo: PublicQuest = { ...first, questId: 'quest-sapporo', title: '札幌の謎', questNumber: '01-01' }
+    const tokyo: PublicQuest = { ...first, questId: 'quest-tokyo', title: '東京の謎', questNumber: '13-01' }
+    const api = apiFixture()
+    api.listQuests.mockResolvedValue(page([fukuoka, sapporo, tokyo]))
+    api.getQuest.mockImplementation(async (id: string) => [fukuoka, sapporo, tokyo].find((quest) => quest.questId === id)!)
+    render(<ApiQuestApp api={api} authClient={signedOutAuth()} />)
+    const list = await screen.findByRole('list', { name: '問題一覧' })
+    const labels = within(list).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
+    expect(labels).toEqual(['札幌の謎を開く', '東京の謎を開く', '福岡の謎を開く'])
+  })
+
   it('履歴の復元では、復元された地域と両立する絞り込みを保持し、両立しない時だけ外す', async () => {
     const user = userEvent.setup()
     const hiroshimaQuest: PublicQuest = { questId: 'quest-hiroshima', version: 1, title: '広島のもみじを探せ', clue: '手がかり', areaId: 'area-hiroshima', visitConditions: '訪問条件', hintCount: 0, questNumber: '34-01' }
