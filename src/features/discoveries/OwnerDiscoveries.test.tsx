@@ -61,6 +61,24 @@ it('confirms deletion, checks a known receipt without resending, and refreshes t
 })
 
 
+it('refetches the list when the records view is entered again', async () => {
+  const listDiscoveries = vi.fn()
+    .mockResolvedValueOnce({ items: [], nextCursor: null })
+    .mockResolvedValue({ items: [discovery], nextCursor: null })
+  const api = { ...createApiClient(), listDiscoveries }
+  const { rerender } = render(<OwnerDiscoveries api={api} visit={1} />)
+  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  expect(listDiscoveries).toHaveBeenCalledTimes(1)
+  // 画面は常駐したままなので、入り直しの合図（visit の増加）で取り直されること。
+  // 初回の空表示が居座らず、その間に増えた記録が出る。
+  rerender(<OwnerDiscoveries api={api} visit={2} />)
+  expect(await screen.findByRole('button', { name: discovery.placeName })).toBeVisible()
+  expect(listDiscoveries).toHaveBeenCalledTimes(2)
+  // 合図が変わらなければ余分な再取得はしない。
+  rerender(<OwnerDiscoveries api={api} visit={2} />)
+  expect(listDiscoveries).toHaveBeenCalledTimes(2)
+})
+
 it('reads and deletes durable owner records through the authenticated common HTTP client', async () => {
   const user = userEvent.setup()
   const revokeObjectURL = vi.fn()

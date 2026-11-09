@@ -79,11 +79,11 @@ it('shows the quest as cleared right after clearing, without a reload', async ()
   await user.click(submit)
   await user.click(await screen.findByRole('button', { name: '判定結果を確認' }))
 
-  // 永続側では正解確定で本人の記録詳細へ自動で進む。
-  expect(await screen.findByRole('heading', { name: saved.placeName })).toBeVisible()
+  // 初回クリアでは全画面のクリア画面（D-63）が出る。ここでは「地図に戻る」で
+  // 詳細へ戻る退出を選び、戻った先がその場でクリア済み表示になることを見る。
+  expect(await screen.findByRole('heading', { name: 'クリア！' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '地図に戻る' }))
 
-  // 探索へ戻る。取り直しが返る前（同期的）でも、即時反映によりクリア済みが見える。
-  fireEvent.click(screen.getAllByRole('button', { name: '謎を探す' })[0])
   expect(screen.getByText('クリア済み')).toBeVisible()
   expect(screen.getByText(/再挑戦はできません/)).toBeVisible()
   expect(screen.queryByRole('button', { name: '挑戦を始める' })).not.toBeInTheDocument()

@@ -122,6 +122,9 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   // 選択状態）も同様に隠すだけで壊さないため、タブ往復でフィルタ・一覧・地図・選択が
   // 食い違わない（往復の前後で状態は visibility だけが変わる）。
   const [recordsVisited, setRecordsVisited] = useState(false)
+  // 記録画面へ入るたびに数え、一覧の取り直しの合図にする。画面は常駐させる
+  // （D-53）ため、合図が無いと初回の取得結果がセッション中ずっと残ってしまう。
+  const [recordsVisit, setRecordsVisit] = useState(0)
   const questCard = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (isQuestOpen && openedRequest && document.querySelector('.is-browsing-below-map')) {
@@ -237,8 +240,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
     })()
     return () => controller.abort()
   }, [api, localApiMode, uid, visiblePending, serverIdentity.result, clearedRefresh])
-  // クリアが確定した瞬間にセッション内でもクリア済みへ反映する（D-64）。回答の
-  // 受付が記録IDを返した時点で一覧を取り直さずに詳細・バッジへ出せるようにする。
+  // クリア確定後の退出点（記録を開く／クリア画面から地図へ戻る）で、セッション内
+  // でもクリア済みへ即時反映する（D-64）。一覧を取り直さずに詳細・バッジへ出す。
   const noteCleared = useCallback((questId: string, discoveryId: string) => {
     setClearedState((current) => {
       if (uid === null) return current
@@ -345,7 +348,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
     // 記録画面から戻る時はクリア済み一覧を取り直す。記録の削除でクリアが
     // 解かれている場合に、詳細側の表示も追いつかせるため（D-64）。
     if (!open) { setRecordDestination(null); setClearedRefresh((value) => value + 1) }
-    else setRecordsVisited(true)
+    else { setRecordsVisited(true); setRecordsVisit((value) => value + 1) }
     closeCamera()
     selectionGeneration.current++
     setFeedback(null)
@@ -390,7 +393,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       autoStart={durableLocal && startIntent !== null && startIntent.auth === auth && startIntent.selection.questId === quest.questId && startIntent.selection.expectedVersion === quest.version}
                       canAutoStart={() => startIntent !== null && startIntent.generation === selectionGeneration.current && startIntent.expires > Date.now() && openRef.current && authClient.getSnapshot() === startIntent.auth}
                       onAutoStartConsumed={() => setStartIntent(null)}
-                      onOpenDiscovery={(id) => { noteCleared(quest.questId, id); if (durableLocal) { setRecordDestination({ auth, id }); navigateToRecords(true) } }}
+                      onOpenDiscovery={durableLocal || teamAnswerTrial ? (id) => { noteCleared(quest.questId, id); setRecordDestination({ auth, id }); navigateToRecords(true) } : undefined}
+                      onReturnToMap={(discoveryId) => { if (discoveryId) noteCleared(quest.questId, discoveryId) }}
                       onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
                     {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
                     {cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} />}
@@ -482,7 +486,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {auth.status === 'checking' && <p role="status">ログイン状態を確認しています…</p>}
           {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">{notice.description}</p>}
           {uid !== null && visiblePending === null && (serverIdentity.result?.status === 'ready'
-            ? <OwnerDiscoveries key={uid} api={api} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
+            ? <OwnerDiscoveries key={uid} api={api} visit={recordsVisit} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
             : serverIdentity.result?.status === 'error'
               ? <><p role="alert">ログインを確認できませんでした。</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></>
               : <p role="status">ログインを確認しています…</p>)}

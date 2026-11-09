@@ -283,6 +283,37 @@ describe('APIから問題を表示', () => {
     await user.click(await screen.findByRole('button', { name: '川辺の謎を開く' }))
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
   })
+  it('記録画面へ入り直すと一覧を取り直し、増えた記録が再読み込みなしで出る', async () => {
+    const user = userEvent.setup()
+    const api = apiFixture()
+    const snapshot = { status: 'signed-in' as const, user: { uid: 'demo-owner', displayName: null } }
+    const authClient = { ...signedOutAuth(), getSnapshot: () => snapshot, getIdToken: async () => 'demo-token' }
+    // 記録は最初は0件で、途中で1件増える（挑戦のクリアを模す）。
+    let cleared = false
+    const record = { discoveryId: 'discovery-1', placeId: 'place-a', questId: first.questId, questVersion: first.version,
+      firstClearedAt: '2026-11-09T00:00:00.000Z', placeName: '川辺の時計台', descriptionSnapshot: '説明',
+      revealedLocation: { latitude: 35, longitude: 139 }, ownerPhoto: '/api/v1/me/discoveries/discovery-1/photo' }
+    const fetcher = vi.fn<typeof fetch>(async (path) => {
+      const data = path === '/api/v1/session' ? { uid: snapshot.user.uid }
+        : String(path).startsWith('/api/v1/me/discoveries') ? page(cleared ? [record] : [])
+          : page([])
+      return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json', 'X-Quest-Data-Mode': 'demo' } })
+    })
+    vi.stubGlobal('fetch', fetcher)
+    render(<ApiQuestApp api={api} authClient={authClient} />)
+    const nav = () => within(screen.getByRole('navigation', { name: '主要ナビゲーション' }))
+    const discoveryReads = () => fetcher.mock.calls.filter(([path]) => String(path).startsWith('/api/v1/me/discoveries?'))
+    await user.click(nav().getByRole('button', { name: '自分の記録' }))
+    expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+    expect(discoveryReads()).toHaveLength(1)
+    // 探索へ戻り、記録が増えてから記録画面へ入り直す。画面は常駐したままなので、
+    // 入り直しのたびに取り直されなければ、空表示が居座って新しい記録が出ない。
+    await user.click(nav().getByRole('button', { name: '謎を探す' }))
+    cleared = true
+    await user.click(nav().getByRole('button', { name: '自分の記録' }))
+    expect(await screen.findByRole('button', { name: '川辺の時計台' })).toBeVisible()
+    expect(discoveryReads()).toHaveLength(2)
+  })
   it('記録タブとの往復で地方の絞り込み・一覧・地図の選択とURLが一致したまま保たれる', async () => {
     const user = userEvent.setup()
     const hiroshimaQuest: PublicQuest = { questId: 'quest-hiroshima', version: 1, title: '広島のもみじを探せ', clue: '手がかり', areaId: 'area-hiroshima', visitConditions: '訪問条件', hintCount: 0, questNumber: '34-01' }

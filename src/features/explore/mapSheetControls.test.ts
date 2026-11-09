@@ -236,3 +236,19 @@ describe('filter motion (D-55)', () => {
     expect(css).toContain('body.explore-fullbleed .site-header, body.explore-fullbleed .map-topline, body.explore-fullbleed .map-location-status.is-floating { transition: left 200ms var(--ease-out); }')
   })
 })
+
+// 記録画面のタブ位置（D-60 追記）: 非探索画面でもタブ群を探索画面のナビカードと
+// 同じ左のライン（左カラム上段）に置く。CSS の実測は jsdom ではできないため、
+// 規則の置き場所（記録画面が表示されている間だけ・PC 幅だけ）で担保する。
+describe('records view tab position (D-60 addendum)', () => {
+  it('pins the tab group as the nav card at the left column line while records are shown', () => {
+    const mediaAt = css.indexOf('@media (min-width: 981px) {\n  body:has(.owner-records:not([hidden])) .desktop-nav')
+    expect(mediaAt).toBeGreaterThan(-1)
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav { position: fixed; top: 16px; left: 16px; z-index: 30; display: flex; align-items: center; gap: 8px; width: 380px; height: 68px; padding: 12px 16px; background: var(--ui-surface); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); }')
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav a, body:has(.owner-records:not([hidden])) .desktop-nav button { flex: 1 1 0; justify-content: center; }')
+    // ブランドはカードの右へ逃がし、重ならないようにする。
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { padding-left: calc(16px + 380px + 24px); }')
+    // 探索画面のナビカード（fullbleed）と同じ寸法であること。
+    expect(css).toContain('body.explore-fullbleed .desktop-nav { position: fixed; top: var(--pc-sidebar-gap); left: var(--pc-sidebar-gap); z-index: 30; display: flex; align-items: center; gap: 8px; width: var(--pc-sidebar-w); height: var(--pc-sidebar-nav-h);')
+  })
+})
