@@ -183,9 +183,8 @@ function readDurableLocalConfig(env: NodeJS.ProcessEnv, port: number): DurableLo
 
 function spotGeocodingSettings(env: NodeJS.ProcessEnv): { spotGeocodingApiKey?: string } {
   const key = env.QUEST_GOOGLE_GEOCODING_API_KEY
-  if (!key) return {}
-  if (!/^[A-Za-z0-9_-]{16,128}$/.test(key)) throw new Error('QUEST_GOOGLE_GEOCODING_API_KEY has an invalid format.')
-  return { spotGeocodingApiKey: key }
+  // A misconfigured optional lookup must not prevent the other APIs from starting.
+  return key && /^[A-Za-z0-9_-]{16,128}$/.test(key) ? { spotGeocodingApiKey: key } : {}
 }
 
 function isLoopbackHost(host: string | undefined): boolean {
