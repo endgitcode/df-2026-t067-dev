@@ -278,14 +278,22 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const filterSummary = activeRegion ? `場所で絞る：${activeRegion}${activePrefecture ? `・${activePrefecture}` : ''}` : '場所で絞る'
   const filterControls = <div className="map-filter-panel">
     <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={() => setFilterOpen((value) => !value)}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
+    <div className="map-filter-selection">
+      {activeRegion && <button type="button" className="filter-chip" aria-label={`${activeRegion}の絞り込みを解除`} onClick={() => { selectRegion(''); setFilterOpen(false) }}>{activeRegion} <span aria-hidden="true">×</span></button>}
+      {activePrefecture && <button type="button" className="filter-chip" aria-label={`${activePrefecture}の絞り込みを解除`} onClick={() => { selectPrefecture(''); setFilterOpen(false) }}>{activePrefecture} <span aria-hidden="true">×</span></button>}
+      <span className="map-filter-count">{state === 'loading' && visibleChoices.length === 0 ? '件数を読み込み中' : state === 'error' ? '件数を取得できません' : `表示：${visibleChoices.length}件`}</span>
+    </div>
     <div className={'map-filter-chips-wrap' + (filterOpen ? ' is-open' : '')} aria-hidden={!filterOpen}>
       <div className="map-filter-chips-inner">
+        <p className="filter-stage-label">地方</p>
         <div className="map-filter-chips" role="group" aria-label="地方">
           {REGIONS.map((region) => <button key={region.name} type="button" className="filter-chip" aria-pressed={activeRegion === region.name} onClick={() => { selectRegion(activeRegion === region.name ? '' : region.name); setFilterOpen(false) }}>{region.name}</button>)}
         </div>
-        {activeRegion && <div className="map-filter-chips" role="group" aria-label="都道府県">
+        {activeRegion && <div>
+          <p className="filter-stage-label">都道府県</p>
+          <div className="map-filter-chips" role="group" aria-label="都道府県">
           {prefOptions.map((prefecture) => <button key={prefecture} type="button" className="filter-chip" aria-pressed={activePrefecture === prefecture} onClick={() => { selectPrefecture(activePrefecture === prefecture ? '' : prefecture); setFilterOpen(false) }}>{prefecture}</button>)}
-        </div>}
+        </div></div>}
       </div>
     </div>
   </div>

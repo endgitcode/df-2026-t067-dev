@@ -269,7 +269,7 @@ describe('look and spacing (D-54)', () => {
 
   it('aligns the floating title chip line with the panel side, open and collapsed', () => {
     expect(css).toContain('left: var(--pc-sidebar-offset); z-index: 32;')
-    expect(css).toContain('grid-template-columns: 1fr auto; padding-left: 12px;')
+    expect(css).toContain('grid-template-columns: 1fr auto; padding: 10px 20px 10px 12px;')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .site-header { left: var(--pc-sidebar-rail-w); }')
     expect(css).toContain('body.explore-fullbleed.explore-sidebar-collapsed .map-topline { left: calc(var(--pc-sidebar-rail-w) + 12px); }')
   })
@@ -292,7 +292,7 @@ describe('filter motion (D-55)', () => {
     expect(css).toContain('.map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }')
     expect(css).toContain('.map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible;')
     expect(css).toContain('@media (prefers-reduced-motion: reduce) { .map-filter-chips-wrap { transition: none; } }')
-    expect(css).toContain('.filter-chip { flex: none; min-height: 40px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }')
+    expect(css).toContain('.filter-chip { flex: none; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }')
   })
 
   it('glides the floating elements sideways when the PC sidebar collapses', () => {
@@ -307,10 +307,13 @@ describe('filter motion (D-55)', () => {
 // 規則の置き場所（記録画面が表示されている間だけ・PC 幅だけ）で担保する。
 describe('records view tab position (D-60 addendum)', () => {
   it('keeps a vertical left sidebar (brand + nav) while records are shown on PC', () => {
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav {')
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav,\n  body.explore-fullbleed .desktop-nav {')
     expect(css).toContain('flex-direction: column;')
     expect(css).toContain('body:has(.owner-records:not([hidden])) .owner-records {')
     expect(css).toContain('margin-left: var(--pc-sidebar-w);')
+    expect(mapPreview).toContain('{createPortal(<button type="button" className="sidebar-toggle"')
+    expect(mapPreview).toContain('</button>, document.body)}')
+    expect(mapPreview).toContain('[panelMode, sidebarCollapsed])')
     expect(css).toContain('body.explore-fullbleed .desktop-nav {')
     expect(css).toContain('top: var(--pc-sidebar-brand-h); left: 0;')
   })
@@ -341,7 +344,9 @@ describe('chrome consistency (D-66)', () => {
 
   it('keeps records chrome aligned: mobile title pill, PC left sidebar, account at the right edge', () => {
     expect(css).toContain('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-content; padding: 4px 10px 4px 4px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header {\n    min-height: 0; grid-template-columns: 1fr auto;\n    padding: 10px 20px 16px calc(var(--pc-sidebar-w) + 16px);')
+    expect(css).toContain('body:has(.owner-records:not([hidden])) .brand,\n  body.explore-fullbleed .brand {')
+    expect(css).toContain('body:has(.owner-records:not([hidden]))::before,\n  body.explore-fullbleed::before {')
+    expect(css).toContain('body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .sidebar-toggle,\n  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {')
   })
 })
 
@@ -392,7 +397,7 @@ describe('sheet peek height and overflow guards (D-73)', () => {
 // 規則の文字列と置き場所で担保する。
 describe('button widths and records alignment (D-74)', () => {
   it('stretches the hint buttons across their frame', () => {
-    expect(css).toContain('.hint-open, .hint-next {')
+    expect(css).toContain('.hint-open {')
     expect(css).toContain('width: 100%; min-height: 52px;')
     expect(css).toContain('.optional-hint-toggle, .optional-hint-content button { width: 100%; min-height: 52px;')
   })
