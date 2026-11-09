@@ -100,7 +100,12 @@ function clampFitZoomOnIdle(instance: MapInstance): void {
   } catch { /* リスナーを付けられない環境では上限なしで続ける。 */ }
 }
 
-export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, onDeselectQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
+// 地域が未指定の時の既定値。引数の既定値にリテラルを書くとレンダーのたびに新しい
+// 配列になり、地域に依存する effect やコールバックの同一性が毎回変わってしまうため、
+// 共有の定数にして同一性を安定させる（Issue #129）。
+const EMPTY_AREAS: PublicArea[] = []
+
+export function MapPreview({ areas = EMPTY_AREAS, selectedAreaId = '', onSelectArea, showPublicAreas = true, quests = [], questsLoading = false, onOpenQuest, onDeselectQuest, selectedQuestId = '', clearedQuestIds, topOverlay, showBoundaryCredit = false, fillSelectedAreaOnly = false, panelExtra, onSheetModeChange, questScrollTarget, questDetail, viewActive = true }: {
   areas?: PublicArea[]; selectedAreaId?: string; onSelectArea?: (areaId: string) => void; showPublicAreas?: boolean
   quests?: PublicQuest[]; questsLoading?: boolean; onOpenQuest?: (questId: string) => void; onDeselectQuest?: () => void; selectedQuestId?: string; clearedQuestIds?: ReadonlySet<string>
   /** 探索画面が前面にあるか。記録画面の表示中は探索側を隠したまま常駐させるため、
@@ -806,7 +811,11 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       try { window.google?.maps?.event.trigger?.(instance, 'resize') } catch { /* サイズ再認識は補助であり、失敗しても地図は使える。 */ }
     }
     const alreadyFitted = lastViewportSelection.current?.map === instance && lastViewportSelection.current.key === fitKey
-    if (fitAreaId && !alreadyFitted) {
+    // フィット対象の地域データが areas に無い場合は、合わせ直しようがないため要求を
+    // 出さない。出し続けるとフィット側が完了を記録できず（対象が見つからない）、
+    // 依存が変わるたびに再実行されて要求が止まらなくなる（Issue #129）。
+    const fitTargetKnown = fitAreaId !== '' && areas.some((area) => area.areaId === fitAreaId)
+    if (fitAreaId && fitTargetKnown && !alreadyFitted) {
       lastViewportSelection.current = null
       setFitRequest((value) => value + 1)
     } else if (!fitAreaId && signatureChanged && initialFitDone.current === instance && initialFitSignature.current !== signature) {
@@ -815,7 +824,7 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
       // シグネチャでフィット済みなら何もしない（利用者の操作を邪魔しない）。
       fitInitialAreas(instance)
     }
-  }, [sheetMode, panelMode, fitKey, fitAreaId, fitInitialAreas])
+  }, [sheetMode, panelMode, fitKey, fitAreaId, fitInitialAreas, areas])
 
   // サイドバーの開閉はシェル側（浮動カードの表示／非表示）にも効かせるため、
   // body のクラスで CSS と協調する。フィット用に現在の開閉状態も ref へ写す。
