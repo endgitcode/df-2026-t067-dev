@@ -113,7 +113,6 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
     <h4>段階ヒント</h4>
     {Array.from({ length: Math.min(quest.hintCount, unlockedThrough) }, (_, offset) => offset + 1).map(index =>
       <HintItem key={`${quest.questId}:${quest.version}:${index}`} quest={quest} index={index} getHint={getHint} getHintPhoto={getHintPhoto} onVersionChanged={() => { setChanged(true); onVersionChanged() }} onReloadNeeded={onReloadNeeded} onReady={(readyIndex) => setUnlockedThrough(current => Math.max(current, readyIndex + 1))} />)}
-    <p className="hints-note">ヒントは順番に開けます。最終案内は含みません。</p>
   </div>
 }
 
@@ -391,14 +390,14 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
               <p className="unavailable-note">この問題はクリア済みのため、再挑戦はできません。初回の写真と日付は「自分の記録」に保存されています。</p>
               {onOpenDiscovery && <button type="button" className="primary-button" onClick={() => onOpenDiscovery(clearedDiscoveryId)}>自分の記録を見る</button>}
             </div> : !hideStartAction && (handoffActive ? <div className="quest-handoff">
-              <button type="button" className="primary-button" aria-expanded={qrVisible} onClick={() => setQrVisible((value) => !value)}>
+              <button type="button" className="quest-handoff-toggle" aria-expanded={qrVisible} onClick={() => setQrVisible((value) => !value)}>
                 スマホで挑戦する
               </button>
               {qrVisible && <div className="quest-handoff-panel">
                 <QuestQrCode value={handoffUrl!} label={`${quest.title}をスマートフォンで開くQRコード`} />
                 <p className="handoff-caption">スマートフォンで読み取ると、この問題の詳細を開けます。</p>
               </div>}
-              <button type="button" className="secondary-button quest-handoff-direct" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={`${detailsId}-note`}>
+              <button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={`${detailsId}-note`}>
                 {buttonLabel}
               </button>
               <p id={`${detailsId}-note`} className="unavailable-note">{note}</p>
