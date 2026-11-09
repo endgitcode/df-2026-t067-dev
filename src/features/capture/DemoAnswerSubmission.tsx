@@ -91,13 +91,15 @@ function answerFailure(cause: unknown): Failure {
   }
 }
 
-export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSubmissionStarted, onSubmissionResolved }: {
+export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSubmissionStarted, onSubmissionResolved, onWaitingChange }: {
   context: DemoAnswerContext
   photo: Blob
   metadata: CaptureMetadata
   disabled: boolean
   onSubmissionStarted: () => void
   onSubmissionResolved?: () => void
+  // 判定待ち中だけ親の撮影操作（撮り直し等）を畳むために通知する（t158u）。
+  onWaitingChange?: (waiting: boolean) => void
 }) {
   const onOpenDiscovery = context.onOpenDiscovery
   const dataMode = context.dataMode
@@ -202,26 +204,39 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
     }
   }
 
+  // 判定待ちは「送信〜完了/失敗/上限」まで一つの状態。ポーリングの pending 往復で
+  // 「判定結果を確認」ボタンと待ちカードを出し分けない（チラつきの本態、t157u）。
   const waiting = pending || (real && !!receipt?.canCheck && !failure && !pollLimit)
+  useEffect(() => { onWaitingChange?.(waiting) }, [waiting, onWaitingChange])
+  useEffect(() => () => { onWaitingChange?.(false) }, [onWaitingChange])
+
+  if (showClearScreen) {
+    return <ClearScreen questTitle={context.questTitle} photo={photo}
+      onViewRecord={viewRecord} onReturnToMap={returnToMap} />
+  }
+
+  // 判定中は待ちカードだけを出し続ける（マウントは1回。文言も固定）。
+  if (waiting) {
+    return <div className="camera-actions is-waiting" aria-label="開発用の回答受付">
+      <div className="answer-waiting" role="status" aria-label="写真の判定待ち">
+        <p>{real ? '写真を判定しています…' : '回答の受付を確認しています…'}</p>
+        <button type="button" className="answer-waiting-cancel" onClick={() => cancel(receipt
+          ? '受付状態の確認を中止しました。' : '送信を中止しました。受付済みか確認できませんでした。')}>キャンセル</button>
+      </div>
+    </div>
+  }
 
   return <div className="camera-actions" aria-label="開発用の回答受付">
-    {showClearScreen && <ClearScreen questTitle={context.questTitle} photo={photo}
-      onViewRecord={viewRecord} onReturnToMap={returnToMap} />}
-    {receipt?.cleared && !showClearScreen && <ClearCelebration />}
+    {receipt?.cleared && <ClearCelebration />}
     {receipt && <p role="status">{receipt.message}</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {pollLimit && <p role="status">自動確認をいったん終了しました。処理の失敗ではありません。同じ受付IDで再確認できます。</p>}
     {(failure?.reload || receipt?.reload) && <button type="button" className="retry-button" onClick={context.onReloadQuest}>問題を読み直す</button>}
     {!failure?.reload && !failure?.retake && (!receipt || receipt.canCheck) &&
-      <button type="button" className="primary-button" disabled={disabled || pending || !!failure?.retryAfterSeconds} onClick={() => void exchange()}>
-        {pending ? '受付を確認しています…' : receipt ? (real ? '判定結果を確認' : '受付状態を確認')
+      <button type="button" className="primary-button" disabled={disabled || !!failure?.retryAfterSeconds} onClick={() => void exchange()}>
+        {receipt ? (real ? '判定結果を確認' : '受付状態を確認')
           : failure ? '同じ回答を再送' : dataMode === 'durable-local' ? '写真と位置をテスト送信'
             : dataMode === 'team-preview' ? '写真と位置を送信' : '写真と位置をデモ送信'}
       </button>}
-    {waiting && <div className="answer-waiting" role="status" aria-label="写真の判定待ち">
-      <p>{real ? '写真を判定しています…' : '回答の受付を確認しています…'}</p>
-      <button type="button" className="secondary-button" onClick={() => cancel(receipt
-      ? '受付状態の確認を中止しました。' : '送信を中止しました。受付済みか確認できませんでした。')}>受付の確認をキャンセル</button>
-    </div>}
   </div>
 }

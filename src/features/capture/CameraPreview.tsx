@@ -24,6 +24,7 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
   const [photo, setPhoto] = useState<{ url: string; blob: Blob; originalBlob: Blob; rotation: number } | null>(null)
   const [rotating, setRotating] = useState(false)
   const [submissionStarted, setSubmissionStarted] = useState(false)
+  const [judging, setJudging] = useState(false)
   const [retakeLocked, setRetakeLocked] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [metadata, setMetadata] = useState<CaptureMetadata | null>(null)
@@ -225,13 +226,13 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
   const panel = (
     <section className={wide ? "camera-panel" : "camera-panel camera-overlay"} aria-label="写真撮影と確認">
       <h4>{photoUrl ? '写真を確認' : '写真を撮影'}</h4>
-      <p className="sample-note">{answer
+      {!submissionStarted && <p className="sample-note">{answer
         ? answer.dataMode === 'durable-local'
-          ? 'テスト送信を押すと写真・位置・精度・時刻をローカルAPIへ送ります。合成画像と架空の座標を使ってください。'
+          ? 'テスト送信で写真と位置を送ります。'
           : answer.dataMode === 'team-preview'
-            ? '撮影時に現在地を1回取得します。「写真と位置を送信」を押すと、写真・位置・精度・時刻を送り、撮影範囲の確認と写真の判定を行います。'
-            : '撮影時に現在地を1回取得します。「写真と位置をデモ送信」を押すと、写真・位置・精度・時刻を開発用のローカルAPIへ送ります。受付と位置条件の確認までを試せます。'
-        : '撮影時に現在地を1回取得します。写真・位置情報・撮影と測位の時刻はこの画面内だけで保持し、送信・保存・AI判定は行いません。'}</p>
+            ? '「写真と位置を送信」で判定します。'
+            : '「写真と位置をデモ送信」で受付を試せます。'
+        : '撮影地はこの画面内だけで保持します。'}</p>}
       {photoUrl ? <img className="photo-preview" src={photoUrl} alt="撮影した写真のプレビュー" />
         : <video ref={videoRef} className="camera-video" autoPlay playsInline muted aria-label="カメラ映像"
           onLoadedData={ready} onCanPlay={ready} onError={() => fail('カメラ映像を表示できませんでした。再試行してください。')} />}
@@ -239,7 +240,7 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
       {phase === 'capturing' && <p role="status" className="camera-status">写真を作成しています…</p>}
       {locating && <p role="status" className="camera-status">撮影地を取得しています…</p>}
       {rotating && <p role="status" className="camera-status">写真を回転しています…</p>}
-      {photoUrl && metadata && <p className="camera-status" role="status">撮影地を写真に紐づけました（精度 約{Math.round(metadata.position.accuracyMeters)}m）。この画面を閉じると破棄されます。</p>}
+      {photoUrl && metadata && !submissionStarted && <p className="camera-status" role="status">撮影地を紐づけました（精度 約{Math.round(metadata.position.accuracyMeters)}m）。</p>}
       {showCaptureLocationMapDebug && photoUrl && metadata && <div className="camera-map-reference">
         <button type="button" className="secondary-button" aria-expanded={showLocationMap}
           onClick={() => setShowLocationMap((visible) => !visible)}>{showLocationMap ? '地図を閉じる' : '撮影地を見る'}</button>
@@ -247,21 +248,22 @@ export function CameraPreview({ onClose, answer }: { onClose: () => void; answer
         {showLocationMap && <CaptureLocationMap latitude={metadata.position.latitude} longitude={metadata.position.longitude} />}
       </div>}
       {error && <p className="camera-error" role="alert">{error}</p>}
-      {photo && <div className="camera-actions photo-rotation-actions" aria-label="写真の向き">
+      {photo && !submissionStarted && <div className="camera-actions photo-rotation-actions" aria-label="写真の向き">
         <button type="button" className="secondary-button" onClick={() => void rotatePhoto(-1)} disabled={rotating || submissionStarted}>反時計回りに回転</button>
         <button type="button" className="secondary-button" onClick={() => void rotatePhoto(1)} disabled={rotating || submissionStarted}>時計回りに回転</button>
       </div>}
       {answer && photo && metadata && <DemoAnswerSubmission context={answer} photo={photo.blob} metadata={metadata} disabled={rotating}
         onSubmissionStarted={() => { setSubmissionStarted(true); setRetakeLocked(true) }}
-        onSubmissionResolved={() => setRetakeLocked(false)} />}
-      <div className="camera-actions">
+        onSubmissionResolved={() => setRetakeLocked(false)}
+        onWaitingChange={setJudging} />}
+      {!judging && <div className="camera-actions">
         {!photoUrl && <button type="button" className="primary-button" onClick={capture} disabled={phase !== 'live'}>{phase === 'capturing' ? '写真を作成しています…' : '撮影する'}</button>}
         {photoUrl && !metadata && <button type="button" className="primary-button" onClick={requestLocation} disabled={locating}>{locating ? '撮影地を取得中…' : '位置情報を再試行'}</button>}
         {photoUrl && !answer && <button type="button" className="primary-button" disabled>解答を送信する（準備中）</button>}
         {photoUrl && <button type="button" className="secondary-button" onClick={restart} disabled={retakeLocked}>撮り直す</button>}
         {phase === 'error' && <button type="button" className="secondary-button" onClick={restart}>カメラを再試行</button>}
         <button type="button" className="secondary-button" onClick={() => { dispose(); setLocating(false); onClose() }}>撮影を終了</button>
-      </div>
+      </div>}
     </section>
   )
   return wide ? panel : createPortal(panel, document.body)
