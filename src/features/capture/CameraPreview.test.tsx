@@ -639,3 +639,14 @@ describe('local camera preview', () => {
     expect(media.createObjectURL).not.toHaveBeenCalled()
   })
 })
+
+describe('confirm photo layout CSS', () => {
+  it('keeps overlay photo in normal flow between chrome cards (not full-bleed absolute)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const css = readFileSync(resolve(process.cwd(), 'src/App.css'), 'utf8')
+    expect(css).toMatch(/\.camera-overlay \.camera-video, \.camera-overlay \.photo-preview \{[^}]*position: relative/)
+    expect(css).not.toMatch(/\.camera-overlay \.camera-video, \.camera-overlay \.photo-preview \{[^}]*position: absolute; inset: 0/)
+    expect(css).toMatch(/\.camera-overlay \.camera-video, \.camera-overlay \.photo-preview \{[^}]*flex: 1 1 auto/)
+  })
+})

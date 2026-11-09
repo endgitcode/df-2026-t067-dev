@@ -870,12 +870,16 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 .camera-actions.is-waiting { animation: none; }
 
 @media (max-width: 980px) {
-  .camera-panel.camera-overlay { position: fixed; inset: 0; z-index: 70; isolation: isolate; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; background: #1d1d1b; color: var(--ui-ink, #1d1d1b); animation: none; }
-  /* z-index:-1 だと isolation 内でパネル背景の裏に回り写真が見えない。absolute+0 で映像を前面に。 */
-  .camera-overlay .camera-video, .camera-overlay .photo-preview { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; object-fit: contain; background: #111; }
+  .camera-panel.camera-overlay { position: fixed; inset: 0; z-index: 70; isolation: isolate; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; overflow: hidden; overscroll-behavior: contain; touch-action: pan-y; background: #1d1d1b; color: var(--ui-ink, #1d1d1b); animation: none; }
+  /* 写真／映像は見出しと下カードの間の残り領域だけを使う（全面 absolute だと下カードに隠れる）。 */
+  .camera-overlay .camera-video, .camera-overlay .photo-preview {
+    position: relative; z-index: 0; flex: 1 1 auto; min-height: 0; width: 100%; height: auto;
+    max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0;
+    object-fit: contain; background: #111; align-self: stretch;
+  }
   /* 暗い映像の上でも読めるよう、文言・操作は不透明な白カード＋インク色（フォールバック付き）。 */
   .camera-overlay > h4, .camera-overlay > p, .camera-overlay > .camera-map-reference, .camera-overlay > .camera-error {
-    position: relative; z-index: 1; padding: 8px 12px; margin: 0; border-radius: var(--ui-radius, 16px);
+    position: relative; z-index: 1; flex: 0 0 auto; padding: 8px 12px; margin: 0; border-radius: var(--ui-radius, 16px);
     border: var(--ui-border-width, 2px) solid var(--ui-line, #1d1d1b);
     background: var(--ui-surface, #ffffff); color: var(--ui-ink, #1d1d1b);
     box-shadow: var(--ui-control-shadow, 3px 3px 0 #1d1d1b);
@@ -884,7 +888,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   .camera-overlay > p.sample-note { color: var(--ui-ink, #1d1d1b); background: var(--ui-surface, #ffffff); }
   .camera-overlay > p.camera-error { color: var(--ui-error, #a12626); }
   .camera-overlay > .camera-actions {
-    position: relative; z-index: 1; padding: 10px; border-radius: var(--ui-radius, 16px);
+    position: relative; z-index: 1; flex: 0 0 auto; padding: 10px; border-radius: var(--ui-radius, 16px);
     border: var(--ui-border-width, 2px) solid var(--ui-line, #1d1d1b);
     background: var(--ui-surface, #ffffff); color: var(--ui-ink, #1d1d1b);
     box-shadow: var(--ui-control-shadow, 3px 3px 0 #1d1d1b);
@@ -892,4 +896,14 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   .camera-overlay > .camera-actions:last-child { margin-top: auto; }
   .camera-overlay .answer-waiting { background: transparent; border: 0; box-shadow: none; padding: 8px 4px; }
   .camera-overlay .primary-button { min-height: 64px; width: 100%; font-size: 18px; }
+}
+
+/* PC 幅でも確認写真が操作カードと重ならないよう、残り高さに収める */
+@media (min-width: 981px) {
+  .camera-panel { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .camera-panel .photo-preview, .camera-panel .camera-video {
+    flex: 1 1 auto; min-height: 0; max-height: min(62vh, calc(100dvh - 280px));
+    width: 100%; object-fit: contain;
+  }
+  .camera-panel > .camera-actions { flex: 0 0 auto; }
 }
