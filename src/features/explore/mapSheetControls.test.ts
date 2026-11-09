@@ -118,8 +118,8 @@ describe('bottom sheet close visibility timing', () => {
 // 縁なし表示でもタブバーは下に残り、シートと浮動要素はタブバーの高さぶん持ち上げる。
 describe('mobile bottom tab bar (D-32)', () => {
   it('pins the mobile nav to the bottom as a tab bar with a shared height token', () => {
-    expect(css).toContain(':root { --mobile-tabbar-h: calc(70px + env(safe-area-inset-bottom, 0px)); }')
-    expect(css).toContain('.mobile-nav { position: fixed; bottom: 0; left: 0; right: 0;')
+    expect(css).toContain(':root { --mobile-tabbar-h: calc(64px + env(safe-area-inset-bottom, 0px)); }')
+    expect(css).toContain('.mobile-nav { height: var(--mobile-tabbar-h); position: fixed; bottom: 0; left: 0; right: 0;')
     // タブバー上で始まった縦ジェスチャーはページスクロールへ渡さない。
     // タップは通常の click として残り、地図シートのスクロール領域には適用しない。
     expect(css).toContain('background: var(--ui-surface); touch-action: none; overscroll-behavior: none; }')
@@ -362,10 +362,10 @@ describe('filter motion (D-55)', () => {
 // 規則の置き場所（記録画面が表示されている間だけ・PC 幅だけ）で担保する。
 describe('records view tab position (D-60 addendum)', () => {
   it('keeps a vertical left sidebar (brand + nav) while records are shown on PC', () => {
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .desktop-nav,\n  body.explore-fullbleed .desktop-nav {')
+    expect(css).toContain('body:has(.traveler-shell) .desktop-nav,\n  body.explore-fullbleed .desktop-nav {')
     expect(css).toContain('flex-direction: column;')
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .owner-records {')
-    expect(css).toContain('margin: 32px 32px 32px calc(var(--pc-sidebar-w) + 32px);')
+    expect(css).toContain('body:has(.traveler-shell) .owner-records {')
+    expect(css).toContain('margin: calc(var(--account-slot-top) + var(--account-slot-size) + 24px) 24px 24px calc(var(--pc-sidebar-w) + 24px);')
     expect(mapPreview).toContain('{createPortal(<button type="button" className="sidebar-toggle"')
     expect(mapPreview).toContain("</button>, typeof document === 'undefined' ? null : document.body)}")
     expect(mapPreview).toContain('[panelMode, sidebarCollapsed])')
@@ -398,9 +398,9 @@ describe('chrome consistency (D-66)', () => {
   })
 
   it('keeps records chrome aligned: mobile title pill, PC left sidebar, account at the right edge', () => {
-    expect(css).toContain('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand { justify-self: start; width: fit-content; padding: 4px 10px 4px 4px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .brand,\n  body.explore-fullbleed .brand {')
-    expect(css).toContain('body:has(.owner-records:not([hidden]))::before,\n  body.explore-fullbleed::before {')
+    expect(css).toContain('@media (max-width: 980px) {\n  body:has(.traveler-shell) .brand { justify-self: start; width: fit-content; padding: 4px 10px 4px 4px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }')
+    expect(css).toContain('body:has(.traveler-shell) .brand,\n  body.explore-fullbleed .brand {')
+    expect(css).toContain('body:has(.traveler-shell)::before,\n  body.explore-fullbleed::before {')
     expect(css).toContain('left: calc(var(--pc-sidebar-open-w) - 48px)')
     expect(css).not.toContain('left: 6px; top: 44px; width: 44px; height: 44px;')
   })
@@ -467,9 +467,9 @@ describe('button widths and records alignment (D-74)', () => {
   })
 
   it('gives the mobile records header the same transparent floating look as explore', () => {
-    const mediaAt = css.indexOf('@media (max-width: 980px) {\n  body:has(.owner-records:not([hidden])) .brand')
+    const mediaAt = css.indexOf('@media (max-width: 980px) {\n  body:has(.traveler-shell) .brand')
     expect(mediaAt).toBeGreaterThan(-1)
-    expect(css).toContain('body:has(.owner-records:not([hidden])) .site-header { background: transparent; border-bottom: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }')
+    expect(css).toContain('body:has(.traveler-shell) .site-header { background: transparent; border-bottom: 0; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }')
   })
 })
 
@@ -503,10 +503,10 @@ describe('PC sidebar stacking', () => {
 
 describe('records body and mobile return clearance', () => {
   it('spaces the records card from the sidebar and viewport edges (D-84)', () => {
-    const recordsRule = css.slice(css.indexOf('body:has(.owner-records:not([hidden])) .owner-records {')).split('}')[0]
+    const recordsRule = css.slice(css.indexOf('body:has(.traveler-shell) .owner-records {')).split('}')[0]
     expect(recordsRule).not.toContain('border-left:')
-    expect(recordsRule).toContain('margin: 32px 32px 32px calc(var(--pc-sidebar-w) + 32px);')
-    expect(recordsRule).toContain('width: calc(100% - var(--pc-sidebar-w) - 64px);')
+    expect(recordsRule).toContain('margin: calc(var(--account-slot-top) + var(--account-slot-size) + 24px) 24px 24px calc(var(--pc-sidebar-w) + 24px);')
+    expect(recordsRule).toContain('width: calc(100% - var(--pc-sidebar-w) - 48px);')
     expect(recordsRule).toContain('max-width: 1080px;')
     expect(css).toContain('padding-bottom: calc(var(--mobile-tabbar-h, 70px) + 120px);')
   })

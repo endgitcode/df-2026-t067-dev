@@ -50,7 +50,7 @@ describe('account icon slot (t154u)', () => {
     expect(css).toContain('--account-slot-top: calc(6px + env(safe-area-inset-top, 0px))')
     expect(css).toContain('--account-slot-right: 10px')
     // 記録画面ヘッダーの padding は残ってよいが、account-area の top/right 上書きは無い。
-    const recordsHeader = css.slice(css.indexOf('body:has(.owner-records:not([hidden])) .site-header { background: transparent'))
+    const recordsHeader = css.slice(css.indexOf('body:has(.traveler-shell) .site-header { background: transparent'))
     expect(recordsHeader.split('}')[0]).not.toContain('.account-area')
   })
 })

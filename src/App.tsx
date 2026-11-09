@@ -444,7 +444,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   )
 
   return (
-    <>
+    <div className="traveler-shell">
       <a className="skip-link" href="#main">本文へ移動</a>
       <header className="site-header">
         <div className="brand">
@@ -560,6 +560,6 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         <button type="button" aria-current={showRecords ? 'page' : undefined} aria-label="自分の記録" disabled={!localApiMode || (teamPreview && !teamAnswerTrial) || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録</span></button>
       </nav>
-    </>
+    </div>
   )
 }
