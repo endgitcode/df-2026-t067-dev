@@ -120,12 +120,6 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
     return () => document.removeEventListener('keydown', close)
   }, [expandedQuestId, onDeselectQuest])
 
-  const closeDetail = () => {
-    listRef.current?.querySelector<HTMLButtonElement>('[aria-expanded="true"]')?.focus({ preventScroll: true })
-    if (onDeselectQuest) onDeselectQuest()
-    else setClosedQuestId(expandedQuestId)
-  }
-
   const handleRowClick = (questId: string) => {
     if (questId === selectedQuestId) {
       // 選択中の行の再タップは選択解除に統一する（D-55、ピンの再タップ D-44 と同じ）。
@@ -155,7 +149,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
           {[0, 1, 2, 3, 4].map((index) => <li key={index}><div className="explore-quest-skeleton" aria-hidden="true" /></li>)}
         </ul>
         : quests.length === 0
-        ? <p className="explore-list-empty">選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。</p>
+        ? <p className="explore-list-empty">該当なし</p>
         : <ul ref={listRef} className="explore-quest-list">
           {orderedQuests.map((quest) => {
             const cleared = clearedQuestIds?.has(quest.questId) ?? false
@@ -184,7 +178,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
                 aria-hidden={!expanded || undefined}>
                 <div className="explore-quest-detail-clip">
                   {expanded
-                    ? <div ref={detailRef} className="explore-quest-detail"><button type="button" className="quest-detail-close" aria-label="説明を閉じる" onClick={closeDetail}>閉じる</button>{detailContent}</div>
+                    ? <div ref={detailRef} className="explore-quest-detail">{detailContent}</div>
                     : closing && <div className="explore-quest-detail">{closingDetail?.content}</div>}
                 </div>
               </div>

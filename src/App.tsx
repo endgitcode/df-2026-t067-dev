@@ -189,7 +189,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
   const hasAdminMembership = useAdminMembership(teamPreview, api, auth)
   const identityErrorMessage = teamAnswerTrial && serverIdentity.result?.status === 'error' && serverIdentity.result.code === 'FORBIDDEN'
     ? 'この回答試験は招待された人だけが使えます。このアカウントは招待されていません。'
-    : 'ログインを確認できませんでした。時間をおいて再試行してください。'
+    : 'ログイン確認失敗'
   const uid = auth.status === 'signed-in' ? auth.user.uid : null
   const canUseCamera = uid !== null && (!(apiMode || source === 'local-api') || serverIdentity.result?.status === 'ready')
   const [cameraOwner, setCameraOwner] = useState<{ auth: AuthSnapshot; confirmation: typeof serverIdentity.result; questId: string; version: number } | null>(null)
@@ -408,8 +408,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                   onReloadQuest={(event) => { if (externalQuest) onReloadQuest?.(event); else connection.retry() }}
                   hideStartAction={(teamPreview && !teamAnswerTrial) || (!wideViewport && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && visiblePending === null)}
                   disabled={questStale || visiblePending !== null || (auth.status !== 'signed-out' && auth.status !== 'signed-in') || (auth.status === 'signed-in' && (onStartChallenge ? false : !canUseCamera || cameraVisible))}
-                  buttonLabel={visiblePending === 'sign-in' ? '処理中…' : auth.status === 'signed-in' ? (onStartChallenge ? '挑戦を開始する' : cameraVisible ? '撮影中' : serverIdentity.result?.status === 'loading' ? 'ログインの確認中…' : serverIdentity.result?.status === 'error' ? 'ログインの確認待ち' : '撮影を始める') : 'Googleログインして挑戦する'}
-                  note={questStale ? '問題の版を確認できていません。最新版を読み直すまで挑戦できません。' : undefined}
+                  buttonLabel={visiblePending === 'sign-in' ? '処理中…' : auth.status === 'signed-in' ? (onStartChallenge ? '挑戦する' : cameraVisible ? '撮影中' : serverIdentity.result?.status === 'loading' ? 'ログイン確認中' : serverIdentity.result?.status === 'error' ? 'ログイン確認待ち' : '撮影する') : 'Googleでログイン'}
+                  note={questStale ? '問題の再読込が必要' : undefined}
                   clearedDiscoveryId={clearedDiscoveryId} onOpenDiscovery={(id) => { setRecordDestination({ auth, id }); navigateToRecords(true) }}
                   feedback={feedback} onToggle={() => { const next = !openRef.current; selectionGeneration.current += 1; openRef.current = next; if (!next) closeCamera(); /* 開閉ボタンはレールに置く使い方（選択の受け口が無い場合）だけに出る（D-65）。一覧の中の詳細ではボタン自体を出さず、閉じる操作は行の再タップによる選択解除（D-55）に一本化したため、ここで選択解除まで連動させる配線は不要になった（旧 D-60 の配線は廃止）。 */ setOpenState({ quest: externalQuest, open: next }) }} onStart={(selection) => { if (onStartChallenge) return login(selection); if (auth.status === 'signed-in' && canUseCamera && quest) setCameraOwner({ auth, confirmation: serverIdentity.result, questId: selection.questId, version: selection.expectedVersion }); else return login(selection) }}>
                     {!wideViewport && !questStale && !clearedDiscoveryId && !onStartChallenge && (apiMode || source === 'local-api') && canUseCamera && uid !== null && visiblePending === null && <ChallengeCapture
@@ -420,13 +420,13 @@ export default function App({ authClient: providedClient, apiClient: providedApi
                       onOpenDiscovery={durableLocal || teamAnswerTrial ? (id, alreadyCleared) => { noteCleared(quest.questId, id); setRecordDestination({ auth, id, alreadyCleared }); navigateToRecords(true) } : undefined}
                       onReturnToMap={(discoveryId) => { if (discoveryId) noteCleared(quest.questId, discoveryId) }}
                       onReloadQuest={() => { closeCamera(); if (externalQuest) onReloadQuest?.(); else connection.retry() }} />}
-                    {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></div>}
+                    {auth.status === 'signed-in' && serverIdentity.result?.status === 'error' && <div className="auth-feedback"><p role="alert">{identityErrorMessage}</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを再確認</button></div>}
                     {!wideViewport && cameraVisible && uid !== null && <CameraPreview key={uid} onClose={closeCamera} handoffUrl={handoffUrl} />}
                     {localApiMode && !teamPreview && <QuestReport key={questKey} api={api} questId={quest.questId} dataMode={apiDataMode}
                       ownerUid={canUseCamera && visiblePending === null ? uid : null} canSignIn={auth.status === 'signed-out'}
                       signInPending={visiblePending !== null} onSignIn={() => void login()} />}
                   </QuestDetails>
-                  : apiMode ? null : connection.result.status === 'loading' ? <p role="status" aria-label="問題の読み込み">問題を読み込んでいます…</p> : <div role="alert">{source === 'invalid' ? '表示設定を確認してください。' : '問題を読み込めませんでした。'}<button type="button" className="retry-button" onClick={connection.retry}>問題を再読み込み</button></div>}
+                  : apiMode ? null : connection.result.status === 'loading' ? <p role="status" aria-label="問題の読み込み">問題読込中</p> : <div role="alert">{source === 'invalid' ? '表示設定エラー' : '問題読込失敗'}<button type="button" className="retry-button" onClick={connection.retry}>問題を再読込</button></div>}
               </div>
   )
   const railContent = (
@@ -506,17 +506,17 @@ export default function App({ authClient: providedClient, apiClient: providedApi
         {recordsVisited && <section className="owner-records view-enter" aria-labelledby="records-title" hidden={!showRecords}>
           <h1 id="records-title">自分の記録</h1>
           {auth.status === 'signed-out' && <>
-            <p>ログインすると記録が見られます</p>
+            <p>ログイン</p>
             <button type="button" className="primary-button" disabled={visiblePending !== null}
-              onClick={() => void login()}>Googleログインして記録を見る</button>
+              onClick={() => void login()}>Googleでログイン</button>
           </>}
-          {auth.status === 'checking' && <p role="status">ログイン状態を確認しています…</p>}
-          {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">ログインすると記録が見られます</p>}
+          {auth.status === 'checking' && <p role="status">ログイン確認中</p>}
+          {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">ログイン</p>}
           {uid !== null && visiblePending === null && (serverIdentity.result?.status === 'ready'
             ? <OwnerDiscoveries alreadyCleared={recordDestination?.auth === auth && recordDestination.alreadyCleared} key={uid} api={api} onExplore={navigateToExplore} visit={recordsVisit} active={showRecords} initialId={recordDestination?.auth === auth ? recordDestination.id : undefined} />
             : serverIdentity.result?.status === 'error'
-              ? <><p role="alert">ログインを確認できませんでした。</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを確認し直す</button></>
-              : <p role="status">ログインを確認しています…</p>)}
+              ? <><p role="alert">ログイン確認失敗</p><button type="button" className="retry-button" onClick={serverIdentity.retry}>ログインを再確認</button></>
+              : <p role="status">ログイン確認中</p>)}
           {feedback && <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
         </section>}
         <div className="explore-view" hidden={showRecords}>

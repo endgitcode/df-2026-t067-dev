@@ -123,7 +123,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const restoreRefreshFocus = useRef(false)
   const [staleQuest, setStaleQuest] = useState<{ questId: string; version: number } | null>(null)
   // 地図が使える表示（シート／パネル表示）かどうかは MapPreview から受け取る。使える間は
-  // 問題の選択を地図連動のカード一覧とピンに一本化し、全件ピッカーと「公開情報を更新」は
+  // 問題の選択を地図連動のカード一覧とピンに一本化し、全件ピッカーと「更新する」は
   // 地図が使えないフォールバック表示でのみ出す（D-43）。再取得の仕組み自体は変えない。
   const [mapSheetMode, setMapSheetMode] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
@@ -249,9 +249,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
         if (refreshingRetry.current === retry && refreshOperation.current === operation) {
           const snapshot = refreshSnapshot.current
           if (snapshot?.api === api && snapshot.questId !== quest.questId) {
-            setRefreshNotice({ api, text: '更新により選択中の問題が公開一覧からなくなったため、別の問題を表示しています。' })
+            setRefreshNotice({ api, text: '選択問題変更' })
           } else if (snapshot?.api === api && snapshot.questId === quest.questId && snapshot.version !== quest.version) {
-            setRefreshNotice({ api, text: '問題が更新されました。詳細を開いて内容をご確認ください。' })
+            setRefreshNotice({ api, text: '問題更新' })
           }
         }
       } catch (error) {
@@ -436,7 +436,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     }
   }
   const picker = <div className="api-quest-picker">
-    {(activeRegions.length > 0 || activePrefectures.length > 0) && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '一覧から問題を選んでください。' : 'この条件に合う問題はありません。'}</p>}
+    {(activeRegions.length > 0 || activePrefectures.length > 0) && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '問題を選ぶ' : '該当なし'}</p>}
     <ul aria-label="問題一覧">{visibleChoices.map((item) => <li key={item.questId}>
       <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => chooseQuest(item)}>{item.title}</button>
     </li>)}</ul>
@@ -463,7 +463,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   }, [refreshing])
   const refreshControl = <>
     <button ref={refreshButton} type="button" onClick={reload} disabled={refreshing}>
-      {refreshing ? '公開情報を更新中…' : '公開情報を更新'}
+      {refreshing ? '更新中' : '更新する'}
     </button>
     {refreshing && <span role="status">地域・問題一覧・選択中の詳細を取り直しています。</span>}
     {refreshNotice?.api === api && <span role="status">{refreshNotice.text}</span>}
@@ -502,18 +502,16 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // カードと二重に出さない（D-57）。地図が使えないフォールバック表示でのみ、
   // 読み込み中もこの枠が進捗を伝える。
   const fallback = !quest && state !== 'ready' && !(state === 'loading' && mapSheetMode) ? <section className="api-load-state" aria-live="polite">
-      <FallbackHeading id={dataMode !== 'demo' ? undefined : 'explore-title'}>{state === 'loading' ? '問題を読み込んでいます' : state === 'empty' ? '問題はありません' : '問題を読み込めませんでした'}</FallbackHeading>
-      {state === 'loading' && <p role="status">問題の一覧を取得しています。</p>}
-      {state === 'empty' && <p>{selectedAreaId ? 'この地域には問題がありません。地図や地方の絞り込みから別の地域をお選びください。' : '現在選べる問題はありません。'}</p>}
+      <FallbackHeading id={dataMode !== 'demo' ? undefined : 'explore-title'}>{state === 'loading' ? '問題読込中' : state === 'empty' ? '問題なし' : '問題読込失敗'}</FallbackHeading>
       {state === 'error' && <p role="alert">{current?.missing
         ? 'この問題は見つかりません。別の問題を選べます。'
-        : '通信状況を確認して、もう一度お試しください。'}</p>}
+        : '通信失敗'}</p>}
       {state !== 'loading' && <button type="button" onClick={(event) => reload(event)} disabled={refreshing}>再試行</button>}
       {!mapSheetMode && refreshControl}
       {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode === 'demo' && filterControls}{!mapSheetMode && picker}</>}
     </section> : undefined
   return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && ((activeRegions.length === 0 && activePrefectures.length === 0) || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={availableAreas} filterRegion={activeRegions} filterPrefecture={activePrefectures} mapQuests={visibleChoices} mapQuestsLoading={state === 'loading' && visibleChoices.length === 0} onOpenQuest={openQuestFromMap} onDeselectQuest={deselectQuest} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
-    areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
+    areaLabel={current?.area?.label ?? '地域未掲載'}
     questPicker={mapSheetMode ? undefined : <>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} onMapSheetModeChange={setMapSheetMode} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}
     onHintVersionStale={() => { if (quest) setStaleQuest({ questId: quest.questId, version: quest.version }) }}

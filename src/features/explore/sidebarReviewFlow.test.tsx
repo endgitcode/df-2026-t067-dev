@@ -95,7 +95,7 @@ describe('PC sidebar review flow', () => {
     // PCでは詳細からスマホへ受け渡し、撮影操作は提供しない。
     expect(within(panel).queryByRole('button', { name: 'スマホで挑戦する' })).not.toBeInTheDocument()
     expect(within(panel).getByRole('img', { name: /QRコード/ })).toBeVisible()
-    expect(within(panel).queryByRole('button', { name: '挑戦を始める' })).not.toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
     expect(panel.querySelector('input[type="file"], video')).toBeNull()
 
     // 記録へ（サイドバーナビは残る）

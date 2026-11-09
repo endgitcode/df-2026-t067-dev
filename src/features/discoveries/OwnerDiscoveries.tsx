@@ -11,13 +11,13 @@ function RecordDate({ date }: { date: string }) {
 }
 
 function ReadFailure({ code, retry }: { code?: ApiErrorCode; retry: () => void }) {
-  const message = code === 'NOT_FOUND' ? 'この記録は見つかりませんでした。'
-    : code === 'SYSTEM_ERROR' ? '記録を読み込めませんでした。しばらく待ってから、もう一度お試しください。'
-      : code === 'UNAUTHENTICATED' ? 'ログインを確認できませんでした。時間をおいて、もう一度お試しください。'
-        : '記録を読み込めませんでした。通信状況を確認して、もう一度お試しください。'
+  const message = code === 'NOT_FOUND' ? '記録なし'
+    : code === 'SYSTEM_ERROR' ? '記録読込失敗'
+      : code === 'UNAUTHENTICATED' ? 'ログイン確認失敗'
+        : '記録読込失敗'
   return <>
     <p role="alert">{message}</p>
-    <button type="button" className="retry-button" onClick={retry}>記録を読み直す</button>
+    <button type="button" className="retry-button" onClick={retry}>記録を再読込</button>
   </>
 }
 
@@ -79,7 +79,7 @@ function RecordGuidance({ record }: { record: Discovery }) {
   const fields = ([
     ['アクセス', afterClear?.access.trim()],
     ['利用時間', afterClear?.hours.trim()],
-    ['自治体からの紹介', afterClear?.promoComment.trim()],
+    ['紹介', afterClear?.promoComment.trim()],
     ['解説', afterClear?.explanation.trim() || descriptionSnapshot.trim()],
   ] as const).filter(([, value]) => value)
 
@@ -95,7 +95,7 @@ function RecordGuidance({ record }: { record: Discovery }) {
         <dd>{value}</dd>
       </div>)}
     </dl>}
-    {mapsUrl && <p className="record-spot-link"><a href={mapsUrl} target="_blank" rel="noreferrer">Google マップを開く</a></p>}
+    {mapsUrl && <p className="record-spot-link"><a href={mapsUrl} target="_blank" rel="noreferrer">Google マップ</a></p>}
   </>
 }
 
@@ -106,13 +106,13 @@ function RecordMetadata({ api, record }: { api: ApiClient; record: Discovery }) 
   }, [api, record.questId, record.questVersion])
   const { result } = useRemote(true, readTitle)
   const spot = record.afterClear?.spot
-  const title = result.status === 'loading' ? '読み込み中…'
-    : (result.status === 'ready' && result.value) || 'クリア時の問題名を取得できません'
+  const title = result.status === 'loading' ? '読込中'
+    : (result.status === 'ready' && result.value) || '問題名取得失敗'
   const spotName = (spot?.name ?? record.placeName).trim()
   return <dl className="record-guidance">
     {spotName && <div><dt>スポット名</dt><dd>{spotName}</dd></div>}
     <div><dt>日付</dt><dd><RecordDate date={record.firstClearedAt} /></dd></div>
-    {title.trim() !== spotName && <div><dt>問題の名前</dt><dd>{title}</dd></div>}
+    {title.trim() !== spotName && <div><dt>問題名</dt><dd>{title}</dd></div>}
     {spot?.address.trim() && <div><dt>住所</dt><dd>{spot.address}</dd></div>}
   </dl>
 }
@@ -146,8 +146,8 @@ function DiscoveryDetail({ api, id, onBack, onDeleted, deletion, onDeletion, onR
         <h2 id={headingId}>記録詳細</h2>
         <button type="button" className="secondary-button" disabled={deletionInFlight} onClick={close}>閉じる</button>
       </header>
-      {alreadyCleared && <p role="status">この謎はクリア済みです</p>}
-      {result.status === 'loading' && <p role="status">記録を読み込んでいます…</p>}
+      {alreadyCleared && <p role="status">クリア済み</p>}
+      {result.status === 'loading' && <p role="status">記録読込中</p>}
       {result.status === 'error' && <ReadFailure code={result.code} retry={retry} />}
       {result.status === 'ready' && <>
         <RecordPhoto blob={result.value.photo} />
@@ -222,9 +222,9 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
     if (refresh) retry()
   }}
     onDeleted={() => { setDeletions(current => { const next = { ...current }; delete next[selected]; return next }); setDeleted(true); closeDetail(); setCursor(undefined); retry() }} />
-  const confirmation = <>{alreadyCleared && !noticeExpired && !selected && <p role="status">この謎はクリア済みです</p>}{deleted && <p role="status">記録と写真の削除が完了しました。</p>}</>
-  if (result.status === 'loading') return <>{detail}{confirmation}<p role="status">記録を読み込んでいます…</p></>
-  const firstPage = cursor !== undefined && <button type="button" className="secondary-button" onClick={() => setCursor(undefined)}>最初のページへ</button>
+  const confirmation = <>{alreadyCleared && !noticeExpired && !selected && <p role="status">クリア済み</p>}{deleted && <p role="status">削除完了</p>}</>
+  if (result.status === 'loading') return <>{detail}{confirmation}<p role="status">記録読込中</p></>
+  const firstPage = cursor !== undefined && <button type="button" className="secondary-button" onClick={() => setCursor(undefined)}>先頭へ</button>
   if (result.status === 'error') return <>{detail}{confirmation}<ReadFailure code={result.code} retry={retry} />{firstPage}</>
   const { nextCursor } = result.value
   const items = [...result.value.items]
@@ -235,8 +235,8 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
     {detail}
     {confirmation}
     {items.length === 0 ? <>
-      <p>まだ記録がありません</p>
-      <button type="button" className="primary-button" onClick={onExplore}>謎を探しに行く</button>
+      <p>記録なし</p>
+      <button type="button" className="primary-button" onClick={onExplore}>謎を探す</button>
     </> : <table className="record-table" aria-label="自分の記録一覧">
       <thead><tr><th scope="col">写真</th><th scope="col">スポット名</th><th scope="col">日付</th></tr></thead>
       <tbody>{items.map((record) => {
@@ -249,7 +249,7 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
           <td><button type="button" className="record-open" aria-haspopup="dialog" onClick={(event) => { event.stopPropagation(); open() }}>
             <span className="traveler-row-title">{record.afterClear?.spot?.name ?? record.placeName}</span>
             {deletions[record.discoveryId]?.receipt && <span role="status">{deletions[record.discoveryId].state === 'failed' ? '削除未完了' : '削除中'}</span>}
-            {deletions[record.discoveryId]?.state === 'send-error' && <span role="status">削除結果を再確認してください</span>}
+            {deletions[record.discoveryId]?.state === 'send-error' && <span role="status">削除結果未確認</span>}
           </button></td>
           <td className="traveler-row-meta"><RecordDate date={record.firstClearedAt} /></td>
         </tr>

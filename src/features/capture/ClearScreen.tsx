@@ -44,7 +44,7 @@ export function ClearScreen({ questTitle, photo, onViewRecord, onReturnToMap }: 
         {photoUrl && <img className="clear-screen-photo" src={photoUrl} alt="送信した写真" />}
         <p className="clear-screen-date">クリア日：{dateLabel}</p>
         <div className="clear-screen-actions">
-          {onViewRecord && <button type="button" className="primary-button" onClick={onViewRecord}>自分の記録を見る</button>}
+          {onViewRecord && <button type="button" className="primary-button" onClick={onViewRecord}>記録を見る</button>}
           {onReturnToMap && <button type="button" className="secondary-button" onClick={onReturnToMap}>地図に戻る</button>}
         </div>
       </div>

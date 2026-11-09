@@ -4,7 +4,7 @@ export function QuestHandoff({ value = window.location.href, title = 'この問�
   return <div className="quest-handoff">
     {<div className="quest-handoff-panel">
       <QuestQrCode value={value} label={`${title}をスマートフォンで開くQRコード`} />
-      <p className="handoff-caption">スマホで読み取って挑戦しよう</p>
+      <p className="handoff-caption">スマホで挑戦</p>
     </div>}
   </div>
 }

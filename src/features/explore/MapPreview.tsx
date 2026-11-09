@@ -59,7 +59,7 @@ function clusterIcon(totalQuests: number, dimmed = false): { url: string } {
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
-const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
+const LOCATION_SUCCESS_MESSAGE = '現在地を表示'
 
 // 地域の公開ジオメトリから、フィットに使える全頂点を {lat, lng} で返す。閉じていない・
 // 範囲外の座標を含むリングは丸ごと除く（従来のフィットと同じ検証）。使える輪郭が無ければ null。
@@ -168,7 +168,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // 結果メッセージは常駐させない。成功は5秒、案内を含む失敗は読む時間を取って
   // 10秒で消す（D-58）。閉じるボタンでも即座に消せる。取得中は確定まで消さない。
   useEffect(() => {
-    if (!locationStatus || locationStatus === '現在地を取得しています…') return
+    if (!locationStatus || locationStatus === '現在地取得中') return
     const timeout = window.setTimeout(() => setLocationStatus(''),
       locationStatus.startsWith(LOCATION_SUCCESS_MESSAGE) ? 5000 : 10_000)
     return () => window.clearTimeout(timeout)
@@ -178,7 +178,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const withLocationNotice = (message: string) => {
     if (locationNoticeShown.current) return message
     locationNoticeShown.current = true
-    return `${message} 位置情報はGoogle Mapsに送信されます。`
+    return `${message} 位置情報をGoogle Mapsに送信`
   }
   const [locating, setLocating] = useState(false)
   const locationRequest = useRef(0)
@@ -634,7 +634,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
           const key = `cluster:${arrangement.points.map((point) => point.areaId).sort().join(',')}`
           const { marker, listeners } = syncMarker(key, {
             position: { lat: arrangement.lat, lng: arrangement.lng }, map: instance,
-            title: `重なっている${arrangement.points.length}地域のピン（合計${arrangement.totalQuests}問）`,
+            title: `重なっている${arrangement.points.length}地域 ${arrangement.totalQuests}問`,
             icon: clusterIcon(arrangement.totalQuests, dimmed),
             cursor: 'pointer',
             zIndex: dimmed ? 0 : 1,
@@ -664,7 +664,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         const key = `pin:${area.areaId}`
         const { marker, listeners } = syncMarker(key, {
           position, map: instance,
-          title: `${area.label}の探索エリア（${area.publishedCount}問）`,
+          title: `${area.label} ${area.publishedCount}問`,
           icon: pinIcon(pinColor, area.publishedCount, false, dimmed),
           cursor: 'pointer',
           zIndex: selected ? 3 : dimmed ? 0 : 2,
@@ -743,10 +743,10 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const locate = () => {
     if (locating) return
     const geolocation = navigator.geolocation
-    if (!geolocation?.getCurrentPosition) { setLocationStatus('この端末では現在地を取得できません。'); return }
+    if (!geolocation?.getCurrentPosition) { setLocationStatus('現在地非対応'); return }
     const request = ++locationRequest.current
     const requestedMap = map.current
-    setLocationStatus('現在地を取得しています…')
+    setLocationStatus('現在地取得中')
     setLocating(true)
     const settle = (message: string) => {
       if (request !== locationRequest.current) return
@@ -756,27 +756,27 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       setLocating(false)
       setLocationStatus(withLocationNotice(message))
     }
-    locationTimer.current = window.setTimeout(() => settle('現在地を取得できませんでした。もう一度お試しください。'), LOCATION_DEADLINE_MS)
+    locationTimer.current = window.setTimeout(() => settle('現在地取得失敗'), LOCATION_DEADLINE_MS)
     try {
       geolocation.getCurrentPosition((position) => {
         if (request !== locationRequest.current) return
         const { latitude, longitude } = position.coords
         if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-          settle('現在地を取得できませんでした。もう一度お試しください。')
+          settle('現在地取得失敗')
           return
         }
-        if (!requestedMap || map.current !== requestedMap) { settle('現在地を取得できませんでした。もう一度お試しください。'); return }
+        if (!requestedMap || map.current !== requestedMap) { settle('現在地取得失敗'); return }
         requestedMap.setCenter({ lat: latitude, lng: longitude })
         requestedMap.setZoom(LOCATION_ZOOM)
         setCurrentLocation({ lat: latitude, lng: longitude })
         settle(LOCATION_SUCCESS_MESSAGE)
       }, (error) => {
-        const message = error.code === 1 ? '位置情報が許可されませんでした。ブラウザが再確認を表示しない場合は、アドレスバーのサイト情報から位置情報を「確認」または「許可」に変更して、もう一度お試しください。'
-          : error.code === 3 ? '現在地を取得できませんでした。もう一度お試しください。'
-            : '現在地を取得できません。位置情報を確認して、もう一度お試しください。'
+        const message = error.code === 1 ? '位置情報未許可。サイト設定で許可'
+          : error.code === 3 ? '現在地取得失敗'
+            : '現在地取得失敗'
         settle(message)
       }, { enableHighAccuracy: false, maximumAge: 0, timeout: LOCATION_DEADLINE_MS })
-    } catch { settle('現在地を取得できません。位置情報を確認して、もう一度お試しください。') }
+    } catch { settle('現在地取得失敗') }
   }
 
   // ピン以外（地域セレクト等）で別の地域が選ばれたら、ピンのハイライトは外れたものとして扱う。
@@ -858,10 +858,10 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // 登録年度が公開応答に載っている地域があれば、その年度を出典に含める（D-71）。
   const boundaryYears = [...new Set(areas.flatMap((area) => area.boundary?.source === 'N03' ? [area.boundary.year] : []))].sort((a, b) => a - b)
   const boundaryCreditText = boundaryYears.length === 1
-    ? `境界データ：国土数値情報N03-${boundaryYears[0]}（国土交通省）`
+    ? `境界データ：国土数値情報N03-${boundaryYears[0]} 国土交通省`
     : boundaryYears.length > 1
-      ? `境界データ：国土数値情報N03（${boundaryYears.join('・')}年版、国土交通省）`
-      : '境界データ：国土数値情報N03（国土交通省）'
+      ? `境界データ：国土数値情報N03 ${boundaryYears.join('・')}年 国土交通省`
+      : '境界データ：国土数値情報N03 国土交通省'
   const boundaryCredit = showBoundaryCredit && showPublicAreas
     ? <p className="map-boundary-credit">{boundaryCreditText}</p>
     : null
@@ -961,13 +961,13 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       {status === 'ready' && panelMode && focusArea && <div className="map-topline is-sidebar"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className={'map-state' + (sheetMode && status === 'loading' ? ' is-boot-quiet' : '')} role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'} {...mapControlGestureProps}>
-        {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。</span></> :
-          status === 'loading' ? <span className={sheetMode ? 'sr-only' : undefined}>地図を読み込んでいます…</span> :
-            <><strong>地図を読み込めませんでした</strong>{status === 'auth-error'
-              ? <><span>地図の設定を確認して、このページを再読み込みしてください。</span><button type="button" onClick={() => window.location.reload()}>ページを再読み込み</button></>
+        {status === 'missing' ? <><strong>地図未設定</strong></> :
+          status === 'loading' ? <span className={sheetMode ? 'sr-only' : undefined}>地図読込中</span> :
+            <><strong>地図読込失敗</strong>{status === 'auth-error'
+              ? <><span>地図設定を確認</span><button type="button" onClick={() => window.location.reload()}>再読込</button></>
               : <button type="button" onClick={() => { setStatus('loading'); setAttempt((value) => value + 1) }}>地図を再試行</button>}</>}
       </div>}
-      {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert" {...mapControlGestureProps}><strong>地域エリアを表示できませんでした</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
+      {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert" {...mapControlGestureProps}><strong>地域表示失敗</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
       {!sheetMode && mapControls}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
     </section>
