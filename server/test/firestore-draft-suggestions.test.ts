@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { approveFixture } from './photo-approval-fixtures'
 import { createHash, randomUUID } from 'node:crypto'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -74,6 +75,7 @@ test('durable generation rechecks access after reading the private photo and aft
   }
   const saved = await editor.createManagedQuest(orgId, draft)
   const { questId, draftRevision } = saved
+  await approveFixture(db, orgId, 'reference', 'a'.repeat(64))
   const candidate = await editor.generateManagedQuestDraft(orgId, questId, draftRevision)
   assert.equal(candidate.source, 'real')
   assert.equal(candidate.draftRevision, draftRevision)

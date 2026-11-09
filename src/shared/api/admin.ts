@@ -55,7 +55,7 @@ export interface DraftSuggestion {
 }
 export const REVIEW_FIELDS = [
   'materials.name', 'materials.evidence', 'materials.photoRights', 'referenceAssetId', 'hintAssetId',
-  'shootingAreas', 'content.title', 'content.question', 'content.hints', 'content.verifiedFeatures',
+  'referenceApproval', 'hintApproval', 'shootingAreas', 'content.title', 'content.question', 'content.hints', 'content.verifiedFeatures',
 ] as const
 export type ReviewField = typeof REVIEW_FIELDS[number]
 export interface ReviewSubmission { quest: ManagedQuest; missing: ReviewField[] }
@@ -64,7 +64,7 @@ export interface PublishManagedQuest {
   expectedDraftRevision: number
   matchTestId: string
   mismatchTestId: string
-  confirmations: Record<typeof PUBLISH_CONFIRMATIONS[number], true>
+  confirmations: Record<Exclude<typeof PUBLISH_CONFIRMATIONS[number], 'photoRights'>, true> & { photoRights?: true }
 }
 export interface PauseManagedQuest { expectedPublishedVersion: number; reason: string }
 
@@ -110,10 +110,10 @@ export function parseUpdateShootingAreas(input: unknown): UpdateShootingAreas {
   if (zones.some((zone) => zone.radiusMeters !== CAPTURE_ZONE_RADIUS_METERS)) throw new ContractError('zone.radiusMeters')
   return { expectedDraftRevision: revision(d.expectedDraftRevision), zones }
 }
-export function parsePhotoTestMetadata(input: unknown): PhotoTestMetadata {
+export function parsePhotoTestMetadata(input: unknown, approvedAssets = false): PhotoTestMetadata {
   const d = fields(input, ['expectedDraftRevision', 'photoRights'], 'photoTest')
-  const photoRights = text(d.photoRights, 'photoRights', 2000)
-  if (!photoRights.trim()) throw new ContractError('photoRights')
+  const photoRights = approvedAssets && d.photoRights === undefined ? '' : text(d.photoRights, 'photoRights', 2000)
+  if (!approvedAssets && !photoRights.trim()) throw new ContractError('photoRights')
   return { expectedDraftRevision: revision(d.expectedDraftRevision), photoRights }
 }
 export function parsePhotoTestResult(input: unknown): PhotoTestResult {
@@ -157,18 +157,18 @@ export function parseManagedAsset(input: unknown): ManagedAsset {
   return { assetId: identifier(d.assetId, 'assetId'), orgId: identifier(d.orgId, 'orgId'), purpose: d.purpose }
 }
 
-export function parseOrgAssetMetadata(input: unknown): OrgAssetMetadata {
+export function parseOrgAssetMetadata(input: unknown, approvedAssets = false): OrgAssetMetadata {
   const d = fields(input, ['purpose', 'photoRights'], 'assetMetadata')
   if (d.purpose !== 'reference' && d.purpose !== 'public_hint') throw new ContractError('asset.purpose')
-  const photoRights = text(d.photoRights, 'photoRights', 2000)
-  if (!photoRights.trim()) throw new ContractError('photoRights')
+  const photoRights = approvedAssets && d.photoRights === undefined ? '' : text(d.photoRights, 'photoRights', 2000)
+  if (!approvedAssets && !photoRights.trim()) throw new ContractError('photoRights')
   return { purpose: d.purpose, photoRights }
 }
 
 export function parseUploadedOrgAsset(input: unknown): UploadedOrgAsset {
   const d = fields(input, ['assetId', 'orgId', 'purpose', 'photoRights', 'contentType', 'width', 'height', 'byteLength', 'source'], 'UploadedOrgAsset')
   const asset = parseManagedAsset({ assetId: d.assetId, orgId: d.orgId, purpose: d.purpose })
-  const metadata = parseOrgAssetMetadata({ purpose: d.purpose, photoRights: d.photoRights })
+  const metadata = parseOrgAssetMetadata({ purpose: d.purpose, photoRights: d.photoRights }, d.source === 'real')
   const width = revision(d.width), height = revision(d.height), byteLength = revision(d.byteLength)
   if (width > 1600 || height > 1600 || byteLength > 2 * 1024 * 1024 || d.contentType !== 'image/jpeg' ||
     (d.source !== 'real' && d.source !== 'mock')) throw new ContractError('UploadedOrgAsset.media')
@@ -240,10 +240,11 @@ export function parseReviewSubmission(input: unknown): ReviewSubmission {
   }
   return { quest, missing }
 }
-export function parsePublishManagedQuest(input: unknown): PublishManagedQuest {
+export function parsePublishManagedQuest(input: unknown, approvedAssets = false): PublishManagedQuest {
   const d = fields(input, ['expectedDraftRevision', 'matchTestId', 'mismatchTestId', 'confirmations'], 'publish')
   const confirmations = fields(d.confirmations, PUBLISH_CONFIRMATIONS, 'publish.confirmations')
-  if (PUBLISH_CONFIRMATIONS.some((key) => confirmations[key] !== true)) throw new ContractError('publish.confirmations')
+  if (PUBLISH_CONFIRMATIONS.some((key) => confirmations[key] !== true &&
+    !(approvedAssets && key === 'photoRights' && confirmations[key] === undefined))) throw new ContractError('publish.confirmations')
   const matchTestId = identifier(d.matchTestId, 'matchTestId')
   const mismatchTestId = identifier(d.mismatchTestId, 'mismatchTestId')
   if (matchTestId === mismatchTestId) throw new ContractError('publish.testIds')

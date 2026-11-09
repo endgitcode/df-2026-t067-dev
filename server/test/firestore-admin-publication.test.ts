@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { approveFixture } from './photo-approval-fixtures'
+import { photoApprovalDigest, photoApprovalId } from '../src/admin-photo-approvals'
 import { createHash } from 'node:crypto'
 import { Storage } from '@google-cloud/storage'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
@@ -21,7 +23,7 @@ import { listenServer } from './helpers'
 const firestore = process.env.QUEST_FIRESTORE_TEST_HOST
 const storage = process.env.QUEST_STORAGE_TEST_HOST
 const image = (bytes: Uint8Array) => new Blob([Uint8Array.from(bytes)], { type: 'image/png' })
-const confirmations = { fictionalData: true, visitConditions: true, photoRights: true, shootingArea: true, testCases: true } as const
+const confirmations = { fictionalData: true, visitConditions: true, shootingArea: true, testCases: true } as const
 
 test('durable publishing freezes the tested version and pausing stops all public access', {
   skip: !firestore || !storage, timeout: 20_000,
@@ -88,11 +90,12 @@ test('durable publishing freezes the tested version and pausing stops all public
   assert.deepEqual((await anonymousList.json()).items, [])
   await assert.rejects(team.api('outsider').listManagedQuests(orgId), { code: 'FORBIDDEN' })
   await assert.rejects(teamTraveler.listManagedQuests(orgId), { code: 'FORBIDDEN' })
-  const reference = await editor.uploadOrgAsset(orgId, { purpose: 'reference', photoRights: '合成画像', photo: image(syntheticPng), idempotencyKey: 'reference' })
+  const reference = await editor.uploadOrgAsset(orgId, { purpose: 'reference', photo: image(syntheticPng), idempotencyKey: 'reference' })
   const hint = await editor.uploadOrgAsset(orgId, { purpose: 'public_hint', photoRights: '合成画像', photo: image(otherSyntheticPng), idempotencyKey: 'hint' })
   const hints = [hint]
   for (const [index, background] of ['#123456', '#abcdef'].entries()) {
     const bytes = await sharp({ create: { width: 2, height: 2, channels: 3, background } }).png().toBuffer()
+    await approveFixture(db, orgId, 'public_hint', photoApprovalDigest(bytes))
     hints.push(await editor.uploadOrgAsset(orgId, { purpose: 'public_hint', photoRights: '合成画像',
       photo: image(bytes), idempotencyKey: 'hint-' + index }))
   }
@@ -125,8 +128,17 @@ test('durable publishing freezes the tested version and pausing stops all public
   const zones = [{ latitude: 0.125, longitude: 0.25, radiusMeters: 1000 }]
   const { draftRevision } = await editor.updateShootingAreas(orgId, questId, { expectedDraftRevision: 1, zones })
   const compare = (photo: Blob, idempotencyKey: string, revision: number) => editor.testManagedQuest(orgId, questId, {
-    photo, idempotencyKey, expectedDraftRevision: revision, photoRights: '合成画像',
+    photo, idempotencyKey, expectedDraftRevision: revision,
   })
+  const missingApproval = await editor.submitManagedQuestReview(orgId, questId, draftRevision)
+  assert(missingApproval.missing.includes('referenceApproval'))
+  assert(missingApproval.missing.includes('hintApproval'))
+  await assert.rejects(compare(image(syntheticPng), 'match', draftRevision), { code: 'PHOTO_APPROVAL_REQUIRED' })
+  await approveFixture(db, orgId, 'reference', photoApprovalDigest(syntheticPng))
+  await approveFixture(db, orgId, 'public_hint', photoApprovalDigest(otherSyntheticPng))
+  await approveFixture(db, orgId, 'public_hint', photoApprovalDigest(syntheticPng))
+  await approveFixture(db, orgId, 'photo_test', photoApprovalDigest(syntheticPng))
+  await approveFixture(db, orgId, 'photo_test', photoApprovalDigest(otherSyntheticPng))
   const match = await compare(image(syntheticPng), 'match', draftRevision)
   duplicate = true
   const reused = await compare(image(syntheticPng), 'duplicate', draftRevision)
@@ -160,6 +172,14 @@ test('durable publishing freezes the tested version and pausing stops all public
   await publisherMembership.update({ active: true })
   await assert.rejects(traveler.getQuest(questId), { code: 'NOT_FOUND' })
   await assert.rejects(teamTraveler.getQuest(questId), { code: 'NOT_FOUND' })
+  const hintApproval = db.collection('adminPhotoApprovals').doc(photoApprovalId(orgId, 'public_hint', photoApprovalDigest(otherSyntheticPng)))
+  await hintApproval.update({ active: false })
+  await assert.rejects(editor.publishManagedQuest(orgId, questId, input), { code: 'PHOTO_APPROVAL_REQUIRED' })
+  await hintApproval.update({ active: true })
+  const matchApproval = db.collection('adminPhotoApprovals').doc(photoApprovalId(orgId, 'photo_test', photoApprovalDigest(syntheticPng)))
+  await matchApproval.update({ active: false })
+  await assert.rejects(editor.publishManagedQuest(orgId, questId, input), { code: 'PHOTO_APPROVAL_REQUIRED' })
+  await matchApproval.update({ active: true })
   const published = await editor.publishManagedQuest(orgId, questId, input)
   assert.equal(published.publishedVersion, 1)
   assert.equal(published.questNumber, '13-01')

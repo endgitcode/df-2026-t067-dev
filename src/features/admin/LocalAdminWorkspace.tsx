@@ -8,7 +8,7 @@ import { AuthError, createFirebaseAuthClient } from '../auth/firebaseAuth'
 import { useServerIdentity } from '../explore/useQuestConnection'
 import { PausePublication } from './PausePublication'
 import QuestDraftForm from './QuestDraftForm'
-import { QuestTaskWorkspace } from './QuestTaskWorkspace'
+import { AdminQuestWorkflow } from './AdminQuestWorkflow'
 import { ShootingAreasEditor } from './ShootingAreasEditor'
 import { PublicationWorkspace } from './PublicationWorkspace'
 import { remainingWork } from './publicationReadiness'
@@ -53,7 +53,9 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
   function select(next: typeof section) { setNotice(''); setCursor(undefined); setSection(next) }
 
   function closeEditor() { setEditor(null); retry() }
-  if (editor?.kind === 'draft' && durable) return <QuestTaskWorkspace api={api} member={member} initial={editor.initial} onBack={closeEditor} />
+  if (editor?.kind === 'draft' && (durable || teamPreview)) return <AdminQuestWorkflow api={api} member={member} initial={editor.initial}
+    teamPreview={teamPreview} photoTestSource={photoTestSource} areaUnclassified={areaUnclassified} onBack={closeEditor}
+    onPublished={() => { setNotice('公開しました。'); closeEditor() }} />
   if (editor?.kind === 'draft') return <QuestDraftForm teamPreview={teamPreview} connection={{ api, member, initial: editor.initial, onBack: closeEditor }} />
   if (editor?.kind === 'areas') return <ShootingAreasEditor enableMap={durable || teamPreview} api={api} orgId={member.orgId} questId={editor.questId} onBack={closeEditor} />
   if (editor?.kind === 'hint') return <HintAssetEditor rightsAssist={durable} api={api} initial={editor.initial} member={member} onBack={closeEditor} />
@@ -89,8 +91,11 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
           <details><summary>詳細</summary>
             <p>問題 {item.questId}・下書き版 {item.draftRevision}{item.publishedVersion !== null && '・公開版 ' + item.publishedVersion}</p>
           </details>
-          <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>下書きを編集</button>
-          <fieldset className="publish-prep"><legend>公開準備</legend>
+          <button type="button" onClick={() => setEditor({ kind: 'draft', initial: item })}>{teamPreview || durable ? '編集を続ける' : '下書きを編集'}</button>
+          {(teamPreview || durable) ? item.status !== 'published' && <details className="workflow-remaining">
+            <summary>残りの作業（{remainingWork(item, true).length}件）</summary>
+            <ul>{remainingWork(item, true).map((work) => <li key={work}>{work}</li>)}</ul>
+          </details> : <fieldset className="publish-prep"><legend>公開準備</legend>
             <p>撮影できる範囲（非公開）：{item.shootingAreaStatus === 'configured' ? '設定済み' : '未設定'}</p>
             {areaUnclassified && item.status !== 'published' && <p>この地域は未分類のため公開できません（都道府県コードが未設定です）。</p>}
             {item.status === 'published' ? <p>公開中です。</p> : <>
@@ -105,7 +110,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
               {item.status !== 'published' &&
                 <button type="button" onClick={() => setEditor({ kind: 'publication', initial: item })}>試験と公開確認</button>}
             </div>
-          </fieldset>
+          </fieldset>}
           {member.role === 'publisher' && item.publishedVersion !== null &&
             <PausePublication key={item.publishedVersion} api={api} orgId={member.orgId} questId={item.questId} version={item.publishedVersion}
               onReload={retry} onPaused={() => { setNotice('公開を休止しました。'); retry() }} />}
@@ -211,7 +216,7 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
     } finally { action.current = false; setPending(false) }
   }
 
-  return <main className="admin-demo">
+  return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '')}>
     <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header'}>
       <h1>{teamPreview ? '自治体向け共有検証' : '自治体向けローカル管理'}</h1>
       {auth.status === 'signed-in'

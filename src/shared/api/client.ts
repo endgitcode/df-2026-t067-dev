@@ -12,7 +12,7 @@ import {
 const ERROR_CODES = [
   'INVALID_INPUT', 'MEDIA_TOO_LARGE', 'UNAUTHENTICATED', 'FORBIDDEN', 'RATE_LIMITED',
   'DRAFT_CONFLICT', 'IDEMPOTENCY_CONFLICT', 'QUEST_UNAVAILABLE', 'QUEST_CHANGED', 'SYSTEM_ERROR',
-  'REVIEW_REQUIRED', 'PHOTO_TEST_REQUIRED', 'AREA_UNCLASSIFIED',
+  'REVIEW_REQUIRED', 'PHOTO_APPROVAL_REQUIRED', 'PHOTO_TEST_REQUIRED', 'AREA_UNCLASSIFIED',
   'NOT_FOUND', 'HTTP_ERROR', 'NETWORK_ERROR', 'INVALID_RESPONSE', 'AUTH_UNAVAILABLE',
 ] as const
 export type ApiErrorCode = typeof ERROR_CODES[number]
@@ -32,6 +32,7 @@ export class ApiError extends Error {
       INVALID_INPUT: '送信内容を確認してください。',
       INVALID_RESPONSE: 'データを読み取れませんでした。',
       NETWORK_ERROR: '通信状況を確認してください。',
+      PHOTO_APPROVAL_REQUIRED: 'この写真は指定用途で事前承認されていません。',
       REVIEW_REQUIRED: '入力項目を確認し、最新版の確認を依頼してください。',
       PHOTO_TEST_REQUIRED: '最新版の一致と別対象の写真試験を確認してください。',
       AREA_UNCLASSIFIED: 'この地域は都道府県コードが未設定のため、この操作はできません。',
@@ -263,14 +264,14 @@ export function createApiClient(options: ApiClientOptions = {}) {
   }
 
   return {
-    async uploadOrgAsset(orgId: string, input: { photo: Blob; purpose: AssetPurpose; photoRights: string; idempotencyKey: string }, call: CallOptions = {}) {
+    async uploadOrgAsset(orgId: string, input: { photo: Blob; purpose: AssetPurpose; photoRights?: string; idempotencyKey: string }, call: CallOptions = {}) {
       const org = id(orgId)
-      const metadata = adminInput(parseOrgAssetMetadata, { purpose: input.purpose, photoRights: input.photoRights })
+      const metadata = adminInput((value) => parseOrgAssetMetadata(value, input.photoRights === undefined), { purpose: input.purpose, photoRights: input.photoRights })
       if (!(input.photo instanceof Blob) || input.photo.size === 0 ||
         !['image/jpeg', 'image/png', 'image/webp'].includes(input.photo.type) ||
         typeof input.idempotencyKey !== 'string' || !/^[\x21-\x7e]{1,128}$/.test(input.idempotencyKey)) throw new ApiError('INVALID_INPUT')
       if (input.photo.size > 4 * 1024 * 1024) throw new ApiError('MEDIA_TOO_LARGE')
-      const encoded = JSON.stringify(metadata)
+      const encoded = JSON.stringify(input.photoRights === undefined ? { purpose: metadata.purpose } : metadata)
       if (new TextEncoder().encode(encoded).byteLength > 4096) throw new ApiError('MEDIA_TOO_LARGE')
       const body = new FormData()
       body.append('photo', input.photo, 'asset')
@@ -314,12 +315,12 @@ export function createApiClient(options: ApiClientOptions = {}) {
     async getShootingAreas(orgId: string, questId: string, call: CallOptions = {}) {
       return request('/orgs/' + id(orgId) + '/quests/' + id(questId) + '/shooting-areas', shootingAreas(orgId, questId), { ...call, authenticated: true })
     },
-    async testManagedQuest(orgId: string, questId: string, input: PhotoTestMetadata & { photo: Blob; idempotencyKey: string }, call: CallOptions = {}) {
+    async testManagedQuest(orgId: string, questId: string, input: Omit<PhotoTestMetadata, 'photoRights'> & { photoRights?: string; photo: Blob; idempotencyKey: string }, call: CallOptions = {}) {
       const path = '/orgs/' + id(orgId) + '/quests/' + id(questId) + '/test'
-      const metadata = adminInput(parsePhotoTestMetadata, { expectedDraftRevision: input.expectedDraftRevision, photoRights: input.photoRights })
+      const metadata = adminInput((value) => parsePhotoTestMetadata(value, input.photoRights === undefined), { expectedDraftRevision: input.expectedDraftRevision, photoRights: input.photoRights })
       if (!(input.photo instanceof Blob) || !input.photo.size || !['image/jpeg', 'image/png', 'image/webp'].includes(input.photo.type) ||
         typeof input.idempotencyKey !== 'string' || !/^[\x21-\x7e]{1,128}$/.test(input.idempotencyKey)) throw new ApiError('INVALID_INPUT')
-      const encoded = JSON.stringify(metadata)
+      const encoded = JSON.stringify(input.photoRights === undefined ? { expectedDraftRevision: metadata.expectedDraftRevision } : metadata)
       if (input.photo.size > 4 * 1024 * 1024 || new TextEncoder().encode(encoded).byteLength > 4096) throw new ApiError('MEDIA_TOO_LARGE')
       const body = new FormData()
       body.append('photo', input.photo, 'test-photo')
@@ -371,7 +372,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
       }, { ...call, authenticated: true, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     },
     async publishManagedQuest(orgId: string, questId: string, input: PublishManagedQuest, call: CallOptions = {}) {
-      const body = adminInput(parsePublishManagedQuest, input)
+      const body = adminInput((value) => parsePublishManagedQuest(value, input.confirmations.photoRights === undefined), input)
       return request('/orgs/' + id(orgId) + '/quests/' + id(questId) + '/publish', (data) => {
         const quest = managed(orgId, questId)(data)
         if (quest.status !== 'published' || quest.draftRevision !== body.expectedDraftRevision) throw new ContractError('publication.identity')

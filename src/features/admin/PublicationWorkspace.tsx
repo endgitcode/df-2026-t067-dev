@@ -8,6 +8,7 @@ import { useRequestAction } from '../../shared/useRequestAction'
 
 const reviewLabels: Record<ReviewField, string> = {
   'materials.name': '対象名', 'materials.evidence': '対象にした理由（確認したこと）', 'materials.photoRights': '写真の利用権',
+  referenceApproval: '参考写真の事前承認', hintApproval: 'ヒント画像の事前承認',
   referenceAssetId: '参考写真', hintAssetId: 'ヒント画像の用途', shootingAreas: '撮影できる範囲（非公開）',
   'content.title': '問題タイトル', 'content.question': '問題文', 'content.hints': '3本のヒント',
   'content.verifiedFeatures': '現地で確かめた見た目の特徴',
@@ -28,6 +29,7 @@ function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
   switch (code) {
     case 'DRAFT_CONFLICT': return { message: '下書きの版が変わりました。一覧から最新版を確認してください。', stale: true }
     case 'FORBIDDEN': return { message: '担当組織の操作権限を確認できません。', stale: true }
+    case 'PHOTO_APPROVAL_REQUIRED': return { message: 'この画像は指定用途で事前承認されていません。承認済み素材を選ぶか、運営に確認してください。' }
     case 'PHOTO_TEST_REQUIRED': return { message: 'この版で異なる写真を使って一致・別対象の試験を確認してください。' }
     case 'REVIEW_REQUIRED': return { message: 'この版の確認依頼と確認項目を見直してください。' }
     case 'INVALID_INPUT': return { message: '試験写真・利用権と保存済みの参考素材を確認してください。' }
@@ -39,8 +41,33 @@ function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
   }
 }
 
-export function PublicationWorkspace({ api, initial, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock', areaUnclassified = false }: {
-  api: ApiClient; initial: ManagedQuest; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; onBack: () => void; onPublished: () => void
+function ApprovedTrial({ expected, disabled, verified, onTest }: {
+  expected: 'MATCH' | 'WRONG_TARGET'; disabled: boolean; verified: boolean
+  onTest: (file: File, key: string, expected: 'MATCH' | 'WRONG_TARGET') => void
+}) {
+  const [file, setFile] = useState<File | null>(null)
+  const key = useRef<string | null>(null)
+  const label = expected === 'MATCH' ? '一致写真' : '別対象写真'
+  const valid = file && file.size > 0 && file.size <= 4 * 1024 * 1024 && ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+  return <form onSubmit={(event) => {
+    event.preventDefault()
+    if (valid && !disabled) onTest(file, key.current ??= crypto.randomUUID(), expected)
+  }}>
+    <fieldset disabled={disabled}>
+      <legend>{label}</legend>
+      <label>{label}を選択<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+        setFile(event.target.files?.[0] ?? null)
+        key.current = null
+      }} /></label>
+      {file && !valid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
+      <button type="submit" disabled={!valid}>{label}の試験を送信</button>
+      <span> {verified ? '確認済み' : '未確認'}</span>
+    </fieldset>
+  </form>
+}
+
+export function PublicationWorkspace({ api, initial, onBack, onPublished, rightsAssist = false, backLabel = '問題一覧へ戻る', photoTestSource = 'mock', areaUnclassified = false, approvedAssets = false, onFix }: {
+  api: ApiClient; initial: ManagedQuest; rightsAssist?: boolean; backLabel?: string; photoTestSource?: 'mock' | 'real'; areaUnclassified?: boolean; approvedAssets?: boolean; onFix?: (field: ReviewField) => void; onBack: () => void; onPublished: () => void
 }) {
   const [quest, setQuest] = useState(initial)
   const [photo, setPhoto] = useState<File | null>(null)
@@ -60,7 +87,8 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   const photoValid = photo !== null && photo.size > 0 && photo.size <= 4 * 1024 * 1024 &&
     ['image/jpeg', 'image/png', 'image/webp'].includes(photo.type)
   const reviewed = quest.status === 'review_pending' && !!proofs.MATCH && !!proofs.WRONG_TARGET
-  const ready = reviewed && confirmationLabels.every(([item]) => checked.includes(item))
+  const confirmations = approvedAssets ? confirmationLabels.filter(([item]) => item !== 'photoRights') : confirmationLabels
+  const ready = reviewed && confirmations.every(([item]) => checked.includes(item))
   const realPhotoTest = photoTestSource === 'real'
 
   async function perform<T>(work: (signal: AbortSignal) => Promise<T>, receive: (value: T) => void) {
@@ -86,13 +114,20 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   function trial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!photoValid || !rights.trim() || reuseNeeded) return
+    sendTrial(photo!, key.current ??= crypto.randomUUID())
+  }
+
+  function sendTrial(file: File, idempotencyKey: string, expected?: 'MATCH' | 'WRONG_TARGET') {
     void perform((signal) => api.testManagedQuest(orgId, questId, {
-      expectedDraftRevision: draftRevision, photo, photoRights: rights,
-      idempotencyKey: key.current ??= crypto.randomUUID(),
+      expectedDraftRevision: draftRevision, photo: file, ...(approvedAssets ? {} : { photoRights: rights }), idempotencyKey,
     }, { signal }), (result) => {
       if (result.source !== photoTestSource) throw new ApiError('INVALID_RESPONSE')
       setOutcome(result.outcome)
       setChecked([])
+      if (expected && result.outcome !== expected && result.outcome !== 'IMAGE_UNCERTAIN') {
+        setFailure({ message: '想定した試験結果と一致しません。別の承認済み写真を選んでください。' })
+        return
+      }
       if (result.outcome !== 'IMAGE_UNCERTAIN') {
         setProofs((current) => ({ ...current, [result.outcome]: result.testId }))
       }
@@ -108,11 +143,11 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
   }
 
   function publish() {
-    if (!ready) return
+    if (!ready || areaUnclassified) return
     void perform((signal) => api.publishManagedQuest(orgId, questId, parsePublishManagedQuest({
       expectedDraftRevision: draftRevision, matchTestId: proofs.MATCH, mismatchTestId: proofs.WRONG_TARGET,
       confirmations: Object.fromEntries(checked.map((item) => [item, true])),
-    }), { signal }), onPublished)
+    }, approvedAssets), { signal }), onPublished)
   }
 
   return <section className="form-section" aria-labelledby="publication-workspace-title">
@@ -123,7 +158,12 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
     {areaUnclassified && <p role="alert">この地域は都道府県コードが未設定（未分類）のため、公開できません。地域の分類が完了するまで公開は止まります。</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">操作結果を確認しています…</p>}
-    <form onSubmit={trial}>
+    {approvedAssets ? <>
+      <p>事前承認済みの写真を使います。{realPhotoTest && '送信ごとに回答と共用の送信枠を1回使います。'}</p>
+      {!realPhotoTest && <p><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真</a> ・ <a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真</a></p>}
+      <ApprovedTrial expected="MATCH" disabled={disabled} verified={!!proofs.MATCH} onTest={sendTrial} />
+      <ApprovedTrial expected="WRONG_TARGET" disabled={disabled} verified={!!proofs.WRONG_TARGET} onTest={sendTrial} />
+    </> : <form onSubmit={trial}>
       <fieldset disabled={disabled}>
         <legend>写真試験</legend>
         {realPhotoTest
@@ -146,7 +186,7 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
         {photo && !photoValid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
         <button type="submit" disabled={!photoValid || !rights.trim() || reuseNeeded}>写真試験を送信</button>
       </fieldset>
-    </form>
+    </form>}
     {proofs.MATCH && <p role="status">一致試験を確認しました。</p>}
     {proofs.WRONG_TARGET && <p role="status">別対象の試験を確認しました。</p>}
     {outcome === 'IMAGE_UNCERTAIN' && <p role="status">{realPhotoTest ? '試験写真を確認できませんでした。対象がはっきり写った別の写真でお試しください。' : '試験写真を確認できませんでした。別の合成写真でお試しください。'}</p>}
@@ -154,17 +194,17 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
       <legend>公開条件の確認</legend>
       <button type="button" onClick={review}>この版の公開条件を確認</button>
       {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
-      {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{reviewLabels[item]}</li>)}</ul></>}
+      {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}を確認</button> : reviewLabels[item]}</li>)}</ul></>}
     </fieldset>
     <fieldset disabled={disabled || !reviewed}>
       <legend>公開前のチェック</legend>
       {!reviewed && <p>この版の公開条件を確認し、この画面で一致と別対象の写真試験を行うとチェックできます。</p>}
-      {confirmationLabels.map(([item, label]) => <label key={item} className="check-option">
+      {confirmations.map(([item, label]) => <label key={item} className="check-option">
         <input type="checkbox" checked={checked.includes(item)} onChange={(event) => {
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))
         }} />{label}
       </label>)}
-      <button type="button" disabled={!ready} onClick={publish}>この版を公開</button>
+      <button type="button" disabled={!ready || areaUnclassified} onClick={publish}>この版を公開</button>
     </fieldset>
   </section>
 }

@@ -51,7 +51,7 @@ export function createDurableDraftHandler(store: FirestoreManagedDraftStore, aut
     validateQuery(params, [])
     if (action === 'test' && questId !== undefined) {
       await store.get(uid, orgId, questId)
-      await handlePhotoTest(request, response, { ...photoTest, uid, orgId, questId, send,
+      await handlePhotoTest(request, response, { ...photoTest, uid, orgId, questId, send, approvedAssets: true,
         recheck: (revision) => store.getAtRevision(uid, orgId, questId, revision) })
       return true
     }
@@ -76,7 +76,7 @@ export function createDurableDraftHandler(store: FirestoreManagedDraftStore, aut
         const { draft } = await store.getAtRevision(uid, orgId, questId, expectedDraftRevision)
         if (!suggestion) throw new HttpError(503, 'SYSTEM_ERROR', '下書き生成が未接続です。')
         const { referenceAssetId, materials } = draft
-        if (!referenceAssetId || !materials.name.trim() || !materials.photoRights.trim()) invalidInput()
+        if (!referenceAssetId || !materials.name.trim()) invalidInput()
         if (response.destroyed || response.writableEnded) return true
         const { assets, generator } = suggestion
         const release = assets.acquire(uid)
@@ -88,7 +88,7 @@ export function createDurableDraftHandler(store: FirestoreManagedDraftStore, aut
           if (asset?.purpose !== 'reference') invalidInput()
           const reference = await assets.getPhotoOwned(orgId, referenceAssetId)
           // Recheck access after Storage I/O before allowing an external request.
-          await store.getAtRevision(uid, orgId, questId, expectedDraftRevision)
+          await store.assertReferenceApproved(uid, orgId, questId, expectedDraftRevision)
           if (controller.signal.aborted) return true
           const content = reference && await generator.suggest(reference, materials, controller.signal)
           if (controller.signal.aborted) return true
@@ -106,7 +106,7 @@ export function createDurableDraftHandler(store: FirestoreManagedDraftStore, aut
       } else if (action === 'publish' || action === 'pause') {
         if (!publication) throw new HttpError(503, 'SYSTEM_ERROR', '公開・休止の処理が未接続です。')
         const updated = action === 'publish'
-          ? await publication.publish(uid, orgId, questId, parsePublishManagedQuest(body))
+          ? await publication.publish(uid, orgId, questId, parsePublishManagedQuest(body, true))
           : await publication.pause(uid, orgId, questId, parsePauseManagedQuest(body))
         send(response, 200, updated)
       } else {

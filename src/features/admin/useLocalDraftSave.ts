@@ -6,6 +6,8 @@ import { useRequestAction } from '../../shared/useRequestAction'
 
 export interface LocalDraftConnection {
   taskFocused?: boolean
+  workflowPart?: 1 | 2 | 3
+  onWorkflowSave?: (record: ManagedQuest, advance: boolean) => void
   api: Pick<ApiClient, 'uploadOrgAsset' | 'createManagedQuest' | 'updateManagedQuest' | 'generateManagedQuestDraft' | 'canLookupSpotAddress' | 'lookupSpotAddress'>
   initial: ManagedQuest | null
   member: OrgMembership
@@ -35,7 +37,7 @@ export function useLocalDraftSave(connection?: LocalDraftConnection) {
 
   async function save(draft: ManagedQuestDraft, asset: DraftAsset | undefined, onSaved: (record: ManagedQuest) => void) {
     if (!connection || (state.status === 'error' && state.reload)) return
-    if (asset && !asset.photoRights.trim()) {
+    if (asset && !connection.workflowPart && !asset.photoRights.trim()) {
       setState({ status: 'error', message: '写真の出典と利用権を入力してください。' })
       return
     }
@@ -53,7 +55,7 @@ export function useLocalDraftSave(connection?: LocalDraftConnection) {
         if (upload.current?.file !== file || upload.current.purpose !== purpose || upload.current.photoRights !== photoRights) {
           upload.current = { file, purpose, photoRights, key: crypto.randomUUID() }
         }
-        const savedAsset = await api.uploadOrgAsset(orgId, { purpose, photo: file, photoRights,
+        const savedAsset = await api.uploadOrgAsset(orgId, { purpose, photo: file, ...(connection.workflowPart ? {} : { photoRights }),
           idempotencyKey: upload.current.key }, call)
         if (!operation.isCurrent()) return
         if (purpose === 'reference') payload = { ...draft, referenceAssetId: savedAsset.assetId }

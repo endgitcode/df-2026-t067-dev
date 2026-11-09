@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { approveFixture } from './photo-approval-fixtures'
 import { createHash } from 'node:crypto'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -105,7 +106,7 @@ test('durable managed drafts isolate organizations and use one revision for text
     const incomplete = await colleague.submitManagedQuestReview(orgId, initial.questId, initial.draftRevision)
     assert.equal(incomplete.quest.status, 'draft')
     assert.deepEqual(incomplete.missing, [
-      'materials.photoRights', 'referenceAssetId', 'shootingAreas',
+      'referenceAssetId', 'shootingAreas',
       'content.question', 'content.hints', 'content.verifiedFeatures',
     ])
 
@@ -121,6 +122,8 @@ test('durable managed drafts isolate organizations and use one revision for text
     await assert.rejects(second('other').submitManagedQuestReview(orgId, initial.questId, currentRevision), { code: 'FORBIDDEN' })
     await assert.rejects(colleague.submitManagedQuestReview(orgId, initial.questId, updated.draftRevision), { code: 'DRAFT_CONFLICT' })
 
+    await approveFixture(db, orgId, 'reference', 'a'.repeat(64))
+    await approveFixture(db, orgId, 'public_hint', 'a'.repeat(64))
     const pending = await editor.submitManagedQuestReview(orgId, initial.questId, currentRevision)
     assert.equal(pending.quest.status, 'review_pending')
     assert.equal(pending.quest.draftRevision, currentRevision)
@@ -135,7 +138,7 @@ test('durable managed drafts isolate organizations and use one revision for text
     assert.equal((await colleague.submitManagedQuestReview(orgId, initial.questId, next.draftRevision)).quest.status, 'review_pending')
     await db.collection('orgAssets').doc('hint').delete()
     const missingHint = await colleague.submitManagedQuestReview(orgId, initial.questId, next.draftRevision)
-    assert.deepEqual(missingHint.missing, ['hintAssetId'])
+    assert.deepEqual(missingHint.missing, ['hintAssetId', 'hintApproval'])
     assert.equal(missingHint.quest.status, 'draft')
     assert.deepEqual(await editor.getManagedQuest(orgId, initial.questId), missingHint.quest)
   })

@@ -5,8 +5,8 @@ import { PhotoRightsInput } from './PhotoRightsInput'
 import { normalizeHintAssets } from './hintAssets'
 import { useLocalDraftSave } from './useLocalDraftSave'
 
-export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1, rightsAssist = false, backLabel = '問題一覧へ戻る' }: { api: ApiClient; initial: ManagedQuest; member: OrgMembership; onBack: () => void; initialSlot?: number; rightsAssist?: boolean; backLabel?: string }) {
-  const { record, state, save } = useLocalDraftSave({ api, initial, member, onBack })
+export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1, rightsAssist = false, backLabel = '問題一覧へ戻る', onContinue }:  { api: ApiClient; initial: ManagedQuest; member: OrgMembership; onBack: () => void; initialSlot?: number; rightsAssist?: boolean; backLabel?: string; onContinue?: (record: ManagedQuest) => void }) {
+  const { record, state, save } = useLocalDraftSave({ api, initial, member, onBack, ...(onContinue ? { workflowPart: 3 } : {}) })
   const [slot, setSlot] = useState(initialSlot)
   const [file, setFile] = useState<File | null>(null)
   const [rights, setRights] = useState('')
@@ -29,8 +29,12 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!valid || !rights.trim() || reuseNeeded || blocked) return
-    void save(current.draft, { file, purpose: 'public_hint', photoRights: rights, hintIndex: slot }, clearSelection)
+    if (!valid || (!onContinue && (!rights.trim() || reuseNeeded)) || blocked) return
+    const advance = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'next'
+    void save(current.draft, { file, purpose: 'public_hint', photoRights: rights, hintIndex: slot }, (saved) => {
+      clearSelection()
+      if (advance) onContinue?.(saved)
+    })
   }
 
   function remove(index: number) {
@@ -42,7 +46,7 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
   return <section className="form-section" aria-labelledby="hint-asset-title">
     <h2 id="hint-asset-title">ヒント画像</h2>
     <p>{current.draft.content.title || '無題の下書き'}・下書き版 {current.draftRevision}</p>
-    <p>各ヒントに公開用画像を1枚設定できます。</p>
+    <p>{onContinue ? '任意。各ヒントに事前承認済みの画像を1枚設定できます。' : '各ヒントに公開用画像を1枚設定できます。'}</p>
     <button type="button" disabled={state.status === 'saving'} onClick={onBack}>{backLabel}</button>
     {current.draft.content.hints.map((hint, index) => {
       const number = index + 1
@@ -66,13 +70,16 @@ export function HintAssetEditor({ api, initial, member, onBack, initialSlot = 1,
             if (next) previousPhoto.current = next
             setFile(next)
           }} /></label>
-        {rightsAssist ? <PhotoRightsInput key={file ? `${slot}:${file.name}:${file.lastModified}` : `empty:${slot}`} purpose="public_hint" label="画像の出典と利用権" value={rights} onChange={value => { setRights(value); setReuseNeeded(false) }} /> : <label>画像の出典と利用権<textarea value={rights} onChange={event => setRights(event.target.value)} /></label>}
-        {reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替えた写真を公開ヒントに使う権利を確認し、入力済みの権利文を適用する</label>}
+        {!onContinue && (rightsAssist ? <PhotoRightsInput key={file ? `${slot}:${file.name}:${file.lastModified}` : `empty:${slot}`} purpose="public_hint" label="画像の出典と利用権" value={rights} onChange={value => { setRights(value); setReuseNeeded(false) }} /> : <label>画像の出典と利用権<textarea value={rights} onChange={event => setRights(event.target.value)} /></label>)}
+        {!onContinue && reuseNeeded && <label><input type="checkbox" checked={false} onChange={() => setReuseNeeded(false)} />差し替えた写真を公開ヒントに使う権利を確認し、入力済みの権利文を適用する</label>}
         {file && !valid && <p>4 MiB以内のJPEG・PNG・WebPを選んでください。</p>}
         {activeSlots.length === 0 && <p role="note">画像を設定できるヒント文がありません。</p>}
-        <button type="submit" disabled={!valid || !rights.trim() || reuseNeeded || activeSlots.length === 0}>ヒント画像を保存</button>
+        <button type="submit" disabled={!valid || (!onContinue && (!rights.trim() || reuseNeeded)) || activeSlots.length === 0}>ヒント画像を保存</button>
+        {onContinue && file && <button type="submit" value="next" className="workflow-primary" disabled={!valid}>保存して次へ</button>}
       </fieldset>
     </form>
+    {onContinue && !file && <button type="button" className="workflow-primary" disabled={blocked} onClick={() => onContinue(current)}>写真試験と公開へ</button>}
+    {onContinue && file && <button type="button" disabled={blocked} onClick={clearSelection}>選択した画像を取り消す</button>}
     {state.status === 'saving' && <p role="status">保存しています…</p>}
     {state.status === 'saved' && <p role="status">ヒント画像の設定を保存しました。</p>}
     {state.status === 'error' && <p role="alert">{state.message}</p>}

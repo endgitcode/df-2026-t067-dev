@@ -41,8 +41,10 @@ it('confirms durable identity and membership before saving a real-source shootin
     else if (path.startsWith('/api/v1/me/memberships?')) body = { items: [{
       orgId: quest.orgId, areaId: quest.areaId, label: '永続の架空自治体', role: 'publisher', prefectureCode: '07',
     }], nextCursor: null }
+    else if (init?.method === 'PATCH') body = { ...quest, source: 'real', draftRevision: JSON.parse(String(init.body)).expectedDraftRevision + 1,
+      draft: JSON.parse(String(init.body)).draft }
     else if (path.endsWith('/shooting-areas')) body = init?.method === 'PUT'
-      ? { ...areas, draftRevision: 3, zones: JSON.parse(String(init.body)).zones } : areas
+      ? { ...areas, draftRevision: 5, zones: JSON.parse(String(init.body)).zones } : { ...areas, draftRevision: 4 }
     else if (path.startsWith('/api/v1/orgs/' + quest.orgId + '/quests?')) body = { items: [saved], nextCursor: null }
     else throw new Error('Unexpected durable request: ' + path)
     return new Response(JSON.stringify(body), { headers: {
@@ -54,7 +56,10 @@ it('confirms durable identity and membership before saving a real-source shootin
     render(<LocalAdminWorkspace authClient={authClient} dataMode="durable-local" />)
     expect(await screen.findByText(quest.draft.content.title)).toBeVisible()
     expect(screen.getByRole('button', { name: /永続の架空自治体/ })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: '撮影範囲を設定' }))
+    await user.click(screen.getByRole('button', { name: '編集を続ける' }))
+    expect(screen.queryByLabelText('写真の出典と利用権')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '保存して次へ' }))
+    await user.click(await screen.findByRole('button', { name: '保存して撮影範囲へ' }))
     await user.click(await screen.findByRole('button', { name: '範囲を追加' }))
     await user.type(screen.getByLabelText('緯度'), '0')
     await user.type(screen.getByLabelText('経度'), '0')
@@ -63,7 +68,7 @@ it('confirms durable identity and membership before saving a real-source shootin
     expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
     const writes = fetcher.mock.calls.filter(([, init]) => init?.method === 'PUT')
     expect(writes).toHaveLength(1)
-    expect(JSON.parse(String(writes[0][1]?.body))).toMatchObject({ expectedDraftRevision: 2,
+    expect(JSON.parse(String(writes[0][1]?.body))).toMatchObject({ expectedDraftRevision: 4,
       zones: [{ latitude: 0, longitude: 0, radiusMeters: 1000 }] })
     expect(fetcher.mock.calls[0][0]).toBe('/api/v1/session')
     for (const [, init] of fetcher.mock.calls) {
@@ -220,7 +225,9 @@ it('publishes and pauses through durable session, membership and common HTTP con
     getSnapshot: () => snapshot, subscribe: () => () => {}, signInWithGoogle: async () => {},
     signOut: async () => {}, getIdToken: async () => 'publisher-token',
   }
-  let current = { ...quest, source: 'real', status: 'draft', publishedVersion: null } as ManagedQuest
+  let current: ManagedQuest = { ...quest, source: 'real', status: 'draft', publishedVersion: null,
+    draft: { ...quest.draft, referenceAssetId: 'ref', materials: { ...quest.draft.materials, name: '対象' },
+      content: { ...quest.draft.content, question: '問題文', hints: ['一', '二', '三'], verifiedFeatures: '特徴' } } }
   let trials = 0
   const fetcher = vi.fn<typeof fetch>(async (input) => {
     const path = String(input)
@@ -250,17 +257,13 @@ it('publishes and pauses through durable session, membership and common HTTP con
     render(<LocalAdminWorkspace authClient={authClient} dataMode="durable-local" />)
     await user.click(await screen.findByRole('button', { name: /永続の公開自治体/ }))
     expect(await screen.findByText('下書き')).toBeVisible()
-    await user.click(await screen.findByRole('button', { name: '試験と公開確認' }))
+    await user.click(await screen.findByRole('button', { name: '編集を続ける' }))
     const publish = screen.getByRole('button', { name: 'この版を公開' })
     expect(publish).toBeDisabled()
-    await user.type(screen.getByLabelText('試験写真の利用権'), '自作の合成画像')
-    for (const [name, message] of [['match', '一致試験を確認しました。'], ['other', '別対象の試験を確認しました。']]) {
-      await user.upload(screen.getByLabelText('試験写真'), new File([name], name + '.png', { type: 'image/png' }))
-      if (name === 'other') {
-        expect(screen.getByRole('button', { name: '写真試験を送信' })).toBeDisabled()
-        await user.click(screen.getByLabelText('差し替えた写真を非公開試験に使う権利を確認し、入力済みの権利文を適用する'))
-      }
-      await user.click(screen.getByRole('button', { name: '写真試験を送信' }))
+    expect(screen.queryByLabelText('試験写真の利用権')).not.toBeInTheDocument()
+    for (const [label, message] of [['一致写真', '一致試験を確認しました。'], ['別対象写真', '別対象の試験を確認しました。']]) {
+      await user.upload(screen.getByLabelText(label + 'を選択'), new File([label], 'test.png', { type: 'image/png' }))
+      await user.click(screen.getByRole('button', { name: label + 'の試験を送信' }))
       expect(await screen.findByText(message)).toBeVisible()
       expect(publish).toBeDisabled()
     }
@@ -282,21 +285,21 @@ it('publishes and pauses through durable session, membership and common HTTP con
     expect(writes.map(([path]) => String(path).split('/').at(-1))).toEqual(['test', 'test', 'submit-review', 'publish', 'pause'])
     expect(JSON.parse(String(writes[3][1]?.body))).toMatchObject({ expectedDraftRevision: 2,
       matchTestId: 'match-test', mismatchTestId: 'other-test',
-      confirmations: { fictionalData: true, visitConditions: true, photoRights: true, shootingArea: true, testCases: true } })
+      confirmations: { fictionalData: true, visitConditions: true, shootingArea: true, testCases: true } })
     expect(JSON.parse(String(writes[4][1]?.body))).toEqual({ expectedPublishedVersion: 1, reason: '合成試験終了' })
     expect(fetcher.mock.calls[0][0]).toBe('/api/v1/session')
     for (const [, init] of fetcher.mock.calls) expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer publisher-token')
   } finally { vi.unstubAllGlobals() }
 })
 
-it('shows remaining work and enables the shooting-area map on the shared preview', async () => {
+it('advances all four saved steps and opens the correct step for missing inputs in shared preview', async () => {
   const user = userEvent.setup()
   const snapshot: AuthSnapshot = { status: 'signed-in', user: { uid: 'preview-manager', displayName: null } }
   const authClient: AuthClient = {
     getSnapshot: () => snapshot, subscribe: () => () => {},
     signInWithGoogle: async () => {}, signOut: async () => {}, getIdToken: async () => 'preview-token',
   }
-  const shared = { ...quest, source: 'real' } as ManagedQuest
+  let shared = { ...quest, source: 'real' } as ManagedQuest
   const areas = { orgId: quest.orgId, questId: quest.questId, draftRevision: quest.draftRevision, source: 'real', zones: [] }
   const fetcher = vi.fn<typeof fetch>(async (input, init) => {
     const path = String(input)
@@ -305,8 +308,22 @@ it('shows remaining work and enables the shooting-area map on the shared preview
     else if (path.startsWith('/api/v1/me/memberships?')) body = { items: [{
       orgId: quest.orgId, areaId: quest.areaId, label: '共有検証の架空自治体', role: 'publisher', prefectureCode: '13',
     }], nextCursor: null }
-    else if (path.endsWith('/shooting-areas')) body = init?.method === 'PUT'
-      ? { ...areas, draftRevision: 3, zones: JSON.parse(String(init.body)).zones } : areas
+    else if (init?.method === 'PATCH') {
+      const update = JSON.parse(String(init.body))
+      expect(update.expectedDraftRevision).toBe(shared.draftRevision)
+      body = shared = { ...shared, draftRevision: shared.draftRevision + 1, draft: update.draft }
+    } else if (path.endsWith('/shooting-areas')) {
+      if (init?.method === 'PUT') {
+        const update = JSON.parse(String(init.body))
+        expect(update.expectedDraftRevision).toBe(shared.draftRevision)
+        shared = { ...shared, draftRevision: shared.draftRevision + 1, shootingAreaStatus: 'configured' }
+        body = { ...areas, draftRevision: shared.draftRevision, zones: update.zones }
+      } else body = { ...areas, draftRevision: shared.draftRevision }
+    } else if (path.endsWith('/submit-review')) {
+      shared = { ...shared, status: 'draft' }
+      body = { quest: shared, missing: ['referenceApproval'] }
+    }
+    else if (path.endsWith('/quests/' + quest.questId)) body = shared
     else if (path.startsWith('/api/v1/orgs/' + quest.orgId + '/quests?')) body = { items: [shared], nextCursor: null }
     else throw new Error('Unexpected preview request: ' + path)
     return new Response(JSON.stringify(body), { headers: {
@@ -318,19 +335,34 @@ it('shows remaining work and enables the shooting-area map on the shared preview
     render(<LocalAdminWorkspace authClient={authClient} dataMode="team-preview" />)
     await user.click(await screen.findByRole('button', { name: /共有検証の架空自治体/ }))
     expect(await screen.findByText(quest.draft.content.title)).toBeVisible()
-    expect(screen.getByText('残りの作業')).toBeVisible()
-    for (const work of ['対象名', '写真の利用権', '参考写真', '問題文', '3本のヒント', '現地で確かめた見た目の特徴', '公開前のチェックと公開'])
+    await user.click(screen.getByText(/残りの作業/))
+    for (const work of ['対象名', '参考写真', '問題文', '3本のヒント', '現地で確かめた見た目の特徴', '公開前のチェックと公開'])
       expect(screen.getByText(work, { selector: 'li' })).toBeVisible()
-    expect(screen.getByText(/この一覧では実施状況を確認できません/)).toBeVisible()
-    await user.click(screen.getByRole('button', { name: '撮影範囲を設定' }))
+    await user.click(screen.getByRole('button', { name: '編集を続ける' }))
+    expect(screen.queryByLabelText('写真の出典と利用権')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '保存して次へ' }))
+    await user.click(await screen.findByRole('button', { name: '保存して撮影範囲へ' }))
     expect(await screen.findByLabelText('地図で編集する範囲')).toBeVisible()
     expect(screen.getByText(/地図の設定がないため、下の数値入力で設定できます/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: '範囲を追加' }))
     await user.type(screen.getByLabelText('緯度'), '35')
     await user.type(screen.getByLabelText('経度'), '135')
     expect(screen.getByText('半径：1,000m（固定）')).toBeVisible()
-    await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
-    expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: '保存して次へ' }))
+    expect(await screen.findByRole('heading', { name: /STEP 3/ })).toBeVisible()
+    await user.type(screen.getByLabelText('問題文'), '確認用の問題文')
+    await user.type(screen.getByLabelText('ヒント 1'), '確認用ヒント')
+    await user.click(screen.getByRole('button', { name: '保存して次へ' }))
+    expect(await screen.findByRole('heading', { name: 'ヒント画像' })).toBeVisible()
+    expect(screen.queryByLabelText('画像の出典と利用権')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '写真試験と公開へ' }))
+    expect(await screen.findByRole('heading', { name: /STEP 4/ })).toBeVisible()
+    expect(screen.getByRole('group', { name: '一致写真' })).toBeVisible()
+    expect(screen.getByRole('group', { name: '別対象写真' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'この版の公開条件を確認' }))
+    await user.click(await screen.findByRole('button', { name: '参考写真の事前承認を確認' }))
+    expect(await screen.findByRole('heading', { name: /STEP 1/ })).toBeVisible()
+    expect(shared.draft.content.question).toBe('確認用の問題文')
   } finally { vi.unstubAllGlobals() }
 })
 
@@ -361,8 +393,6 @@ it('blocks creation and explains why publication is unavailable for an unclassif
     await user.click(await screen.findByRole('button', { name: /未分類の架空自治体/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent('未設定（未分類）のため、新しい問題を作成できず')
     expect(screen.queryByRole('button', { name: '下書きを新規作成' })).not.toBeInTheDocument()
-    expect(await screen.findByText('この地域は未分類のため公開できません（都道府県コードが未設定です）。')).toBeVisible()
-    await user.click(screen.getByRole('button', { name: '試験と公開確認' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('未設定（未分類）のため、公開できません')
+    expect(await screen.findByRole('button', { name: '編集を続ける' })).toBeVisible()
   } finally { vi.unstubAllGlobals() }
 })
