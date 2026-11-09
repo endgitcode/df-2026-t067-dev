@@ -121,18 +121,18 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
             const expanded = quest.questId === expandedQuestId
             const closing = !expanded && closingDetail?.questId === quest.questId
             const content = <>
-              <span className="explore-quest-title">{quest.title}</span>
-              {quest.questNumber && <span className="explore-quest-number">No. {quest.questNumber}</span>}
+              <span className="explore-quest-title traveler-row-title">{quest.title}</span>
               {cleared && <span className="explore-quest-cleared">クリア済み</span>}
+              {quest.questNumber && <span className="explore-quest-number traveler-row-meta">No. {quest.questNumber}</span>}
             </>
             return <li key={quest.questId} data-area-id={quest.areaId} className={highlightArea?.areaId === quest.areaId ? 'is-highlighted' : undefined}>
               {onOpenQuest
-                ? <button type="button" className={'explore-quest-card' + (quest.questId === selectedQuestId ? ' is-selected' : '')}
+                ? <button type="button" className={'explore-quest-card traveler-list-row' + (quest.questId === selectedQuestId ? ' is-selected' : '')}
                   {...(detailContent
                     ? { 'aria-expanded': expanded }
                     : { 'aria-pressed': selectedQuestId ? quest.questId === selectedQuestId : undefined })}
                   aria-label={`${quest.title}の詳細を見る`} onClick={() => handleRowClick(quest.questId)}>{content}</button>
-                : <div className="explore-quest-card">{content}</div>}
+                : <div className="explore-quest-card traveler-list-row">{content}</div>}
               {/* 開閉の枠は「場所で絞る」と同じく常時マウントし、開状態のクラスだけで
                   grid-template-rows を切り替える（D-59 追記）。展開の瞬間にマウントして
                   次フレームでクラスを足す形では、閉じた高さ（0fr）が画面に確定する前に

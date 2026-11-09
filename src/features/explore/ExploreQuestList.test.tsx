@@ -19,7 +19,9 @@ describe('ExploreQuestList', () => {
   it('shows the quest number on the card only when one is assigned', () => {
     const numbered: PublicQuest[] = [{ ...quests[0], questNumber: '14-01' }, quests[1]]
     render(<ExploreQuestList areas={areas} quests={numbered} onOpenQuest={() => {}} />)
-    expect(screen.getByText('No. 14-01')).toBeVisible()
+    expect(screen.getByText('No. 14-01')).toHaveClass('traveler-row-meta')
+    expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toHaveClass('traveler-list-row')
+    expect(screen.getByText('港の時計台')).toHaveClass('traveler-row-title')
     expect(screen.queryByText(/No\. 40-/)).not.toBeInTheDocument()
   })
   it('renders title-only rows without clue, area name or thumbnail', () => {

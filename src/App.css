@@ -158,7 +158,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .explore-list-head { display: flex; align-items: baseline; gap: 10px; }
 .explore-list-head span { font-size: 12px; font-weight: var(--ui-weight-strong); color: var(--ui-muted); }
 .explore-list-empty { margin: 10px 0 0; font-size: 13px; color: var(--ui-muted); line-height: 1.7; }
-.explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }
+.explore-quest-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }
 /* 読み込み中の一覧の仮の行。行の高さを確保し、読み込み前後の大きさの変化と
    「0件」のチラつきを防ぐ（D-54）。 */
 .explore-quest-list .explore-quest-skeleton,
@@ -173,20 +173,21 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
    行には出さず、詳細は選択中の行の直下にアコーディオンで開く。 */
 /* 一覧の行にオフセットシャドウは付けない（D-54）。中身とパネル本体の影は
    D-66 で全廃し、影は地図上に浮く要素（チップ・メニュー等）だけに残す。 */
-.explore-quest-card { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; transition: background-color 150ms var(--ease-out); }
-button.explore-quest-card { cursor: pointer; }
-/* 行のホバーはチップと同じ尺（背景色150ms）で返す。タッチでは残らないよう
-   ホバー可能な入力の時だけに限る（D-59）。 */
+/* 探索・本人記録の共通行。枠は行に一重だけ持たせる。 */
+.traveler-list-row { display: flex; box-sizing: border-box; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; border: 2px solid var(--ui-line); border-radius: 12px; background: var(--ui-surface); color: var(--ui-ink); font: inherit; text-align: left; box-shadow: none; transition: background-color 150ms var(--ease-out); }
+button.traveler-list-row { cursor: pointer; }
+.traveler-list-row:focus-within { background: var(--ui-soft); outline: 2px solid var(--ui-line); outline-offset: -4px; }
 @media (hover: hover) and (pointer: fine) {
-  button.explore-quest-card:hover { background: var(--ui-soft); }
-  button.explore-quest-card.is-selected:hover { background: var(--ui-accent-hover); }
+  button.traveler-list-row:hover, .record-table .traveler-list-row:hover { background: var(--ui-soft); }
 }
-.explore-quest-list li.is-highlighted .explore-quest-card { background: var(--ui-soft); }
-.explore-quest-card.is-selected { background: var(--ui-accent); }
-.explore-quest-title { flex: 1; min-width: 0; font-size: 13px; font-weight: var(--ui-weight-strong); }
-.explore-quest-number { flex: none; font-size: 12px; font-weight: var(--ui-weight-strong); color: var(--ui-muted); }
+.explore-quest-list li.is-highlighted .traveler-list-row { background: var(--ui-soft); }
+.explore-quest-list .traveler-list-row.is-selected { background: var(--ui-accent); }
+.traveler-list-row.is-selected { background: var(--ui-accent); }
+.traveler-row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; min-width: 0; font-size: 14px; line-height: 20px; font-weight: 500; }
+.explore-quest-title { flex: 1; }
+.traveler-row-meta { flex: none; margin-left: auto; text-align: right; white-space: nowrap; font-size: 12px; line-height: 16px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--ui-muted); }
 .quest-number-label { color: var(--ui-muted); border-left: var(--ui-border-width) solid var(--ui-line); padding-left: 8px; font-size: 12px; font-weight: var(--ui-weight-strong); }
-.explore-quest-cleared { flex: none; padding: 3px 8px; font-size: 12px; font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
+.explore-quest-cleared { flex: none; padding: 0; font-size: 12px; font-weight: 400; }
 .explore-quest-detail { margin-top: 10px; }
 /* アコーディオンの押し広げも高さで滑らせる（D-59）。「場所で絞る」と同じ
    grid-template-rows 方式で、閉じる時は visibility の切り替えを遷移の終わりに遅らせる。 */
@@ -482,25 +483,20 @@ button.explore-quest-card { cursor: pointer; }
 .owner-records > h1 { font-size: 24px; line-height: 1.4; font-weight: var(--ui-weight-strong); }
 .owner-records > button { justify-self: start; }
 .owner-records, .record-dialog { --ui-hover-shift: 0px; --ui-press: 0px; }
-.record-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0 8px; text-align: start; }
-.record-table th, .record-table td { padding: 8px; text-align: start; }
-.record-table th { color: var(--ui-muted); font-size: 12px; font-weight: 400; padding-top: 0; padding-bottom: 0; }
-.record-table td { border-block: var(--ui-border-width) solid var(--ui-line); }
-.record-table td:first-child { border-left: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius) 0 0 var(--ui-radius); }
-.record-table td:last-child { border-right: var(--ui-border-width) solid var(--ui-line); border-radius: 0 var(--ui-radius) var(--ui-radius) 0; color: var(--ui-muted); font-size: 12px; }
-.record-table th:first-child { width: 72px; }
-.record-table th:last-child { width: 88px; }
-.record-table th, .record-table td { overflow-wrap: anywhere; }
-.record-table tbody tr { cursor: pointer; transition: background-color 150ms var(--ease-out); }
-.record-table tbody tr:focus-within { background: var(--ui-soft); }
-@media (hover: hover) and (pointer: fine) {
-  .record-table tbody tr:hover { background: var(--ui-soft); }
-}
+.record-table { display: block; width: 100%; text-align: start; }
+.record-table thead, .record-table tbody { display: grid; }
+.record-table tbody { gap: 4px; }
+.record-table thead tr, .record-table .traveler-list-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) 80px; gap: 8px; align-items: center; }
+.record-table thead tr { padding: 0 14px 4px; }
+.record-table th { color: var(--ui-muted); font-size: 12px; font-weight: 400; text-align: start; }
+.record-table th:last-child { text-align: right; }
+.record-table td { min-width: 0; padding: 0; border: 0; }
+.traveler-list-row-photo { min-height: 64px; cursor: pointer; }
 .record-table time, .record-guidance time { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .record-photo { display: block; max-width: 100%; max-height: 62vh; margin-inline: auto; object-fit: contain; border-radius: var(--ui-radius); }
 .record-dialog .secondary-button { padding: 9px 12px; font-weight: var(--ui-weight-control); }
 .record-detail > .record-delete { justify-self: start; color: var(--ui-error); border-color: var(--ui-error); background: var(--ui-surface); }
-.record-open { min-height: 44px; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: var(--ui-weight-strong); text-align: start; overflow-wrap: anywhere; cursor: pointer; }
+.record-table .record-open { display: block; width: 100%; min-height: 44px; border: 0; border-radius: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: start; box-shadow: none; transform: none; cursor: pointer; }
 .record-thumbnail, .record-thumbnail-placeholder { display: grid; width: 56px; height: 56px; flex: 0 0 56px; place-items: center; border-radius: var(--radius-s); object-fit: cover; background: var(--ui-disabled); color: var(--ui-muted); }
 .record-thumbnail-placeholder { font-size: 10px; }
 .record-detail { display: grid; gap: 16px; overflow-wrap: anywhere; }
@@ -717,22 +713,13 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     min-height: 28px; padding: 0 6px; margin: 0;
   }
   body.explore-fullbleed .explore-side-panel .explore-quest-list {
-    flex: none; max-height: none; overflow: visible; padding-bottom: 12px; gap: 2px;
-  }
-  /* フラット行：枠線なし。ホバーは薄グレー、選択中の謎だけアクセント */
-  body.explore-fullbleed .explore-side-panel .explore-quest-card {
-    border: 0; border-radius: var(--radius-s); background: transparent; padding: 10px 10px;
+    flex: none; max-height: none; overflow: visible; padding-bottom: 12px; gap: 4px;
   }
   /* 仮カードは透明行ルールに負けない（F5で緑スケルトンが消えて空に見えるのを防ぐ） */
   body.explore-fullbleed .explore-side-panel .explore-quest-skeleton {
     background: var(--ui-tint);
   }
-  body.explore-fullbleed .explore-side-panel button.explore-quest-card:hover { background: var(--ui-disabled); }
-  body.explore-fullbleed .explore-side-panel .explore-quest-card.is-selected,
-  body.explore-fullbleed .explore-side-panel button.explore-quest-card.is-selected:hover {
-    background: var(--ui-accent);
-  }
-  body.explore-fullbleed .explore-side-panel .explore-quest-title { font-size: 14px; }
+
   body.explore-fullbleed .explore-side-panel .explore-quest-number { font-size: 12px; color: var(--ui-muted); }
   body.explore-fullbleed .explore-side-panel .map-boundary-credit {
     margin: auto 0 0; padding-top: 10px; font-size: 12px; opacity: .65;
