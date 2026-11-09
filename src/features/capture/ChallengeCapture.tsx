@@ -1,3 +1,7 @@
+import { QuestHandoff } from '../../components/QuestHandoff'
+import { questHandoffUrl } from '../quests/questHandoffUrl'
+import { useWideViewport } from '../quests/useWideViewport'
+import type { ComponentProps } from 'react'
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { ApiError } from '../../shared/api'
 import type { ApiClient, Challenge, LocalApiDataMode, PublicQuest } from '../../shared/api'
@@ -25,7 +29,13 @@ function failure(cause: unknown): Extract<StartState, { status: 'error' }> {
 
 // The parent keys this component by verified user, selected quest/version and
 // navigation revision. Leaving any of them disposes the operation and camera.
-export function ChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, onReturnToMap, autoStart = false, canAutoStart, onAutoStartConsumed, dataMode = 'demo' }: {
+export function ChallengeCapture(props: ComponentProps<typeof MobileChallengeCapture>) {
+  const wide = useWideViewport()
+  if (wide) return <QuestHandoff value={questHandoffUrl(props.quest)} title={props.quest.title} />
+  return <MobileChallengeCapture {...props} />
+}
+
+function MobileChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, onReturnToMap, autoStart = false, canAutoStart, onAutoStartConsumed, dataMode = 'demo' }: {
   api: ApiClient; quest: PublicQuest; onReloadQuest: () => void; autoStart?: boolean; canAutoStart?: () => boolean; onAutoStartConsumed?: () => void; dataMode?: LocalApiDataMode; onOpenDiscovery?: (id: string) => void
   // クリア画面の「地図に戻る」が押された通知。カメラを閉じた後に呼び出し側へ返す。
   onReturnToMap?: (discoveryId?: string) => void
@@ -104,7 +114,7 @@ export function ChallengeCapture({ api, quest, onReloadQuest, onOpenDiscovery, o
       <p role="alert">{state.message}{seconds > 0 && ` ${seconds}秒後に再試行できます。`}</p>
       {state.reload && <button type="button" className="retry-button" onClick={onReloadQuest}>問題を読み直す</button>}
     </div>}
-    {state.status === 'ready' && cameraOpen && <CameraPreview onClose={closeCamera}
+    {state.status === 'ready' && cameraOpen && <CameraPreview onClose={closeCamera} handoffUrl={questHandoffUrl(quest)}
       answer={{ api, challengeId: state.challenge.challengeId, onReloadQuest, dataMode, onOpenDiscovery, questTitle: quest.title, onReturnToMap: (discoveryId) => { closeCamera(); onReturnToMap?.(discoveryId) } }} />}
   </>
 }

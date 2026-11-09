@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { QuestHandoff } from '../../components/QuestHandoff'
 import { createPortal } from 'react-dom'
 import { useWideViewport } from '../quests/useWideViewport'
 import { parseCaptureMetadata } from '../../shared/api'
@@ -8,7 +9,15 @@ import type { DemoAnswerContext } from './DemoAnswerSubmission'
 import { CaptureLocationMap } from './CaptureLocationMap'
 import { isCaptureLocationMapDebugEnabled } from './captureMapDebug'
 
-export function CameraPreview({ onClose, answer }: { onClose: () => void; answer?: DemoAnswerContext }) {
+type CameraPreviewProps = { onClose: () => void; answer?: DemoAnswerContext; handoffUrl?: string }
+
+export function CameraPreview(props: CameraPreviewProps) {
+  const wide = useWideViewport()
+  if (wide) return <QuestHandoff value={props.handoffUrl} title={props.answer?.questTitle} />
+  return <MobileCameraPreview {...props} />
+}
+
+function MobileCameraPreview({ onClose, answer }: CameraPreviewProps) {
   const wide = useWideViewport()
   const showCaptureLocationMapDebug = isCaptureLocationMapDebugEnabled(import.meta.env.DEV, import.meta.env.VITE_CAPTURE_LOCATION_MAP_DEBUG)
   const videoRef = useRef<HTMLVideoElement>(null)

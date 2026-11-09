@@ -1,6 +1,7 @@
 import type { PublicQuest } from '../../shared/api/types'
 import { Icon } from '../../components/Icon'
-import { QuestQrCode } from '../../components/QuestQrCode'
+import { QuestHandoff } from '../../components/QuestHandoff'
+import { questHandoffUrl } from './questHandoffUrl'
 import { useWideViewport } from './useWideViewport'
 import { ShootingConditionIndicators } from '../../components/ShootingConditionIndicators'
 import type { createApiClient } from '../../shared/api/client'
@@ -368,8 +369,7 @@ interface QuestDetailsProps {
 
 export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, note, sourceLabel = '', detailsLabel = 'サンプル問題の詳細', feedback, onToggle, onStart, children, hideStartAction = false, hideToggle = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl, clearedDiscoveryId, onOpenDiscovery }: QuestDetailsProps) {
   const wideViewport = useWideViewport()
-  const [qrVisible, setQrVisible] = useState(true)
-  const handoffActive = Boolean(handoffUrl) && wideViewport
+  const handoffActive = wideViewport
   const detailsId = `quest-details-${useId().replaceAll(':', '')}`
   const hintUrl = quest.optionalHintImage
   const hintIdentity = `${quest.questId}\u0000${quest.version}\u0000${hintUrl ?? ''}\u0000${JSON.stringify(quest.hintImages ?? [])}\u0000${getHintIdentity(getHint)}\u0000${getPhotoIdentity(getHintPhoto)}`
@@ -430,19 +430,7 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
               <p className="quest-cleared-label"><Icon name="check" />クリア済み</p>
               <p className="unavailable-note">この問題はクリア済みのため、再挑戦はできません。初回の写真と日付は「自分の記録」に保存されています。</p>
               {onOpenDiscovery && <button type="button" className="primary-button" onClick={() => onOpenDiscovery(clearedDiscoveryId)}>自分の記録を見る</button>}
-            </div> : !hideStartAction && (handoffActive ? <div className="quest-handoff">
-              <button type="button" className="quest-handoff-toggle" aria-expanded={qrVisible} onClick={() => setQrVisible((value) => !value)}>
-                スマホで挑戦する
-              </button>
-              {qrVisible && <div className="quest-handoff-panel">
-                <QuestQrCode value={handoffUrl!} label={`${quest.title}をスマートフォンで開くQRコード`} />
-                <p className="handoff-caption">スマートフォンで読み取ると、この問題の詳細を開けます。</p>
-              </div>}
-              <button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={note ? `${detailsId}-note` : undefined}>
-                {buttonLabel}
-              </button>
-              {note ? <p id={`${detailsId}-note`} className="unavailable-note">{note}</p> : null}
-            </div> : <><button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={note ? `${detailsId}-note` : undefined}>
+            </div> : !hideStartAction && (handoffActive ? <><QuestHandoff value={handoffUrl ?? questHandoffUrl(quest)} title={quest.title} />{note ? <p className="unavailable-note">{note}</p> : null}</> : <><button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={note ? `${detailsId}-note` : undefined}>
               {buttonLabel}
             </button>
             {note ? <p id={`${detailsId}-note`} className="unavailable-note">{note}</p> : null}</>)}

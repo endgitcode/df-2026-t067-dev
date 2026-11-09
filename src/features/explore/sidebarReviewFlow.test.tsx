@@ -63,7 +63,7 @@ afterEach(() => {
 })
 
 describe('PC sidebar review flow', () => {
-  it('covers select → detail → challenge, records nav, and open/close without breaking', async () => {
+  it('covers select → detail → QR, records nav, and open/close without breaking', async () => {
     const user = userEvent.setup()
     render(<TeamPreview authClient={auth} />)
 
@@ -90,8 +90,11 @@ describe('PC sidebar review flow', () => {
     await user.click(within(list).getByRole('button', { name: quest.title + 'の詳細を見る' }))
     expect(await within(panel).findByRole('heading', { name: quest.title })).toBeVisible()
 
-    // 挑戦導線が詳細内にある
-    expect(within(panel).getByRole('button', { name: '挑戦を始める' })).toBeVisible()
+    // PCでは詳細からスマホへ受け渡し、撮影操作は提供しない。
+    expect(within(panel).getByRole('button', { name: 'スマホで挑戦する' })).toBeVisible()
+    expect(within(panel).getByRole('img', { name: /QRコード/ })).toBeVisible()
+    expect(within(panel).queryByRole('button', { name: '挑戦を始める' })).not.toBeInTheDocument()
+    expect(panel.querySelector('input[type="file"], video')).toBeNull()
 
     // 記録へ（サイドバーナビは残る）
     await user.click(records)
