@@ -686,8 +686,15 @@ export function MapPreview({ areas = [], selectedAreaId = '', onSelectArea, show
     detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget}
     onOpenQuest={onOpenQuest} onDeselectQuest={onDeselectQuest} /> : null
   // 境界データの出典表記（N03 の利用条件）。短い文言で、パネル／シートの一番下に小さく出す（D-46）。
+  // 登録年度が公開応答に載っている地域があれば、その年度を出典に含める（D-69）。
+  const boundaryYears = [...new Set(areas.flatMap((area) => area.boundary?.source === 'N03' ? [area.boundary.year] : []))].sort((a, b) => a - b)
+  const boundaryCreditText = boundaryYears.length === 1
+    ? `境界データ：国土数値情報N03-${boundaryYears[0]}（国土交通省）`
+    : boundaryYears.length > 1
+      ? `境界データ：国土数値情報N03（${boundaryYears.join('・')}年版、国土交通省）`
+      : '境界データ：国土数値情報N03（国土交通省）'
   const boundaryCredit = showBoundaryCredit && showPublicAreas
-    ? <p className="map-boundary-credit">境界データ：国土数値情報N03（国土交通省）</p>
+    ? <p className="map-boundary-credit">{boundaryCreditText}</p>
     : null
   const mapControls = status === 'ready' ? <div className="map-controls">
     <div className="map-zoom" aria-label="地図の表示操作">
