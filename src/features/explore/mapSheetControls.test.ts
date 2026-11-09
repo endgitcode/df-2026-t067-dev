@@ -47,6 +47,7 @@ describe('mobile bottom tab bar (D-32)', () => {
   it('pins the mobile nav to the bottom as a tab bar with a shared height token', () => {
     expect(css).toContain(':root { --mobile-tabbar-h: calc(70px + env(safe-area-inset-bottom, 0px)); }')
     expect(css).toContain('.mobile-nav { position: fixed; bottom: 0; left: 0; right: 0;')
+    expect(css).toContain('background: var(--ui-surface); touch-action: pan-x; }')
     expect(css).toContain('.mobile-nav [aria-current="page"] { background: var(--ui-accent);')
   })
 
