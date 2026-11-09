@@ -201,15 +201,15 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
       <thead><tr><th scope="col">写真</th><th scope="col">スポット名</th><th scope="col">日付</th></tr></thead>
       <tbody>{items.map((record) => {
         const open = () => { setDeleted(false); setSelected(record.discoveryId) }
-        return <tr key={record.discoveryId} onClick={(event) => {
+        return <tr className="traveler-list-row traveler-list-row-photo" key={record.discoveryId} onClick={(event) => {
           event.currentTarget.querySelector('button')?.focus()
           open()
         }}>
           <td><RecordThumbnail key={`${record.discoveryId}:${active}`} api={api} id={record.discoveryId} active={active} /></td>
           <td><button type="button" className="record-open" aria-haspopup="dialog" onClick={(event) => { event.stopPropagation(); open() }}>
-            {record.afterClear?.spot?.name ?? record.placeName}
+            <span className="traveler-row-title">{record.afterClear?.spot?.name ?? record.placeName}</span>
           </button></td>
-          <td><RecordDate date={record.firstClearedAt} /></td>
+          <td className="traveler-row-meta"><RecordDate date={record.firstClearedAt} /></td>
         </tr>
       })}</tbody>
     </table>}
