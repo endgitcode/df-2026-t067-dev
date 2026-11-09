@@ -108,6 +108,11 @@ describe('capture and result contracts', () => {
   })
   it('accepts private discoveries and rejects unsafe image locations', () => {
     expect(parseDiscovery(discovery)).toEqual(discovery)
+    expect(parseDiscovery({ ...discovery, prefectureCode: '01' }).prefectureCode).toBe('01')
+    expect(parseDiscovery(discovery)).not.toHaveProperty('prefectureCode')
+    for (const prefectureCode of ['1', '00', '48', 13, null]) {
+      expect(() => parseDiscovery({ ...discovery, prefectureCode })).toThrow(ContractError)
+    }
     for (const ownerPhoto of ['javascript:alert(1)', '//elsewhere.example/photo', 'http://elsewhere.example/photo']) {
       expect(() => parseDiscovery({ ...discovery, ownerPhoto })).toThrow(ContractError)
     }
