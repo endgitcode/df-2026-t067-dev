@@ -71,6 +71,8 @@ T08は同じ `getDiscovery(id)` で任意の `afterClear` を受け取る。型�
 
 詳細画面では入力済みの項目をテキストで表示する。`afterClear.explanation` を取得できない場合や空欄の場合は、既存の `descriptionSnapshot` を使う。空の時間欄は未入力として扱う。一覧、匿名の問題詳細とヒントにはこの案内を含めない。[Issue #89](https://github.com/Devfest-Hackathon-2026/df-2026-t067/issues/89)
 
+任意の `afterClear.spot` がある記録では、詳細画面にスポット名と住所も表示し、Googleマップへのリンクを付ける。リンクは固定の Maps 検索URL（`https://www.google.com/maps/search/?api=1&query=<緯度>,<経度>`、Place ID がある場合は `query_place_id` を追加）から組み立て、入力された URL を保存・再表示しない。`spot` がない旧記録ではリンクを付けず、従来の表示のまま使う。
+
 ### 削除の扱い
 
 記録詳細の「記録を削除」で確認を開き、「記録と写真を削除する」で送信する。受付後に状態を照会し、`completed`を受け取ると写真を解放して一覧を読み直す。受付IDを得た後に通信が途切れたときは、削除状態の再確認だけを行う。
