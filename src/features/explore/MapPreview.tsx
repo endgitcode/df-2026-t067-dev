@@ -986,7 +986,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
               <Icon name="panel" />
             </button>, typeof document === 'undefined' ? null : document.getElementById('sidebar-toggle-slot') ?? document.body)}
           </>
-          : <ExploreBottomSheet questCount={quests.length} detailOpen={Boolean(selectedQuestId && questDetail)} openSignal={sheetOpenSignal} onHeightChange={setSheetHeight}
+          : <ExploreBottomSheet questCount={quests.length} onDismissDetail={onDeselectQuest} detailOpen={Boolean(selectedQuestId && questDetail)} openSignal={sheetOpenSignal} onHeightChange={setSheetHeight}
             onUserClosedChange={onUserSheetClosedChange}>{renderQuestList(true, detailLocation === 'sheet', true, detailLocation !== 'sheet', openQuestFromSheet)}{boundaryCredit}</ExploreBottomSheet>
         : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>

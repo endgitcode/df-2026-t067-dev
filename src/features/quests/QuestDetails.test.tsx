@@ -559,3 +559,13 @@ describe('広い画面でのスマホ受け渡し', () => {
     expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
   })
 })
+
+it('一覧内の詳細は題名を読み上げ用に残し、番号と地域を繰り返さない', () => {
+  const { container } = render(<QuestDetails quest={{ ...demoQuest, questNumber: '07-04' }} areaLabel="架空の探索地域" open hideToggle disabled={false} buttonLabel="挑戦する" onToggle={vi.fn()} onStart={vi.fn()} />)
+  expect(screen.getByRole('heading', { name: demoQuest.title })).toHaveClass('sr-only')
+  expect(screen.getByRole('article')).toHaveAccessibleName(demoQuest.title)
+  expect(screen.queryByText('No. 07-04')).not.toBeInTheDocument()
+  expect(screen.queryByText('架空の探索地域')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /閉じる|×/ })).not.toBeInTheDocument()
+  expect(container.querySelector('.quest-meta')).toBeNull()
+})

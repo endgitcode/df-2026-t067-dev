@@ -1520,6 +1520,11 @@ describe('Google map panel', () => {
     expect(selectedRow).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
     expect(selectedRow.closest('li')).toContainElement(screen.getByRole('heading', { name: '博多の灯台の詳細' }))
+    // 取っ手も行の再タップと同じ選択解除へ接続する。
+    expect(screen.queryByRole('button', { name: /^(閉じる|×)$/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '謎リストに戻る' }))
+    expect(onDeselectQuest).toHaveBeenCalledTimes(1)
+    onDeselectQuest.mockClear()
     // 選択中の行の再タップは選択解除へ、別の行は選択として伝える。
     await user.click(selectedRow)
     expect(onDeselectQuest).toHaveBeenCalledTimes(1)

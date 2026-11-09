@@ -30,9 +30,10 @@ function snapHeights(stageHeight: number): Record<SheetSnap, number> {
 // 地図の上に重なる引き上げ式シート。スナップは closed / peek / half / full の4段で、
 // ハンドルのドラッグとタップ（ボタン）の両方で開閉できる。シート本体が地図とは
 // 別の要素なので、シート上のスクロールやドラッグが地図へ伝わることはない。
-export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUserClosedChange, questCount = 0, detailOpen = false }: {
+export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUserClosedChange, questCount = 0, detailOpen = false, onDismissDetail }: {
   children: ReactNode
   questCount?: number
+  onDismissDetail?: () => void
   detailOpen?: boolean
   /** 地域IDが新しく渡されたら、ハイライトされたカードが見える位置まで開く。 */
   openSignal?: string | null
@@ -156,13 +157,23 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
       })
       setReleaseMs(releaseTransitionMs(velocityY, reducedMotion.current))
       onUserClosedChange?.(next === 'closed')
-      if (next === 'closed') focusAfterSnap.current = 'handle'
+      if (next === 'closed') {
+        preDetailSnap.current = null
+        if (detailOpen) onDismissDetail?.()
+        focusAfterSnap.current = 'handle'
+      }
       setSnap(next)
     }
     setDragHeight(null)
   }
   const onClick = () => {
     if (suppressClick.current) { suppressClick.current = false; return }
+    if (detailOpen && onDismissDetail) {
+      setSnap(preDetailSnap.current ?? 'peek')
+      preDetailSnap.current = null
+      onDismissDetail()
+      return
+    }
     const next = snap === 'full' ? 'half' : snap === 'half' ? 'full' : 'half'
     onUserClosedChange?.(false)
     if (snap === 'half' || snap === 'full') focusAfterSnap.current = 'handle'
@@ -172,7 +183,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
     <div ref={sheetRef} className={'explore-sheet' + (dragHeight !== null ? ' is-dragging' : '')} data-snap={snap}
       style={{ height, ...(releaseMs != null && dragHeight === null ? { '--sheet-release-ms': `${releaseMs}ms` } as CSSProperties : {}) }}>
       <button ref={handleRef} type="button" className="explore-sheet-handle" aria-expanded={snap === 'half' || snap === 'full'} aria-controls={bodyId}
-        aria-label={snap === 'full' ? '謎リストをたたむ' : '謎リストを広げる'}
+        aria-label={detailOpen && onDismissDetail ? '謎リストに戻る' : snap === 'full' ? '謎リストをたたむ' : '謎リストを広げる'}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endDrag} onPointerCancel={endDrag} onClick={onClick}>
         <span className="explore-sheet-grip" aria-hidden="true" />
         {snap === 'closed' && <span className="explore-sheet-count">{questCount}件の謎</span>}

@@ -135,7 +135,7 @@ describe('mobile bottom tab bar (D-32)', () => {
     // タブバー上で始まった縦ジェスチャーはページスクロールへ渡さない。
     // タップは通常の click として残り、地図シートのスクロール領域には適用しない。
     expect(css).toContain('background: var(--ui-surface); touch-action: none; overscroll-behavior: none; }')
-    expect(css).toContain('.mobile-nav [aria-current="page"] { background: var(--ui-accent);')
+    expect(css).toContain('.mobile-nav [aria-current="page"] { background: transparent;')
   })
 
   it('does not float the mobile nav over the map in full-bleed', () => {
@@ -525,7 +525,7 @@ describe('records body and mobile return clearance', () => {
 })
 
 describe('traveler navigation selection (D-85)', () => {
-  it('uses yellow, black 2px borders and no shadow on mobile and PC', () => {
+  it('uses transparent navigation with ink and weight on mobile and PC', () => {
     const theme = readCss('src/theme.css')
     expect(theme).toContain('--ui-accent: #ffe66b;')
     expect(theme).toContain('--ui-line: #1d1d1b;')
@@ -533,8 +533,10 @@ describe('traveler navigation selection (D-85)', () => {
     const mobile = css.match(/\.mobile-nav \[aria-current="page"\] \{([^}]+)\}/)?.[1]
     const desktop = css.match(/body\.explore-fullbleed \.desktop-nav \.nav-active \{([^}]+)\}/)?.[1]
     for (const rule of [mobile, desktop]) {
-      expect(rule).toContain('background: var(--ui-accent);')
-      expect(rule).toContain('border: var(--ui-border-width) solid var(--ui-line);')
+      expect(rule).toContain('background: transparent;')
+      expect(rule).toContain('color: var(--ui-ink);')
+      expect(rule).toContain('font-weight: var(--ui-weight-strong);')
+      expect(rule).toContain('border: var(--ui-border-width) solid transparent;')
       expect(rule).toContain('box-shadow: none;')
     }
     expect(css).toContain('gap: 4px; width: var(--pc-sidebar-w);')
@@ -542,4 +544,20 @@ describe('traveler navigation selection (D-85)', () => {
     expect(css).not.toMatch(/box-shadow: var\(--ui-(?:control-|hover-)?shadow/)
     expect(css).not.toContain('box-shadow: -3px 3px')
   })
+})
+
+it('keeps yellow out of selected traveler chips, filters, rows and hint numbers', () => {
+  for (const selector of [
+    '.filter-chip[aria-pressed="true"]', '.filter-check[aria-pressed="true"]',
+    '.filter-check[aria-pressed="true"] .filter-check-box',
+    '.filter-accordion-item.has-selection > .filter-accordion-row',
+    '.filter-toggle[aria-expanded="true"]', '.map-area-chip',
+    '.explore-quest-list .traveler-list-row.is-selected', '.traveler-list-row.is-selected',
+    '.api-quest-picker li button[aria-pressed="true"]', '.hint-step.is-current',
+  ]) {
+    const start = css.indexOf(`${selector} {`)
+    expect(start, selector).toBeGreaterThan(-1)
+    const rule = css.slice(start, css.indexOf('}', start))
+    expect(rule, selector).not.toMatch(/var\(--ui-(accent|soft)/)
+  }
 })

@@ -397,9 +397,10 @@ export function QuestDetails({ quest, areaLabel, open, disabled, buttonLabel, no
   return (
     <article className={'quest-card' + (open ? ' is-open' : '') + (hideToggle ? ' is-in-list' : '')} aria-labelledby={`${detailsId}-title`}>
       <header className="quest-card-heading">
-        <div className="quest-meta"><span className="area-label"><Icon name="pin" />{areaLabel}</span>{quest.questNumber && <span className="quest-number-label">No. {quest.questNumber}</span>}{sourceLabel ? <span className="sample-label">{sourceLabel}</span> : null}</div>
+        {hideToggle && sourceLabel && <span className="sample-label">{sourceLabel}</span>}
+        {!hideToggle && <div className="quest-meta"><span className="area-label"><Icon name="pin" />{areaLabel}</span>{quest.questNumber && <span className="quest-number-label">No. {quest.questNumber}</span>}{sourceLabel ? <span className="sample-label">{sourceLabel}</span> : null}</div>}
         <div className="quest-title-row">
-          <h3 id={`${detailsId}-title`}>{quest.title}</h3>
+          <h3 className={hideToggle ? 'sr-only' : undefined} id={`${detailsId}-title`}>{quest.title}</h3>
           <ShootingConditionIndicators conditions={quest.shootingConditions} />
         </div>
         {open && (reloadNeededHints.size > 0 || questStale) && <button type="button" className="quest-reload-subtle" onClick={onReloadQuest}>問題を再読込</button>}

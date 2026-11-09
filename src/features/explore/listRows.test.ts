@@ -20,5 +20,7 @@ it('行の間隔、2行省略、右端メタデータ、キーボードフォー
   expect(css).toMatch(/\.traveler-row-meta \{[^}]*text-align: right;[^}]*white-space: nowrap;/)
   expect(css).toMatch(/\.traveler-list-row:focus-within \{[^}]*background: var\(--ui-soft\);/)
   expect(css).toMatch(/\.traveler-list-row:focus-within \{[^}]*outline: 2px solid var\(--ui-line\);/)
-  expect(css).toMatch(/\.traveler-list-row\.is-selected \{[^}]*background: var\(--ui-accent\);/)
+  // 黄色は主ボタン専用。選択中の行は白地のまま文字の太さで示す。
+  expect(css).toMatch(/\.traveler-list-row\.is-selected \{[^}]*background: var\(--ui-surface\);/)
+  expect(css).toMatch(/\.traveler-list-row\.is-selected \.traveler-row-title \{[^}]*font-weight: var\(--ui-weight-strong\);/)
 })

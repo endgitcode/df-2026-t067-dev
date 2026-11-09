@@ -75,7 +75,7 @@ p { overflow-wrap: anywhere; }
 .api-quest-picker { display: grid; gap: 7px; margin: 18px 0; padding: 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-muted); }
 .api-quest-picker ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
 .api-quest-picker li button { width: 100%; min-height: 44px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
-.api-quest-picker li button[aria-pressed="true"] { background: var(--ui-accent); color: var(--ui-accent-ink); font-weight: var(--ui-weight-strong); }
+.api-quest-picker li button[aria-pressed="true"] { background: var(--ui-surface); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
 .api-quest-picker p, .api-quest-picker span { font-size: 12px; color: var(--ui-muted); line-height: 1.7; }
 .api-load-state { width: min(100% - 40px, 620px); margin: 12vh auto; padding: 28px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); }
 .api-load-state h1 { margin-bottom: 12px; }
@@ -128,7 +128,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .filter-chip { flex: none; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; transition: background-color 150ms var(--ease-out); }
 /* 開閉ボタンは押しやすい44px級にし、開状態の見た目とシェブロンで状態を返す（D-59）。 */
 .filter-toggle { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 13px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: var(--ui-weight-control); white-space: nowrap; cursor: pointer; pointer-events: auto; transition: background-color 150ms var(--ease-out); }
-.filter-toggle[aria-expanded="true"] { background: var(--ui-soft); }
+.filter-toggle[aria-expanded="true"] { background: var(--ui-surface); font-weight: var(--ui-weight-strong); }
 .filter-toggle-chevron { display: inline-flex; transition: transform 200ms var(--ease-out); }
 .filter-toggle-chevron .icon { width: 16px; height: 16px; }
 .filter-toggle-chevron.is-open { transform: rotate(180deg); }
@@ -136,7 +136,7 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .filter-accordion { display: flex; flex-direction: column; gap: 4px; width: min(100%, 360px); max-height: min(52vh, 440px); overflow: auto; pointer-events: auto; padding: 2px; }
 .filter-accordion-item { display: flex; flex-direction: column; gap: 2px; width: 100%; }
 .filter-accordion-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
-.filter-accordion-item.has-selection > .filter-accordion-row { background: var(--ui-soft); }
+.filter-accordion-item.has-selection > .filter-accordion-row { background: var(--ui-surface); font-weight: var(--ui-weight-strong); }
 .filter-accordion-name { flex: 1 1 auto; }
 .filter-accordion-count { flex: none; font-size: 12px; color: var(--ui-muted); font-weight: 600; }
 .filter-accordion-chevron { display: inline-flex; flex: none; transition: transform 200ms var(--ease-out); }
@@ -145,11 +145,11 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .filter-accordion-body { display: flex; flex-direction: column; gap: 2px; padding: 2px 4px 8px 8px; }
 .filter-check { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ui-ink); font-size: 13px; font-weight: var(--ui-weight-control); text-align: left; cursor: pointer; }
 .filter-check:hover, .filter-check:focus-visible { background: var(--ui-soft); }
-.filter-check[aria-pressed="true"] { background: color-mix(in srgb, var(--ui-accent) 55%, var(--ui-surface)); }
+.filter-check[aria-pressed="true"] { background: var(--ui-surface); font-weight: var(--ui-weight-strong); }
 .filter-check-box { flex: none; width: 18px; height: 18px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; background: var(--ui-surface); }
-.filter-check[aria-pressed="true"] .filter-check-box { background: var(--ui-accent); }
+.filter-check[aria-pressed="true"] .filter-check-box { background: var(--ui-ink); color: var(--ui-surface); }
 @media (prefers-reduced-motion: reduce) { .filter-accordion-chevron { transition: none; } }
-.filter-chip[aria-pressed="true"] { background: var(--ui-accent); }
+.filter-chip[aria-pressed="true"] { background: var(--ui-surface); color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
 .api-load-state .map-filter-chips { flex-wrap: wrap; overflow: visible; }
 .api-load-state .map-filter-panel { margin-top: 18px; }
 .map-filter-flow { margin-top: 12px; }
@@ -180,9 +180,10 @@ button.traveler-list-row { cursor: pointer; }
 @media (hover: hover) and (pointer: fine) {
   button.traveler-list-row:hover, .record-table .traveler-list-row:hover { background: var(--ui-soft); }
 }
-.explore-quest-list li.is-highlighted .traveler-list-row { background: var(--ui-soft); }
-.explore-quest-list .traveler-list-row.is-selected { background: var(--ui-accent); }
-.traveler-list-row.is-selected { background: var(--ui-accent); }
+.explore-quest-list li.is-highlighted .traveler-list-row { background: var(--ui-surface); }
+.explore-quest-list .traveler-list-row.is-selected { background: var(--ui-surface); }
+.traveler-list-row.is-selected { background: var(--ui-surface); }
+.traveler-list-row.is-selected .traveler-row-title { color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
 .traveler-row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; min-width: 0; font-size: 14px; line-height: 20px; font-weight: 500; }
 .explore-quest-title { flex: 1; }
 .traveler-row-meta { flex: none; margin-left: auto; text-align: right; white-space: nowrap; font-size: 12px; line-height: 16px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--ui-muted); }
@@ -372,7 +373,7 @@ button.traveler-list-row { cursor: pointer; }
   /* 主要な行き先は画面下のタブバーに置く（Google マップのスマホアプリと同型、D-32）。 */
   .mobile-nav { height: var(--mobile-tabbar-h); position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; display: flex; align-items: stretch; gap: 8px; padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); border-top: var(--ui-border-width) solid var(--ui-line); background: var(--ui-surface); touch-action: none; overscroll-behavior: none; }
   .mobile-nav a, .mobile-nav button { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; min-height: 44px; border: var(--ui-border-width) solid transparent; border-radius: var(--ui-radius); padding: 4px 6px; background: transparent; font-size: 12px; line-height: 1.2; color: var(--ui-muted); }
-  .mobile-nav [aria-current="page"] { background: var(--ui-accent); border: var(--ui-border-width) solid var(--ui-line); color: var(--ui-accent-ink); font-weight: var(--ui-weight-strong); box-shadow: none; }
+  .mobile-nav [aria-current="page"] { background: transparent; border: var(--ui-border-width) solid transparent; color: var(--ui-ink); font-weight: var(--ui-weight-strong); box-shadow: none; }
   .mobile-nav .icon { width: 20px; height: 20px; }
   .mobile-nav small { font-size: 12px; margin-left: 4px; }
 }
@@ -546,7 +547,7 @@ button.traveler-list-row { cursor: pointer; }
   min-width: 44px; min-height: 44px; padding: 0 8px; border: var(--ui-border-width) solid var(--ui-line);
   border-radius: 999px; background: var(--ui-surface); color: var(--ui-muted); font: inherit; font-size: 18px; cursor: pointer;
 }
-.hint-step.is-current { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: var(--ui-line); font-weight: var(--ui-weight-strong); }
+.hint-step.is-current { background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line); font-weight: var(--ui-weight-strong); }
 .hint-step:disabled { opacity: .45; cursor: default; }
 .hint-step-total { color: var(--ui-muted); font-size: 12px; margin-left: 2px; }
 .hint-cancel {
@@ -573,7 +574,7 @@ button.traveler-list-row { cursor: pointer; }
    シェルの帯（ヘッダー・下部ナビ）を無くして導線を地図の上に浮かせる。幅を問わず適用し、
    地図が使えないフォールバック表示では付けない（従来の通常フローのまま）。 */
 .map-topline-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.map-area-chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: none; font-size: 12px; font-weight: var(--ui-weight-strong); white-space: nowrap; }
+.map-area-chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); box-shadow: none; font-size: 12px; font-weight: var(--ui-weight-strong); white-space: nowrap; }
 .map-area-chip .icon { width: 14px; height: 14px; }
 body.explore-fullbleed .page { width: 100%; padding: 0; }
 body.explore-fullbleed .explore-heading { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -680,7 +681,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   }
   body:has(.traveler-shell) .desktop-nav .nav-active,
   body.explore-fullbleed .desktop-nav .nav-active {
-    background: var(--ui-accent); border: var(--ui-border-width) solid var(--ui-line); color: var(--ui-accent-ink); font-weight: var(--ui-weight-strong); box-shadow: none;
+    background: transparent; border: var(--ui-border-width) solid transparent; color: var(--ui-ink); font-weight: var(--ui-weight-strong); box-shadow: none;
   }
   body:has(.traveler-shell) .desktop-nav .icon,
   body.explore-fullbleed .desktop-nav .icon { width: 18px; height: 18px; }
@@ -1015,7 +1016,7 @@ body:has(.traveler-shell) { background: #fff; }
 .traveler-shell .desktop-nav button { gap: 8px; }
 .traveler-shell .account-area { gap: 8px; }
 .traveler-shell .nav-active,
-.traveler-shell .mobile-nav button[aria-current="page"] { background: #fff; }
+.traveler-shell .mobile-nav button[aria-current="page"] { background: transparent; }
 .answer-waiting-progress-bar { box-shadow: none; }
 .traveler-shell .quest-toggle,
 .traveler-shell .quest-toggle:hover:not(:disabled) { background: #fff; color: #000; }
@@ -1034,7 +1035,7 @@ body:has(.traveler-shell) { background: #fff; }
 .record-dialog .secondary-button { padding: 8px 12px; }
 body:has(.traveler-shell) .desktop-nav .nav-active,
 body.explore-fullbleed .traveler-shell .desktop-nav .nav-active,
-.traveler-shell .hint-step.is-current { background: #fff; color: #000; }
+.traveler-shell .hint-step.is-current { background: transparent; color: #000; }
 body:has(.traveler-shell) .desktop-nav button { gap: 8px; padding-inline: 12px; }
 .traveler-shell { --radius-l: 16px; }
 .traveler-shell .filter-chip,
