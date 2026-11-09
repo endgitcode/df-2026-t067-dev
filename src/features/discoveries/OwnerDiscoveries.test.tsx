@@ -116,3 +116,27 @@ it('reads and deletes durable owner records through the authenticated common HTT
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:durable-record')
   for (const [, init] of fetcher.mock.calls) expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer owner-token')
 })
+
+
+it('opens changed destinations and reopens the same destination on a new visit', async () => {
+  const user = userEvent.setup()
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = () => 'blob:synthetic-record'
+    static revokeObjectURL = vi.fn()
+  })
+  const api = { ...createApiClient(),
+    listDiscoveries: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+    getDiscovery: vi.fn(async (id: string) => ({ ...discovery, discoveryId: id, placeName: id })),
+    getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
+  }
+  const { rerender } = render(<OwnerDiscoveries api={api} visit={1} />)
+  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  rerender(<OwnerDiscoveries api={api} visit={2} initialId="record-a" />)
+  expect(await screen.findByRole('heading', { name: 'record-a' })).toBeVisible()
+  rerender(<OwnerDiscoveries api={api} visit={3} initialId="record-b" />)
+  expect(await screen.findByRole('heading', { name: 'record-b' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '記録一覧へ戻る' }))
+  expect(await screen.findByText('自分の記録はまだありません。')).toBeVisible()
+  rerender(<OwnerDiscoveries api={api} visit={4} initialId="record-b" />)
+  expect(await screen.findByRole('heading', { name: 'record-b' })).toBeVisible()
+})
