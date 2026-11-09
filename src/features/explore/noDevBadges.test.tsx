@@ -91,3 +91,18 @@ describe('source chrome templates drop prep badges', () => {
     expect(app).not.toMatch(/demo-note/)
   })
 })
+
+describe('QuestDetails start-button notes drop login explainers', () => {
+  it('App only keeps the stale blocking note for QuestDetails', () => {
+    const app = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8')
+    // QuestDetails note= に渡していたログイン補足は消えていること
+    expect(app).not.toMatch(/問題の閲覧は続けられます。ログイン確認後に撮影できます/)
+    expect(app).not.toMatch(/ログインを確認しました。写真はこの画面で確認するだけです/)
+    expect(app).not.toMatch(/ログイン済みです。挑戦開始先へ選んだ問題を渡します/)
+    expect(app).not.toMatch(/Googleのログイン画面を開きます。キャンセルしてもこの問題に戻れます/)
+    expect(app).not.toMatch(/ログイン状態の確認後に操作できます/)
+    // note は stale のときだけ
+    expect(app).toMatch(/note=\{questStale \? '問題の版を確認できていません/)
+    expect(app).toMatch(/: undefined\}/)
+  })
+})
