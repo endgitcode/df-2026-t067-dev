@@ -17,5 +17,7 @@ function getSnapshot() {
 }
 
 export function useWideViewport(): boolean {
-  return useSyncExternalStore(subscribe, getSnapshot, () => false)
+  // getServerSnapshot も実測に合わせる。false 固定だと、CSR でも初回が狭い側に倒れて
+  // PC サイドバーの一覧（仮カード）が一瞬出ないことがある。
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }

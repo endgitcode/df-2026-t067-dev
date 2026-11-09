@@ -145,9 +145,13 @@ h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: var(--ui-weight-display
 .explore-quest-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-height: 344px; overflow: auto; scrollbar-gutter: stable; }
 /* 読み込み中の一覧の仮の行。行の高さを確保し、読み込み前後の大きさの変化と
    「0件」のチラつきを防ぐ（D-54）。 */
-.explore-quest-skeleton { height: 44px; background: var(--ui-tint); animation: skeleton-pulse 1200ms ease-in-out infinite alternate; }
+.explore-quest-list .explore-quest-skeleton,
+.explore-quest-skeleton {
+  display: block; box-sizing: border-box; width: 100%; height: 44px; border-radius: var(--radius-s, 10px);
+  background: var(--ui-tint); animation: skeleton-pulse 1200ms ease-in-out infinite alternate;
+}
 @keyframes skeleton-pulse { from { opacity: .45; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .explore-quest-skeleton { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .explore-quest-skeleton { animation: none; opacity: .7; } }
 .explore-quest-list > li { min-width: 0; }
 /* 一覧の行はタイトルだけの簡素な形にする（D-46）。本文の抜粋・地域名・サムネイルは
    行には出さず、詳細は選択中の行の直下にアコーディオンで開く。 */
@@ -721,7 +725,12 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 32px; height: 32px; }
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .brand-mark .icon,
   body.explore-fullbleed.explore-sidebar-collapsed .brand-mark .icon { width: 20px; height: 20px; }
-  /* トグルは --pc-sidebar-open-w 基準のまま。left/top を上書きしない */
+  /* 閉じたときだけトグルを細い列の中（ナビ直下）へ。ロゴ／ナビアイコンの座標は変えない。 */
+  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .sidebar-toggle,
+  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {
+    left: calc((var(--pc-sidebar-rail-w) - 44px) / 2);
+    top: calc(var(--pc-sidebar-brand-h) + var(--pc-sidebar-nav-h));
+  }
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav {
     /* top/padding/gap は開いたときと同じ。幅だけレールへ */

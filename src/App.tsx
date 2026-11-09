@@ -483,11 +483,12 @@ export default function App({ authClient: providedClient, apiClient: providedApi
               残ったり消えたりして、URL と表示の対応が分かりにくくなるため）。 */}
           <button type="button" className={showRecords ? undefined : 'nav-active'} aria-current={showRecords ? undefined : 'page'}
             aria-label="謎を探す" onClick={navigateToExplore}><Icon name="search" /><span className="nav-label">謎を探す</span></button>
-          {(!teamPreview || teamAnswerTrial) && <button type="button" className={showRecords ? 'nav-active' : undefined} aria-current={showRecords ? 'page' : undefined}
-            aria-label={!localApiMode ? '自分の記録（準備中）' : '自分の記録'}
-            disabled={!localApiMode || visiblePending !== null} onClick={() => navigateToRecords(true)}>
-            <Icon name="book" /><span className="nav-label">自分の記録{!localApiMode && <span className="nav-prep">準備中</span>}</span>
-          </button>}
+          {/* F5でブート殻と並べるため、team-preview でも常に出す。使えないときは準備中で無効。 */}
+          <button type="button" className={showRecords ? 'nav-active' : undefined} aria-current={showRecords ? 'page' : undefined}
+            aria-label={!localApiMode || (teamPreview && !teamAnswerTrial) ? '自分の記録（準備中）' : '自分の記録'}
+            disabled={!localApiMode || (teamPreview && !teamAnswerTrial) || visiblePending !== null} onClick={() => navigateToRecords(true)}>
+            <Icon name="book" /><span className="nav-label">自分の記録{(!localApiMode || (teamPreview && !teamAnswerTrial)) && <span className="nav-prep">準備中</span>}</span>
+          </button>
         </nav>
         <div className="account-area">
           {/* 右上の固定スロットはアイコン型にする（#36 の固定スロットと、#42 の「状態表示を置かない」を維持）。
@@ -583,8 +584,8 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           }
         }}>
         <button type="button" aria-current={showRecords ? undefined : 'page'} aria-label="謎を探す" onClick={navigateToExplore}><Icon name="search" /><span>謎を探す</span></button>
-        {(!teamPreview || teamAnswerTrial) && <button type="button" aria-current={showRecords ? 'page' : undefined} aria-label={!localApiMode ? '自分の記録（準備中）' : '自分の記録'} disabled={!localApiMode || visiblePending !== null}
-          onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{!localApiMode && <small>準備中</small>}</span></button>}
+        <button type="button" aria-current={showRecords ? 'page' : undefined} aria-label={!localApiMode || (teamPreview && !teamAnswerTrial) ? '自分の記録（準備中）' : '自分の記録'} disabled={!localApiMode || (teamPreview && !teamAnswerTrial) || visiblePending !== null}
+          onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録{(!localApiMode || (teamPreview && !teamAnswerTrial)) && <small>準備中</small>}</span></button>
       </nav>
     </>
   )

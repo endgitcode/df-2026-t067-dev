@@ -18,10 +18,12 @@ describe('sidebar brand collapse (t161u)', () => {
 })
 
 describe('sidebar icon column stability on collapse', () => {
-  it('keeps toggle on the open-width anchor instead of moving into the rail', () => {
+  it('parks the toggle inside the collapsed rail without moving logo/nav icons', () => {
+    // 開いたときは open-w 基準の右端
     expect(css).toContain('left: calc(var(--pc-sidebar-open-w) - 48px)')
-    expect(css).not.toMatch(/explore-sidebar-collapsed \.sidebar-toggle[^}]*left: 6px/)
-    expect(css).not.toMatch(/explore-sidebar-collapsed \.sidebar-toggle[^}]*top: 44px/)
+    // 閉じたときは細い列の中（中央寄せ）・ナビ直下。外へはみ出さない
+    expect(css).toMatch(/explore-sidebar-collapsed \.sidebar-toggle[^}]*left: calc\(\(var\(--pc-sidebar-rail-w\) - 44px\) \/ 2\)/)
+    expect(css).toMatch(/explore-sidebar-collapsed \.sidebar-toggle[^}]*top: calc\(var\(--pc-sidebar-brand-h\) \+ var\(--pc-sidebar-nav-h\)\)/)
   })
 
   it('does not shove the nav icons down or enlarge them when collapsed', () => {

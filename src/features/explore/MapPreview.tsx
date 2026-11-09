@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
-import { useWideViewport } from '../quests/useWideViewport'
+import { useWideViewport, WIDE_VIEWPORT_QUERY } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 import { mobileHeaderClearance, scrollBelowHeader } from './scrollBelowHeader'
 import { visibleAreaFitPadding } from './fitPadding'
@@ -259,7 +259,10 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // showPublicAreas が無い（地図なし閲覧）は従来どおり通常シェル。
   const mapReady = status === 'ready'
   const sheetMode = showPublicAreas
-  const panelMode = sheetMode && wideViewport
+  // matchMedia の初回が狭い側でも、実幅が PC ならパネルを出す（F5の1コマ目で仮カードが欠けるのを防ぐ）
+  const wideByWidth = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    && window.matchMedia(WIDE_VIEWPORT_QUERY).matches
+  const panelMode = sheetMode && (wideViewport || wideByWidth)
   // 地域の範囲へ地図をフィットさせる共通処理。選択時フィットと、再タップ時の再フィットで使う。
   // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
   // 実際に見えている領域の中央に来るようにする。

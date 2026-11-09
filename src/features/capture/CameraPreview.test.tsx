@@ -203,6 +203,8 @@ describe('local camera preview', () => {
     expect(screen.getByRole('img', { name: '撮影した写真のプレビュー' })).toHaveAttribute('src', 'blob:synthetic-photo-1')
     expect(screen.queryByText(/撮影地を紐づけました/)).not.toBeInTheDocument()
     expect(screen.queryByText(/精度 約/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/「写真と位置を|で判定します|テスト送信で写真/)).not.toBeInTheDocument()
+    expect(document.querySelector('.camera-overlay > p.sample-note')).toBeNull()
     expect(screen.getByRole('button', { name: '反時計回りに回転' })).toBeEnabled()
     await media.user.click(screen.getByRole('button', { name: '写真と位置をデモ送信' }))
     await waitFor(() => expect(submitAnswer).toHaveBeenCalledOnce())
