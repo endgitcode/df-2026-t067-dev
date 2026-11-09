@@ -548,7 +548,8 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 @media (min-width: 981px) {
   body:has(.owner-records:not([hidden])),
   body.explore-fullbleed {
-    --pc-sidebar-w: 280px;
+    --pc-sidebar-open-w: 280px;
+    --pc-sidebar-w: var(--pc-sidebar-open-w);
     --pc-sidebar-rail-w: 56px;
     --pc-sidebar-gap: 0px;
     --pc-sidebar-brand-h: 52px;
@@ -586,9 +587,9 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .brand {
     position: fixed; top: 0; left: 0; z-index: 36;
     display: flex; align-items: center; gap: 8px;
-    width: calc(var(--pc-sidebar-w) - 48px); height: var(--pc-sidebar-brand-h);
+    width: calc(var(--pc-sidebar-open-w) - 48px); height: var(--pc-sidebar-brand-h);
     margin: 0; padding: 0 8px; border: 0; border-radius: 0; background: var(--ui-surface);
-    justify-self: start; overflow: hidden;
+    justify-content: flex-start; justify-self: start; overflow: hidden;
   }
   /* ロゴマークは開閉中も縮めない（一定サイズ、t161u）。 */
   body:has(.owner-records:not([hidden])) .brand-mark,
@@ -605,7 +606,8 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   /* 開閉はロゴと同じ行・十分な当たり（44px） */
   body:has(.owner-records:not([hidden])) .sidebar-toggle,
   body.explore-fullbleed .sidebar-toggle {
-    position: fixed; top: 4px; left: calc(var(--pc-sidebar-w) - 48px); z-index: 37;
+    /* 開閉で動かさない：常に開いた幅基準の右端（アイコン列は左のまま、トグルだけ固定） */
+    position: fixed; top: 4px; left: calc(var(--pc-sidebar-open-w) - 48px); z-index: 37;
     display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
     transform: none; border: 0; border-radius: var(--radius-s);
     background: transparent; color: var(--ui-ink); box-shadow: none; cursor: pointer;
@@ -705,22 +707,22 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed.explore-sidebar-collapsed .brand-copy {
     max-width: 0; opacity: 0; margin: 0; pointer-events: none;
   }
-  /* 畳み: 約56px。上段にロゴマーク（サイズ維持）＋開閉、その下にナビアイコンだけ */
+  /* 畳み: 幅だけレールへ。ロゴ／ナビ／折りたたみ／アカウントの画面座標は開いたまま（0pxずれ）。 */
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .brand,
   body.explore-fullbleed.explore-sidebar-collapsed .brand {
-    width: var(--pc-sidebar-rail-w); height: 44px; justify-content: center; padding: 0; gap: 0;
+    /* マーク位置を保つため左寄せ・同じ padding／高さを維持（中央寄せにしない） */
+    width: var(--pc-sidebar-rail-w); height: var(--pc-sidebar-brand-h);
+    justify-content: flex-start; padding: 0 8px; gap: 8px;
   }
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .brand-mark,
   body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 32px; height: 32px; }
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .brand-mark .icon,
   body.explore-fullbleed.explore-sidebar-collapsed .brand-mark .icon { width: 20px; height: 20px; }
-  body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .sidebar-toggle,
-  body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {
-    left: 6px; top: 44px; width: 44px; height: 44px;
-  }
+  /* トグルは --pc-sidebar-open-w 基準のまま。left/top を上書きしない */
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav {
-    top: 92px; height: auto; padding: 4px 4px; gap: 4px;
+    /* top/padding/gap は開いたときと同じ。幅だけレールへ */
+    width: var(--pc-sidebar-rail-w);
   }
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav .nav-label,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .nav-label {
@@ -730,10 +732,11 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav a,
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav button,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav button {
-    justify-content: center; align-items: center; padding: 0; min-height: 44px; width: 100%;
+    /* アイコン座標を保つ：左寄せ・同じ padding。中央寄せや icon 拡大をしない */
+    justify-content: flex-start; align-items: center;
   }
   body:has(.owner-records:not([hidden])).explore-sidebar-collapsed .desktop-nav .icon,
-  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 22px; height: 22px; flex: none; }
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 18px; height: 18px; flex: none; }
 
   body.explore-fullbleed.explore-sidebar-collapsed .explore-side-panel {
     opacity: 0; visibility: hidden; pointer-events: none;

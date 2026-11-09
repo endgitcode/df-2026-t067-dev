@@ -16,3 +16,18 @@ describe('sidebar brand collapse (t161u)', () => {
     expect(css).toContain('white-space: nowrap; overflow: hidden')
   })
 })
+
+describe('sidebar icon column stability on collapse', () => {
+  it('keeps toggle on the open-width anchor instead of moving into the rail', () => {
+    expect(css).toContain('left: calc(var(--pc-sidebar-open-w) - 48px)')
+    expect(css).not.toMatch(/explore-sidebar-collapsed \.sidebar-toggle[^}]*left: 6px/)
+    expect(css).not.toMatch(/explore-sidebar-collapsed \.sidebar-toggle[^}]*top: 44px/)
+  })
+
+  it('does not shove the nav icons down or enlarge them when collapsed', () => {
+    expect(css).not.toMatch(/explore-sidebar-collapsed \.desktop-nav[^}]*top: 92px/)
+    expect(css).not.toMatch(/explore-sidebar-collapsed \.desktop-nav \.icon[^}]*width: 22px/)
+    expect(css).toMatch(/explore-sidebar-collapsed \.desktop-nav \.icon[^}]*width: 18px/)
+    expect(css).toMatch(/explore-sidebar-collapsed \.brand[^}]*justify-content: flex-start/)
+  })
+})
