@@ -7,10 +7,15 @@ import { MAP_PIN_COLOR, MAP_PIN_SELECTED_COLOR, MAP_STYLES } from '../explore/ma
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
 
+export type MapPlaceDetails = { name?: string; address?: string }
+
+type PlacePick = { id: string; loadDetails?: () => Promise<MapPlaceDetails> }
+
 /** Only mounted by the authorized private shooting-area editor; never part of public map data. */
-export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spot }: {
+export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spot, pickPlace = false }: {
   zones: Array<CaptureZone | null>; selectedIndex: number | null; disabled: boolean
-  onSelect: (latitude: number, longitude: number) => void
+  onSelect: (latitude: number, longitude: number, place?: PlacePick) => void
+  pickPlace?: boolean
   spot?: Position | null
 }) {
   const spotMode = spot !== undefined
@@ -35,13 +40,24 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
       const first = current.spot ?? (current.selectedIndex === null ? null : current.zones[current.selectedIndex]) ?? current.zones.find((zone) => zone !== null)
       const map = new google.Map(target.current, {
         center: first ? { lat: first.latitude, lng: first.longitude } : { lat: 36, lng: 138 },
-        zoom: first ? (spotMode ? 17 : 14) : 5, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, clickableIcons: false,
-        styles: MAP_STYLES,
+        zoom: first ? (spotMode ? 17 : 14) : 5, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, clickableIcons: pickPlace,
+        styles: pickPlace ? undefined : MAP_STYLES,
       })
       const listener = google.event.addListener(map, 'click', (event) => {
         if (latest.current.disabled || !event?.latLng) return
         const latitude = event.latLng.lat(), longitude = event.latLng.lng()
-        if (Number.isFinite(latitude) && Number.isFinite(longitude)) latest.current.onSelect(latitude, longitude)
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return
+        const id = pickPlace && event.placeId && /^[A-Za-z0-9_-]{1,512}$/.test(event.placeId) ? event.placeId : undefined
+        if (id) event.stop?.()
+        latest.current.onSelect(latitude, longitude, id ? {
+          id, loadDetails: import.meta.env.VITE_GOOGLE_MAPS_PLACES_PICKER === 'true' && google.importLibrary
+            ? async () => {
+              const { Place } = await google.importLibrary!('places')
+              const place = new Place({ id })
+              await place.fetchFields({ fields: ['displayName', 'formattedAddress'] })
+              return { name: place.displayName ?? undefined, address: place.formattedAddress ?? undefined }
+            } : undefined,
+        } : undefined)
       })
       dispose = () => { listener.remove() }
       if (authFailed) { dispose(); return }
@@ -49,7 +65,7 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
       setStatus('ready')
     }).catch(() => { if (active) setStatus('error') })
     return () => { active = false; unsubscribe(); dispose() }
-  }, [attempt, spotMode])
+  }, [attempt, spotMode, pickPlace])
   const spotLatitude = spot?.latitude, spotLongitude = spot?.longitude
   useEffect(() => {
     if (!loaded?.google.Marker || spotLatitude === undefined || spotLongitude === undefined) return

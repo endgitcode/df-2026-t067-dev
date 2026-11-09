@@ -4,7 +4,6 @@ import { useRemote } from '../../shared/useRemote'
 import QuestDraftForm from './QuestDraftForm'
 import { HintAssetEditor } from './HintAssetEditor'
 import { PublicationWorkspace } from './PublicationWorkspace'
-import { reviewLabels } from './publicationReadiness'
 
 type Part = 'target' | 'conditions' | 'content' | 'hints' | 'publication'
 type Destination = { part: Part; field?: ReviewField } | 'list'
@@ -72,7 +71,6 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
   const readiness = remote?.quest.draftRevision === revision ? remote : undefined
   const newerVersion = remote && !readiness
   const missing = readiness?.missing ?? localMissing(record)
-  const currentMissing = missing.filter((field) => fieldStep(field) === step)
 
   useEffect(() => {
     const id = focusField && inputTargets[focusField]
@@ -118,12 +116,9 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
     <ol className="workflow-steps" aria-label="問題作成の工程">
       {steps.map((label, index) => {
         const number = index + 1
-        const count = missing.filter((field) => fieldStep(field) === number).length
-        const progress = number === 4 ? record?.status === 'published' ? '公開済み' : '試験・公開確認' :
-          count ? `不足 ${count}件` : readiness ? '入力済み' : '確認待ち'
         return <li key={label} aria-current={number === step ? 'step' : undefined}>
-          <button type="button" aria-label={`STEP ${number} ${label}、${progress}`} disabled={busy} onClick={() => navigate({ part: defaultParts[index] })}>
-            <strong>STEP {number}</strong><span>{label}</span><small>{progress}</small>
+          <button type="button" aria-label={`STEP ${number} ${label}`} disabled={busy} onClick={() => navigate({ part: defaultParts[index] })}>
+            <strong>STEP {number}</strong><span>{label}</span>
           </button>
         </li>
       })}
@@ -137,14 +132,7 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
       <button type="button" disabled={busy} onClick={() => setPending(null)}>この工程にとどまる</button>
       <button type="button" disabled={busy} onClick={() => move(pending)}>保存せず移動</button>
     </div>}
-    {step !== 4 && <>
-      <button type="button" disabled={busy} onClick={() => navigate({ part: 'publication' })}>STEP 4へ移動</button>
-      {currentMissing.some((field) => field === 'referenceApproval' || field === 'hintApproval') &&
-        <p>保存済みの写真は、運営に承認を依頼するか、承認済みの写真に差し替えてください。</p>}
-      {currentMissing.length > 0 && <ul aria-label="この工程の不足項目">
-        {currentMissing.map((field) => <li key={field}><button type="button" disabled={busy} onClick={() => fix(field)}>{reviewLabels[field]}を確認</button></li>)}
-      </ul>}
-    </>}
+    {step !== 4 && <button type="button" disabled={busy} onClick={() => navigate({ part: 'publication' })}>STEP 4へ移動</button>}
     {part === 'conditions' && <p>撮影範囲は、STEP 1で保存した対象スポットの位置を中心に半径1kmです。
       {missing.includes('targetSpot') || missing.includes('shootingAreas') ? ' STEP 1でスポットを保存してください。' : ' 設定済みです。'}</p>}
     {part === 'hints' && record ? <HintAssetEditor api={api} initial={record} member={member}

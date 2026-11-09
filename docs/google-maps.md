@@ -25,11 +25,12 @@
 
 ## 管理画面の住所候補
 
-- `durable-local` と共有検証モードでは、A03の通常リンクから得たPlace IDまたは座標を、所属確認付きの `POST /api/v1/orgs/:orgId/spot-address` に送る。入力にURLや下書きの内容は含めない。既存の下書き・公開・旅行者向けAPIは同じ契約で動作する。
+- `durable-local` と共有検証モードでは、4ステップのSTEP 1で地図を開き、施設アイコンや位置を選ぶ。住所を照会する場合はPlace IDまたは座標を、所属確認付きの `POST /api/v1/orgs/:orgId/spot-address` に送る。入力にURLや下書きの内容は含めない。既存の下書き・公開・旅行者向けAPIは同じ契約で動作する。
 - Google Geocoding API v4の固定HTTPSホストを使い、リダイレクトを拒否する。Place IDと座標の両方がある場合、応答のIDが異なるか位置が約50mを超えて離れていれば候補を返さない。座標のみの照会では付近の住所を参考表示する。外部通信は4.5秒・応答本文32 KiBまで。1プロセスあたり同時4件、毎分全体30件・同一利用者6件に制限する。
 - サーバーキーは設定済み（2026-11-09、D-68）。Geocoding API（`geocoding-backend.googleapis.com`）をプロジェクトで有効化し、Viteの地図表示キーと分離したサーバー専用キー（表示名「Tourism Quest Server Geocoding」）のAPI制限を Geocoding API だけに設定した。キーは Secret Manager（`quest-geocoding-api-key`）に保管し、Cloud Run の環境変数 `QUEST_GOOGLE_GEOCODING_API_KEY` として secret 参照で注入する。デプロイワークフローは image と labels だけを更新するため、再デプロイで上書きされない。キーが未設定または形式不正なら住所照会を無効にし（応答は `unavailable`）、管理画面では手入力できる。キー値、送信座標、候補住所をアプリのログ・保存先に記録しない。
 - 料金の前提（2026-11-09 に公式料金表で確認）：Geocoding は Essentials SKU で毎月 10,000 件まで無料、超過分は 1,000 件あたり $5.00（10,001〜100,000 件）。想定利用は管理画面からの手動照会のみで、アプリ内制限が実効上限になるため通常は無料枠内に収まる見込み。詳細は D-68。
 - 応答は `private, no-store`。候補はGoogle Mapsの出典を添えて表示し、下書きや公開版には転記しない。Googleの保存条件に合わせ、保存欄は自治体が独自に確認した情報に使う。出典表示は候補表示に実装済み。本番公開時の利用規約・プライバシーポリシーの整備は別途行う。
+- 運用者が Places API (New) の利用と費用を確認し、制限したブラウザキーで利用を許可した環境に限り、`VITE_GOOGLE_MAPS_PLACES_PICKER=true` で施設アイコンの名称と住所も照会する。候補は入力欄のプレースホルダーに表示し、保存値には入れない。未設定時は既存の住所照会のみを使う。
 - 短縮URL（`maps.app.goo.gl`／旧 `goo.gl/maps`）の自動展開は行わない。実装する場合は、許可ホストの確認・DNS検証・回数とサイズの上限などの安全契約（D-68）に従う。
 
 [場所IDの住所照会](https://developers.google.com/maps/documentation/geocoding/places-geocoding)・[逆ジオコーディング](https://developers.google.com/maps/documentation/geocoding/reverse-geocoding)・[利用条件と出典](https://developers.google.com/maps/documentation/geocoding/policies)

@@ -30,7 +30,7 @@ function publicationFailure(cause: unknown, realPhotoTest: boolean): Failure {
     case 'PHOTO_APPROVAL_REQUIRED': return { message: '素材の事前承認が必要です。運営に承認を依頼するか、承認済みの写真を選んでください。' }
     case 'NETWORK_ERROR': return { message: '通信に失敗しました。通信状況を確認し、同じ写真で再送してください。' }
     case 'PHOTO_TEST_REQUIRED': return { message: 'この版で異なる写真を使って一致・別対象の試験を確認してください。' }
-    case 'REVIEW_REQUIRED': return { message: 'この版の公開条件を確認してください。' }
+    case 'REVIEW_REQUIRED': return { message: '公開できませんでした。必要な入力と保存した写真を確認してください。' }
     case 'INVALID_INPUT': return { message: '試験写真の形式と保存済みの参考写真を確認してください。' }
     case 'RATE_LIMITED': return { message: '試験の受付上限に達しました。時間をおいて再試行してください。' }
     case 'SYSTEM_ERROR': return realPhotoTest
@@ -90,9 +90,9 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
     PHOTO_UPLOAD_MIME_TYPES.includes(photo.type)
   const missing = approvedAssets ? readiness?.missing ?? [] : reviewMissing
   const checkReason = areaUnclassified ? '地域の分類が完了するまで公開できません。'
-    : approvedAssets && !readiness ? '最新版の公開準備状況を確認してください。'
+    : approvedAssets && !readiness ? readinessFailed ? '下書きの保存状態を取得できませんでした。' : '下書きの保存状態を読み込んでいます。'
     : missing.length ? '不足項目を修正してください。'
-    : (approvedAssets ? readiness?.quest.status : quest.status) !== 'review_pending' ? 'この版の公開条件を確認してください。'
+    : !approvedAssets && quest.status !== 'review_pending' ? 'この版の公開条件を確認してください。'
     : !proofs.MATCH || !proofs.WRONG_TARGET ? 'この下書き版で一致・別対象の写真試験を完了してください。'
     : ''
   const reviewed = !checkReason
@@ -178,10 +178,16 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
 
   function publish() {
     if (!ready || areaUnclassified) return
-    void perform((signal) => api.publishManagedQuest(orgId, questId, parsePublishManagedQuest({
-      expectedDraftRevision: draftRevision, matchTestId: proofs.MATCH, mismatchTestId: proofs.WRONG_TARGET,
-      ...(approvedAssets ? {} : { confirmations: Object.fromEntries(checked.map((item) => [item, true])) }),
-    }, approvedAssets), { signal }), onPublished)
+    void perform(async (signal) => {
+      if (approvedAssets && readiness?.quest.status !== 'review_pending' && readiness?.quest.status !== 'published') {
+        const result = await api.submitManagedQuestReview(orgId, questId, draftRevision, { signal })
+        if (result.missing.length) throw new ApiError('REVIEW_REQUIRED')
+      }
+      return api.publishManagedQuest(orgId, questId, parsePublishManagedQuest({
+        expectedDraftRevision: draftRevision, matchTestId: proofs.MATCH, mismatchTestId: proofs.WRONG_TARGET,
+        ...(approvedAssets ? {} : { confirmations: Object.fromEntries(checked.map((item) => [item, true])) }),
+      }, approvedAssets), { signal })
+    }, onPublished)
   }
 
   return <section className="form-section" aria-labelledby="publication-workspace-title">
@@ -192,14 +198,12 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
     {areaUnclassified && <p role="alert">この地域は都道府県コードが未設定（未分類）のため、公開できません。地域の分類が完了するまで公開は止まります。</p>}
     {failure && <p role="alert">{failure.message}</p>}
     {busy && <p role="status">操作結果を確認しています…</p>}
-    <fieldset disabled={disabled}>
+    {!approvedAssets && <fieldset disabled={disabled}>
       <legend>公開条件の確認</legend>
-      {approvedAssets && !readiness && <p role={readinessFailed ? 'alert' : 'status'}>{readinessFailed ? '公開準備状況を取得できませんでした。' : '公開準備状況を確認しています。'}</p>}
-      {readinessFailed && <button type="button" onClick={onReadinessRetry}>公開準備状況を読み直す</button>}
-      <button type="button" onClick={review} disabled={approvedAssets && (!readiness || missing.length > 0)}>この版の公開条件を確認</button>
-      {quest.status === 'review_pending' && <p role="status">{approvedAssets ? 'この版の入力条件を確認しました。' : 'この下書きは確認待ちです。'}</p>}
+      <button type="button" onClick={review}>この版の公開条件を確認</button>
+      {quest.status === 'review_pending' && <p role="status">この下書きは確認待ちです。</p>}
       {missing.length > 0 && <><p>次の項目を確認してください。</p><ul>{missing.map((item) => <li key={item}>{onFix ? <button type="button" onClick={() => onFix(item)}>{reviewLabels[item]}を確認</button> : reviewLabels[item]}</li>)}</ul></>}
-    </fieldset>
+    </fieldset>}
     {approvedAssets ? <>
       {realPhotoTest && <p>照合に使う許可がある写真を選んでください。送信ごとに回答と共用の送信枠を1回使います。</p>}
       {!realPhotoTest && <p>参考写真には一致用の合成写真を登録し、試験には次の2枚を使ってください。<br /><a href={fixturePngUrl(matchFixturePngBase64)} download="match.png">一致用の合成写真</a> ・ <a href={fixturePngUrl(otherFixturePngBase64)} download="other-target.png">別対象の合成写真</a></p>}
@@ -232,11 +236,13 @@ export function PublicationWorkspace({ api, initial, onBack, onPublished, rights
     {!approvedAssets && proofs.MATCH && <p role="status">一致試験を確認しました。</p>}
     {!approvedAssets && proofs.WRONG_TARGET && <p role="status">別対象の試験を確認しました。</p>}
     {!approvedAssets && outcome === 'IMAGE_UNCERTAIN' && <p role="status">{realPhotoTest ? '試験写真を確認できませんでした。対象がはっきり写った別の写真でお試しください。' : '試験写真を確認できませんでした。別の合成写真でお試しください。'}</p>}
-    <fieldset disabled={disabled || !reviewed}>
+    <fieldset disabled={disabled}>
       <legend>{approvedAssets ? '公開' : '公開前のチェック'}</legend>
       {checkReason && <p>{checkReason}</p>}
+      {approvedAssets && readinessFailed && <button type="button" onClick={onReadinessRetry}>保存状態を読み直す</button>}
+      {approvedAssets && missing[0] && onFix && <button type="button" onClick={() => onFix(missing[0])}>{reviewLabels[missing[0]]}の入力へ</button>}
       {!approvedAssets && confirmationLabels.map(([item, label]) => <label key={item} className="check-option">
-        <input type="checkbox" checked={checked.includes(item)} onChange={(event) => {
+        <input type="checkbox" disabled={!reviewed} checked={checked.includes(item)} onChange={(event) => {
           setChecked(event.target.checked ? [...checked, item] : checked.filter((value) => value !== item))
         }} />{label}
       </label>)}
