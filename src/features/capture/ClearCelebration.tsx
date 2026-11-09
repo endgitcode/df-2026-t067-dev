@@ -17,7 +17,7 @@ const SPARKS = [
 
 export function ClearCelebration({ large = false }: { large?: boolean }) {
   const reduce = useReducedMotion()
-  // 全画面のクリア画面（D-62）では主役として拡大する。きらめきの届く距離も
+  // 全画面のクリア画面（D-63）では主役として拡大する。きらめきの届く距離も
   // バッジの大きさに合わせて広げる（相対関係は通常サイズと同じに保つ）。
   const reach = large ? 2.1 : 1
   return (

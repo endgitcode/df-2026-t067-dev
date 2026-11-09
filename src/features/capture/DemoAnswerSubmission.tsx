@@ -116,7 +116,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
   const openedDiscovery = useRef<string | null>(null)
   useEffect(() => {
     if (!receipt?.discoveryId || !onOpenDiscovery || openedDiscovery.current === receipt.discoveryId) return
-    // 初回クリアはクリア画面（D-62）を挟むため自動では開かず、「自分の記録を見る」
+    // 初回クリアはクリア画面（D-63）を挟むため自動では開かず、「自分の記録を見る」
     // ボタンからの遷移だけにする。クリア済み（ALREADY_CLEARED）は従来どおり自動で開く。
     if (receipt.cleared) return
     openedDiscovery.current = receipt.discoveryId

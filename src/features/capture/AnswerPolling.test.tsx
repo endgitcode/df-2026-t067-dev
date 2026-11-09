@@ -13,7 +13,7 @@ it('polls only the accepted ID and stops at completion without posting again', a
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置をテスト送信' })))
   await act(async () => vi.advanceTimersByTimeAsync(1500))
   expect(getAttempt).toHaveBeenCalledExactlyOnceWith('accepted', { signal: expect.any(AbortSignal) })
-  // 永続側でも初回クリアでは全画面のクリア画面が出る（D-62）。
+  // 永続側でも初回クリアでは全画面のクリア画面が出る（D-63）。
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   await act(async () => vi.advanceTimersByTimeAsync(60000))
   expect(submitAnswer).toHaveBeenCalledTimes(1)
@@ -65,11 +65,11 @@ it('team-preview accepts a real receipt, polls to completion and shows the clear
   await act(async () => vi.advanceTimersByTimeAsync(1500))
   expect(getAttempt).toHaveBeenCalledExactlyOnceWith('accepted', { signal: expect.any(AbortSignal) })
   expect(screen.getByText('クリアしました。「自分の記録」で確認できます。')).toBeVisible()
-  // 初回クリアの確定時は、全画面のクリア画面（D-62）が小さな演出に置き換わって出る。
+  // 初回クリアの確定時は、全画面のクリア画面（D-63）が小さな演出に置き換わって出る。
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'クリア！' })).toBeInTheDocument()
   expect(container.querySelector('.clear-celebration-large')).toBeInTheDocument()
-  // 記録は自動では開かず、「自分の記録を見る」ボタンからの遷移だけにする（D-62）。
+  // 記録は自動では開かず、「自分の記録を見る」ボタンからの遷移だけにする（D-63）。
   expect(onOpenDiscovery).not.toHaveBeenCalled()
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '自分の記録を見る' })))
   expect(onOpenDiscovery).toHaveBeenCalledExactlyOnceWith('trial-record')
@@ -82,7 +82,7 @@ it('team-preview shows a wrong-target outcome without opening a discovery', asyn
   const { container } = render(<DemoAnswerSubmission context={{ api: { submitAnswer, getAttempt: vi.fn() }, challengeId: 'challenge', onReloadQuest: vi.fn(), onOpenDiscovery, dataMode: 'team-preview' }} photo={new Blob(['photo'])} metadata={metadata} disabled={false} onSubmissionStarted={vi.fn()} />)
   await act(async () => fireEvent.click(screen.getByRole('button', { name: '写真と位置を送信' })))
   expect(screen.getByText('写真の対象が一致しませんでした。対象を確認して撮り直してください。')).toBeVisible()
-  // クリア以外の結果では演出もクリア画面も出ない（D-42、D-62）。
+  // クリア以外の結果では演出もクリア画面も出ない（D-42、D-63）。
   expect(container.querySelector('.clear-celebration')).not.toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(onOpenDiscovery).not.toHaveBeenCalled()

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ClearCelebration } from './ClearCelebration'
 
-// 初回クリア確定（CORRECT）のときだけ、アプリ全体を覆って出すクリア画面（D-62）。
+// 初回クリア確定（CORRECT）のときだけ、アプリ全体を覆って出すクリア画面（D-63）。
 // パネル内の一文＋小さな演出では達成感が伝わらないため、バッジを主役に据え、
 // 自分が送信した写真と問題タイトル・クリア日を見せる。遷移はボタンのみで、
 // 記録詳細への自動遷移はしない（呼び出し側がボタンのハンドラを渡す）。
