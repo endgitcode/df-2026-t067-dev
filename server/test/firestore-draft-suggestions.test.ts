@@ -27,7 +27,8 @@ test('durable generation rechecks access after reading the private photo and aft
   const member = db.collection('memberships').doc(createHash('sha256').update(JSON.stringify([uid, orgId])).digest('hex'))
   const reference = await prepareVertexTrialFixture('match')
   await db.batch()
-    .create(db.collection('areas').doc(areaId), { label: '架空の地域' })
+    .create(db.collection('areas').doc(areaId), { label: '架空の地域', marker: { latitude: 0, longitude: 0 }, prefectureCode: '13',
+      boundarySource: 'fixture', publicGeometryJson: JSON.stringify({ type: 'Polygon', coordinates: [[[0, 0], [0, 1], [1, 1], [0, 0]]] }) })
     .create(member, { uid, orgId, active: true, role: 'editor', label: '架空の自治体', areaId })
     .create(db.collection('orgAssets').doc(assetId), { generation: '7', digest: 'a'.repeat(64), asset: {
       assetId, orgId, purpose: 'reference', photoRights: '自作の合成画像', contentType: 'image/jpeg',

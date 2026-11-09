@@ -50,14 +50,15 @@ export class FirestoreManagedPublication {
       // 場所（都道府県コードで分類された地域）は必須（D-33）。未分類の地域に紐づく下書きは公開できない。
       // 既に公開済みの問題の表示・判定には影響しない（公開済みの版はそのまま残る）。
       if (!areaPrefectureCode(area.data())) throw new HttpError(409, 'AREA_UNCLASSIFIED', 'この地域は都道府県コードが未設定のため、公開できません。')
-      // 問題番号（D-31）: 初回公開時に、その都道府県コードを持つ地域の問題としての連番を
-      // カウンタドキュメントで採番し、問題ドキュメントへ保存する。以後の版更新・休止・再公開では
-      // 保存値をそのまま使うため、番号は動かない。都道府県コードの無い地域の問題には付けない。
-      const questNumber = await ensureQuestNumber(tx, this.db, quest, area.get('prefectureCode'))
       const catalog = this.db.collection('questPublic')
       if (quest.publishedVersion === null && (await tx.get(catalog.limit(maximumCatalogEntries))).size >= maximumCatalogEntries) {
         throw new HttpError(429, 'RATE_LIMITED', '開発用の公開問題の上限に達しました。')
       }
+      // 問題番号（D-31）: 初回公開時に、その都道府県コードを持つ地域の問題としての連番を
+      // カウンタドキュメントで採番し、問題ドキュメントへ保存する。以後の版更新・休止・再公開では
+      // 保存値をそのまま使うため、番号は動かない。都道府県コードの無い地域の問題には付けない。
+      // 採番はカウンターを書き込むため、公開上限を含む他の読み取りを先に完了する。
+      const questNumber = await ensureQuestNumber(tx, this.db, quest, area.get('prefectureCode'))
       const version = latestVersion(data.latestPublishedVersion, quest.publishedVersion) + 1
       if (!Number.isSafeInteger(version)) throw draftConflict()
       const { afterClear } = quest.draft
