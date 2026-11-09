@@ -168,7 +168,7 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
   return <main className="admin-demo">
     <header className="admin-header"><h1>{teamPreview ? '自治体向け共有検証' : '自治体向けローカル管理'}</h1><a href="/">旅行者画面へ</a></header>
     <p className="demo-notice">{teamPreview ? '架空のデータを使ってください。公開した問題と公開ヒントは誰でも閲覧できます。'
-      : '架空の組織と開発用APIを使います。' + (dataMode === 'durable-local' ? '下書きと報告はローカル永続ストアに保存されます。' : '下書きと報告はサーバーの一時領域に保存されます。')}</p>
+      : '架空の組織と検証用の保存先を使います。' + (dataMode === 'durable-local' ? '下書きと報告は検証環境の保存先に保存されます。' : '下書きと報告は一時的な保存先に保存されます。')}</p>
     <section className="form-section" aria-label="担当者ログイン">
       {auth.status === 'signed-out' && <button type="button" disabled={pending} onClick={() => void authenticate('login')}>Googleログイン</button>}
       {auth.status === 'signed-in' && <button type="button" disabled={pending} onClick={() => void authenticate('logout')}>ログアウト</button>}
@@ -181,6 +181,6 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
         ? 'このアカウントは共有検証に招待されていません。' : 'ログインを確認できませんでした。'}</p>
         <button type="button" onClick={identity.retry}>ログインを確認し直す</button></div>
         : <p role="status">サーバーでログインを確認しています…</p>)}
-    {dataMode === 'demo' && <p><a href="/admin-demo">開発用：未認証・未接続の架空フォームへ戻る</a></p>}
+    {dataMode === 'demo' && <p><a href="/admin-demo">ログインなしで試せる架空フォームへ戻る</a></p>}
   </main>
 }

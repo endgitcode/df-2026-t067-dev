@@ -43,7 +43,7 @@ export default function DraftEditor({ draft, setDraft, materialChanged, sampleCo
   }
 
   return <section className="form-section draft-editor" aria-labelledby="draft-heading">
-    <h2 id="draft-heading" ref={headingRef} tabIndex={-1}>2/3 問題の文章（AI未接続）</h2>
+    <h2 id="draft-heading" ref={headingRef} tabIndex={-1}>2/3 問題の文章（AIはまだ使えません）</h2>
     <p className="demo-notice" role="note">対象名や写真の情報は、旅行者向けの文章には入りません。</p>
     {materialChanged && <p className="field-error" role="status">素材が変更されています。下書きを確認してください。</p>}
     <p className="helper">ヒント画像は、参考写真から自動流用しません。</p>
