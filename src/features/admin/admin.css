@@ -58,6 +58,10 @@
 .admin-demo .capture-map > p,
 .admin-demo .capture-map > [role="alert"] { margin: 12px; }
 .admin-demo .capture-map + .spot-clear-button { margin-block-start: 12px; }
+.spot-location-actions { padding: 8px; }
+.spot-location-actions p { margin: 6px 0 0; }
+.spot-address-candidate { margin-block: 10px; padding: 8px 12px; border: 1px solid var(--ui-line); border-radius: var(--ui-radius); }
+.spot-address-candidate p { margin: 4px 0; }
 .summary dl { display: grid; grid-template-columns: minmax(150px, .7fr) 1fr; gap: 8px 16px; }
 .summary dt { font-weight: var(--ui-weight-strong); }
 .summary dd { margin: 0; overflow-wrap: anywhere; }
