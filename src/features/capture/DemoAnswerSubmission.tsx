@@ -246,7 +246,7 @@ export function DemoAnswerSubmission({ context, photo, metadata, disabled, onSub
       <button type="button" className="primary-button" disabled={disabled || !!failure?.retryAfterSeconds} onClick={() => void exchange()}>
         {receipt ? (real ? '判定結果を確認' : '受付状態を確認')
           : failure ? '同じ回答を再送' : dataMode === 'durable-local' ? '写真と位置をテスト送信'
-            : dataMode === 'team-preview' ? '写真と位置を送信' : '写真と位置をデモ送信'}
+            : dataMode === 'team-preview' ? '写真と位置を送信' : '写真と位置を送信'}
       </button>}
   </div>
 }
