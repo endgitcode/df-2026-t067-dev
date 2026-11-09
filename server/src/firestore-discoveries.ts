@@ -29,6 +29,7 @@ export class FirestoreDiscoveryStore implements DiscoveryReadRepository {
     if (requestedLimit !== undefined) params.set('limit', String(requestedLimit))
     const limit = parseLimit(params)
     const scope = 'firestore-discoveries:' + createHash('sha256').update(JSON.stringify([uid, areaId ?? null])).digest('hex')
+    const position = cursor === undefined ? undefined : readPosition(readScopedCursor(cursor, scope))
     // 等価条件だけで引き、並び替えとページングは取得後にメモリ上で行う。
     // firstClearedAt の orderBy は uid との複合インデックスが必須で、インデックス
     // 未整備の DB（共有検証の名前付き DB には複合インデックスが無い）では
@@ -40,8 +41,8 @@ export class FirestoreDiscoveryStore implements DiscoveryReadRepository {
       'placeName', 'descriptionSnapshot', 'revealedLocation').get()
     const sorted = [...snapshot.docs].sort((a, b) =>
       comparePosition(clearTime(a.data()), a.id, clearTime(b.data()), b.id))
-    const remaining = cursor === undefined ? sorted
-      : sorted.filter((doc) => comparePosition(clearTime(doc.data()), doc.id, ...readPosition(readScopedCursor(cursor, scope))) > 0)
+    const remaining = position === undefined ? sorted
+      : sorted.filter((doc) => comparePosition(clearTime(doc.data()), doc.id, ...position) > 0)
     const page = remaining.slice(0, limit)
     const items = page.map((doc) => publicDiscovery(doc.data(), uid, doc.id))
     const last = page.at(-1)
