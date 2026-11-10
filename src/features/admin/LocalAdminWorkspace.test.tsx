@@ -154,7 +154,7 @@ it('does not fall back to the memory API when the selected persistent API return
   }
 })
 
-it('requires verified membership, cancels an old organization read, and shows reports only for a publisher', async () => {
+it('shows each membership as text, keeps each organization workspace, and shows reports only for a publisher', async () => {
   const user = userEvent.setup()
   let snapshot: AuthSnapshot = { status: 'signed-out', user: null }
   const listeners = new Set<() => void>()
@@ -195,18 +195,28 @@ it('requires verified membership, cancels an old organization read, and shows re
     throw new Error('Unexpected local request')
   })
   const apiClient = createApiClient({ fetch: fetcher, expectedDataMode: 'demo', getIdToken: authClient.getIdToken })
+  const workspace = (label: string) => {
+    const section = screen.getAllByText(label).map((node) => node.closest('section.admin-quest-list')).find(Boolean)
+    if (!section) throw new Error('missing workspace: ' + label)
+    return section as HTMLElement
+  }
   render(<LocalAdminWorkspace authClient={authClient} apiClient={apiClient} />)
   expect(fetcher).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'Googleで続行' }))
-  await user.click(await screen.findByRole('button', { name: /編集の架空自治体/ }))
-  expect(screen.queryByRole('button', { name: '報告' })).not.toBeInTheDocument()
-  await waitFor(() => expect(finishEditor).toBeTypeOf('function'))
-  const oldRead = fetcher.mock.calls.find(([path]) => String(path).startsWith('/api/v1/orgs/demo-edit/quests'))?.[1]
-  await user.click(screen.getByRole('button', { name: /公開の架空自治体/ }))
-  expect(oldRead?.signal?.aborted).toBe(true)
+  const memberships = await screen.findByRole('region', { name: '所属' })
+  expect(within(memberships).getByText('編集の架空自治体').tagName).toBe('P')
+  expect(within(memberships).getByText('公開の架空自治体').tagName).toBe('P')
+  expect(within(memberships).queryByRole('button')).not.toBeInTheDocument()
+  expect(memberships.querySelector('[aria-pressed]')).toBeNull()
+  expect(screen.queryByRole('button', { name: /編集の架空自治体|公開の架空自治体/ })).not.toBeInTheDocument()
+  expect(within(workspace('編集の架空自治体')).queryByRole('button', { name: '報告' })).not.toBeInTheDocument()
   expect(await screen.findByText(quest.draft.content.title)).toBeVisible()
+  expect(within(workspace('公開の架空自治体')).getByText(quest.draft.content.title)).toBeVisible()
+  expect(within(workspace('公開の架空自治体')).getByRole('button', { name: '報告' })).toBeVisible()
+  await waitFor(() => expect(finishEditor).toBeTypeOf('function'))
   await act(async () => finishEditor(page([{ ...quest, orgId: 'demo-edit', draft: { ...quest.draft, content: { ...quest.draft.content, title: '古い応答' } } }])))
-  expect(screen.queryByText('古い応答')).not.toBeInTheDocument()
+  expect(within(workspace('編集の架空自治体')).getByText('古い応答')).toBeVisible()
+  expect(within(workspace('公開の架空自治体')).queryByText('古い応答')).not.toBeInTheDocument()
   const pauseOpen = screen.getByRole('button', { name: '休止' })
   expect(pauseOpen).toHaveClass('danger-button')
   await user.click(pauseOpen)

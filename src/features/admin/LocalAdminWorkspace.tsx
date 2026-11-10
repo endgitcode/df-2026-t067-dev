@@ -34,7 +34,8 @@ function Pager({ cursor, next, onMove }: { cursor?: string; next?: string | null
   </div>
 }
 
-function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSource, onEditing }: { onEditing: (editing: boolean) => void; api: ApiClient; member: OrgMembership; teamPreview: boolean; durable: boolean; photoTestSource: 'mock' | 'real' }) {
+function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSource, onEditing, claimRestoration, rejectRestoration }: { onEditing: (orgId: string, editing: boolean) => void; claimRestoration: () => boolean; rejectRestoration: (orgId: string) => void; api: ApiClient; member: OrgMembership; teamPreview: boolean; durable: boolean; photoTestSource: 'mock' | 'real' }) {
+  const headingId = useId()
   const [section, setSection] = useState<'quests' | 'reports'>('quests')
   const [cursor, setCursor] = useState<string>()
   const [notice, setNotice] = useState('')
@@ -54,7 +55,7 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
 
   const restored = useRef(false)
   const listHeading = useRef<HTMLHeadingElement>(null)
-  useEffect(() => { onEditing(editor !== null) }, [editor, onEditing])
+  useEffect(() => { onEditing(member.orgId, editor !== null) }, [editor, onEditing, member.orgId])
   useEffect(() => {
     if (restored.current || result.status !== 'ready') return
     restored.current = true
@@ -64,13 +65,16 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
     const found = result.value.items.find((item): item is ManagedQuest => 'draft' in item && item.questId === quest)
     const clear = () => { const url = new URL(location.href); url.searchParams.delete('quest'); url.searchParams.delete('step'); history.replaceState(null, '', url) }
     if (step && !['1', '2', '3', '4', 'target', 'conditions', 'content', 'hints', 'publication'].includes(step)) { clear(); return }
-    if (found || (quest === 'new' && !areaUnclassified)) queueMicrotask(() => setEditor({ kind: 'draft', initial: found ?? null }))
-    else if (quest !== 'new') {
-      void api.getManagedQuest(member.orgId, quest).then(record => {
-        if (new URLSearchParams(location.search).get('quest') === quest) setEditor({ kind: 'draft', initial: record })
-      }).catch(clear)
-    } else clear()
-  }, [result, api, member.orgId, areaUnclassified])
+    if (found || (quest === 'new' && !areaUnclassified)) {
+      if (claimRestoration()) queueMicrotask(() => setEditor({ kind: 'draft', initial: found ?? null }))
+    } else if (quest !== 'new') {
+      const controller = new AbortController()
+      void api.getManagedQuest(member.orgId, quest, { signal: controller.signal }).then(record => {
+        if (!controller.signal.aborted && new URLSearchParams(location.search).get('quest') === quest && claimRestoration()) setEditor({ kind: 'draft', initial: record })
+      }).catch(() => { if (!controller.signal.aborted) rejectRestoration(member.orgId) })
+      return () => controller.abort()
+    } else rejectRestoration(member.orgId)
+  }, [result, api, member.orgId, areaUnclassified, claimRestoration, rejectRestoration])
   useEffect(() => {
     if (editor || result.status !== 'ready') return
     const row = actedQuest && Array.from(listRoot.current?.querySelectorAll<HTMLElement>('[data-quest-id]') ?? []).find(row => row.dataset.questId === actedQuest)
@@ -92,8 +96,8 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
   if (editor?.kind === 'publication') return <PublicationWorkspace rightsAssist={durable} photoTestSource={photoTestSource} api={api} initial={editor.initial} areaUnclassified={areaUnclassified} onBack={closeEditor}
     onPublished={published} />
 
-  return <section className="form-section admin-quest-list" aria-labelledby="org-workspace-title" ref={listRoot}>
-    <h2 id="org-workspace-title" tabIndex={-1} ref={listHeading}>{heading}</h2>
+  return <section className="form-section admin-quest-list" aria-labelledby={headingId} ref={listRoot}>
+    <h2 id={headingId} tabIndex={-1} ref={listHeading}>{heading}</h2>
     <p>{member.label}</p>
     {areaUnclassified && <p role="alert">地域未設定・作成不可・公開不可</p>}
     {notice && <div role="status" className="admin-operation-notice">{notice}{pausedNotice && result.status === 'ready' && result.value.items.filter((item): item is ManagedQuest => 'draft' in item && item.questId === actedQuest).map(item => <button key={item.questId} type="button" onClick={() => republish(item)}>再公開</button>)}</div>}
@@ -153,28 +157,51 @@ function OrganizationWorkspace({ api, member, teamPreview, durable, photoTestSou
 
 function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiClient; teamPreview: boolean; durable: boolean; photoTestSource: 'mock' | 'real' }) {
   const [cursor, setCursor] = useState<string>()
-  const [editing, setEditing] = useState(false)
-  const [selected, setSelected] = useState<string | null>(() => { try { return sessionStorage.getItem('admin-selected-org') } catch { return null } })
+  const [editing, setEditing] = useState<string | null>(null)
+  // URL復元は1組織だけが開き、別組織の失敗ではURLを消さない。
+  const restoration = useRef<{ claimed: boolean; rejected: Set<string> }>({ claimed: false, rejected: new Set() })
+  const onEditing = useCallback((orgId: string, active: boolean) => {
+    if (active) restoration.current.claimed = true
+    setEditing(current => active ? orgId : current === orgId ? null : current)
+  }, [])
+  const claimRestoration = useCallback(() => {
+    if (restoration.current.claimed) return false
+    restoration.current.claimed = true
+    return true
+  }, [])
   const read = useCallback((signal: AbortSignal) => api.listMemberships({ cursor, limit: 20 }, { signal }), [api, cursor])
   const { result, retry } = useRemote(true, read)
-  const onlyMembership = result.status === 'ready' && !cursor && !result.value.nextCursor && result.value.items.length === 1 ? result.value.items[0] : undefined
-  const current = result.status === 'ready' ? onlyMembership ?? result.value.items.find((member) => member.orgId === selected) : undefined
+  const rejectRestoration = useCallback((orgId: string) => {
+    restoration.current.rejected.add(orgId)
+    if (!restoration.current.claimed && result.status === 'ready' && !result.value.nextCursor &&
+      result.value.items.every(member => restoration.current.rejected.has(member.orgId))) {
+      const url = new URL(location.href)
+      url.searchParams.delete('quest'); url.searchParams.delete('step')
+      history.replaceState(null, '', url)
+    }
+  }, [result])
+  function movePage(next?: string) {
+    restoration.current = { claimed: false, rejected: new Set() }
+    setEditing(null)
+    setCursor(next)
+  }
   return <>
-    <section hidden={editing} className="form-section" aria-labelledby="membership-title">
+    <section hidden={editing !== null} className="form-section" aria-labelledby="membership-title">
       <h2 id="membership-title">所属</h2>
       {result.status === 'loading' && <p role="status">所属確認中</p>}
       {result.status === 'error' && <><p role="alert">所属の確認失敗</p>
         <button type="button" onClick={retry}>所属を確認し直す</button></>}
       {result.status === 'ready' && (result.value.items.length === 0 ? <p>所属なし</p>
-        : onlyMembership ? <p>{onlyMembership.label}</p>
+        : result.value.items.length === 1 ? <p>{result.value.items[0].label}</p>
           : <ul className="admin-read-list">{result.value.items.map((member) => <li key={member.orgId}>
-          <button type="button" aria-pressed={member.orgId === current?.orgId} onClick={() => { setSelected(member.orgId); try { sessionStorage.setItem('admin-selected-org', member.orgId) } catch { /* Selection still works without session storage. */ } }}>
-            {member.label}
-          </button></li>)}</ul>)}
-      <Pager cursor={cursor} next={result.status === 'ready' ? result.value.nextCursor : undefined}
-        onMove={(next) => { setSelected(null); setCursor(next) }} />
+            <p>{member.label}</p>
+          </li>)}</ul>)}
+      <Pager cursor={cursor} next={result.status === 'ready' ? result.value.nextCursor : undefined} onMove={movePage} />
     </section>
-    {current && <OrganizationWorkspace onEditing={setEditing} key={JSON.stringify([current.orgId, current.role])} api={api} member={current} teamPreview={teamPreview} durable={durable} photoTestSource={photoTestSource} />}
+    {result.status === 'ready' && result.value.items.map((member) => <div key={JSON.stringify([member.orgId, member.role])} hidden={editing !== null && editing !== member.orgId}>
+      <OrganizationWorkspace onEditing={onEditing} claimRestoration={claimRestoration} rejectRestoration={rejectRestoration}
+        api={api} member={member} teamPreview={teamPreview} durable={durable} photoTestSource={photoTestSource} />
+    </div>)}
   </>
 }
 
