@@ -22,6 +22,8 @@ export interface MapInstance {
   setCenter(value: { lat: number; lng: number }): void
   getCenter?(): MapLatLng | undefined
   fitBounds(bounds: Bounds, padding?: number | { top?: number; right?: number; bottom?: number; left?: number }): void
+  getProjection?(): { fromLatLngToPoint(position: MapLatLng | { lat: number; lng: number }): { x: number; y: number } | null } | undefined
+  panBy?(x: number, y: number): void
   getBounds?(): MapBounds | undefined
   addListener(name: string, callback: () => void): { remove(): void }
 }

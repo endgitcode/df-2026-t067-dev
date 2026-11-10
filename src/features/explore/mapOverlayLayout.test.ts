@@ -22,7 +22,7 @@ describe('mobile map overlay clearance', () => {
   it('preserves bottom clearance for the sheet and navigation', () => {
     expect(visibleAreaFitPadding(false).bottom).toBe(252)
     expect(visibleAreaFitPadding(false, false, 429).bottom).toBe(513)
-    expect(visibleAreaFitPadding(false, false, 168, 0).top).toBe(140)
+    expect(visibleAreaFitPadding(false, false, 168, 0).top).toBe(184)
   })
   it('accounts for a taller header and marker height in mobile fits', () => {
     expect(visibleAreaFitPadding(false, false, 168, 120).top).toBeGreaterThanOrEqual(180)

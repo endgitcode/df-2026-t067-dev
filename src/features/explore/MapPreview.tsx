@@ -6,6 +6,7 @@ import type { PublicArea, PublicQuest } from '../../shared/api/types'
 import { useWideViewport, WIDE_VIEWPORT_QUERY } from '../quests/useWideViewport'
 import { ExploreBottomSheet, SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 import { mobileHeaderClearance } from './scrollBelowHeader'
+import { initialPinShift, projectedAnchorY } from './initialPinShift'
 import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
@@ -31,7 +32,7 @@ const JAPAN = { lat: 36.2048, lng: 138.2529 }
 // これ以上引くと日本が小さくなりすぎるため、最小ズームも引き上げる（D-41）。
 // 当初は初期表示の日本全体フィットの下限に合わせて 4.5（小数）だったが、Mac のトラックパッドで
 // 最小ズームからさらに縮小ピンチをすると画面がちらつく報告があり、整数の 5 に変更した（D-67）。
-// 実測でも実効の下限は 5 で、初期フィットは Maps 側で 5 にクランプされても破綻しない。
+// 実効の下限は5。スマホの初期フィットで余白が不足する場合はidle後に位置を補正する。
 const MIN_ZOOM = 5
 const INITIAL_ZOOM = 5
 const MAX_ZOOM = 20
@@ -266,6 +267,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // ではなく「もう一度寄せる」を優先するための判定材料（利用者は移行を期待して押している）。
   const fittedCamera = useRef<{ map: MapInstance; areaId: string; center: { lat: number; lng: number }; zoom: number } | null>(null)
   // フィット完了の記録待ちリスナー（idle／dragstart）。次のフィット開始時に打ち切る。
+  const cancelInitialAdjustment = useRef<() => void>(() => {})
   const pendingFitListeners = useRef<Array<{ remove(): void }>>([])
   // 地図が使える時は全画面マップ＋ボトムシート（sheetMode）、PC幅ではシートの代わりに
   // 左サイドバーのパネルへ同じ一覧を出す（panelMode、D-34）。全画面化の扱いはシートと同じ。
@@ -388,6 +390,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // 地図の上に重なる帯・チップ・シート等の分をパディングとして差し引き、選んだ地域が
   // 実際に見えている領域の中央に来るようにする。
   const fitToArea = useCallback((instance: MapInstance, area: PublicArea): boolean => {
+    cancelInitialAdjustment.current()
     const google = window.google?.maps
     if (!google?.LatLngBounds) return false
     const points = areaFitPoints(area)
@@ -460,6 +463,58 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       fitted = true
     }
     if (!fitted) return false
+    cancelInitialAdjustment.current()
+    if (!wideViewport && !panelMode) {
+      const shell = mapShell.current
+      let active = true
+      const listeners: Array<{ remove(): void }> = []
+      const cancel = () => {
+        active = false
+        listeners.forEach((listener) => listener.remove())
+        shell?.removeEventListener('pointerdown', cancel, true)
+        shell?.removeEventListener('wheel', cancel, true)
+        shell?.removeEventListener('keydown', cancel, true)
+      }
+      cancelInitialAdjustment.current = cancel
+      listeners.push(instance.addListener('dragstart', cancel))
+      // wheel / pinch / controls も含め、利用者の操作以降は遅延補正しない。
+      shell?.addEventListener('pointerdown', cancel, { once: true, capture: true })
+      shell?.addEventListener('wheel', cancel, { once: true, capture: true })
+      shell?.addEventListener('keydown', cancel, { once: true, capture: true })
+      listeners.push(instance.addListener('idle', () => {
+        if (!active) return
+        cancelInitialAdjustment.current()
+        if (instance.getZoom() !== MIN_ZOOM || !shell || !instance.panBy) return
+        const projection = instance.getProjection?.()
+        const mapBounds = instance.getBounds?.()
+        if (!projection || !mapBounds) return
+        const north = projection.fromLatLngToPoint(mapBounds.getNorthEast())
+        const west = projection.fromLatLngToPoint(mapBounds.getSouthWest())
+        if (!north || !west) return
+        const anchors = areas.filter((area) => area.publishedCount > 0).flatMap((area) => {
+          const position = areaPinPosition(area)
+          const point = position && projection.fromLatLngToPoint(position)
+          return point ? [{
+            x: (point.x - west.x) * 2 ** MIN_ZOOM,
+            y: projectedAnchorY(point.y, north.y, MIN_ZOOM),
+          }] : []
+        })
+        const rect = shell.getBoundingClientRect()
+        const obstacles = Array.from(document.querySelectorAll(
+          '.site-header .brand, .account-area, .filter-toggle',
+        )).flatMap((element) => {
+          const obstacle = element.getBoundingClientRect()
+          const style = getComputedStyle(element)
+          if (!obstacle.width || !obstacle.height || style.visibility === 'hidden' || style.display === 'none') return []
+          return [{ left: obstacle.left - rect.left, right: obstacle.right - rect.left, bottom: obstacle.bottom - rect.top }]
+        })
+        // peek の実寸168pxと下部ナビ64px。fitBounds の追加余白20pxはここでは不要。
+        const tabbar = Number.parseFloat(getComputedStyle(document.querySelector('.mobile-nav') ?? shell).height)
+        const bottom = rect.height - SHEET_PEEK_HEIGHT - (document.querySelector('.mobile-nav') && Number.isFinite(tabbar) ? tabbar : 64)
+        const shift = initialPinShift(anchors, obstacles, bottom)
+        if (Math.abs(shift) > 0.5) instance.panBy(0, -shift)
+      }))
+    }
     instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, undefined, Math.max(0, mobileHeaderClearance() - (mapShell.current?.getBoundingClientRect().top ?? 0))))
     clampFitZoomOnIdle(instance)
     initialFitDone.current = instance
@@ -525,6 +580,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     }).catch((error: unknown) => { if (active) setStatus(error instanceof Error && error.message === 'auth' ? 'auth-error' : 'error') })
     return () => {
       active = false
+      cancelInitialAdjustment.current()
       cancelLocationRequest(false)
       window.clearTimeout(areaFailureTimer.current)
       unsubscribeAuth()

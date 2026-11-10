@@ -7,10 +7,11 @@ import { SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 // 開閉そのものでは再フィットしない（地図の中心を動かさない、D-38）。
 // スマホ幅で選択に伴うフィットをする時は、シートが half まで開いた後の高さを渡す
 // （D-70）。peek 前提のままだと、開いたシートの裏にピンが隠れてしまう。
+// スマホはフィルター下端112px＋ピン60px＋間隔12pxを最低限確保する。
 const PC_SIDEBAR_FIT_LEFT = 280 + 12
 const PC_SIDEBAR_FIT_LEFT_COLLAPSED = 56 + 12
 export function visibleAreaFitPadding(wide: boolean, sidebarCollapsed = false, sheetHeight?: number, headerBottom = 0): { top: number; right: number; bottom: number; left: number } {
   return wide
     ? { top: 88, right: 48, bottom: 48, left: sidebarCollapsed ? PC_SIDEBAR_FIT_LEFT_COLLAPSED : PC_SIDEBAR_FIT_LEFT }
-    : { top: Math.max(140, Math.ceil(headerBottom) + 60), right: 16, bottom: (sheetHeight ?? SHEET_PEEK_HEIGHT) + 84, left: 16 }
+    : { top: Math.max(184, Math.ceil(headerBottom) + 60), right: 16, bottom: (sheetHeight ?? SHEET_PEEK_HEIGHT) + 84, left: 16 }
 }

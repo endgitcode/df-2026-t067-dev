@@ -296,14 +296,7 @@
 .admin-demo select { border-radius: 12px; }
 .admin-managed { border: 2px solid var(--ui-line); border-radius: 16px; }
 .admin-header-actions { display: flex; align-items: center; gap: 12px; margin-inline-start: auto; }
-.admin-demo .admin-traveler-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--ui-ink);
-  text-underline-offset: 4px;
-  white-space: nowrap;
-}
+
 .admin-demo > .admin-header { padding-top: 0; }
 .admin-demo input::file-selector-button:focus-visible { outline: 3px solid var(--ui-focus); }
 
@@ -321,8 +314,6 @@
   .admin-save-bar { position: fixed; z-index: 30; bottom: 0; left: 0; right: 0; padding: 16px; margin: 0; background: white; border-top: 2px solid var(--ui-line); box-shadow: none; }
 }
 
-/* The traveler exit now belongs to the header. */
-.admin-demo.admin-managed { margin-top: 24px; min-height: calc(100vh - 24px); }
 .admin-managed > .admin-header { padding-top: 0; }
 .admin-account-panel:not([hidden]) { box-shadow: none; }
 .admin-demo input::file-selector-button { background: white; border: 2px solid var(--ui-line); }
@@ -332,7 +323,6 @@
 .admin-read-list > li:focus { outline: 3px solid var(--ui-focus); outline-offset: 4px; }
 .workflow-heading h2 { margin-inline-end: auto; }
 
-.admin-demo .admin-traveler-link { height: 44px; line-height: 24px; white-space: nowrap; }
 .admin-read-list > li > .danger-button,
 .admin-read-list > li > button + button { margin-inline-start: 12px; }
 
@@ -395,3 +385,38 @@
 .photo-picker-button { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; box-sizing: border-box; border: 2px solid var(--ui-line); border-radius: 12px; background: white; color: var(--ui-ink); cursor: pointer; }
 .photo-picker:has(input:focus-visible) .photo-picker-button { outline: 3px solid var(--ui-focus); outline-offset: 2px; }
 .photo-picker:has(input:disabled) .photo-picker-button { opacity: .5; cursor: default; }
+
+/* D-47: 旅行者と同じブランド・アカウントの画面上スロット。 */
+.admin-demo, .admin-demo.admin-managed { margin-top: calc(64px + 2px + env(safe-area-inset-top, 0px)); min-height: calc(100vh - 64px - 2px - env(safe-area-inset-top, 0px)); }
+.admin-demo .admin-header-actions {
+  position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: 20px; z-index: 40;
+}
+.admin-demo .brand {
+  color: var(--ui-ink); text-decoration: none; font-family: inherit;
+  position: fixed; top: 0; left: 0; z-index: 36;
+  display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  width: 220px; height: 52px; min-width: 0; margin: 0; padding: 0 16px;
+  border: 0; border-radius: 0; background: var(--ui-surface); overflow: hidden;
+}
+.admin-demo .brand-mark {
+  display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px;
+  border: 0; border-radius: 12px; background: transparent;
+}
+.admin-demo .brand-mark img { display: block; width: 100%; height: 100%; border-radius: inherit; }
+.admin-demo .brand-copy {
+  font-size: 12px; font-weight: var(--ui-weight-display); letter-spacing: .015em; white-space: nowrap;
+}
+.admin-demo .admin-account-trigger {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; min-height: 44px; padding: 0;
+  border: var(--ui-border-width) solid var(--ui-line); border-radius: 50%;
+}
+@media (max-width: 980px) {
+  .admin-demo, .admin-demo.admin-managed { margin-top: calc(64px + 8px + env(safe-area-inset-top, 0px)); min-height: calc(100vh - 64px - 8px - env(safe-area-inset-top, 0px)); }
+  .admin-demo .admin-header-actions { top: calc(6px + env(safe-area-inset-top, 0px)); right: 10px; }
+  .admin-demo .brand {
+    top: calc(16px + env(safe-area-inset-top, 0px)); left: 16px;
+    width: fit-content; height: 44px; padding: 4px 8px 4px 4px;
+    border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius);
+  }
+}
