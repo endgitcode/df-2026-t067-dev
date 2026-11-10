@@ -1485,19 +1485,19 @@ it('durable traveler chrome omits mode badges and synthetic-restriction banners'
   expect(screen.getByRole('region', { name: '問題の詳細' })).toBeVisible()
 })
 
-it('shows a removable pin filter with count and restores the full original list', async () => {
+it('does not show a place-name chip after pin selection and a second press restores the full list', async () => {
   const user = userEvent.setup()
   const api = apiFixture()
   api.listQuests.mockImplementation(async (params) => page(params?.areaId ? [second] : [first, second]))
   render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="durable-local" />)
   await user.click(await screen.findByRole('button', { name: '地図の公開地域を選択' }))
-  const chip = await screen.findByRole('button', { name: '森エリアのしぼり込みを外す' })
   await waitFor(() => expect(screen.getByTestId('map-state').querySelector('.explore-list-head')).toHaveTextContent('1件'))
-  await user.click(chip)
+  expect(screen.queryByRole('button', { name: '森エリアのしぼり込みを外す' })).not.toBeInTheDocument()
+  expect(document.querySelector('.map-filter-selection')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
   await waitFor(() => expect(screen.getByTestId('map-state').querySelector('.explore-list-head')).toHaveTextContent('2件'))
   expect(screen.getByTestId('map-state')).toHaveAttribute('data-quest-order', 'quest-a,quest-b')
   expect(window.location.search).not.toContain('area=')
-  expect(screen.queryByRole('button', { name: '森エリアのしぼり込みを外す' })).not.toBeInTheDocument()
 })
 
 it('dismisses the place picker on selection, outside pointer and Escape', async () => {

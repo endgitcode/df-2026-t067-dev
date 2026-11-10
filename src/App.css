@@ -111,7 +111,6 @@ h1 { font-size: var(--fs-24); font-weight: var(--ui-weight-display); line-height
 .map-preview-shell.has-sheet .map-preview { position: absolute; inset: 0; height: auto; }
 .map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-8); pointer-events: none; }
 .map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-8); width: 100%; min-width: 0; }
-.map-filter-selection { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); pointer-events: auto; }
 .filter-stage-label { margin: var(--sp-4) 2px 0; font-size: var(--fs-14); font-weight: 600; }
 .map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }
 .map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s; }
@@ -1130,7 +1129,7 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 /* 作業13: 色だけでなく、既存の文字・選択表示と一緒に状態を示す。 */
 .quest-cleared-label { background: var(--role-done); color: var(--ui-ink); }
 .filter-prefecture[aria-pressed="true"] { background: var(--role-selected); box-shadow: inset 0 0 0 2px var(--ui-line); }
-.filter-chip[aria-pressed="true"], .map-area-chip, .map-filter-selection .filter-chip { background: var(--role-selected); border: 2px solid var(--ui-line); }
+.filter-chip[aria-pressed="true"], .map-area-chip { background: var(--role-selected); border: 2px solid var(--ui-line); }
 .camera-panel .answer-waiting { background: var(--role-off); }
 .answer-result { padding: var(--sp-8) var(--sp-12); border-radius: var(--radius-s); background: var(--ui-surface); color: var(--ui-ink); }
 .answer-result:not([data-outcome]) { background: var(--role-off); }

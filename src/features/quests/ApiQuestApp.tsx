@@ -324,13 +324,8 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     })
   }
   const filterSummary = activePrefectures[0] ?? '場所で絞る'
-  const selectedArea = availableAreas.find((area) => area.areaId === selectedAreaId)
   const filterControls = <div ref={filterPanelRef} className="map-filter-panel">
     <button type="button" className="filter-toggle" data-selected={activePrefectures.length > 0} aria-expanded={filterOpen} onClick={openPlaceFilter}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
-    {dataMode !== 'demo' && selectedArea && <div className="map-filter-selection">
-      <button type="button" className="filter-chip" aria-label={`${selectedArea.label}のしぼり込みを外す`} onClick={() => resetAreaSelection()}>{selectedArea.label} <span aria-hidden="true">×</span></button>
-      <span role="status">{visibleChoices.length}件の謎</span>
-    </div>}
     {filterOpen && <div className="map-filter-chips-wrap is-open">
       <div className="map-filter-chips-inner">
         <div className="filter-accordion" aria-label="地方から選ぶ">
