@@ -12,7 +12,7 @@ import { readOrgAssetRecord } from './firestore-org-assets'
 import { requirePublisher } from './firestore-org-memberships'
 import { draftPhotoFeatures } from './photo-match'
 import { maximumCatalogEntries } from './public-catalog-http'
-import { areaPrefectureCode, readMunicipalArea } from './municipal-areas'
+import { assertSpotInMunicipalArea, areaPrefectureCode, readMunicipalArea } from './municipal-areas'
 import { formatQuestNumber, isPrefectureCode } from '../../src/shared/api/validation'
 
 export type PublicationPhotos = Pick<AnswerPhotoStorage, 'readReference' | 'readHint'>
@@ -48,6 +48,7 @@ export class FirestoreManagedPublication {
       const area = await tx.get(this.db.collection('areas').doc(quest.areaId))
       const exploration = readMunicipalArea({ id: area.id, data: area.data() }, member)
       if (!exploration) throw new HttpError(409, 'REVIEW_REQUIRED', '所属自治体と下書きの探索エリアの対応を確認してください。')
+      assertSpotInMunicipalArea(exploration, quest.draft.afterClear.spot?.position)
       // 場所（都道府県コードで分類された地域）は必須（D-33）。未分類の地域に紐づく下書きは公開できない。
       // 既に公開済みの問題の表示・判定には影響しない（公開済みの版はそのまま残る）。
       if (!areaPrefectureCode(area.data())) throw new HttpError(409, 'AREA_UNCLASSIFIED', 'この地域は都道府県コードが未設定のため、公開できません。')

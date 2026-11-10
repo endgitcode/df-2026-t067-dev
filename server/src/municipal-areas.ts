@@ -1,3 +1,6 @@
+import { areaContainsPosition } from '../../src/shared/areaContainsPosition'
+import type { Position } from '../../src/shared/api/types'
+import { HttpError } from './errors'
 import { isPrefectureCode, parsePublicArea } from '../../src/shared/api/validation'
 import type { PublicArea } from '../../src/shared/api/types'
 
@@ -103,4 +106,10 @@ export function prepareN03Area(input: unknown, options: {
     boundarySource: 'N03', municipalityCode: options.municipalityCode, boundaryYear: options.year }
   if (!readMunicipalArea({ id: options.areaId, data }, options)) throw new Error('区域、コード、年度または代表点が無効です。')
   return { areaId: options.areaId, data }
+}
+
+export function assertSpotInMunicipalArea(area: ReadMunicipalArea | null, position?: Position) {
+  if (area && position && !areaContainsPosition(area.area.publicGeometry, position)) {
+    throw new HttpError(400, 'SPOT_OUTSIDE_AREA', 'エリアの外です')
+  }
 }
