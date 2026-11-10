@@ -23,3 +23,14 @@ it('isolates clear-screen gestures and restores the background state on unmount'
   expect(alreadyInert).toHaveAttribute('inert')
   alreadyInert.remove()
 })
+
+it('白いカードの完了帯とチェックを表示し、記録へ進む', () => {
+  const onViewRecord = vi.fn()
+  render(<ClearScreen photo={new Blob(['synthetic'])} onViewRecord={onViewRecord} />)
+  const card = screen.getByRole('dialog').querySelector('.clear-screen-card')!
+  expect(card.querySelector('.clear-celebration')).toHaveAttribute('aria-hidden', 'true')
+  expect(card.querySelector('.clear-celebration-badge .icon')).toBeInTheDocument()
+  expect(card.querySelector('.clear-celebration')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: '記録を見る' }))
+  expect(onViewRecord).toHaveBeenCalledOnce()
+})

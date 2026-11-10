@@ -86,8 +86,8 @@ it('shows the quest as cleared right after clearing, without a reload', async ()
   // fullbleed 殻が常駐するため「地図に戻る」が複数候補になり得る。クリア画面のダイアログ内だけを押す。
   await user.click(within(screen.getByRole('dialog', { name: 'クリア！' })).getByRole('button', { name: '地図に戻る' }))
 
-  expect(screen.getByText('クリア済み')).toBeVisible()
-  expect(screen.getByText(/クリア済み/)).toBeVisible()
+  expect(screen.getByText('クリア済み', { selector: '.quest-cleared-label' })).toBeVisible()
+  expect(screen.getByRole('group', { name: 'クリア状況' })).toBeVisible()
   expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: '撮影' })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: '記録を見る' })).toBeVisible()

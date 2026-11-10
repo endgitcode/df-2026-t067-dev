@@ -8,7 +8,9 @@ import type { MapPlaceDetails } from './ShootingAreasMap'
 
 const mock = vi.hoisted(() => ({ first: vi.fn<() => Promise<MapPlaceDetails>>(), second: vi.fn<() => Promise<MapPlaceDetails>>() }))
 vi.mock('./ShootingAreasMap', () => ({
-  ShootingAreasMap: ({ onSelect }: { onSelect: (lat: number, lng: number, place: { id: string; loadDetails: () => Promise<MapPlaceDetails> }) => void }) => <>
+  ShootingAreasMap: ({ onSelect, onAvailabilityChange }: { onAvailabilityChange: (unavailable: boolean) => void; onSelect: (lat: number, lng: number, place: { id: string; loadDetails: () => Promise<MapPlaceDetails> }) => void }) => <>
+    <button onClick={() => onAvailabilityChange(false)}>地図読込完了</button>
+    <button onClick={() => onAvailabilityChange(true)}>地図読込失敗</button>
     <button onClick={() => onSelect(35, 135, { id: 'old', loadDetails: mock.first })}>地図の場所A</button>
     <button onClick={() => onSelect(36, 136, { id: 'new', loadDetails: mock.second })}>地図の場所B</button>
   </>,
@@ -27,7 +29,6 @@ it('uses only the latest map candidates after explicit confirmation', async () =
     </>
   }
   render(<Harness />)
-  await user.click(screen.getByRole('button', { name: '地図' }))
   await user.click(screen.getByRole('button', { name: '地図の場所A' }))
   await user.click(screen.getByRole('button', { name: '地図の場所B' }))
   expect(await screen.findByText('名称候補：地図の名称候補')).toBeVisible()
@@ -52,7 +53,6 @@ it('keeps manually entered values when a map candidate omits them', async () => 
     return <MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={setInput} />
   }
   render(<Harness />)
-  await user.click(screen.getByRole('button', { name: '地図' }))
   await user.click(screen.getByRole('button', { name: '地図の場所A' }))
   await screen.findByText('住所候補：候補の住所')
   await user.type(screen.getByLabelText('場所の名前'), '手入力の場所')
@@ -64,34 +64,30 @@ it('keeps manually entered values when a map candidate omits them', async () => 
 })
 
 
-it('toggles the map with the same button', async () => {
+it('starts with the map open and clears the selected place and candidate', async () => {
   const user = userEvent.setup()
-  render(<MapSpotEditor input={initialSpotInput()} invalid={false} orgId="fixture" onChange={vi.fn()} />)
-  const toggle = screen.getByRole('button', { name: '地図' })
-  expect(toggle).toHaveAttribute('aria-expanded', 'false')
-  await user.click(toggle)
-  expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  expect(screen.getByRole('button', { name: '地図の場所A' })).toBeVisible()
-  await user.click(toggle)
-  expect(toggle).toHaveAttribute('aria-expanded', 'false')
-  expect(screen.queryByRole('button', { name: '地図の場所A' })).not.toBeInTheDocument()
+  mock.first.mockResolvedValue({ name: '候補' })
+  function Harness() {
+    const [input, setInput] = useState(initialSpotInput)
+    return <MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={setInput} />
+  }
+  render(<Harness />)
+  expect(screen.queryByRole('button', { name: '地図' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '地図の場所A' }))
+  await screen.findByText('名称候補：候補')
+  await user.click(screen.getByRole('button', { name: 'やり直す' }))
+  expect(screen.queryByText('名称候補：候補')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('緯度')).toHaveValue('')
 })
 
-it('collapses coordinates, allows manual expansion, and opens invalid or missing coordinates', async () => {
+it('hides coordinates when usable and restores them after a map failure', async () => {
   const user = userEvent.setup()
-  const input = { ...initialSpotInput(), latitude: '35', longitude: '135' }
-  const { rerender } = render(<MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={vi.fn()} />)
-  const details = screen.getByText('緯度・経度').closest('details')!
-  expect(details.open).toBe(false)
-  await user.click(screen.getByText('緯度・経度'))
-  expect(details.open).toBe(true)
-  await user.click(screen.getByText('緯度・経度'))
-  rerender(<MapSpotEditor input={{ ...input, latitude: '91' }} invalid={false} orgId="fixture" onChange={vi.fn()} />)
-  expect(details.open).toBe(true)
-  expect(screen.getByLabelText('緯度')).toHaveAttribute('aria-invalid', 'true')
-  rerender(<MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={vi.fn()} />)
-  await user.click(screen.getByText('緯度・経度'))
-  rerender(<MapSpotEditor input={initialSpotInput()} invalid orgId="fixture" onChange={vi.fn()} />)
-  expect(details.open).toBe(true)
+  render(<MapSpotEditor input={initialSpotInput()} invalid orgId="fixture" onChange={vi.fn()} locationError="エリアの外です" />)
+  await user.click(screen.getByRole('button', { name: '地図読込完了' }))
+  expect(screen.queryByLabelText('緯度')).not.toBeInTheDocument()
+  expect(screen.getByRole('group', { name: '場所' })).toHaveAttribute('aria-describedby', 'spot-area-error')
+  expect(screen.getByText('エリアの外です')).toHaveAttribute('id', 'spot-area-error')
+  await user.click(screen.getByRole('button', { name: '地図読込失敗' }))
+  expect(screen.getByLabelText('緯度')).toBeVisible()
   expect(screen.getByLabelText('経度')).toHaveAttribute('aria-invalid', 'true')
 })
