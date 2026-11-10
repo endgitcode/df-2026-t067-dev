@@ -1,3 +1,4 @@
+import { parseManagedQuestDraft } from '../../src/shared/api/admin'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { ManagedQuest } from '../../src/shared/api/admin'
@@ -32,4 +33,34 @@ test('preserves an independent legacy image when slot one has an explicitly diff
   const { quest } = projectManagedQuest({ ...base, draft: { ...base.draft, hintAssetIds: ['new-hint', null, null] } }, 4)
   assert.equal(quest.hintImages?.[0], publicHintImagesPath('quest-a', 1, 4))
   assert.equal(quest.optionalHintImage, publicHintImagePath('quest-a', 4))
+})
+
+
+test('formats public conditions on separate lines without the paid category prefix', () => {
+  const quest = { ...base, draft: { ...base.draft, materials: { ...base.draft.materials,
+    requiresBoat: true, price: '有料：大人500円', photoNote: '足元に注意',
+  } } }
+  assert.equal(projectManagedQuest(quest, 4).quest.visitConditions,
+    '料金：大人500円\n注意：足元に注意')
+})
+
+test('does not publish unconfirmed prices or their unverified details', () => {
+  for (const price of ['', '未確認', ' 未確認：受付で確認 ']) {
+    const quest = { ...base, draft: { ...base.draft, materials: { ...base.draft.materials, price } } }
+    assert.equal(projectManagedQuest(quest, 4).quest.visitConditions, '')
+  }
+  const quest = { ...base, draft: { ...base.draft, materials: { ...base.draft.materials, price: '無料' } } }
+  assert.equal(projectManagedQuest(quest, 4).quest.visitConditions, '料金：無料')
+})
+
+test('free prices omit legacy amounts from the public projection', () => {
+  for (const price of ['無料：500', ' 無料：大人500円 ']) {
+    const quest = { ...base, draft: { ...base.draft, materials: { ...base.draft.materials, price } } }
+    assert.equal(projectManagedQuest(quest, 4).quest.visitConditions, '料金：無料')
+  }
+})
+
+test('draft validation drops a free price amount before persistence', () => {
+  const draft = parseManagedQuestDraft({ ...base.draft, materials: { ...base.draft.materials, price: '無料：500' } })
+  assert.equal(draft.materials.price, '無料')
 })

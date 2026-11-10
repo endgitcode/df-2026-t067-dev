@@ -5,8 +5,9 @@ import { normalizeHintAssets } from './hintAssets'
 import { useRequestAction } from '../../shared/useRequestAction'
 
 export interface LocalDraftConnection {
+  saveBlocked?: boolean
   taskFocused?: boolean
-  workflowPart?: 1 | 2 | 3
+  workflowPart?: 1 | 2 | 3 | 'all'
   onDirty?: (dirty: boolean) => void
   onSaving?: (busy: boolean) => void
   onWorkflowSave?: (record: ManagedQuest, advance: boolean) => void
@@ -32,7 +33,8 @@ function saveFailure(cause: unknown, attemptedCreate: boolean): SaveState {
 }
 
 export function useLocalDraftSave(connection?: LocalDraftConnection) {
-  const [record, setRecord] = useState(connection?.initial ?? null)
+  const [localRecord, setRecord] = useState(connection?.initial ?? null)
+  const record = connection?.workflowPart === 'all' ? connection.initial : localRecord
   const [state, setState] = useState<SaveState>({ status: 'idle' })
   const upload = useRef<(DraftAsset & { key: string }) | null>(null)
   const begin = useRequestAction()
@@ -40,7 +42,7 @@ export function useLocalDraftSave(connection?: LocalDraftConnection) {
   async function save(draft: ManagedQuestDraft, asset: DraftAsset | undefined, onSaved: (record: ManagedQuest) => void) {
     if (!connection || (state.status === 'error' && state.reload)) return
     if (asset && !connection.workflowPart && !asset.photoRights.trim()) {
-      setState({ status: 'error', message: '写真の出典と利用権を入力してください。' })
+      setState({ status: 'error', message: '写真の権利を入力' })
       return
     }
     let attemptedCreate = false

@@ -5,7 +5,7 @@ import type { SpotAddressInput, SpotAddressLookup } from '../../shared/api/admin
 
 type Lookup = (orgId: string, input: SpotAddressInput, call?: { signal?: AbortSignal }) => Promise<SpotAddressLookup>
 
-export function SpotEditor({ input, onChange, durable = false, orgId, canLookupSpotAddress = false, lookupSpotAddress, deriveShootingArea = false }: {
+export function SpotEditor({ input, onChange, durable = false, orgId, canLookupSpotAddress = false, lookupSpotAddress, deriveShootingArea: _deriveShootingArea = false }: {
   input: SpotInput; onChange(input: SpotInput): void; durable?: boolean; orgId?: string
   canLookupSpotAddress?: boolean; lookupSpotAddress?: Lookup; deriveShootingArea?: boolean
 }) {
@@ -81,8 +81,7 @@ export function SpotEditor({ input, onChange, durable = false, orgId, canLookupS
   }
 
   return <fieldset>
-    <legend>対象スポットの位置・住所</legend>
-    <p>{deriveShootingArea ? '公開までに必須。保存した位置を中心に、半径1kmの撮影範囲を設定します。住所はクリア後の案内にも使います。' : 'クリア後の案内に使います。撮影者の立ち位置は「撮影範囲」で別に設定します。'}</p>
+    <legend>場所</legend>
     <label>Google Maps共有URL<input type="url" value={input.url} maxLength={4096}
       onChange={(event) => {
         const url = event.target.value
@@ -90,41 +89,41 @@ export function SpotEditor({ input, onChange, durable = false, orgId, canLookupS
         else onChange({ ...input, url })
         setMessage('')
       }} /></label>
-    <button type="button" disabled={lookingUp} onClick={readLink}>{durable ? 'リンクから場所を取得' : 'リンクから位置候補を読み取る'}</button>
+    <button type="button" disabled={lookingUp} onClick={readLink}>{durable ? '場所を取得' : '位置を取得'}</button>
     {lookingUp && <p role="status">住所候補を確認しています…</p>}
     {addressLookup && <div aria-live="polite" className="spot-address-candidate">
       {addressLookup.status === 'candidate' ? <>
         <p>{addressLookup.source === 'place' ? 'Place IDの住所候補' : '座標周辺の住所候補'}：{addressLookup.address}</p>
-        <small><span translate="no">Google Maps</span> の候補です。住所欄には反映されません。資料で確認してから手入力してください。</small>
-      </> : <p role="status">{addressLookup.status === 'no-result' ? '住所候補は見つかりませんでした。確認済み住所を手入力してください。'
-        : addressLookup.status === 'conflict' ? '場所の住所候補を一意に確認できませんでした。確認済み住所を手入力してください。'
-        : '住所候補を取得できませんでした。確認済み住所を手入力してください。'}</p>}
+        <span translate="no">Google Maps</span>
+      </> : <p role="status">{addressLookup.status === 'no-result' ? '住所候補は見つかりませんでした。住所を手入力してください。'
+        : addressLookup.status === 'conflict' ? '場所の住所候補を一意に確認できませんでした。住所を手入力してください。'
+        : '住所候補を取得できませんでした。住所を手入力してください。'}</p>}
     </div>}
     {message && <p role="status">{message}</p>}
-    {reference?.kind === 'short' && <a href={reference.href} target="_blank" rel="noreferrer">Google Mapsで短縮リンクを開く（新しいタブ）</a>}
+    {reference?.kind === 'short' && <a href={reference.href} target="_blank" rel="noreferrer">Google Mapsを開く</a>}
     {reference?.kind === 'place' && reference.label && <p>リンク内の名称候補：{reference.label}</p>}
     {reference?.kind === 'place' && reference.googlePlaceId && <>
       <p>Place ID候補：<code>{reference.googlePlaceId}</code>。場所との対応は未確認です。</p>
       {referencePosition && <button type="button" onClick={() => {
         const { latitude, longitude } = referencePosition
         onChange({ ...input, latitude: String(latitude), longitude: String(longitude), googlePlaceId: undefined })
-      }}>リンクの座標候補を使う（Place IDは保存しない）</button>}
+      }}>座標を使う</button>}
     </>}
     {input.googlePlaceId && <p>Google Mapsの場所IDを登録済み</p>}
-    <label>スポット名・施設名<input value={input.name} maxLength={200}
+    <label>場所の名前<input value={input.name} maxLength={200}
       onChange={(event) => edit({ name: event.target.value })} /></label>
-    <label>確認済み住所<input value={input.address} maxLength={1000} placeholder="住所を手入力"
+    <label>住所<input value={input.address} maxLength={1000} placeholder="住所を手入力"
       onChange={(event) => edit({ address: event.target.value })} /></label>
     <div className="field-pair">
-      <label>スポットの緯度<input inputMode="decimal" value={input.latitude} maxLength={32}
+      <label>緯度<input inputMode="decimal" value={input.latitude} maxLength={32}
         onChange={(event) => edit({ latitude: event.target.value })} /></label>
-      <label>スポットの経度<input inputMode="decimal" value={input.longitude} maxLength={32}
+      <label>経度<input inputMode="decimal" value={input.longitude} maxLength={32}
         onChange={(event) => edit({ longitude: event.target.value })} /></label>
     </div>
-    <button type="button" aria-expanded={showMap} onClick={() => setShowMap(!showMap)}>{showMap ? '確認地図を閉じる' : '確認地図を開く'}</button>
+    <button type="button" aria-expanded={showMap} onClick={() => setShowMap(!showMap)}>地図</button>
     {showMap && <ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} spot={point}
       onSelect={(latitude, longitude) => edit({ latitude: String(latitude), longitude: String(longitude) })} />}
     {(input.name || input.address || input.latitude || input.longitude || input.googlePlaceId || (durable && input.url)) &&
-      <button type="button" className="spot-clear-button" onClick={() => { onChange(initialSpotInput()); setReference(null); setMessage('') }}>スポットの入力を消す</button>}
+      <button type="button" className="spot-clear-button" onClick={() => { onChange(initialSpotInput()); setReference(null); setMessage('') }}>場所を消す</button>}
   </fieldset>
 }

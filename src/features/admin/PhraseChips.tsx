@@ -18,7 +18,7 @@ export function PhraseChips({ label, phrases, value, onChange }: {
     onChange(base ? `${base}${base.endsWith('。') || base.endsWith('\n') ? '' : '。'}${phrase}` : phrase)
   }
   return <div className="phrase-chips">
-    <span className="helper">{label}</span>
+
     <div role="group" aria-label={label}>
       {phrases.map((phrase) => <button key={phrase} type="button" className="phrase-chip"
         aria-pressed={value.includes(phrase)} onClick={() => toggle(phrase)}>{phrase}</button>)}

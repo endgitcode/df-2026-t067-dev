@@ -31,8 +31,8 @@ function mount() {
 }
 
 async function start(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
-  await user.click(screen.getByRole('button', { name: '撮影を始める' }))
+  await user.click(screen.getByRole('button', { name: '問題を見る' }))
+  await user.click(screen.getByRole('button', { name: '撮影する' }))
 }
 
 describe('camera ownership and cleanup', () => {
@@ -48,7 +48,7 @@ describe('camera ownership and cleanup', () => {
     const media = mount()
     await start(media.user)
     await waitFor(() => expect(screen.getByLabelText('カメラ映像')).toHaveProperty('srcObject', media.stream))
-    await media.user.click(screen.getByRole('button', { name: '問題を閉じる' }))
+    await media.user.click(screen.getByRole('button', { name: '問題を見る' }))
     expect(media.stop).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('region', { name: '写真撮影と確認' })).not.toBeInTheDocument()
   })

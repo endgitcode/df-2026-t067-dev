@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { QuestDetails } from '../quests/QuestDetails'
 import { ExploreQuestList } from './ExploreQuestList'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 
@@ -19,19 +20,36 @@ describe('ExploreQuestList', () => {
   it('shows the quest number on the card only when one is assigned', () => {
     const numbered: PublicQuest[] = [{ ...quests[0], questNumber: '14-01' }, quests[1]]
     render(<ExploreQuestList areas={areas} quests={numbered} onOpenQuest={() => {}} />)
-    expect(screen.getByText('No. 14-01')).toHaveClass('traveler-row-meta')
+    expect(screen.getByText('横浜 · No. 14-01')).toHaveClass('traveler-row-meta')
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toHaveClass('traveler-list-row')
     expect(screen.getByText('港の時計台')).toHaveClass('traveler-row-title')
     expect(screen.queryByText(/No\. 40-/)).not.toBeInTheDocument()
   })
-  it('renders title-only rows without clue, area name or thumbnail', () => {
+  it('opens and closes from title, metadata and the row button', async () => {
+    const user = userEvent.setup()
+    const open = vi.fn()
+    const props = { areas, quests: [{ ...quests[0], questNumber: '14-01' }], onOpenQuest: open, detailContent: <h3>詳細本文</h3> }
+    const { rerender } = render(<ExploreQuestList {...props} />)
+    const row = screen.getByRole('button', { name: '港の時計台の詳細を見る' })
+    expect(row.children).toHaveLength(2)
+    expect(row.querySelectorAll('button')).toHaveLength(0)
+    await user.click(screen.getByText('横浜 · No. 14-01'))
+    expect(open).toHaveBeenCalledWith('q1')
+    rerender(<ExploreQuestList {...props} selectedQuestId="q1" />)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    await user.click(screen.getByText('港の時計台'))
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    await user.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+  })
+  it('renders title and area metadata without clue or thumbnail', () => {
     render(<ExploreQuestList areas={areas} quests={quests} onOpenQuest={() => {}} />)
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'この範囲の謎' })).not.toBeInTheDocument()
     expect(screen.getByText('2件')).toBeVisible()
     expect(screen.getByText('港の時計台')).toBeVisible()
-    // 行はタイトルだけ（D-46）。地域名・本文の抜粋・サムネイルは行に出さず、詳細側で出す。
-    expect(screen.queryByText('横浜')).not.toBeInTheDocument()
+    // 地域名は2行目。本文の抜粋・写真は追加しない。
+    expect(screen.getByText('横浜')).toHaveClass('traveler-row-meta')
     expect(screen.queryByText('大きな時計が見える場所')).not.toBeInTheDocument()
     expect(screen.queryByText('ピンは地域の代表点です。問題の場所そのものではありません。')).not.toBeInTheDocument()
     const card = screen.getByRole('button', { name: '港の時計台の詳細を見る' }).closest('.explore-quest-card')
@@ -89,7 +107,7 @@ describe('ExploreQuestList', () => {
 
   it('shows a condition-based empty message when no quests match', () => {
     render(<ExploreQuestList areas={areas} quests={[]} />)
-    expect(screen.getByText('選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。')).toBeVisible()
+    expect(screen.getByText('該当なし')).toBeVisible()
     expect(screen.getByText('0件')).toBeVisible()
   })
 
@@ -118,18 +136,18 @@ describe('ExploreQuestList', () => {
     expect(screen.getByText('博多の灯台')).toBeVisible()
   })
 
-  it('読み込み中は「0件」も空メッセージも出さず、行の場所を確保する（D-54）', () => {
+  it('画像読込中は「0件」も空メッセージも出さず、行の場所を確保する（D-54）', () => {
     const { container } = render(<ExploreQuestList areas={areas} quests={[]} loading />)
     expect(screen.getByText('読み込み中')).toBeVisible()
     expect(screen.queryByText('0件')).not.toBeInTheDocument()
-    expect(screen.queryByText(/選択中の条件に合う謎はありません/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/該当なし/)).not.toBeInTheDocument()
     expect(container.querySelectorAll('.explore-quest-skeleton')).toHaveLength(5)
   })
 
-  it('再取得中に行があれば「読み込み中」に切り替えず、件数と行を残す（D-75）', () => {
+  it('再取得中に行があれば「画像読込中」に切り替えず、件数と行を残す（D-75）', () => {
     const { container } = render(<ExploreQuestList areas={areas} quests={quests} loading />)
     expect(screen.getByText('2件')).toBeVisible()
-    expect(screen.queryByText('読み込み中')).not.toBeInTheDocument()
+    expect(screen.queryByText('画像読込中')).not.toBeInTheDocument()
     expect(screen.getByText('港の時計台')).toBeVisible()
     expect(screen.getByText('博多の灯台')).toBeVisible()
     expect(container.querySelectorAll('.explore-quest-skeleton')).toHaveLength(0)
@@ -138,7 +156,7 @@ describe('ExploreQuestList', () => {
   it('読み込み完了後に0件なら空メッセージを出す（D-54）', () => {
     render(<ExploreQuestList areas={areas} quests={[]} />)
     expect(screen.getByText('0件')).toBeVisible()
-    expect(screen.getByText(/選択中の条件に合う謎はありません/)).toBeVisible()
+    expect(screen.getByText(/該当なし/)).toBeVisible()
   })
 
   it('選択中の行の再タップは、解除の受け口があれば選択解除を呼ぶ（D-55）', async () => {
@@ -205,12 +223,13 @@ it.each([false, true])('scrolls the opened lower row to the top (reduced motion:
   vi.unstubAllGlobals()
 })
 
-it.each(['button', 'Escape'])('closes the explanation with %s and returns focus to its row', async (method) => {
+it.each(['row', 'Escape'])('closes the explanation with %s and returns focus to its row', async (method) => {
   const user = userEvent.setup()
   render(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q2" onOpenQuest={vi.fn()} detailContent={<h3>説明</h3>} />)
-  const close = screen.getByRole('button', { name: '説明を閉じる' })
+  expect(screen.queryByRole('button', { name: '説明を閉じる' })).not.toBeInTheDocument()
+  const close = screen.getByRole('button', { name: '博多の灯台の詳細を見る' })
   close.focus()
-  if (method === 'button') await user.click(close)
+  if (method === 'row') await user.click(close)
   else await user.keyboard('{Escape}')
   expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' })).toHaveFocus()
   expect(screen.getByRole('button', { name: '博多の灯台の詳細を見る' })).toHaveAttribute('aria-expanded', 'false')
@@ -228,4 +247,20 @@ it.each(['explore-side-panel', 'explore-sheet-body'])('aligns a scrolled row wit
   vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ y: 500 }))
   rerender(<div className={className}><div className="side-panel-filters">場所</div><ExploreQuestList areas={areas} quests={quests} selectedQuestId="q2" onOpenQuest={vi.fn()} detailContent={<h3>説明</h3>} /></div>)
   expect(scrollTo).toHaveBeenCalledWith({ top: className === 'explore-side-panel' ? 432 : 496, behavior: 'smooth' })
+})
+
+it('開いたクリア済み行はバッジ1つと記録への導線を保つ', async () => {
+  const onOpenDiscovery = vi.fn()
+  const onStart = vi.fn()
+  const { container } = render(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q1"
+    clearedQuestIds={new Set(['q1'])} onOpenQuest={vi.fn()}
+    detailContent={<QuestDetails quest={quests[0]} areaLabel="横浜" open hideToggle disabled={false}
+      buttonLabel="挑戦する" onToggle={vi.fn()} onStart={onStart}
+      clearedDiscoveryId="record-1" onOpenDiscovery={onOpenDiscovery} />} />)
+  expect(screen.getAllByText('クリア済み')).toHaveLength(1)
+  expect(container.querySelector('.explore-quest-cleared svg')).toHaveAttribute('aria-hidden', 'true')
+  expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
+  await userEvent.setup().click(screen.getByRole('button', { name: '記録を見る' }))
+  expect(onOpenDiscovery).toHaveBeenCalledExactlyOnceWith('record-1')
+  expect(onStart).not.toHaveBeenCalled()
 })

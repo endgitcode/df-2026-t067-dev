@@ -188,10 +188,10 @@ describe('探索画面の縁なし（全画面）表示', () => {
     // カード＋ピッカー＋詳細の三重表示にはしない、D-43）。
     expect(await within(panel as HTMLElement).findByRole('heading', { name: quest.title })).toBeVisible()
     expect(screen.getAllByRole('heading', { name: quest.title })).toHaveLength(1)
-    // 地図が使える間は全件ピッカーと「公開情報を更新」を出さず、選択はカード一覧とピンに一本化する。
+    // 地図が使える間は全件ピッカーと「更新する」を出さず、選択はカード一覧とピンに一本化する。
     // 閲覧の案内・デモの注記・フッターの文言も出さない（D-39）。
     await waitFor(() => expect(panel?.querySelector('.api-quest-picker')).toBeNull())
-    expect(within(panel as HTMLElement).queryByRole('button', { name: '公開情報を更新' })).not.toBeInTheDocument()
+    expect(within(panel as HTMLElement).queryByRole('button', { name: '更新する' })).not.toBeInTheDocument()
     expect(wide.container.querySelector('.browse-note')).toBeNull()
     expect(wide.container.querySelector('.demo-note')).toBeNull()
     expect(wide.container.querySelector('.side-panel-footer-note')).toBeNull()
@@ -206,7 +206,7 @@ describe('探索画面の縁なし（全画面）表示', () => {
     const rail = narrow.container.querySelector('.quest-rail')
     expect(rail).not.toBeNull()
     await waitFor(() => expect(rail?.querySelector('.api-quest-picker')).toBeNull())
-    expect(within(rail as HTMLElement).queryByRole('button', { name: '公開情報を更新' })).not.toBeInTheDocument()
+    expect(within(rail as HTMLElement).queryByRole('button', { name: '更新する' })).not.toBeInTheDocument()
     // スマホ幅でも案内・注記類は出さない（D-39）。
     expect(narrow.container.querySelector('.demo-note')).toBeNull()
     expect(narrow.container.querySelector('.browse-note')).toBeNull()

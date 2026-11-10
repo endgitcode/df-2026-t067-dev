@@ -66,30 +66,30 @@ it('shows the quest as cleared right after clearing, without a reload', async ()
   const user = userEvent.setup()
   const view = render(<App authClient={auth} apiClient={api} quest={quest} apiMode apiDataMode="durable-local" />)
 
-  await user.click(screen.getByRole('button', { name: '問題を見てみる' }))
-  expect(await screen.findByRole('button', { name: '挑戦を始める' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: '問題を見る' }))
+  expect(await screen.findByRole('button', { name: '挑戦する' })).toBeVisible()
   expect(screen.queryByText('クリア済み')).not.toBeInTheDocument()
 
   // 挑戦→撮影→送信→正解確定まで実フローで進める。
-  await user.click(screen.getByRole('button', { name: '挑戦を始める' }))
+  await user.click(screen.getByRole('button', { name: '挑戦する' }))
   await loadFrame(stream)
-  await user.click(await screen.findByRole('button', { name: '撮影する' }))
-  const submit = await screen.findByRole('button', { name: '写真と位置をテスト送信' })
+  await user.click(await screen.findByRole('button', { name: '撮影' }))
+  const submit = await screen.findByRole('button', { name: '送る' })
   await waitFor(() => expect(submit).toBeEnabled())
   await user.click(submit)
-  // 判定中は待ち表示のみ（判定結果を確認は出さない）。自動ポーリングでクリア画面へ進む。
+  // 判定中は待ち表示のみ（判定を確認は出さない）。自動ポーリングでクリア画面へ進む。
   expect(await screen.findByRole('status', { name: '写真の判定待ち' })).toBeVisible()
-  expect(screen.queryByRole('button', { name: '判定結果を確認' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: '判定を確認' })).not.toBeInTheDocument()
   // 初回クリアでは全画面のクリア画面（D-63）が出る。ここでは「地図に戻る」で
   // 詳細へ戻る退出を選び、戻った先がその場でクリア済み表示になることを見る。
   expect(await screen.findByRole('heading', { name: 'クリア！' })).toBeVisible()
   // fullbleed 殻が常駐するため「地図に戻る」が複数候補になり得る。クリア画面のダイアログ内だけを押す。
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '地図に戻る' }))
+  await user.click(within(screen.getByRole('dialog', { name: 'クリア！' })).getByRole('button', { name: '地図に戻る' }))
 
   expect(screen.getByText('クリア済み')).toBeVisible()
-  expect(screen.getByText(/再挑戦はできません/)).toBeVisible()
-  expect(screen.queryByRole('button', { name: '挑戦を始める' })).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: '撮影を始める' })).not.toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '自分の記録を見る' })).toBeVisible()
+  expect(screen.getByText(/クリア済み/)).toBeVisible()
+  expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: '撮影' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '記録を見る' })).toBeVisible()
   expect(view.container.querySelector('.explore-quest-cleared, .quest-cleared-label')).not.toBeNull()
 })

@@ -6,13 +6,7 @@ import { ApiError, createApiClient } from '../../shared/api/client'
 import type { LocalApiDataMode } from '../../shared/api/client'
 import type { Page, PublicArea, PublicQuest } from '../../shared/api/types'
 import { getRegionAreas, REGIONS } from './areaHierarchy'
-import {
-  isPrefectureEffectivelySelected,
-  regionRowSummary,
-  regionWholeLabel,
-  withPrefectureToggle,
-  withRegionWhole,
-} from './placeFilterSelection'
+import { normalizePlaceSelection } from './placeFilterSelection'
 
 type Api = Pick<ReturnType<typeof createApiClient>, 'listQuests' | 'getQuest' | 'listAreas' | 'getHint'>
 const emptyAreas: PublicArea[] = []
@@ -38,9 +32,8 @@ function readSelectionFromUrl() {
   return {
     areaId: params.get('area') ?? '',
     questId: params.get('quest') ?? '',
-    // 複数は regions / prefs。古い単数 region / pref も読む。
-    regions: parseListParam(params, 'regions', 'region'),
-    prefectures: parseListParam(params, 'prefs', 'pref'),
+    // 旧複数指定は最初の有効な県へ、地方のみの指定は全国へ戻す。
+    ...normalizePlaceSelection(parseListParam(params, 'prefs', 'pref')),
   }
 }
 
@@ -123,7 +116,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   const restoreRefreshFocus = useRef(false)
   const [staleQuest, setStaleQuest] = useState<{ questId: string; version: number } | null>(null)
   // 地図が使える表示（シート／パネル表示）かどうかは MapPreview から受け取る。使える間は
-  // 問題の選択を地図連動のカード一覧とピンに一本化し、全件ピッカーと「公開情報を更新」は
+  // 問題の選択を地図連動のカード一覧とピンに一本化し、全件ピッカーと「更新する」は
   // 地図が使えないフォールバック表示でのみ出す（D-43）。再取得の仕組み自体は変えない。
   const [mapSheetMode, setMapSheetMode] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
@@ -249,9 +242,9 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
         if (refreshingRetry.current === retry && refreshOperation.current === operation) {
           const snapshot = refreshSnapshot.current
           if (snapshot?.api === api && snapshot.questId !== quest.questId) {
-            setRefreshNotice({ api, text: '更新により選択中の問題が公開一覧からなくなったため、別の問題を表示しています。' })
+            setRefreshNotice({ api, text: '選択問題変更' })
           } else if (snapshot?.api === api && snapshot.questId === quest.questId && snapshot.version !== quest.version) {
-            setRefreshNotice({ api, text: '問題が更新されました。詳細を開いて内容をご確認ください。' })
+            setRefreshNotice({ api, text: '問題更新' })
           }
         }
       } catch (error) {
@@ -318,36 +311,17 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     writeSelectionToUrl(selectedAreaId, selectedId, 'replace', regions, prefectures)
   }
   const applyPlaceFilter = (regions: readonly string[], prefectures: readonly string[]) => {
-    if (dataMode !== 'demo') setFilterOpen(false)
+    setFilterOpen(false)
+    filterPanelRef.current?.querySelector<HTMLButtonElement>('.filter-toggle')?.focus()
     setActiveRegions([...regions])
     setActivePrefectures([...prefectures])
     if (selectedAreaId || selectedId) resetAreaSelection(regions, prefectures)
     else syncFilterToUrl(regions, prefectures)
   }
-  const toggleRegion = (region: string) => {
-    // チップの×／再タップは地方丸ごとの ON/OFF。
-    const on = !activeRegions.includes(region)
-    const next = withRegionWhole(activeRegions, activePrefectures, region, on)
-    applyPlaceFilter(next.regions, next.prefectures)
-  }
-  const toggleRegionWhole = (region: string) => {
-    const on = !activeRegions.includes(region)
-    const next = withRegionWhole(activeRegions, activePrefectures, region, on)
-    applyPlaceFilter(next.regions, next.prefectures)
-  }
-  const togglePrefecture = (prefecture: string) => {
-    const region = REGIONS.find((item) => (item.prefectures as readonly string[]).includes(prefecture))?.name
-    if (!region) return
-    const next = withPrefectureToggle(activeRegions, activePrefectures, region, prefecture)
-    applyPlaceFilter(next.regions, next.prefectures)
-  }
-  const clearPlaceFilter = () => {
-    applyPlaceFilter([], [])
-  }
+  const selectPrefecture = (prefecture: string) => applyPlaceFilter([], [prefecture])
+  const clearPlaceFilter = () => applyPlaceFilter([], [])
   const toggleRegionAccordion = (region: string) => {
-    setOpenRegions((current) => current.includes(region)
-      ? current.filter((item) => item !== region)
-      : [...current, region])
+    setOpenRegions((current) => current.includes(region) ? [] : [region])
   }
   const openPlaceFilter = () => {
     setFilterOpen((value) => {
@@ -361,48 +335,32 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       return next
     })
   }
-  // 地方→県のアコーディオン（D-48 の畳みは維持）。複数選択は「または」（#160）。
-  // 永続側・共有検証では選択後に欄を閉じ、選択条件は外せるチップとして残す。
-  const selectedPlaceCount = activeRegions.length + activePrefectures.length
-  const filterSummary = selectedPlaceCount > 0 ? `場所で絞る：${selectedPlaceCount}件` : '場所で絞る'
+  const filterSummary = activePrefectures[0] ?? '場所で絞る'
   const selectedArea = availableAreas.find((area) => area.areaId === selectedAreaId)
   const filterControls = <div ref={filterPanelRef} className="map-filter-panel">
-    <button type="button" className="filter-toggle" aria-expanded={filterOpen} onClick={openPlaceFilter}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
+    <button type="button" className="filter-toggle" data-selected={activePrefectures.length > 0} aria-expanded={filterOpen} onClick={openPlaceFilter}>{filterSummary}<span className={'filter-toggle-chevron' + (filterOpen ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span></button>
     {dataMode !== 'demo' && selectedArea && <div className="map-filter-selection">
       <button type="button" className="filter-chip" aria-label={`${selectedArea.label}のしぼり込みを外す`} onClick={() => resetAreaSelection()}>{selectedArea.label} <span aria-hidden="true">×</span></button>
       <span role="status">{visibleChoices.length}件の謎</span>
     </div>}
-    {selectedPlaceCount > 0 && <div className="map-filter-selection">
-      {activeRegions.map((region) => <button key={`r-${region}`} type="button" className="filter-chip" aria-label={`${region}の絞り込みを解除`} onClick={() => toggleRegion(region)}>{region} <span aria-hidden="true">×</span></button>)}
-      {activePrefectures.map((prefecture) => <button key={`p-${prefecture}`} type="button" className="filter-chip" aria-label={`${prefecture}の絞り込みを解除`} onClick={() => togglePrefecture(prefecture)}>{prefecture} <span aria-hidden="true">×</span></button>)}
-      <button type="button" className="filter-chip filter-clear-all" onClick={clearPlaceFilter}>すべて解除</button>
-    </div>}
-    <div className={'map-filter-chips-wrap' + (filterOpen ? ' is-open' : '')} aria-hidden={!filterOpen}>
+    {filterOpen && <div className="map-filter-chips-wrap is-open">
       <div className="map-filter-chips-inner">
-        <div className="filter-accordion" role="list" aria-label="地方から選ぶ">
+        <div className="filter-accordion" aria-label="地方から選ぶ">
+          <button type="button" className="filter-nationwide" onClick={clearPlaceFilter}>全国</button>
           {REGIONS.map((region) => {
             const expanded = openRegions.includes(region.name)
-            const summary = regionRowSummary(region.name, activeRegions, activePrefectures)
             const panelId = `place-filter-${region.name}`
-            return <div key={region.name} className={'filter-accordion-item' + (summary.whole || summary.count > 0 ? ' has-selection' : '')} role="listitem">
+            return <div key={region.name} className="filter-accordion-item">
               <button type="button" className="filter-accordion-row" aria-expanded={expanded} aria-controls={panelId}
-                aria-label={summary.label ? `${region.name}、${summary.label}` : region.name}
                 onClick={() => toggleRegionAccordion(region.name)}>
                 <span className="filter-accordion-name">{region.name}</span>
-                {summary.label ? <span className="filter-accordion-count" aria-hidden="true">{summary.label}</span> : null}
                 <span className={'filter-accordion-chevron' + (expanded ? ' is-open' : '')} aria-hidden="true"><Icon name="chevron" /></span>
               </button>
               {expanded && <div id={panelId} className="filter-accordion-body" role="group" aria-label={`${region.name}の都道府県`}>
-                <button type="button" className="filter-check" aria-pressed={summary.whole}
-                  onClick={() => toggleRegionWhole(region.name)}>
-                  <span className="filter-check-box" aria-hidden="true">{summary.whole ? '✓' : ''}</span>
-                  {regionWholeLabel(region.name)}
-                </button>
                 {region.prefectures.map((prefecture) => {
-                  const pressed = isPrefectureEffectivelySelected(region.name, prefecture, activeRegions, activePrefectures)
-                  return <button key={prefecture} type="button" className="filter-check" aria-pressed={pressed}
-                    onClick={() => togglePrefecture(prefecture)}>
-                    <span className="filter-check-box" aria-hidden="true">{pressed ? '✓' : ''}</span>
+                  const pressed = activePrefectures.includes(prefecture)
+                  return <button key={prefecture} type="button" className="filter-prefecture" aria-pressed={pressed}
+                    onClick={() => selectPrefecture(prefecture)}>
                     {prefecture}
                   </button>
                 })}
@@ -411,7 +369,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
           })}
         </div>
       </div>
-    </div>
+    </div>}
   </div>
   // 問題の選択は全モード共通で「リストの項目を押す」形に統一する（ドロップダウンは置かない）。
   // 地図のカードと同じく、押した問題の詳細を開くところまでを担う。
@@ -436,7 +394,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     }
   }
   const picker = <div className="api-quest-picker">
-    {(activeRegions.length > 0 || activePrefectures.length > 0) && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '一覧から問題を選んでください。' : 'この条件に合う問題はありません。'}</p>}
+    {(activeRegions.length > 0 || activePrefectures.length > 0) && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '問題を選ぶ' : '該当なし'}</p>}
     <ul aria-label="問題一覧">{visibleChoices.map((item) => <li key={item.questId}>
       <button type="button" aria-label={`${item.title}を開く`} aria-pressed={item.questId === selectedQuestId} onClick={() => chooseQuest(item)}>{item.title}</button>
     </li>)}</ul>
@@ -463,7 +421,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   }, [refreshing])
   const refreshControl = <>
     <button ref={refreshButton} type="button" onClick={reload} disabled={refreshing}>
-      {refreshing ? '公開情報を更新中…' : '公開情報を更新'}
+      {refreshing ? '更新中' : '更新する'}
     </button>
     {refreshing && <span role="status">地域・問題一覧・選択中の詳細を取り直しています。</span>}
     {refreshNotice?.api === api && <span role="status">{refreshNotice.text}</span>}
@@ -502,18 +460,16 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   // カードと二重に出さない（D-57）。地図が使えないフォールバック表示でのみ、
   // 読み込み中もこの枠が進捗を伝える。
   const fallback = !quest && state !== 'ready' && !(state === 'loading' && mapSheetMode) ? <section className="api-load-state" aria-live="polite">
-      <FallbackHeading id={dataMode !== 'demo' ? undefined : 'explore-title'}>{state === 'loading' ? '問題を読み込んでいます' : state === 'empty' ? '問題はありません' : '問題を読み込めませんでした'}</FallbackHeading>
-      {state === 'loading' && <p role="status">問題の一覧を取得しています。</p>}
-      {state === 'empty' && <p>{selectedAreaId ? 'この地域には問題がありません。地図や地方の絞り込みから別の地域をお選びください。' : '現在選べる問題はありません。'}</p>}
+      <FallbackHeading id={dataMode !== 'demo' ? undefined : 'explore-title'}>{state === 'loading' ? '問題読込中' : state === 'empty' ? '問題なし' : '問題読込失敗'}</FallbackHeading>
       {state === 'error' && <p role="alert">{current?.missing
         ? 'この問題は見つかりません。別の問題を選べます。'
-        : '通信状況を確認して、もう一度お試しください。'}</p>}
+        : '通信失敗'}</p>}
       {state !== 'loading' && <button type="button" onClick={(event) => reload(event)} disabled={refreshing}>再試行</button>}
       {!mapSheetMode && refreshControl}
       {(availableAreas.length > 0 || choices.length > 0 || state === 'empty' || state === 'error') && <>{dataMode === 'demo' && filterControls}{!mapSheetMode && picker}</>}
     </section> : undefined
   return <App openQuestRequest={openQuestRequest} authClient={authClient} quest={quest && ((activeRegions.length === 0 && activePrefectures.length === 0) || visibleAreaIds.has(quest.areaId)) ? quest : undefined} mapAreas={availableAreas} filterRegion={activeRegions} filterPrefecture={activePrefectures} mapQuests={visibleChoices} mapQuestsLoading={state === 'loading' && visibleChoices.length === 0} onOpenQuest={openQuestFromMap} onDeselectQuest={deselectQuest} selectedAreaId={selectedAreaId} onSelectArea={selectArea}
-    areaLabel={current?.area?.label ?? '探索地域名は未掲載です'}
+    areaLabel={current?.area?.label ?? '地域未掲載'}
     questPicker={mapSheetMode ? undefined : <>{picker}{refreshControl}</>} catalogFallback={fallback} mapOverlay={filterControls} onMapSheetModeChange={setMapSheetMode} apiMode apiDataMode={dataMode} teamAnswerTrial={teamAnswerTrial} getHint={api.getHint}
     questStale={!!quest && staleQuest?.questId === quest.questId && staleQuest.version === quest.version}
     onHintVersionStale={() => { if (quest) setStaleQuest({ questId: quest.questId, version: quest.version }) }}

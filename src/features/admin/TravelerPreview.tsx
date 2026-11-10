@@ -1,3 +1,4 @@
+import { normalizePrice } from '../../shared/api/admin'
 import { useState, type RefObject } from 'react'
 import ClearExplanationPreview, { type ClearExplanationContent } from './ClearExplanationPreview'
 import type { ManagedQuestDraft, ShootingConditions } from '../../shared/api/admin'
@@ -31,9 +32,9 @@ function ChallengePreview({ content, areaLabel }: { content: ChallengePreviewCon
       <ShootingConditionIndicators conditions={content} />
     </header>
     <p>{shown(content.question)}</p>
-    <section aria-labelledby="preview-area-heading"><h4 id="preview-area-heading">公開探索エリア</h4><p>{areaLabel ?? '青葉みらい市の行政区域'}</p></section>
+    <section aria-labelledby="preview-area-heading"><h4 id="preview-area-heading">探索エリア</h4><p>{areaLabel ?? '青葉みらい市の行政区域'}</p></section>
     {(content.price.trim() || content.photoNote.trim()) && <section aria-labelledby="preview-conditions-heading"><h4 id="preview-conditions-heading">挑戦前の条件</h4>
-      <dl><dt>料金</dt><dd>{shown(content.price)}</dd><dt>撮影時の注意</dt><dd>{shown(content.photoNote)}</dd></dl>
+      <dl><dt>料金</dt><dd>{shown(normalizePrice(content.price))}</dd><dt>撮影の注意</dt><dd>{shown(content.photoNote)}</dd></dl>
     </section>}
     <section aria-labelledby="preview-hints-heading"><h4 id="preview-hints-heading">ヒント</h4>
       {content.hints.map((hint, index) => (
@@ -48,13 +49,13 @@ function ChallengePreview({ content, areaLabel }: { content: ChallengePreviewCon
 
 export default function TravelerPreview({ challengeContent, afterClearContent, mode, onModeChange, headingRef, onEdit, areaLabel }: Props) {
   return <section className="form-section traveler-preview" aria-labelledby="preview-heading">
-    <h2 id="preview-heading" ref={headingRef} tabIndex={-1}>旅行者向け表示の確認（未公開）</h2>
-    <p className="demo-notice" role="note">表示確認のみです。この内容は、実際の旅行者画面・写真判定・公開にはまだ反映されません。</p>
+    <h2 id="preview-heading" ref={headingRef} tabIndex={-1}>プレビュー</h2>
+    <p className="demo-notice" role="note">未公開プレビュー</p>
     <div className="preview-mode" role="group" aria-label="表示する内容">
-      <button type="button" aria-pressed={mode === 'challenge'} onClick={() => onModeChange('challenge')}>挑戦前の問題</button>
-      <button type="button" aria-pressed={mode === 'after-clear'} onClick={() => onModeChange('after-clear')}>クリア後の解説</button>
+      <button type="button" aria-pressed={mode === 'challenge'} onClick={() => onModeChange('challenge')}>挑戦前</button>
+      <button type="button" aria-pressed={mode === 'after-clear'} onClick={() => onModeChange('after-clear')}>クリア後</button>
     </div>
     {mode === 'challenge' ? <ChallengePreview content={challengeContent} areaLabel={areaLabel} /> : <ClearExplanationPreview content={afterClearContent} />}
-    <button type="button" onClick={onEdit}>問題の文章を編集</button>
+    <button type="button" onClick={onEdit}>文章を編集</button>
   </section>
 }

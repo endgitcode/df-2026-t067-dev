@@ -16,6 +16,7 @@ if (!HTMLDialogElement.prototype.showModal) {
 }
 
 beforeEach(() => {
+  sessionStorage.clear()
   // 画面タブの ?view= などがテスト間に残ると、次の App マウントが記録画面から始まる。
   window.history.replaceState(null, '', '/')
   vi.stubEnv('VITE_QUEST_DATA_SOURCE', 'preview')

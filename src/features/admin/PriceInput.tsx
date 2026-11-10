@@ -1,3 +1,4 @@
+import { normalizePrice } from '../../shared/api/admin'
 import { useEffect, useId } from 'react'
 const kinds = ['無料', '有料', '未確認'] as const
 function split(value: string) {
@@ -19,20 +20,14 @@ function composePaidDetail(target: string, amount: string, note: string) {
   return [head, note].filter(Boolean).join('／')
 }
 
-/**
- * The persisted contract remains one optional string. The kind prefix and the
- * existing detail text are preserved; only the visible fields change by kind:
- * paid prices get amount/target inputs, free/unconfirmed collapse the detail
- * into an optional note, and unclassified values keep one free-text field.
- */
 export function PriceInput({ value, onChange, onError }: { value: string; onChange: (value: string) => void; onError?: (error: string) => void }) {
-  const parsed = split(value)
+  const parsed = split(normalizePrice(value))
   const paid = parsed.kind === '有料' ? parsePaidDetail(parsed.detail) : null
   const errorId = useId()
-  const error = paid?.amount && !/^\d+$/.test(paid.amount) ? '金額は0以上の整数で入力してください。' : ''
+  const error = paid?.amount && !/^\d+$/.test(paid.amount) ? '金額は0以上の整数' : ''
   useEffect(() => { onError?.(error) }, [error, onError])
   function setKind(kind: string) {
-    onChange(kind ? kind + (parsed.detail ? '：' + parsed.detail : '') : parsed.detail)
+    onChange(normalizePrice(kind ? kind + (parsed.detail ? '：' + parsed.detail : '') : parsed.detail))
   }
   function setDetail(detail: string) {
     onChange(parsed.kind ? parsed.kind + (detail ? '：' + detail : '') : detail)
@@ -42,17 +37,17 @@ export function PriceInput({ value, onChange, onError }: { value: string; onChan
       <option value="">未設定・自由文</option>{kinds.map(kind => <option key={kind}>{kind}</option>)}</select></label>
     {parsed.kind === '' && <label>料金<input value={value} onChange={event => onChange(event.target.value)} placeholder="例：大人500円／無料／要確認" /></label>}
     {paid && <>
-      <label>金額（円）<input aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} type="number" min="0" step="1" inputMode="numeric" value={paid.amount}
+      <label>料金・円<input aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} type="number" min="0" step="1" inputMode="numeric" value={paid.amount}
         onChange={event => setDetail(composePaidDetail(paid.target, event.target.value, paid.note))} /></label>
       {error && <p id={errorId} role="alert" className="field-error">{error}</p>}
       <label>金額の対象<select value={paid.target} onChange={event => setDetail(composePaidDetail(event.target.value, paid.amount, paid.note))}>
-        <option value="">指定なし（一律）</option><option value="大人">大人</option><option value="子供">子供</option></select></label>
+        <option value="">一律</option><option value="大人">大人</option><option value="子供">子供</option></select></label>
       <label>料金の補足<input value={paid.note} onChange={event => setDetail(composePaidDetail(paid.target, paid.amount, event.target.value))} placeholder="例：子供200円、特別展は別途" /></label>
     </>}
-    {(parsed.kind === '無料' || parsed.kind === '未確認') && <details>
-      <summary>料金の補足（任意）</summary>
+    {parsed.kind === '未確認' && <details>
+      <summary>補足</summary>
       <label>料金の補足<input value={parsed.detail} onChange={event => setDetail(event.target.value)} placeholder="例：施設により異なります" /></label>
     </details>}
-    <p className="helper">補足は区分を変えても保持されます。空欄は無料を意味しません。</p>
+
   </div>
 }

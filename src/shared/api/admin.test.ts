@@ -73,3 +73,7 @@ it('binds review responses to the requested revision and rejects inconsistent re
   await expect(withResult(pending).submitManagedQuestReview('demo-org', 'draft-a', 2)).rejects.toMatchObject({ code: 'INVALID_RESPONSE' })
   await expect(withResult({ ...pending, missing: ['referenceAssetId'] }).submitManagedQuestReview('demo-org', 'draft-a', 1)).rejects.toMatchObject({ code: 'INVALID_RESPONSE' })
 })
+
+it('normalizes free prices before drafts reach storage', () => {
+  expect(parseManagedQuestDraft({ ...draft, materials: { ...draft.materials, price: '無料：500' } }).materials.price).toBe('無料')
+})

@@ -10,8 +10,8 @@ const areas: PublicArea[] = [{ areaId: 'area-a', label: 'A', publishedCount: 1, 
 describe('Google map panel', () => {
   it('explains that a key is required without a browsing-continues note', () => {
     render(<MapPreview />)
-    expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
-    expect(screen.getByText('地図を表示するには設定をご確認ください。')).toBeVisible()
+    expect(screen.getByText('地図未設定')).toBeVisible()
+    expect(screen.queryByText('地図を表示するには設定をご確認ください。')).not.toBeInTheDocument()
     expect(screen.queryByText(/問題の閲覧は続けられます/)).not.toBeInTheDocument()
   })
   it('does not create quest markers from the currently selected sample', () => {
@@ -29,6 +29,16 @@ describe('Google map panel', () => {
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
   })
+  it('renders the location picker once inside the PC list even without a map key', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('min-width: 981px'), media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }))
+    const { container } = render(<MapPreview topOverlay={<button type="button">場所で絞る</button>} />)
+    expect(screen.getAllByRole('button', { name: '場所で絞る' })).toHaveLength(1)
+    expect(container.querySelector('.side-panel-filters')).toContainElement(screen.getByRole('button', { name: '場所で絞る' }))
+    expect(container.querySelector('.map-filter-flow')).not.toBeInTheDocument()
+  })
   it('keeps authentication failure visible when it occurs during map creation', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
@@ -43,13 +53,13 @@ describe('Google map panel', () => {
     try {
       const { unmount } = render(<ConfiguredMapPreview />)
       const alert = await screen.findByRole('alert')
-      expect(alert).toHaveTextContent('地図を読み込めませんでした')
+      expect(alert).toHaveTextContent('地図読込失敗')
       expect(alert).not.toHaveTextContent('問題の閲覧は続けられます')
       expect(screen.queryByRole('button', { name: '地図を拡大' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'ページを再読み込み' })).toBeVisible()
+      expect(screen.getByRole('button', { name: '再読込' })).toBeVisible()
       unmount()
       render(<ConfiguredMapPreview />)
-      expect(await screen.findByRole('alert')).toHaveTextContent('地図の設定を確認して')
+      expect(await screen.findByRole('alert')).toHaveTextContent('地図設定を確認')
       expect(screen.queryByRole('button', { name: '地図を拡大' })).not.toBeInTheDocument()
     } finally { delete window.google }
   })
@@ -105,7 +115,7 @@ describe('Google map panel', () => {
     render(<ConfiguredMapPreview areas={areas} />)
     expect(await screen.findByRole('button', { name: '地図を拡大' })).toBeVisible()
     const retry = await screen.findByRole('button', { name: '地域エリアを再試行' })
-    expect(screen.getByRole('alert')).toHaveTextContent('地域エリアを表示できませんでした')
+    expect(screen.getByRole('alert')).toHaveTextContent('地域表示失敗')
     await user.click(retry)
     await waitFor(() => expect(addGeoJson).toHaveBeenCalledTimes(2))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -491,7 +501,7 @@ describe('Google map panel', () => {
     const select = vi.fn()
     const { rerender, unmount } = render(<ConfiguredMapPreview areas={[inside, outside]} filterRegion="北海道" onSelectArea={select} />)
     await waitFor(() => expect(made.length).toBeGreaterThanOrEqual(2))
-    const outer = made.findLast((marker) => marker.title.startsWith('Aの探索'))!
+    const outer = made.findLast((marker) => marker.title.startsWith('A '))!
     const inner = made.findLast((marker) => marker.title.startsWith('北海道の地域'))!
     expect(decodeURIComponent(outer.icon.url)).toContain('opacity="0.3"')
     expect(decodeURIComponent(inner.icon.url)).toContain('opacity="1"')
@@ -877,10 +887,10 @@ describe('Google map panel', () => {
     rerender(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" onSelectArea={onSelectArea} />)
     await user.click(screen.getByRole('button', { name: '現在地へ戻る' }))
     act(() => failure?.({ code: 1 }))
-    expect(document.querySelector('.map-location-status')).toHaveTextContent('位置情報が許可されませんでした')
-    expect(document.querySelector('.map-location-status')).toHaveTextContent('アドレスバーのサイト情報から位置情報を「確認」または「許可」に変更')
+    expect(document.querySelector('.map-location-status')).toHaveTextContent('位置情報未許可')
+    expect(document.querySelector('.map-location-status')).toHaveTextContent('サイト設定で許可')
     // そのセッションで最初の現在地利用なので、結果メッセージに送信案内が一度だけ添えられる（D-28）。
-    expect(document.querySelector('.map-location-status')).toHaveTextContent('位置情報はGoogle Mapsに送信されます')
+    expect(document.querySelector('.map-location-status')).toHaveTextContent('位置情報をGoogle Mapsに送信')
     // 失敗の表示は閉じるボタンでも即座に消せる（D-58）。
     await user.click(screen.getByRole('button', { name: '位置情報の表示を閉じる' }))
     expect(document.querySelector('.map-location-status')).not.toBeInTheDocument()
@@ -892,9 +902,9 @@ describe('Google map panel', () => {
     expect(createMarker).toHaveBeenCalledWith(expect.objectContaining({
       position: { lat: 35.6812, lng: 139.7671 }, title: '現在地', clickable: false,
     }))
-    expect(document.querySelector('.map-location-status')).toHaveTextContent('現在地を地図の中心に表示しました')
+    expect(document.querySelector('.map-location-status')).toHaveTextContent('現在地を表示')
     // 2回目以降の現在地利用では送信案内は繰り返さない。
-    expect(document.querySelector('.map-location-status')).not.toHaveTextContent('送信されます')
+    expect(document.querySelector('.map-location-status')).not.toHaveTextContent('位置情報をGoogle Mapsに送信')
     expect(onSelectArea).not.toHaveBeenCalled()
     unmount()
     expect(setMarkerMap).toHaveBeenCalledWith(null)
@@ -911,10 +921,10 @@ describe('Google map panel', () => {
     const { unmount } = render(<ConfiguredMapPreview areas={areas} quests={[]} showBoundaryCredit />)
     expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     // 位置情報の送信案内は地図の右上に常駐しない（D-28）。使う時にだけ結果メッセージへ出す。
-    expect(screen.queryByText(/位置情報はGoogle Mapsに送信されます/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/位置情報をGoogle Mapsに送信/)).not.toBeInTheDocument()
     expect(document.querySelector('.map-location-action')).not.toBeInTheDocument()
     // 境界データの出典は短い文言でシート内に小さく常駐する（D-46）。
-    expect(screen.getByText('境界データ：国土数値情報N03（国土交通省）')).toBeInTheDocument()
+    expect(screen.getByText('境界データ：国土数値情報N03 国土交通省')).toBeInTheDocument()
     unmount()
     const { unmount: unmountPlain } = render(<ConfiguredMapPreview areas={areas} quests={[]} />)
     expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
@@ -934,7 +944,7 @@ describe('Google map panel', () => {
     const { unmount } = render(<ConfiguredMapPreview areas={withYear} quests={[]} showBoundaryCredit />)
     expect(await screen.findByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
     // 登録年度が分かる地域がある場合は、出典に年度まで含める（D-71）。
-    expect(screen.getByText('境界データ：国土数値情報N03-2025（国土交通省）')).toBeInTheDocument()
+    expect(screen.getByText('境界データ：国土数値情報N03-2025 国土交通省')).toBeInTheDocument()
     unmount()
     delete window.google
   })
@@ -1077,7 +1087,7 @@ describe('Google map panel', () => {
     setCenter.mockClear()
     act(() => { screen.getByRole('button', { name: '現在地へ戻る' }).click() })
     await act(() => vi.advanceTimersByTimeAsync(10_000))
-    expect(document.querySelector('.map-location-status')).toHaveTextContent('現在地を取得できませんでした')
+    expect(document.querySelector('.map-location-status')).toHaveTextContent('現在地取得失敗')
     act(() => success?.({ coords: { latitude: 35, longitude: 139 } }))
     expect(setCenter).not.toHaveBeenCalled()
     // 失敗の表示も常駐させず、10秒で自動で消える（D-58）。
@@ -1155,7 +1165,7 @@ describe('Google map panel', () => {
     await waitFor(() => expect(instances).toHaveLength(1))
     // 外周リング (139,35)-(140,36) の重心。問題の対象座標は使わない。
     expect(instances[0].options.position).toEqual({ lat: 35.5, lng: 139.5 })
-    expect(instances[0].options.title).toBe('Aの探索エリア（2問）')
+    expect(instances[0].options.title).toBe('A 2問')
     const iconUrl = decodeURIComponent((instances[0].options.icon as { url: string }).url)
     expect(iconUrl).toContain('viewBox="-2 -2 40 48"')
     expect(iconUrl).toContain('#4eb8d0')
@@ -1286,7 +1296,7 @@ describe('Google map panel', () => {
     expect(document.body).toHaveClass('explore-fullbleed')
     // missing では一覧の置き場を殻へ渡さない（ピッカー／フォールバックを出す）。殻の fullbleed は維持。
     expect(onSheetModeChange).toHaveBeenCalledWith(false)
-    expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
+    expect(screen.getByText('地図未設定')).toBeVisible()
   })
 
   it('notifies list-shell ownership while Maps is still loading so the panel keeps skeletons', async () => {
@@ -1306,7 +1316,7 @@ describe('Google map panel', () => {
     expect(document.querySelectorAll('.explore-quest-skeleton').length).toBeGreaterThan(0)
     // 殻表示中は読み込み文言を sr-only にし、地図面の色だけを安定させる。
     expect(document.querySelector('.map-state')).toHaveClass('is-boot-quiet')
-    expect(screen.getByText('地図を読み込んでいます…')).toHaveClass('sr-only')
+    expect(screen.getByText('地図読込中')).toHaveClass('sr-only')
     vi.doUnmock('./googleMapsLoader')
   })
 
@@ -1329,7 +1339,7 @@ describe('Google map panel', () => {
     expect(container.querySelector('.map-preview-shell')).toHaveClass('has-sheet')
     expect(document.body).toHaveClass('explore-fullbleed')
     expect(screen.getByText('0件')).toBeVisible()
-    expect(screen.getByText('選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。')).toBeVisible()
+    expect(screen.getByText('該当なし')).toBeVisible()
     unmount()
     expect(document.body).not.toHaveClass('explore-fullbleed')
     delete window.google
@@ -1338,7 +1348,7 @@ describe('Google map panel', () => {
   it('does not mark the page as full-bleed when the public map shell is not requested', () => {
     render(<MapPreview areas={areas} showPublicAreas={false} />)
     expect(document.body).not.toHaveClass('explore-fullbleed')
-    expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
+    expect(screen.getByText('地図未設定')).toBeVisible()
   })
 
   it('shows the selected area as a small chip on the map and hides it without a selection', async () => {
@@ -1354,12 +1364,11 @@ describe('Google map panel', () => {
     const { container, rerender, unmount } = render(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="area-a" onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
     await screen.findByRole('button', { name: '地図を拡大' })
     expect(screen.getByRole('region', { name: '選べる謎の一覧' })).toBeVisible()
-    // スコープ表示「全国の謎」は置かず、選択中地域のチップだけを出す。
+    // 地域名は絞り込み側に集約し、地図のチップでは繰り返さない。
     expect(container.querySelector('.map-scope')).not.toBeInTheDocument()
     expect(screen.queryByText('全国の謎')).not.toBeInTheDocument()
     const chip = container.querySelector('.map-area-chip')
-    expect(chip).not.toBeNull()
-    expect(chip).toHaveTextContent('A')
+    expect(chip).toBeNull()
     rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedAreaId="" onSelectArea={vi.fn()} onOpenQuest={vi.fn()} />)
     expect(container.querySelector('.map-area-chip')).not.toBeInTheDocument()
     unmount()
@@ -1520,6 +1529,11 @@ describe('Google map panel', () => {
     expect(selectedRow).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: '港の時計台の詳細を見る' })).toBeVisible()
     expect(selectedRow.closest('li')).toContainElement(screen.getByRole('heading', { name: '博多の灯台の詳細' }))
+    // 取っ手も行の再タップと同じ選択解除へ接続する。
+    expect(screen.queryByRole('button', { name: /^(閉じる|×)$/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '謎リストに戻る' }))
+    expect(onDeselectQuest).toHaveBeenCalledTimes(1)
+    onDeselectQuest.mockClear()
     // 選択中の行の再タップは選択解除へ、別の行は選択として伝える。
     await user.click(selectedRow)
     expect(onDeselectQuest).toHaveBeenCalledTimes(1)
@@ -1615,7 +1629,7 @@ describe('Google map panel', () => {
     const { container, unmount } = render(<MapPreview areas={areas} showPublicAreas />)
     expect(document.body).toHaveClass('explore-fullbleed')
     expect(container.querySelector('.map-preview-shell')).toHaveClass('has-sheet')
-    expect(screen.getByText('Google Mapsの設定が必要です')).toBeVisible()
+    expect(screen.getByText('地図未設定')).toBeVisible()
     unmount()
     expect(document.body).not.toHaveClass('explore-fullbleed')
   })
@@ -1664,7 +1678,7 @@ describe('Google map panel', () => {
       expect(markers[0].setMap).not.toHaveBeenCalled()
       rerender(<ConfiguredMapPreview areas={[{ ...areas[0], label: '更新', publishedCount: 3, marker: { latitude: 36, longitude: 140 } }]} onSelectArea={vi.fn()} filterRegion="関東" />)
       expect(markers).toHaveLength(2)
-      expect(markers[0].options.title).toBe('更新の探索エリア（3問）')
+      expect(markers[0].options.title).toBe('更新 3問')
       expect(markers[0].options.position).toEqual({ lat: 35.5, lng: 139.5 })
       rerender(<ConfiguredMapPreview areas={[]} />)
       expect(markers[0].setMap).toHaveBeenCalledWith(null)
@@ -1705,7 +1719,7 @@ describe('Google map panel', () => {
     await screen.findByRole('region', { name: '選べる謎の一覧' })
     // 近い2地域は1つのクラスタ（合計5問）にまとまり、遠い地域は単独ピンになる。
     await waitFor(() => expect(markers.length).toBe(2))
-    const cluster = markers.find((marker) => String(marker.options.title).includes('合計5問'))
+    const cluster = markers.find((marker) => String(marker.options.title).includes('5問'))
     expect(cluster).toBeDefined()
     expect(decodeURIComponent(String((cluster!.options.icon as { url: string }).url))).toContain('>5<')
     fitBounds.mockClear()

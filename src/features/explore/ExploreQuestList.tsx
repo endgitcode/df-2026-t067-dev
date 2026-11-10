@@ -1,15 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
+import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 
 // 選択状態に連動する謎リスト。並ぶのは呼び出し側が選択（地域の選択・地方／都道府県の
 // 絞り込み）で絞った問題だけであり、地図の表示範囲では変わらない（D-45）。問題の選択
 // 自体は一覧を絞らない（D-65）：選んだ行の直下に詳細が開くだけで、他の問題は残る。
 // 地図が使えない場合も同じ。
-// 行はタイトルだけの簡素な形にし、選んだ行の直下に詳細（QuestDetails）を開く
+// 行は題名と地域名・番号の2行にし、選んだ行の直下に詳細（QuestDetails）を開く
 // アコーディオンにする（D-46）。詳細を別枠で下に置くと、タイトルが一覧と詳細で
 // 二重に出てパネル／シートが煩雑になるため。
-export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false, discardClosingDetail = false, detailOwner }: {
+export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false, discardClosingDetail = false, detailOwner }: {
   areas: PublicArea[]
   quests: PublicQuest[]
   highlightArea?: PublicArea
@@ -120,12 +121,6 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
     return () => document.removeEventListener('keydown', close)
   }, [expandedQuestId, onDeselectQuest])
 
-  const closeDetail = () => {
-    listRef.current?.querySelector<HTMLButtonElement>('[aria-expanded="true"]')?.focus({ preventScroll: true })
-    if (onDeselectQuest) onDeselectQuest()
-    else setClosedQuestId(expandedQuestId)
-  }
-
   const handleRowClick = (questId: string) => {
     if (questId === selectedQuestId) {
       // 選択中の行の再タップは選択解除に統一する（D-55、ピンの再タップ D-44 と同じ）。
@@ -155,7 +150,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
           {[0, 1, 2, 3, 4].map((index) => <li key={index}><div className="explore-quest-skeleton" aria-hidden="true" /></li>)}
         </ul>
         : quests.length === 0
-        ? <p className="explore-list-empty">選択中の条件に合う謎はありません。地方・都道府県の条件を変えると、別の謎が表示されます。</p>
+        ? <p className="explore-list-empty">該当なし</p>
         : <ul ref={listRef} className="explore-quest-list">
           {orderedQuests.map((quest) => {
             const cleared = clearedQuestIds?.has(quest.questId) ?? false
@@ -163,8 +158,10 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
             const closing = !expanded && closingDetail?.questId === quest.questId
             const content = <>
               <span className="explore-quest-title traveler-row-title">{quest.title}</span>
-              {cleared && <span className="explore-quest-cleared">クリア済み</span>}
-              {quest.questNumber && <span className="explore-quest-number traveler-row-meta">No. {quest.questNumber}</span>}
+              <span className="traveler-row-secondary">
+                <span className="traveler-row-meta">{[areas.find((area) => area.areaId === quest.areaId)?.label, quest.questNumber && `No. ${quest.questNumber}`].filter(Boolean).join(' · ')}</span>
+                {cleared && <span className="explore-quest-cleared"><Icon name="check" />クリア済み</span>}
+              </span>
             </>
             return <li key={quest.questId} data-area-id={quest.areaId} className={highlightArea?.areaId === quest.areaId ? 'is-highlighted' : undefined}>
               {onOpenQuest
@@ -184,7 +181,7 @@ export function ExploreQuestList({ quests, highlightArea, selectedQuestId = '', 
                 aria-hidden={!expanded || undefined}>
                 <div className="explore-quest-detail-clip">
                   {expanded
-                    ? <div ref={detailRef} className="explore-quest-detail"><button type="button" className="quest-detail-close" aria-label="説明を閉じる" onClick={closeDetail}>閉じる</button>{detailContent}</div>
+                    ? <div ref={detailRef} className="explore-quest-detail">{detailContent}</div>
                     : closing && <div className="explore-quest-detail">{closingDetail?.content}</div>}
                 </div>
               </div>

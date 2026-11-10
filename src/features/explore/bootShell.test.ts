@@ -32,6 +32,12 @@ describe('React boot prerender without browser globals', () => {
     expect(html).toContain('prerender-pc')
     expect(html).toContain('prerender-mobile')
     expect(html.match(/class="brand-mark"/g)).toHaveLength(2)
+    const marks = [...html.matchAll(/<span class="brand-mark">(.*?)<\/span>/g)]
+    expect(marks).toHaveLength(2)
+    for (const [, content] of marks) {
+      expect(content).toContain('<img src="/favicon.svg" alt="" aria-hidden="true"')
+      expect(content).not.toContain('<svg')
+    }
     expect(html.match(/class="account-icon-button"/g)).toHaveLength(2)
     expect(html).toContain('explore-side-panel')
     expect(html).toContain('explore-sheet')
@@ -55,7 +61,7 @@ describe('React boot prerender without browser globals', () => {
     vi.stubGlobal('document', undefined)
     const { html, fullbleed } = renderBoot()
     expect(fullbleed).toBe(false)
-    expect(html).toContain('全国観光謎アプリ')
+    expect(html).toContain('NAZOP')
     expect(html).toContain('mobile-nav')
   })
 })

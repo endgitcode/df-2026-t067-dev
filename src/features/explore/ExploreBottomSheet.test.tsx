@@ -239,3 +239,25 @@ it('toggles half and full by tap, shows a count when dragged closed, and restore
   expect(sheet).toHaveAttribute('data-snap', 'closed')
   expect(handle).toHaveTextContent('14件の謎')
 })
+
+it('詳細表示中の取っ手タップで一覧に戻り、閉じるボタンを増やさない', async () => {
+  const user = userEvent.setup()
+  const onDismissDetail = vi.fn()
+  const { container } = render(<ExploreBottomSheet detailOpen onDismissDetail={onDismissDetail}><p>問題文</p></ExploreBottomSheet>)
+  expect(screen.queryByRole('button', { name: /閉じる|×/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '謎リストに戻る' }))
+  expect(onDismissDetail).toHaveBeenCalledOnce()
+  expect(container.querySelector('.explore-sheet')).toHaveAttribute('data-snap', 'peek')
+})
+
+it('詳細表示中に取っ手を下までドラッグすると詳細を解除し、シートを閉じたままにする', () => {
+  const onDismissDetail = vi.fn()
+  const { container, rerender } = render(<ExploreBottomSheet detailOpen onDismissDetail={onDismissDetail}><p>問題文</p></ExploreBottomSheet>)
+  const handle = screen.getByRole('button', { name: '謎リストに戻る' })
+  fireEvent.pointerDown(handle, { pointerId: 80, pointerType: 'touch', clientY: 200 })
+  fireEvent.pointerMove(handle, { pointerId: 80, pointerType: 'touch', clientY: 800 })
+  fireEvent.pointerUp(handle, { pointerId: 80, pointerType: 'touch', clientY: 800 })
+  expect(onDismissDetail).toHaveBeenCalledOnce()
+  rerender(<ExploreBottomSheet detailOpen={false} onDismissDetail={onDismissDetail}><p>一覧</p></ExploreBottomSheet>)
+  expect(container.querySelector('.explore-sheet')).toHaveAttribute('data-snap', 'closed')
+})

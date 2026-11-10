@@ -14,6 +14,7 @@ import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, M
 import { boundsForFilter } from '../quests/prefectureBounds'
 import { getRegionAreas } from '../quests/areaHierarchy'
 import { areaPinPosition } from './viewportQuests'
+import { mapControlsPlacement } from './mapOverlayLayout'
 import { isMapControlFullyCovered, isMapControlWithin } from './mapControlVisibility'
 
 // SSR has no portal target; the fixed toggle has the same screen coordinates inline.
@@ -59,7 +60,7 @@ function clusterIcon(totalQuests: number, dimmed = false): { url: string } {
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
 
-const LOCATION_SUCCESS_MESSAGE = '現在地を地図の中心に表示しました。'
+const LOCATION_SUCCESS_MESSAGE = '現在地を表示'
 
 // 地域の公開ジオメトリから、フィットに使える全頂点を {lat, lng} で返す。閉じていない・
 // 範囲外の座標を含むリングは丸ごと除く（従来のフィットと同じ検証）。使える輪郭が無ければ null。
@@ -168,7 +169,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // 結果メッセージは常駐させない。成功は5秒、案内を含む失敗は読む時間を取って
   // 10秒で消す（D-58）。閉じるボタンでも即座に消せる。取得中は確定まで消さない。
   useEffect(() => {
-    if (!locationStatus || locationStatus === '現在地を取得しています…') return
+    if (!locationStatus || locationStatus === '現在地取得中') return
     const timeout = window.setTimeout(() => setLocationStatus(''),
       locationStatus.startsWith(LOCATION_SUCCESS_MESSAGE) ? 5000 : 10_000)
     return () => window.clearTimeout(timeout)
@@ -178,7 +179,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const withLocationNotice = (message: string) => {
     if (locationNoticeShown.current) return message
     locationNoticeShown.current = true
-    return `${message} 位置情報はGoogle Mapsに送信されます。`
+    return `${message} 位置情報をGoogle Mapsに送信`
   }
   const [locating, setLocating] = useState(false)
   const locationRequest = useRef(0)
@@ -279,8 +280,22 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const wideByWidth = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     && window.matchMedia(WIDE_VIEWPORT_QUERY).matches
   const panelMode = sheetMode && (wideViewport || wideByWidth)
-  // Keep mobile map buttons at a viewport-fixed position and disable each button
-  // while any part of its hit target is underneath the moving sheet.
+  useLayoutEffect(() => {
+    const shell = mapShell.current
+    const overlay = shell?.querySelector<HTMLElement>('.map-filter-overlay')
+    if (!shell || !overlay || panelMode) return
+    const update = () => shell.style.setProperty('--map-filter-bottom', `${Math.max(0, overlay.getBoundingClientRect().bottom - shell.getBoundingClientRect().top)}px`)
+    update()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    observer?.observe(overlay)
+    window.addEventListener('resize', update)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', update)
+      shell.style.removeProperty('--map-filter-bottom')
+    }
+  }, [panelMode, status])
+  // Follow the rendered sheet edge during drags and transitions; hide the group if it cannot fit.
   useLayoutEffect(() => {
     if (typeof window.matchMedia !== 'function') return
     const media = window.matchMedia('(max-width: 980px)')
@@ -306,13 +321,19 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         width: Math.max(0, Math.min(viewportLeft + viewportWidth, shellRect.right) - Math.max(viewportLeft, shellRect.left)),
         height: Math.max(0, Math.min(viewportTop + viewportHeight, shellRect.bottom) - Math.max(viewportTop, shellRect.top)),
       }
+      const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom ?? 0
+      const filterBottom = shell?.querySelector('.filter-toggle')?.getBoundingClientRect().bottom ?? 0
+      const placement = mapControlsPlacement(shellRect.bottom, sheetRect.top, controls.getBoundingClientRect().height,
+        Math.max(visibleBounds.top, headerBottom, filterBottom) + 12)
+      controls.style.bottom = `${placement.bottom}px`
+      controls.style.visibility = placement.hidden ? 'hidden' : ''
       const inactiveLabels = new Set<string>()
       for (const button of buttons) {
         const rect = button.getBoundingClientRect()
         const label = button.getAttribute('aria-label') ?? ''
         const available = isMapControlWithin(rect, visibleBounds)
         const covered = available && isMapControlFullyCovered(rect, sheetRect)
-        if (!available || covered) {
+        if (placement.hidden || !available || covered) {
           if (document.activeElement === button) handle?.focus({ preventScroll: true })
           inactiveLabels.add(label)
         }
@@ -349,6 +370,8 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     media.addEventListener('change', onViewportChange)
     return () => {
       observer?.disconnect()
+      controls.style.removeProperty('bottom')
+      controls.style.removeProperty('visibility')
       if (animationFrame) window.cancelAnimationFrame(animationFrame)
       sheet.removeEventListener('transitionrun', onTransitionRun)
       sheet.removeEventListener('transitionend', stopTransitionSampling)
@@ -381,7 +404,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       // snapHeights）と揃える。読めない時は peek 前提に倒す。
       const stageHeight = target.current?.clientHeight ?? 0
       const sheetFitHeight = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
-      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, wideViewport ? undefined : sheetFitHeight))
+      instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, wideViewport ? undefined : sheetFitHeight, Math.max(0, mobileHeaderClearance() - (mapShell.current?.getBoundingClientRect().top ?? 0))))
     } else instance.fitBounds(bounds)
     try {
       // フィット完了（idle）前に利用者が地図を掴んだら、その回の完了位置は記録しない
@@ -437,7 +460,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       fitted = true
     }
     if (!fitted) return false
-    instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current))
+    instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, undefined, Math.max(0, mobileHeaderClearance() - (mapShell.current?.getBoundingClientRect().top ?? 0))))
     clampFitZoomOnIdle(instance)
     initialFitDone.current = instance
     initialFitSignature.current = `${sheetMode}:${panelMode}`
@@ -634,7 +657,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
           const key = `cluster:${arrangement.points.map((point) => point.areaId).sort().join(',')}`
           const { marker, listeners } = syncMarker(key, {
             position: { lat: arrangement.lat, lng: arrangement.lng }, map: instance,
-            title: `重なっている${arrangement.points.length}地域のピン（合計${arrangement.totalQuests}問）`,
+            title: `重なっている${arrangement.points.length}地域 ${arrangement.totalQuests}問`,
             icon: clusterIcon(arrangement.totalQuests, dimmed),
             cursor: 'pointer',
             zIndex: dimmed ? 0 : 1,
@@ -650,7 +673,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
               if (fitPoints) for (const fitPoint of fitPoints) { bounds.extend(fitPoint); fitted = true }
               else { bounds.extend({ lat: point.lat, lng: point.lng }); fitted = true }
             }
-            if (fitted) { instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current)); clampFitZoomOnIdle(instance) }
+            if (fitted) { instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, undefined, Math.max(0, mobileHeaderClearance() - (mapShell.current?.getBoundingClientRect().top ?? 0)))); clampFitZoomOnIdle(instance) }
           }))
           continue
         }
@@ -664,7 +687,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         const key = `pin:${area.areaId}`
         const { marker, listeners } = syncMarker(key, {
           position, map: instance,
-          title: `${area.label}の探索エリア（${area.publishedCount}問）`,
+          title: `${area.label} ${area.publishedCount}問`,
           icon: pinIcon(pinColor, area.publishedCount, false, dimmed),
           cursor: 'pointer',
           zIndex: selected ? 3 : dimmed ? 0 : 2,
@@ -743,10 +766,10 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   const locate = () => {
     if (locating) return
     const geolocation = navigator.geolocation
-    if (!geolocation?.getCurrentPosition) { setLocationStatus('この端末では現在地を取得できません。'); return }
+    if (!geolocation?.getCurrentPosition) { setLocationStatus('現在地非対応'); return }
     const request = ++locationRequest.current
     const requestedMap = map.current
-    setLocationStatus('現在地を取得しています…')
+    setLocationStatus('現在地取得中')
     setLocating(true)
     const settle = (message: string) => {
       if (request !== locationRequest.current) return
@@ -756,27 +779,27 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       setLocating(false)
       setLocationStatus(withLocationNotice(message))
     }
-    locationTimer.current = window.setTimeout(() => settle('現在地を取得できませんでした。もう一度お試しください。'), LOCATION_DEADLINE_MS)
+    locationTimer.current = window.setTimeout(() => settle('現在地取得失敗'), LOCATION_DEADLINE_MS)
     try {
       geolocation.getCurrentPosition((position) => {
         if (request !== locationRequest.current) return
         const { latitude, longitude } = position.coords
         if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-          settle('現在地を取得できませんでした。もう一度お試しください。')
+          settle('現在地取得失敗')
           return
         }
-        if (!requestedMap || map.current !== requestedMap) { settle('現在地を取得できませんでした。もう一度お試しください。'); return }
+        if (!requestedMap || map.current !== requestedMap) { settle('現在地取得失敗'); return }
         requestedMap.setCenter({ lat: latitude, lng: longitude })
         requestedMap.setZoom(LOCATION_ZOOM)
         setCurrentLocation({ lat: latitude, lng: longitude })
         settle(LOCATION_SUCCESS_MESSAGE)
       }, (error) => {
-        const message = error.code === 1 ? '位置情報が許可されませんでした。ブラウザが再確認を表示しない場合は、アドレスバーのサイト情報から位置情報を「確認」または「許可」に変更して、もう一度お試しください。'
-          : error.code === 3 ? '現在地を取得できませんでした。もう一度お試しください。'
-            : '現在地を取得できません。位置情報を確認して、もう一度お試しください。'
+        const message = error.code === 1 ? '位置情報未許可。サイト設定で許可'
+          : error.code === 3 ? '現在地取得失敗'
+            : '現在地取得失敗'
         settle(message)
       }, { enableHighAccuracy: false, maximumAge: 0, timeout: LOCATION_DEADLINE_MS })
-    } catch { settle('現在地を取得できません。位置情報を確認して、もう一度お試しください。') }
+    } catch { settle('現在地取得失敗') }
   }
 
   // ピン以外（地域セレクト等）で別の地域が選ばれたら、ピンのハイライトは外れたものとして扱う。
@@ -790,9 +813,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     ? `${effectivePinAreaId}:${selectedQuestId}`
     : selectedQuestId ? `quest:${selectedQuestId}` : null
   const highlightArea = effectivePinAreaId ? areas.find((area) => area.areaId === effectivePinAreaId) : undefined
-  // 地図上に小さく浮かせる地域名チップの対象。ピンのフォーカスを優先し、無ければ
-  // フィット対象の地域（選択中の地域、または選択中の問題の所属地域）にする。
-  const focusArea = highlightArea ?? areas.find((area) => area.areaId === fitAreaId)
   // 一覧は選択（地域・地方の絞り込み）だけに連動し、地図の表示範囲では変わらない（D-45）。
   // 絞り込みは呼び出し側が済ませた quests をそのまま並べる。
   // 地図が使える時は全画面マップ＋ボトムシート、使えない時は従来どおり地図下の全件リスト。
@@ -858,10 +878,10 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // 登録年度が公開応答に載っている地域があれば、その年度を出典に含める（D-71）。
   const boundaryYears = [...new Set(areas.flatMap((area) => area.boundary?.source === 'N03' ? [area.boundary.year] : []))].sort((a, b) => a - b)
   const boundaryCreditText = boundaryYears.length === 1
-    ? `境界データ：国土数値情報N03-${boundaryYears[0]}（国土交通省）`
+    ? `境界データ：国土数値情報N03-${boundaryYears[0]} 国土交通省`
     : boundaryYears.length > 1
-      ? `境界データ：国土数値情報N03（${boundaryYears.join('・')}年版、国土交通省）`
-      : '境界データ：国土数値情報N03（国土交通省）'
+      ? `境界データ：国土数値情報N03 ${boundaryYears.join('・')}年 国土交通省`
+      : '境界データ：国土数値情報N03 国土交通省'
   const boundaryCredit = showBoundaryCredit && showPublicAreas
     ? <p className="map-boundary-credit">{boundaryCreditText}</p>
     : null
@@ -957,24 +977,23 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     <div ref={mapShell} tabIndex={-1} className={'map-preview-shell' + (sheetMode ? ' has-sheet' : '') + (belowMap ? ' is-browsing-below-map' : '')}
       style={sheetMode ? { '--sheet-h': `${panelMode ? 0 : sheetHeight}px` } as CSSProperties : undefined}>
     <section className="map-preview" aria-label="全国の謎">
-      {status === 'ready' && !panelMode && (topOverlay || focusArea) && <div className="map-filter-overlay">{topOverlay}{focusArea && <div className="map-topline"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}</div>}
-      {status === 'ready' && panelMode && focusArea && <div className="map-topline is-sidebar"><div className="map-topline-main"><span className="map-area-chip"><Icon name="pin" />{focusArea.label}</span></div></div>}
       {API_KEY && <div ref={target} className="google-map-canvas" aria-label="日本地図" />}
       {status !== 'ready' && <div className={'map-state' + (sheetMode && status === 'loading' ? ' is-boot-quiet' : '')} role={status === 'error' || status === 'auth-error' ? 'alert' : 'status'} {...mapControlGestureProps}>
-        {status === 'missing' ? <><strong>Google Mapsの設定が必要です</strong><span>地図を表示するには設定をご確認ください。</span></> :
-          status === 'loading' ? <span className={sheetMode ? 'sr-only' : undefined}>地図を読み込んでいます…</span> :
-            <><strong>地図を読み込めませんでした</strong>{status === 'auth-error'
-              ? <><span>地図の設定を確認して、このページを再読み込みしてください。</span><button type="button" onClick={() => window.location.reload()}>ページを再読み込み</button></>
+        {status === 'missing' ? <><strong>地図未設定</strong></> :
+          status === 'loading' ? <span className={sheetMode ? 'sr-only' : undefined}>地図読込中</span> :
+            <><strong>地図読込失敗</strong>{status === 'auth-error'
+              ? <><span>地図設定を確認</span><button type="button" onClick={() => window.location.reload()}>再読込</button></>
               : <button type="button" onClick={() => { setStatus('loading'); setAttempt((value) => value + 1) }}>地図を再試行</button>}</>}
       </div>}
-      {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert" {...mapControlGestureProps}><strong>地域エリアを表示できませんでした</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
+      {status === 'ready' && areaFailed && <div className="map-state map-area-error" role="alert" {...mapControlGestureProps}><strong>地域表示失敗</strong><button type="button" onClick={() => { window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; setAreaFailed(false); setAreaAttempt((value) => value + 1) }}>地域エリアを再試行</button></div>}
       {!sheetMode && mapControls}
       {status === 'ready' && <output className="sr-only" aria-label="地図の表示倍率">{zoom}</output>}
     </section>
       {/* 地図の独立レイヤーより上で操作できるよう、シート時はシェル直下に置く。 */}
+      {status === 'ready' && !panelMode && topOverlay && <div className="map-filter-overlay">{topOverlay}</div>}
       {sheetMode && mapControls}
       {/* 地図が使えない時は浮かせず、地図の下に通常フローで出して絞り込み自体は失わせない。 */}
-      {status !== 'ready' && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
+      {status !== 'ready' && !panelMode && topOverlay && <div className="map-filter-flow">{topOverlay}</div>}
       {status === 'ready' && locationStatus && <div className={'map-location-status' + (sheetMode ? ' is-floating' : '')} role="status"><span>{locationStatus}</span><button type="button" className="map-location-status-close" aria-label="位置情報の表示を閉じる" onClick={() => setLocationStatus('')}>×</button></div>}
       {sheetMode
         ? panelMode
@@ -986,7 +1005,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
               <Icon name="panel" />
             </button>, typeof document === 'undefined' ? null : document.getElementById('sidebar-toggle-slot') ?? document.body)}
           </>
-          : <ExploreBottomSheet questCount={quests.length} detailOpen={Boolean(selectedQuestId && questDetail)} openSignal={sheetOpenSignal} onHeightChange={setSheetHeight}
+          : <ExploreBottomSheet questCount={quests.length} onDismissDetail={onDeselectQuest} detailOpen={Boolean(selectedQuestId && questDetail)} openSignal={sheetOpenSignal} onHeightChange={setSheetHeight}
             onUserClosedChange={onUserSheetClosedChange}>{renderQuestList(true, detailLocation === 'sheet', true, detailLocation !== 'sheet', openQuestFromSheet)}{boundaryCredit}</ExploreBottomSheet>
         : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>

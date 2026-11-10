@@ -21,7 +21,7 @@ it('saves only valid coordinates using the loaded revision and keeps an edit on 
   expect(screen.getByRole('button', { name: '撮影範囲を保存' })).toBeDisabled()
   await user.type(latitude, '1')
   await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
-  expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
+  expect(await screen.findByText('保存済み')).toBeVisible()
   expect(updateShootingAreas.mock.calls[0][2]).toEqual({
     expectedDraftRevision: 4, zones: [{ latitude: 1, longitude: 0, radiusMeters: 1000 }],
   })
@@ -29,7 +29,7 @@ it('saves only valid coordinates using the loaded revision and keeps an edit on 
   await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('下書きの版が変わりました')
   expect(updateShootingAreas.mock.calls[1][2]).toEqual({ expectedDraftRevision: 5, zones: [] })
-  expect(screen.getByText('設定する範囲はありません。')).toBeVisible()
+  expect(screen.getByText('範囲なし')).toBeVisible()
   expect(screen.getByRole('button', { name: '撮影範囲を保存' })).toBeDisabled()
 })
 
@@ -41,7 +41,7 @@ it('adds and moves private shooting positions on the map with the fixed radius',
   await user.click(await screen.findByRole('button', { name: '地図のテスト地点を選ぶ' }))
   expect(screen.getByLabelText('緯度')).toHaveValue(36)
   expect(screen.getByLabelText('経度')).toHaveValue(138)
-  expect(screen.getByText('半径：1,000m（固定）')).toBeVisible()
+  expect(screen.getByText('半径：1,000m')).toBeVisible()
   await user.click(screen.getByRole('button', { name: '地図のテスト地点を選ぶ' }))
   await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
   expect(updateShootingAreas.mock.calls[0][2]).toEqual({ expectedDraftRevision: 7, zones: [{ latitude: 36, longitude: 138, radiusMeters: 1000 }] })
@@ -69,12 +69,12 @@ it('keeps legacy radii visible and requires an explicit fixed-radius update befo
     zones: [{ latitude: 35, longitude: 139, radiusMeters: 80 }] }
   const updateShootingAreas = vi.fn().mockImplementation(async (_org, _quest, input) => ({ ...initial, draftRevision: 9, zones: input.zones }))
   render(<ShootingAreasEditor api={{ ...createApiClient(), getShootingAreas: vi.fn().mockResolvedValue(initial), updateShootingAreas }} orgId="demo-org" questId="legacy-quest" onBack={vi.fn()} />)
-  expect(await screen.findByText('保存済みの半径：80m（旧設定）')).toBeVisible()
+  expect(await screen.findByText('保存済みの半径：80m')).toBeVisible()
   expect(screen.getByRole('button', { name: '撮影範囲を保存' })).toBeDisabled()
-  expect(screen.getByRole('note')).toHaveTextContent('新しい公開には半径1,000mの確認が必要です')
+  expect(screen.getByRole('note')).toHaveTextContent('旧半径・更新必須')
   await user.click(screen.getByRole('button', { name: 'すべての半径を1,000mに変更' }))
-  expect(screen.getByText('半径：1,000m（固定）')).toBeVisible()
+  expect(screen.getByText('半径：1,000m')).toBeVisible()
   await user.click(screen.getByRole('button', { name: '撮影範囲を保存' }))
-  expect(await screen.findByText('撮影できる範囲（非公開）を保存しました。')).toBeVisible()
+  expect(await screen.findByText('保存済み')).toBeVisible()
   expect(updateShootingAreas.mock.calls[0][2]).toEqual({ expectedDraftRevision: 8, zones: [{ latitude: 35, longitude: 139, radiusMeters: 1000 }] })
 })

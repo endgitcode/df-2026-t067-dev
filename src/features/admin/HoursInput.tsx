@@ -32,12 +32,12 @@ export function HoursInput({ value, onChange, onError }: { value: string; onChan
     update(mode, start, end, next, joined)
   }
   const errorId = useId()
-  const error = mode === 'specified' && start && end && end <= start && !next ? '終了時刻は開始時刻より後にするか、終了は翌日を選んでください。' : ''
+  const error = mode === 'specified' && start && end && end <= start && !next ? '終了時刻は開始時刻より後にするか、翌日終了を選択。' : ''
   useEffect(() => { onError?.(error) }, [error, onError])
-  return <fieldset><legend>利用できる時間</legend>
-    <p className="helper">施設の営業時間などのクリア後案内です。撮影可能時間の制約は「撮影時の注意」に記載してください。</p>
-    <div role="radiogroup" aria-label="利用できる時間の設定">
-      {([['unset', '未設定'], ['all-day', '終日'], ['specified', '時間を指定'], ['supplement', '補足を入力']] as const).map(([m, label]) => <label key={m}><input type="radio" name="hours-mode" checked={mode === m} onChange={() => {
+  return <fieldset><legend>利用時間</legend>
+
+    <div role="radiogroup" aria-label="利用時間の設定">
+      {([['unset', '未設定'], ['all-day', '終日'], ['specified', '時刻指定'], ['supplement', '補足']] as const).map(([m, label]) => <label key={m}><input type="radio" name="hours-mode" checked={mode === m} onChange={() => {
         if (m === 'supplement') { setFree(value); onChange(value) }
         else if (mode === 'supplement' && value) {
           const parsed = read(value)
@@ -53,22 +53,22 @@ export function HoursInput({ value, onChange, onError }: { value: string; onChan
     {mode === 'specified' && <div>
       <label>開始時刻<input aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} type="time" step="60" value={start} onChange={event => { setStart(event.target.value); update(mode, event.target.value) }} /></label>
       <label>終了時刻<input aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined} type="time" step="60" value={end} onChange={event => { setEnd(event.target.value); update(mode, start, event.target.value) }} /></label>
-      <label><input type="checkbox" checked={next} onChange={event => { setNext(event.target.checked); update(mode, start, end, event.target.checked) }} />終了は翌日</label>
+      <label><input type="checkbox" checked={next} onChange={event => { setNext(event.target.checked); update(mode, start, end, event.target.checked) }} />翌日終了</label>
       {error && <p id={errorId} role="alert" className="field-error">{error}</p>}
     </div>}
     {mode !== 'supplement' && <>
       <div className="phrase-chips">
-        <span className="helper">よくある休業・例外</span>
-        <div role="group" aria-label="よくある休業・例外">
+
+        <div role="group" aria-label="休業例">
           {exceptionPhrases.map((phrase) => <button key={phrase} type="button" className="phrase-chip"
             aria-pressed={exceptions.split('\n').includes(phrase)}
             onClick={() => toggleExceptionPhrase(phrase)}>{phrase}</button>)}
         </div>
       </div>
-      <label>曜日・休業・例外<textarea value={exceptions} onChange={event => { setExceptions(event.target.value); update(mode, start, end, next, event.target.value) }} placeholder="例：月曜休業、祝日は10時から、臨時休業あり" /></label>
+      <label>休業例外<textarea value={exceptions} onChange={event => { setExceptions(event.target.value); update(mode, start, end, next, event.target.value) }} placeholder="例：月曜休業、祝日は10時から、臨時休業あり" /></label>
     </>}
-    {mode === 'supplement' && <label>時間の補足<textarea value={free} onChange={event => { setFree(event.target.value); onChange(event.target.value) }} /></label>}
-    <p className="helper">空欄は終日を意味しません。翌日0時は終了時刻00:00と「終了は翌日」で指定できます。</p>
-    <details><summary>保存する時間案内</summary><p style={{ whiteSpace: 'pre-wrap' }}>{value || '未設定'}</p></details>
+    {mode === 'supplement' && <label>時間補足<textarea value={free} onChange={event => { setFree(event.target.value); onChange(event.target.value) }} /></label>}
+
+    <details><summary>保存内容</summary><p style={{ whiteSpace: 'pre-wrap' }}>{value.replace(/[（）]/g, '') || '未設定'}</p></details>
   </fieldset>
 }

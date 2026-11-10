@@ -33,7 +33,8 @@ test('publication shared by local and team preview omits empty conditions and pr
   quest.draft.materials.photoNote = '通行を妨げないでください。'
   const visible = projectManagedQuest(quest, 1)
   assert.doesNotMatch(JSON.stringify(visible), notices)
-  assert.match(visible.quest.visitConditions, /船上・海上/)
+  assert.equal(visible.quest.shootingConditions?.requiresBoat, true)
+  assert.doesNotMatch(visible.quest.visitConditions, /船上・海上/)
   assert.match(visible.quest.visitConditions, /500円/)
   assert.match(visible.quest.visitConditions, /通行を妨げない/)
 })

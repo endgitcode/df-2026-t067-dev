@@ -9,8 +9,8 @@ import { SHEET_PEEK_HEIGHT } from './ExploreBottomSheet'
 // （D-70）。peek 前提のままだと、開いたシートの裏にピンが隠れてしまう。
 const PC_SIDEBAR_FIT_LEFT = 280 + 12
 const PC_SIDEBAR_FIT_LEFT_COLLAPSED = 56 + 12
-export function visibleAreaFitPadding(wide: boolean, sidebarCollapsed = false, sheetHeight?: number): { top: number; right: number; bottom: number; left: number } {
+export function visibleAreaFitPadding(wide: boolean, sidebarCollapsed = false, sheetHeight?: number, headerBottom = 0): { top: number; right: number; bottom: number; left: number } {
   return wide
     ? { top: 88, right: 48, bottom: 48, left: sidebarCollapsed ? PC_SIDEBAR_FIT_LEFT_COLLAPSED : PC_SIDEBAR_FIT_LEFT }
-    : { top: 140, right: 16, bottom: (sheetHeight ?? SHEET_PEEK_HEIGHT) + 84, left: 16 }
+    : { top: Math.max(140, Math.ceil(headerBottom) + 60), right: 16, bottom: (sheetHeight ?? SHEET_PEEK_HEIGHT) + 84, left: 16 }
 }

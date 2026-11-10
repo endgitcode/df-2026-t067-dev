@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ApiClient, ApiErrorCode, Discovery } from '../../shared/api'
 import { useRemote } from '../../shared/useRemote'
+import type { State as DeletionState } from './DiscoveryDeletion'
 import { DiscoveryDeletion } from './DiscoveryDeletion'
 
 const localDate = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'Asia/Tokyo' })
@@ -10,13 +11,13 @@ function RecordDate({ date }: { date: string }) {
 }
 
 function ReadFailure({ code, retry }: { code?: ApiErrorCode; retry: () => void }) {
-  const message = code === 'NOT_FOUND' ? 'この記録は見つかりませんでした。'
-    : code === 'SYSTEM_ERROR' ? '記録を読み込めませんでした。しばらく待ってから、もう一度お試しください。'
-      : code === 'UNAUTHENTICATED' ? 'ログインを確認できませんでした。時間をおいて、もう一度お試しください。'
-        : '記録を読み込めませんでした。通信状況を確認して、もう一度お試しください。'
+  const message = code === 'NOT_FOUND' ? '記録なし'
+    : code === 'SYSTEM_ERROR' ? '記録読込失敗'
+      : code === 'UNAUTHENTICATED' ? 'ログイン確認失敗'
+        : '記録読込失敗'
   return <>
     <p role="alert">{message}</p>
-    <button type="button" className="retry-button" onClick={retry}>記録を読み直す</button>
+    <button type="button" className="retry-button" onClick={retry}>記録を再読込</button>
   </>
 }
 
@@ -78,7 +79,7 @@ function RecordGuidance({ record }: { record: Discovery }) {
   const fields = ([
     ['アクセス', afterClear?.access.trim()],
     ['利用時間', afterClear?.hours.trim()],
-    ['自治体からの紹介', afterClear?.promoComment.trim()],
+    ['紹介', afterClear?.promoComment.trim()],
     ['解説', afterClear?.explanation.trim() || descriptionSnapshot.trim()],
   ] as const).filter(([, value]) => value)
 
@@ -94,7 +95,7 @@ function RecordGuidance({ record }: { record: Discovery }) {
         <dd>{value}</dd>
       </div>)}
     </dl>}
-    {mapsUrl && <p className="record-spot-link"><a href={mapsUrl} target="_blank" rel="noreferrer">Google マップを開く</a></p>}
+    {mapsUrl && <p className="record-spot-link"><a href={mapsUrl} target="_blank" rel="noreferrer">Google マップ</a></p>}
   </>
 }
 
@@ -105,21 +106,21 @@ function RecordMetadata({ api, record }: { api: ApiClient; record: Discovery }) 
   }, [api, record.questId, record.questVersion])
   const { result } = useRemote(true, readTitle)
   const spot = record.afterClear?.spot
-  const title = result.status === 'loading' ? '読み込み中…'
-    : (result.status === 'ready' && result.value) || 'クリア時の問題名を取得できません'
+  const title = result.status === 'loading' ? '読込中'
+    : (result.status === 'ready' && result.value) || '問題名取得失敗'
   const spotName = (spot?.name ?? record.placeName).trim()
   return <dl className="record-guidance">
     {spotName && <div><dt>スポット名</dt><dd>{spotName}</dd></div>}
     <div><dt>日付</dt><dd><RecordDate date={record.firstClearedAt} /></dd></div>
-    {title.trim() !== spotName && <div><dt>問題の名前</dt><dd>{title}</dd></div>}
+    {title.trim() !== spotName && <div><dt>問題名</dt><dd>{title}</dd></div>}
     {spot?.address.trim() && <div><dt>住所</dt><dd>{spot.address}</dd></div>}
   </dl>
 }
 
-function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: string; onBack: (refresh: boolean) => void; onDeleted: () => void }) {
+function DiscoveryDetail({ api, id, onBack, onDeleted, deletion, onDeletion, onReceipt, alreadyCleared }: { alreadyCleared?: boolean; deletion?: { state: DeletionState; receipt?: string }; onDeletion: (state: DeletionState) => void; onReceipt: (receipt: string) => void; api: ApiClient; id: string; onBack: (refresh: boolean) => void; onDeleted: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const headingId = useId()
-  const [deletionState, setDeletionState] = useState('idle')
+  const [deletionState, setDeletionState] = useState<DeletionState>(deletion?.state === 'working' ? (deletion.receipt ? 'pending' : 'send-error') : deletion?.state ?? 'idle')
   const deletionInFlight = deletionState === 'working'
   function close() {
     if (!deletionInFlight) onBack(deletionState !== 'idle')
@@ -145,20 +146,52 @@ function DiscoveryDetail({ api, id, onBack, onDeleted }: { api: ApiClient; id: s
         <h2 id={headingId}>記録詳細</h2>
         <button type="button" className="secondary-button" disabled={deletionInFlight} onClick={close}>閉じる</button>
       </header>
-      {result.status === 'loading' && <p role="status">記録を読み込んでいます…</p>}
+      {alreadyCleared && <p role="status">クリア済み</p>}
+      {result.status === 'loading' && <p role="status">記録読込中</p>}
       {result.status === 'error' && <ReadFailure code={result.code} retry={retry} />}
       {result.status === 'ready' && <>
         <RecordPhoto blob={result.value.photo} />
         <RecordMetadata api={api} record={result.value.record} />
         <RecordGuidance record={result.value.record} />
-        <DiscoveryDeletion api={api} id={id} onDeleted={onDeleted} onStateChange={setDeletionState} />
       </>}
+      {(result.status === 'ready' || deletion?.receipt) && <DiscoveryDeletion api={api} id={id} onDeleted={onDeleted}
+        initialState={deletion?.state} initialReceipt={deletion?.receipt} onReceipt={onReceipt}
+        onStateChange={(state) => { setDeletionState(state); onDeletion(state) }} />}
     </div>
   </dialog>
 }
 
-export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onExplore }: { api: ApiClient; onExplore: () => void; initialId?: string; visit?: number; active?: boolean }) {
+export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onExplore, alreadyCleared = false }: { alreadyCleared?: boolean; api: ApiClient; onExplore: () => void; initialId?: string; visit?: number; active?: boolean }) {
   const [selected, setSelected] = useState<string | null>(initialId ?? null)
+  const [deletions, setDeletions] = useState<Record<string, { state: DeletionState; receipt?: string; record?: Discovery }>>({})
+  const [noticeExpired, setNoticeExpired] = useState(false)
+  useEffect(() => {
+    if (!alreadyCleared) return
+    const timer = setTimeout(() => setNoticeExpired(true), 5000)
+    return () => clearTimeout(timer)
+  }, [alreadyCleared, visit])
+  const detailHistory = useRef(false)
+  const detailBaseUrl = useRef('')
+  useEffect(() => {
+    if (!active || !selected || detailHistory.current) return
+    detailBaseUrl.current = window.location.href
+    window.history.pushState({ ...window.history.state, recordDetail: selected }, '')
+    detailHistory.current = true
+  }, [active, selected])
+  useEffect(() => {
+    const back = (event: PopStateEvent) => {
+      if (!active || !detailHistory.current) return
+      if (window.location.href === detailBaseUrl.current) event.stopImmediatePropagation()
+      detailHistory.current = false
+      setSelected(null)
+    }
+    window.addEventListener('popstate', back, true)
+    return () => window.removeEventListener('popstate', back, true)
+  }, [active])
+  function closeDetail() {
+    setSelected(null)
+    if (detailHistory.current) window.history.back()
+  }
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   const [deleted, setDeleted] = useState(false)
   const [destination, setDestination] = useState({ initialId, visit })
@@ -167,6 +200,7 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
     setDestination({ initialId, visit })
     setSelected(initialId ?? null)
     if (initialId) setDeleted(false)
+    setNoticeExpired(false)
   }
 
   const read = useCallback((signal: AbortSignal) => api.listDiscoveries({ limit: 20, cursor }, { signal }), [api, cursor])
@@ -181,38 +215,43 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
     mountedVisit.current = visit
     retry()
   }, [visit, retry])
-  const detail = active && selected !== null && <DiscoveryDetail key={selected} api={api} id={selected} onBack={(refresh) => {
-    setSelected(null)
+  const detail = active && selected !== null && <DiscoveryDetail alreadyCleared={alreadyCleared && !noticeExpired} key={selected} api={api} id={selected} deletion={deletions[selected]}
+    onDeletion={(state) => setDeletions(current => ({ ...current, [selected]: { ...current[selected], state } }))}
+    onReceipt={(receipt) => setDeletions(current => ({ ...current, [selected]: { ...current[selected], state: current[selected]?.state ?? 'working', receipt, record: current[selected]?.record ?? (result.status === 'ready' ? result.value.items.find(item => item.discoveryId === selected) : undefined) } }))} onBack={(refresh) => {
+    closeDetail()
     if (refresh) retry()
   }}
-    onDeleted={() => { setDeleted(true); setSelected(null); setCursor(undefined); retry() }} />
-  const confirmation = deleted && <p role="status">記録と写真の削除が完了しました。</p>
-  if (result.status === 'loading') return <>{detail}{confirmation}<p role="status">記録を読み込んでいます…</p></>
-  const firstPage = cursor !== undefined && <button type="button" className="secondary-button" onClick={() => setCursor(undefined)}>最初のページへ</button>
+    onDeleted={() => { setDeletions(current => { const next = { ...current }; delete next[selected]; return next }); setDeleted(true); closeDetail(); setCursor(undefined); retry() }} />
+  const confirmation = <>{alreadyCleared && !noticeExpired && !selected && <p role="status">クリア済み</p>}{deleted && <p role="status">削除完了</p>}</>
+  if (result.status === 'loading') return <>{detail}{confirmation}<p role="status">記録読込中</p></>
+  const firstPage = cursor !== undefined && <button type="button" className="secondary-button" onClick={() => setCursor(undefined)}>先頭へ</button>
   if (result.status === 'error') return <>{detail}{confirmation}<ReadFailure code={result.code} retry={retry} />{firstPage}</>
-  const { items, nextCursor } = result.value
+  const { nextCursor } = result.value
+  const items = [...result.value.items]
+  for (const deletion of Object.values(deletions)) {
+    if (deletion.receipt && deletion.record && !items.some(item => item.discoveryId === deletion.record!.discoveryId)) items.push(deletion.record)
+  }
   return <>
     {detail}
     {confirmation}
     {items.length === 0 ? <>
-      <p>まだ記録がありません</p>
-      <button type="button" className="primary-button" onClick={onExplore}>謎を探しに行く</button>
-    </> : <table className="record-table" aria-label="自分の記録一覧">
-      <thead><tr><th scope="col">写真</th><th scope="col">スポット名</th><th scope="col">日付</th></tr></thead>
-      <tbody>{items.map((record) => {
-        const open = () => { setDeleted(false); setSelected(record.discoveryId) }
-        return <tr className="traveler-list-row traveler-list-row-photo" key={record.discoveryId} onClick={(event) => {
-          event.currentTarget.querySelector('button')?.focus()
-          open()
-        }}>
-          <td><RecordThumbnail key={`${record.discoveryId}:${active}`} api={api} id={record.discoveryId} active={active} /></td>
-          <td><button type="button" className="record-open" aria-haspopup="dialog" onClick={(event) => { event.stopPropagation(); open() }}>
+      <p>記録なし</p>
+      <button type="button" className="primary-button" onClick={onExplore}>謎を探す</button>
+    </> : <ul className="record-list" aria-label="自分の記録一覧">
+      {items.map((record) => <li key={record.discoveryId}>
+        <button type="button" className="traveler-list-row traveler-list-row-photo record-open"
+          aria-label={record.afterClear?.spot?.name ?? record.placeName} aria-haspopup="dialog"
+          onClick={() => { setDeleted(false); setSelected(record.discoveryId) }}>
+          <RecordThumbnail key={`${record.discoveryId}:${active}`} api={api} id={record.discoveryId} active={active} />
+          <span className="record-summary">
             <span className="traveler-row-title">{record.afterClear?.spot?.name ?? record.placeName}</span>
-          </button></td>
-          <td className="traveler-row-meta"><RecordDate date={record.firstClearedAt} /></td>
-        </tr>
-      })}</tbody>
-    </table>}
+            <span className="traveler-row-meta"><RecordDate date={record.firstClearedAt} /></span>
+            {deletions[record.discoveryId]?.receipt && <span role="status">{deletions[record.discoveryId].state === 'failed' ? '削除未完了' : '削除中'}</span>}
+            {deletions[record.discoveryId]?.state === 'send-error' && <span role="status">削除結果未確認</span>}
+          </span>
+        </button>
+      </li>)}
+    </ul>}
     {(firstPage || nextCursor) && <div className="camera-actions">
       {firstPage}
       {nextCursor && <button type="button" className="secondary-button" onClick={() => setCursor(nextCursor)}>次の記録</button>}
