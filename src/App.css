@@ -1152,3 +1152,33 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 .primary-button, .api-load-state > button,
 .primary-button:hover:not(:disabled), .api-load-state > button:hover:not(:disabled) { background: var(--role-primary); }
 .filter-toggle[data-selected="true"] { background: var(--role-selected); border: 2px solid var(--ui-line); }
+
+/* PCサイドバーのアイコン列（11/10 ゑんどくん指示）：開いても閉じても、ロゴとナビのアイコンの
+   中心を細い列の中央（x = rail/2 = 28px）にそろえ、文字はその右へ出す。選択枠は閉じた列の中に収める。 */
+@media (min-width: 981px) {
+  body:has(.traveler-shell) .brand,
+  body.explore-fullbleed .brand,
+  body:has(.traveler-shell).explore-sidebar-collapsed .brand,
+  body.explore-fullbleed.explore-sidebar-collapsed .brand {
+    justify-content: flex-start; padding-left: calc(var(--pc-sidebar-rail-w) / 2 - 16px); padding-right: 0;
+  }
+  body:has(.traveler-shell).explore-sidebar-collapsed .brand,
+  body.explore-fullbleed.explore-sidebar-collapsed .brand { gap: 0; }
+  body:has(.traveler-shell) .desktop-nav,
+  body.explore-fullbleed .desktop-nav { padding-inline: var(--sp-8); }
+  body:has(.traveler-shell) .desktop-nav a,
+  body.explore-fullbleed .desktop-nav a,
+  body:has(.traveler-shell) .desktop-nav button,
+  body.explore-fullbleed .desktop-nav button,
+  body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav a,
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav a,
+  body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav button,
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav button {
+    justify-content: flex-start; border: var(--ui-border-width) solid transparent;
+    padding-left: calc(var(--pc-sidebar-rail-w) / 2 - var(--sp-8) - var(--sp-8) - 1px - var(--ui-border-width)); padding-right: var(--sp-8);
+  }
+  body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav a,
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav a,
+  body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav button,
+  body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav button { padding-right: 0; }
+}

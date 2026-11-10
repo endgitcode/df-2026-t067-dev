@@ -50,3 +50,17 @@ describe('sidebar hit testing and rail containment', () => {
     expect(css).toMatch(/explore-sidebar-collapsed \.explore-side-panel\s*\{[^}]*visibility: hidden; pointer-events: none/)
   })
 })
+
+describe('sidebar icons keep the same x when opening and closing (11/10)', () => {
+  const block = css.slice(css.lastIndexOf('PCサイドバーのアイコン列'))
+  it('puts the brand mark center on the rail center in both states', () => {
+    // 32pxのマークを rail/2 - 16px から置く＝中心が rail/2（28px）。開閉の両方のセレクタに効かせる。
+    expect(block).toMatch(/body\.explore-fullbleed \.brand,[\s\S]*body\.explore-fullbleed\.explore-sidebar-collapsed \.brand \{[^}]*justify-content: flex-start; padding-left: calc\(var\(--pc-sidebar-rail-w\) \/ 2 - 16px\)/)
+  })
+  it('puts the 18px nav icons (half = sp-8 + 1px) on the rail center in both states and keeps the selected box inside the rail', () => {
+    expect(block).toMatch(/body\.explore-fullbleed \.desktop-nav \{ padding-inline: var\(--sp-8\); \}/)
+    expect(block).toMatch(/body\.explore-fullbleed\.explore-sidebar-collapsed \.desktop-nav button \{[^}]*justify-content: flex-start; border: var\(--ui-border-width\) solid transparent;[^}]*padding-left: calc\(var\(--pc-sidebar-rail-w\) \/ 2 - var\(--sp-8\) - var\(--sp-8\) - 1px - var\(--ui-border-width\)\)/)
+    // 閉じた列のボタンは 8px + 幅100%（rail - 16px）で列内に収まる。
+    expect(css).toMatch(/explore-sidebar-collapsed \.desktop-nav \{[^}]*width: var\(--pc-sidebar-rail-w\); padding-inline: var\(--sp-8\)/)
+  })
+})
