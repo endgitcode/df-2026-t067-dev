@@ -163,7 +163,10 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     }
   }, [step, rightsError])
 
+  const [unsaved, setUnsaved] = useState(false)
+
   function markMaterialChange() {
+    setUnsaved(true)
     connection?.onDirty?.(true)
     if (visitedDraft) setMaterialChanged(true)
   }
@@ -236,6 +239,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   }
 
   function editDraft(next: SetStateAction<DraftFields>) {
+    setUnsaved(true)
     connection?.onDirty?.(true)
     setDraft(next)
     setDraftEdit((value) => value + 1)
@@ -285,7 +289,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       setStep('A03')
       return
     }
-    if (destination === 'next' || onePage) {
+    if (destination === 'next' && !onePage) {
       const missingHint = draft.hints.findIndex((hint) => !hint.trim())
       const targetFields = [
         targetMissing && 'workflow-target-name', referenceMissing && 'workflow-reference',
@@ -345,6 +349,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       setRightsError(false)
       setReferenceAssetId(saved.draft.referenceAssetId)
       clearPhoto()
+      setUnsaved(false)
       connection?.onWorkflowSave?.(saved, destination === 'next')
       if (destination !== undefined && destination !== 'next') connection?.onContinue?.(saved, destination)
     })
@@ -483,7 +488,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {saveState.status === 'error' && <p role="alert">{saveState.message}</p>}
       {inputError && <p role="alert">{inputError}</p>}
       <div className="admin-list-actions admin-save-bar">
-        <button type="button" className={onePage ? "workflow-primary" : undefined} disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => {
+        <button type="button" className={onePage ? "workflow-primary" : undefined} disabled={saving || connection.saveBlocked || (onePage && (!record ? !name.trim() && !draft.title.trim() : !unsaved)) || (saveState.status === 'error' && saveState.reload)} onClick={() => {
           saveDraft()
         }}>{saving ? '保存中' : onePage ? '保存' : '下書きを保存'}</button>
         {part && !onePage && <button type="button" className="workflow-primary" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('next')}>保存して次へ</button>}
