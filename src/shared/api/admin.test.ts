@@ -77,3 +77,12 @@ it('binds review responses to the requested revision and rejects inconsistent re
 it('normalizes free prices before drafts reach storage', () => {
   expect(parseManagedQuestDraft({ ...draft, materials: { ...draft.materials, price: '無料：500' } }).materials.price).toBe('無料')
 })
+
+it('round-trips a title-only draft without requiring publication fields', () => {
+  const incomplete = {
+    ...draft, materials: { ...draft.materials, name: '', photoRights: '' },
+    content: { title: '途中の謎', question: '', hints: ['', '', ''], verifiedFeatures: '', draftingNotes: '' },
+    referenceAssetId: null, hintAssetId: null,
+  }
+  expect(parseManagedQuestDraft(incomplete)).toEqual(incomplete)
+})
