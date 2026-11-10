@@ -124,6 +124,7 @@ function QuestHints({ quest, getHint, getHintPhoto, stale, onVersionChanged, onR
 
 
   return <div className="quest-hints" aria-label="ヒント">
+    <p>ヒントは順番に開けます</p>
     {!opened && <button ref={openRef} type="button" className="hint-open" onClick={() => void load(1)}>ヒントを見る</button>}
     {opened && <div className="hint-card" aria-live="polite">
       <div className="hint-card-toolbar">
@@ -435,7 +436,7 @@ export function QuestDetails({ quest, open, disabled, buttonLabel, note, sourceL
               {/* 一覧内では行のバッジに集約し、単独表示時だけここに状態を出す。 */}
               {!hideToggle && <p className="quest-cleared-label"><Icon name="check" />クリア済み</p>}
               {onOpenDiscovery && <button type="button" className="primary-button" onClick={() => onOpenDiscovery(clearedDiscoveryId)}>記録を見る</button>}
-            </div> : !hideStartAction && (handoffActive ? <><QuestHandoff value={handoffUrl ?? questHandoffUrl(quest)} title={quest.title} />{note ? <p className="unavailable-note">{note}</p> : null}</> : <><button type="button" className="primary-button" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={note ? `${detailsId}-note` : undefined}>
+            </div> : !hideStartAction && (handoffActive ? <><QuestHandoff value={handoffUrl ?? questHandoffUrl(quest)} title={quest.title} />{note ? <p className="unavailable-note">{note}</p> : null}</> : <><button type="button" className="primary-button quest-mobile-start" disabled={disabled || questStale} onClick={() => { if (!questStale) void onStart({ questId: quest.questId, expectedVersion: quest.version }) }} aria-describedby={note ? `${detailsId}-note` : undefined}>
               {buttonLabel}
             </button>
             {note ? <p id={`${detailsId}-note`} className="unavailable-note">{note}</p> : null}</>)}

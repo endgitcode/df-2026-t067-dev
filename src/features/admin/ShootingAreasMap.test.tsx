@@ -120,7 +120,7 @@ it.each([false, true])('adds hours fields only with explicit flag %s, in the sam
   vi.stubEnv('VITE_GOOGLE_MAPS_PLACES_HOURS', String(enabled))
   let click!: (event: { latLng: { lat(): number; lng(): number }; placeId: string }) => void
   const fetchFields = vi.fn().mockResolvedValue({})
-  const importLibrary = vi.fn().mockResolvedValue({ Place: class { fetchFields = fetchFields } })
+  const importLibrary = vi.fn().mockResolvedValue({ Place: class { fetchFields = fetchFields; displayName = '施設の名称'; formattedAddress = '施設の住所' } })
   loader.loadGoogleMaps.mockResolvedValue({ Map: function () { return {} }, Marker: function () {}, importLibrary,
     event: { addListener: (_: unknown, name: string, fn: typeof click) => { if (name === 'click') click = fn; return { remove() {} } } } })
   const onSelect = vi.fn()
@@ -128,6 +128,22 @@ it.each([false, true])('adds hours fields only with explicit flag %s, in the sam
   render(<ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} onSelect={onSelect} spot={null} pickPlace />)
   await waitFor(() => expect(click).toBeTypeOf('function'))
   act(() => click({ latLng: { lat: () => 0, lng: () => 0 }, placeId: 'fixture' }))
-  await onSelect.mock.calls[0][2].loadDetails()
+  expect(await onSelect.mock.calls[0][2].loadDetails()).toMatchObject({ name: '施設の名称', address: '施設の住所' })
   expect(fetchFields).toHaveBeenCalledExactlyOnceWith({ fields: ['displayName', 'formattedAddress', ...(enabled ? ['regularOpeningHours'] : [])] })
+})
+
+
+it('restores the opening view after a selected spot is cleared', async () => {
+  const setCenter = vi.fn(), setZoom = vi.fn()
+  loader.loadGoogleMaps.mockResolvedValue({ Map: function () { return { setCenter, setZoom } },
+    Marker: function () { return { setMap() {} } }, event: { addListener: () => ({ remove() {} }) } })
+  const { ShootingAreasMap } = await import('./ShootingAreasMap')
+  const props = { zones: [], selectedIndex: null, disabled: false, onSelect: vi.fn(), pickPlace: true }
+  const view = render(<ShootingAreasMap {...props} spot={{ latitude: 35, longitude: 135 }} />)
+  await screen.findByRole('button', { name: '地図の表示を戻す' })
+  view.rerender(<ShootingAreasMap {...props} spot={{ latitude: 36, longitude: 136 }} />)
+  view.rerender(<ShootingAreasMap {...props} spot={null} />)
+  await userEvent.setup().click(screen.getByRole('button', { name: '地図の表示を戻す' }))
+  expect(setCenter).toHaveBeenLastCalledWith({ lat: 35, lng: 135 })
+  expect(setZoom).toHaveBeenLastCalledWith(17)
 })

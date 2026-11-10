@@ -1194,3 +1194,8 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
     min-height: calc(100dvh - 80px - env(safe-area-inset-top, 0px) - var(--mobile-tabbar-h) - var(--sp-16));
   }
 }
+
+/* D-90: Reactの幅の購読が確定する前もPCに開始ボタンを描かない。 */
+@media (min-width: 981px) {
+  .quest-mobile-start { display: none; }
+}

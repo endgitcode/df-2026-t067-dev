@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QuestDetails } from './QuestDetails'
 import { ApiError } from '../../shared/api/client'
 import { demoQuest } from './demoQuest'
+import { PrerenderViewport } from './useWideViewport'
+import { renderToString } from 'react-dom/server'
+import { readFileSync } from 'node:fs'
 
 it('replaces the start action with a cleared notice and a record link for a cleared quest (D-64)', async () => {
   const user = userEvent.setup()
@@ -593,4 +596,35 @@ it('omits the condition paragraph when a legacy publication contains only a phot
   const { container } = render(<QuestDetails quest={{ ...demoQuest, visitConditions: '注意：旧注意\n続き' }} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" onToggle={vi.fn()} onStart={vi.fn()} />)
   expect(screen.queryByText(/旧注意|続き/)).not.toBeInTheDocument()
   expect(container.querySelector('.sample-note')).toBeNull()
+})
+
+
+it('keeps the PC handoff on initial HTML and hint updates using the parent viewport', async () => {
+  // 子の実測値がまだ親と一致しなくても、同じ詳細ツリーは親の幅を使う。
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
+  const getHint = vi.fn().mockResolvedValue({ text: '最初のヒント' })
+  const tree = <PrerenderViewport value={true}><QuestDetails quest={demoQuest} areaLabel="地域" open disabled={false}
+    buttonLabel="挑戦を開始" onToggle={vi.fn()} onStart={vi.fn()} getHint={getHint} /></PrerenderViewport>
+  try {
+    expect(renderToString(tree)).not.toContain('quest-mobile-start')
+    const { container } = render(tree)
+    const starts: Element[] = []
+    const observer = new MutationObserver(() => { starts.push(...container.querySelectorAll('.quest-mobile-start')) })
+    observer.observe(container, { childList: true, subtree: true })
+    try {
+      expect(container.querySelector('.quest-mobile-start')).toBeNull()
+      expect(screen.getByRole('img', { name: /QRコード/ })).toBeVisible()
+      expect(screen.getByText('ヒントは順番に開けます')).toBeVisible()
+      await userEvent.setup().click(screen.getByRole('button', { name: 'ヒントを見る' }))
+      await screen.findByText('最初のヒント')
+      expect(starts).toHaveLength(0)
+      expect(screen.queryByRole('button', { name: '挑戦を開始' })).not.toBeInTheDocument()
+    } finally { observer.disconnect() }
+  } finally { vi.unstubAllGlobals() }
+})
+
+
+it('blocks painting a mobile start action at the PC breakpoint even before React updates', () => {
+  const css = readFileSync('src/App.css', 'utf8')
+  expect(css).toMatch(/@media \(min-width: 981px\)\s*\{\s*\.quest-mobile-start\s*\{\s*display: none;/)
 })

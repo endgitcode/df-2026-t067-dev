@@ -1,5 +1,6 @@
 import { createContext, useContext, useSyncExternalStore } from 'react'
 
+// 起動HTMLの指定幅と、詳細ツリー内で親と同じ幅を使うための上書き。
 export const PrerenderViewport = createContext<boolean | null>(null)
 
 // App.css のワークスペースが2カラムになる境界（max-width: 980px の反対側）を
@@ -20,7 +21,7 @@ function getSnapshot() {
 
 export function useWideViewport(): boolean {
   const prerender = useContext(PrerenderViewport)
-  // ビルド時だけ指定幅で描画する。クライアントの初回描画は従来どおり実測する。
+  // 親から幅が渡されている場合、子の再描画タイミングによる判定の混在を防ぐ。
   const wide = useSyncExternalStore(subscribe, getSnapshot, () => prerender ?? false)
   return prerender ?? wide
 }
