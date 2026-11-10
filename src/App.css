@@ -112,7 +112,6 @@ h1 { font-size: var(--fs-24); font-weight: var(--ui-weight-display); line-height
 .map-preview-shell.has-sheet .map-preview { position: absolute; inset: 0; height: auto; }
 .map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-8); pointer-events: none; }
 .map-filter-panel { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-8); width: 100%; min-width: 0; }
-.map-filter-selection { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); pointer-events: auto; }
 .filter-stage-label { margin: var(--sp-4) 2px 0; font-size: var(--fs-14); font-weight: 600; }
 .map-filter-chips-wrap { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 250ms; }
 .map-filter-chips-wrap.is-open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows 250ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s; }
@@ -369,7 +368,7 @@ button.traveler-list-row { cursor: pointer; }
   .explore-workspace { grid-template-columns: minmax(0, 1fr); gap: var(--sp-24); }
   .map-preview-shell { position: relative; top: 0; }
   .map-controls, .explore-sheet-reopen, .map-state button { touch-action: none; overscroll-behavior: none; }
-  .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h, 70px) + var(--sheet-h, 168px) + 12px); z-index: 3; }
+  .map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h, 70px) + 168px + 12px); z-index: 3; }
   .map-preview { height: 420px; }
   .map-preview-shell.has-sheet { height: max(520px, calc(100svh - 224px)); min-height: 520px; }
   .map-filter-overlay { top: 74px; }
@@ -865,17 +864,17 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
   body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top, 0px) + 68px); left: 12px; right: 12px; }
   body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }
-  /* 地図操作は描画中のシート上端に合わせ、収まらない場合は非表示にする。 */
-  body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); z-index: 3; }
-  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); z-index: 3; }
+  /* 地図操作はpeek位置に固定し、シートに隠れたボタンは押せない扱いにする。 */
+  body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 168px + 12px); z-index: 3; }
+  body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 168px + 12px); z-index: 3; }
   body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px; padding: var(--sp-8) var(--sp-12); border: var(--ui-border-width) solid var(--ui-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-accent-ink); box-shadow: none; font-size: var(--fs-12); font-weight: var(--ui-weight-strong); cursor: pointer; }
   body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; }
   body.explore-fullbleed .map-browse-shortcut.is-return-to-map { bottom: calc(var(--mobile-tabbar-h) + 10px); z-index: 8; }
   body.explore-fullbleed .map-browse-shortcut[inert] { visibility: hidden; pointer-events: none; }
   body.explore-fullbleed .map-preview-shell:has(.explore-sheet.is-dragging) + .map-browse-shortcut { display: none; }
-  body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }
+  body.explore-fullbleed .map-location-status.is-floating { bottom: calc(168px + var(--mobile-tabbar-h) + 14px); }
   /* フッター廃止（D-39）に伴い、レールの末尾の下部余白はレール側で確保する。 */
-  body.explore-fullbleed .map-preview-shell:has(> .explore-sheet-reopen, + .map-browse-shortcut) .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 62px); }
+  body.explore-fullbleed .map-preview-shell:has(> .explore-sheet-reopen, + .map-browse-shortcut) .map-location-status.is-floating { bottom: calc(168px + var(--mobile-tabbar-h) + 62px); }
   body.explore-fullbleed .quest-rail { padding: var(--sp-24) var(--sp-16) calc(var(--mobile-tabbar-h) + var(--sp-24)); }
   /* 「地図に戻る」は tabbar+10 に高さ約44pxで浮く。既存の rail 余白 tabbar+25 では
      詳細末尾の「問題を報告」に重なる（実地目視）。浮きボタン表示中だけ余白を足す。 */
@@ -889,10 +888,10 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .quest-rail:empty { display: none; }
   body.explore-fullbleed .is-browsing-below-map ~ .quest-rail { min-height: 100svh; }
   @media (orientation: landscape) {
-    .map-preview-shell.has-sheet .map-controls { right: 64px; bottom: calc(var(--mobile-tabbar-h, 70px) + var(--sheet-h, 168px) + 12px); flex-direction: row; }
+    .map-preview-shell.has-sheet .map-controls { right: 64px; bottom: calc(var(--mobile-tabbar-h, 70px) + 168px + 12px); flex-direction: row; }
     .map-preview-shell.has-sheet .map-zoom-group { display: flex; flex-direction: row; }
     .map-preview-shell.has-sheet .map-zoom button + button { border-top: 0; border-left: var(--ui-border-width) solid var(--ui-line); }
-    body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { right: 64px; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); flex-direction: row; }
+    body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { right: 64px; bottom: calc(var(--mobile-tabbar-h) + 168px + 12px); flex-direction: row; }
   }
 }
 
@@ -1131,7 +1130,7 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 /* 作業13: 色だけでなく、既存の文字・選択表示と一緒に状態を示す。 */
 .quest-cleared-label { background: var(--role-done); color: var(--ui-ink); }
 .filter-prefecture[aria-pressed="true"] { background: var(--role-selected); box-shadow: inset 0 0 0 2px var(--ui-line); }
-.filter-chip[aria-pressed="true"], .map-area-chip, .map-filter-selection .filter-chip { background: var(--role-selected); border: 2px solid var(--ui-line); }
+.filter-chip[aria-pressed="true"], .map-area-chip { background: var(--role-selected); border: 2px solid var(--ui-line); }
 .camera-panel .answer-waiting { background: var(--role-off); }
 .answer-result { padding: var(--sp-8) var(--sp-12); border-radius: var(--radius-s); background: var(--ui-surface); color: var(--ui-ink); }
 .answer-result:not([data-outcome]) { background: var(--role-off); }

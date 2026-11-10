@@ -5,12 +5,12 @@ import { mapControlsPlacement } from './mapOverlayLayout'
 
 const readCss = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8').replace(/\r\n?/g, '\n')
 const css = readCss('src/App.css')
-const MOBILE_CONTROL_RULE = '.map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h, 70px) + var(--sheet-h, 168px) + 12px); z-index: 3; }'
+const MOBILE_CONTROL_RULE = '.map-preview-shell.has-sheet .map-controls { bottom: calc(var(--mobile-tabbar-h, 70px) + 168px + 12px); z-index: 3; }'
 const mapPreview = readFileSync(resolve(process.cwd(), 'src/features/explore/MapPreview.tsx'), 'utf8')
 const bottomSheet = readFileSync(resolve(process.cwd(), 'src/features/explore/ExploreBottomSheet.tsx'), 'utf8')
 
 // CSS の実測は jsdom ではできないため、規則の置き場所（構造）で担保する。
-// 地図操作はシート上端に追従し、ヘッダーとの間に収まる場合だけ表示する。
+// シートへの追従はバグのため、地図操作はpeek位置に固定する。
 describe('map controls placement with the bottom sheet', () => {
   it('スマホ幅では開いた場所フィルターを一覧シートより手前に置く', () => {
     // jsdom は重なりを描画しないため、390pxに適用されるCSSと開状態の条件を検証する。
@@ -24,7 +24,7 @@ describe('map controls placement with the bottom sheet', () => {
     expect(css).toContain('.map-filter-overlay { position: absolute; top: 78px; left: 20px; right: 20px; z-index: 3;')
   })
 
-  it('follows the sheet height across the mobile range', () => {
+  it('stays at peek height across the mobile range', () => {
     expect(css.split(MOBILE_CONTROL_RULE).length - 1).toBe(1)
     const mediaAt = css.indexOf('@media (max-width: 980px)')
     expect(mediaAt).toBeGreaterThan(-1)
@@ -43,7 +43,7 @@ describe('map controls placement with the bottom sheet', () => {
   it.each([568, 280])('keeps 44px landscape targets within a %ipx wide viewport when space is available', (viewportWidth) => {
     expect(css).toContain('@media (orientation: landscape)')
     expect(css).toContain('.map-preview-shell.has-sheet .map-zoom-group { display: flex; flex-direction: row; }')
-    expect(css).toContain('right: 64px; bottom: calc(var(--mobile-tabbar-h, 70px) + var(--sheet-h, 168px) + 12px); flex-direction: row;')
+    expect(css).toContain('right: 64px; bottom: calc(var(--mobile-tabbar-h, 70px) + 168px + 12px); flex-direction: row;')
     expect(css).toContain('.map-zoom button { width: 44px; height: 44px; }')
     const viewportHeight = 320
     const controlsHeight = 48
@@ -55,15 +55,9 @@ describe('map controls placement with the bottom sheet', () => {
       const sheetTop = viewportHeight - 70 - sheetHeight
       const placement = mapControlsPlacement(viewportHeight, sheetTop, controlsHeight, 124)
       const controlsBottom = viewportHeight - placement.bottom
-      expect(controlsBottom).toBe(sheetTop - 12)
-      if (sheetHeight === 168) {
-        // 横向きではヘッダーとpeekの間に収まらない。縮小せず隠し、閉じると再び操作できる。
-        expect(placement.hidden).toBe(true)
-      } else {
-        expect(placement.hidden).toBe(false)
-        expect(controlsBottom - controlsHeight).toBeGreaterThanOrEqual(124)
-        expect(controlsBottom).toBeLessThan(viewportHeight - 70)
-      }
+      expect(controlsBottom).toBe(viewportHeight - 244)
+      // 横向きでもシートに追従させず、ヘッダーと干渉する固定位置は隠す。
+      expect(placement.hidden).toBe(true)
     }
     expect(mapPreview).toContain("controls.style.visibility = placement.hidden ? 'hidden' : ''")
     expect(mapPreview).toContain('if (placement.hidden || !available || covered)')
@@ -127,14 +121,14 @@ describe('mobile bottom tab bar (D-32)', () => {
     expect(css).not.toContain('body.explore-fullbleed .mobile-nav {')
   })
 
-  it('follows the sheet edge and keeps the sheet above the tab bar', () => {
+  it('stays at peek and keeps the sheet above the tab bar', () => {
     expect(css).toContain('body.explore-fullbleed .explore-sheet { bottom: var(--mobile-tabbar-h); padding-bottom: 0; }')
-    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-preview-shell.has-sheet .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 168px + 12px); z-index: 3; }')
     expect(mapPreview).toContain('isMapControlFullyCovered(rect, sheetRect)')
     expect(mapPreview).toContain("inert={inactiveMapControls.has('地図を拡大')}")
     expect(mapPreview).toContain('new ResizeObserver(update)')
-    expect(css).toContain('.map-preview-shell.has-sheet .map-controls { right: 64px; bottom: calc(var(--mobile-tabbar-h, 70px) + var(--sheet-h, 168px) + 12px); flex-direction: row; }')
-    expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(var(--sheet-h, 0px) + var(--mobile-tabbar-h) + 14px); }')
+    expect(css).toContain('.map-preview-shell.has-sheet .map-controls { right: 64px; bottom: calc(var(--mobile-tabbar-h, 70px) + 168px + 12px); flex-direction: row; }')
+    expect(css).toContain('body.explore-fullbleed .map-location-status.is-floating { bottom: calc(168px + var(--mobile-tabbar-h) + 14px); }')
     const reopenRule = 'body.explore-fullbleed .explore-sheet-reopen { position: absolute; left: 12px; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; display: block; min-height: 44px;'
     expect(css).toContain(reopenRule)
     expect(css).toContain('body.explore-fullbleed .map-browse-shortcut { position: fixed; bottom: calc(var(--mobile-tabbar-h) + 48px); z-index: 3; }')
@@ -424,7 +418,7 @@ describe('panel single scroll and in-list detail (D-70)', () => {
 // 規則の文字列と定数で担保する。
 describe('sheet peek height and overflow guards (D-73)', () => {
   it('clears the mobile map controls above the peek sheet via the sheet height variable', () => {
-    expect(css).toContain('body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + var(--sheet-h, 168px) + 12px); z-index: 3; }')
+    expect(css).toContain('body.explore-fullbleed .map-controls { position: absolute; bottom: calc(var(--mobile-tabbar-h) + 168px + 12px); z-index: 3; }')
     expect(css).not.toContain('bottom: calc(var(--mobile-tabbar-h) + 58px)')
   })
 

@@ -84,11 +84,9 @@ describe('色の役割', () => {
     expect(background(traveler, selector)).toBe('transparent')
     expect(rules(traveler).find(rule => rule.selectorText === selector)?.style.color).toBe('var(--ui-error)')
   })
-  it('選択地域のチップはaria-pressedなしでも水色と黒枠にする', () => {
+  it('選択地域の「地名×」チップ用の色は出さない', () => {
     const selector = '.map-filter-selection .filter-chip'
-    expect(background(traveler, selector)).toBe('var(--role-selected)')
-    const rule = rules(traveler).find(rule => rule.selectorText.split(',').map(s => s.trim()).includes(selector))
-    expect(rule?.style.border).toBe('2px solid var(--ui-line)')
+    expect(rules(traveler).every(rule => !rule.selectorText.split(',').map(s => s.trim()).includes(selector))).toBe(true)
   })
   it('結果と待機に役割色を付ける', () => {
     expect(background(traveler, '.answer-result')).toBe('var(--ui-surface)')

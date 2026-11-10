@@ -1,10 +1,10 @@
 export type ControlRect = Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'width' | 'height'>
 
-/** Only fully covered controls need disabling; the opaque sheet intercepts hidden hit targets. */
+/** Any overlap disables the button so partially hidden targets cannot receive focus. */
 export function isMapControlFullyCovered(control: ControlRect, sheet: ControlRect): boolean {
   return control.width > 0 && control.height > 0
-    && control.left >= sheet.left && control.right <= sheet.right
-    && control.top >= sheet.top && control.bottom <= sheet.bottom
+    && control.left < sheet.right && control.right > sheet.left
+    && control.top < sheet.bottom && control.bottom > sheet.top
 }
 
 export function isMapControlWithin(control: ControlRect, visibleBounds: ControlRect): boolean {
