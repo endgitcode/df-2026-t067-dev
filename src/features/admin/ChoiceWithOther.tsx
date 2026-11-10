@@ -24,9 +24,11 @@ export function ChoiceWithOther({ label, phrases, value, onChange }: {
     setParsed({ selected: [...selected], other }); lastValue.current = nextValue
     onChange(nextValue)
   }
-  return <fieldset><legend>{label}</legend>
-    {phrases.map(phrase => <label key={phrase}><input type="checkbox" checked={parsed.selected.includes(phrase)} onChange={event => write(event.target.checked ? [...parsed.selected, phrase] : parsed.selected.filter(item => item !== phrase), parsed.other)} />{phrase}</label>)}
-    <label><input type="checkbox" aria-label={`${label}のその他を選択`} checked={otherOpen || Boolean(parsed.other)} onChange={event => { setOtherOpen(event.target.checked); if (!event.target.checked) write(parsed.selected, '') }} />その他</label>
+  return <fieldset className="choice-with-other"><legend>{label}</legend>
+    <div className="choice-options">
+    {phrases.map(phrase => <label key={phrase} className="choice-option"><input type="checkbox" checked={parsed.selected.includes(phrase)} onChange={event => write(event.target.checked ? [...parsed.selected, phrase] : parsed.selected.filter(item => item !== phrase), parsed.other)} />{phrase}</label>)}
+    <label className="choice-option"><input type="checkbox" aria-label={`${label}のその他を選択`} checked={otherOpen || Boolean(parsed.other)} onChange={event => { setOtherOpen(event.target.checked); if (!event.target.checked) write(parsed.selected, '') }} />その他</label>
+    </div>
     {(otherOpen || Boolean(parsed.other)) && <label>{label}のその他<textarea value={parsed.other} onChange={event => write(parsed.selected, event.target.value)} /></label>}
   </fieldset>
 }

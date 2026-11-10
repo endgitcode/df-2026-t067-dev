@@ -31,8 +31,8 @@ export function PriceInput({ value, onChange, onError }: { value: string; onChan
       <option value="">未選択</option><option>無料</option><option>有料</option>
     </select></label>
     {kind === '' && value && <p>{value}</p>}
-    {kind === '有料' && <fieldset aria-describedby={error && !Object.keys(amounts).length ? errorId : undefined}><legend>対象</legend>
-      {targets.map(target => <div key={target}>
+    {kind === '有料' && <fieldset className="price-targets" aria-describedby={error && !Object.keys(amounts).length ? errorId : undefined}><legend>対象</legend>
+      {targets.map(target => <div key={target} className="price-target">
         <label><input type="checkbox" checked={target in amounts} onChange={event => {
           const nextAmounts = { ...amounts }
           if (event.target.checked) {
@@ -43,9 +43,9 @@ export function PriceInput({ value, onChange, onError }: { value: string; onChan
           setAmounts(nextAmounts); write(kind, nextAmounts)
         }} />{target}</label>
         {target in amounts && <>
-          <label>{target}の金額<input aria-label={`${target}の金額`} type="number" min="0" step="1" inputMode="numeric" value={amounts[target]} aria-invalid={Boolean(error)} aria-describedby={error ? errorId + target : undefined} onChange={event => {
+          <span className="price-amount"><input aria-label={`${target}の金額`} type="number" min="0" step="1" inputMode="numeric" value={amounts[target]} aria-invalid={Boolean(error)} aria-describedby={error ? errorId + target : undefined} onChange={event => {
             const nextAmounts = { ...amounts, [target]: event.target.value }; setAmounts(nextAmounts); write(kind, nextAmounts)
-          }} />円</label>
+          }} />円</span>
           {error && <p id={errorId + target} role="alert" className="field-error">{error}</p>}
         </>}
       </div>)}
