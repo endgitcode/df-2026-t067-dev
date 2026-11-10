@@ -5,6 +5,33 @@ const css = readFileSync('src/features/admin/admin.css', 'utf8')
 
 // These contracts cover the later managed/workflow overrides as well as the base form.
 describe('管理画面の見た目の規則', () => {
+  it('ブランドリンクは旅行者と同じ文字色・フォントで下線を付けず、フォーカスを残す', () => {
+    const brand = css.match(/\.admin-demo \.brand \{([^}]+)\}/)?.[1]
+    expect(brand).toContain('color: var(--ui-ink);')
+    expect(brand).toContain('text-decoration: none;')
+    expect(brand).toContain('font-family: inherit;')
+    expect(css).toContain('.admin-demo :focus-visible { outline: 3px solid var(--ui-focus);')
+    expect(brand).not.toMatch(/outline\s*:/)
+  })
+  it('外枠を固定ヘッダーの下端から12px以上離し、見出しは枠内の通常配置に残す', () => {
+    // PC: account 10 + 44 + 12 = 66、スマホ: brand 16 + 44 + 12 = 72。
+    const desktop = css.slice(0, css.lastIndexOf('@media (max-width: 980px)'))
+    const desktopSpacing = desktop.match(/\.admin-demo,\s*\.admin-demo\.admin-managed \{([^}]+)\}/)?.[1]
+    expect(desktopSpacing).toContain('margin-top: calc(64px + 2px + env(safe-area-inset-top, 0px));')
+    expect(desktopSpacing).toContain('min-height: calc(100vh - 64px - 2px - env(safe-area-inset-top, 0px));')
+    // 詳細度の高い旧24px規則を残すと、通常のadmin-demoだけの検査では見逃す。
+    expect(css).not.toMatch(/(?:^|[{}])\s*\.admin-demo\.admin-managed\s*\{[^}]*(?:margin(?:-top)?|min-height)\s*:/)
+    const mobile = css.slice(css.lastIndexOf('@media (max-width: 980px)'))
+    const mobileSpacing = mobile.match(/\.admin-demo,\s*\.admin-demo\.admin-managed \{([^}]+)\}/)?.[1]
+    expect(mobileSpacing).toContain('margin-top: calc(64px + 8px + env(safe-area-inset-top, 0px));')
+    expect(mobileSpacing).toContain('min-height: calc(100vh - 64px - 8px - env(safe-area-inset-top, 0px));')
+    expect(css).toContain('.admin-demo > .admin-header { padding-top: 0; }')
+    expect(css.match(/\.admin-demo > \.admin-header \{[^}]+\}/g)).toEqual([
+      '.admin-demo > .admin-header { padding-top: 0; }',
+    ])
+    const workspace = readFileSync('src/features/admin/LocalAdminWorkspace.tsx', 'utf8')
+    expect(workspace).toMatch(/<main className=\{[^\n]+\}>\s*<header[^>]+>[\s\S]*?<h1>謎づくり<\/h1>[\s\S]*?<\/header>/)
+  })
   it('写真選択は他の入力と同じ8px間隔でラベルの下に置く', () => {
     const rule = css.match(/\.admin-demo \.photo-picker \{([^}]+)\}/)?.[1]
     expect(rule).toContain('display: flex;')
@@ -43,11 +70,12 @@ describe('管理画面の見た目の規則', () => {
     expect(css).toContain('padding: 16px 16px 48px')
     expect(css).toContain('.admin-workflow .form-section { padding: 16px; }')
   })
-  it('旅行者リンクはヘッダ内の文字リンク、戻るは左上、写真選択にはフォーカスを示す', () => {
-    const rule = css.match(/\.admin-demo \.admin-traveler-link \{([^}]+)\}/)?.[1]
-    expect(rule).toContain('min-height: 44px;')
-    expect(rule).not.toMatch(/position: fixed|border:/)
-    expect(css).toContain('.admin-header-actions { display: flex; align-items: center;')
+  it('ブランドとアカウントは旅行者と同じ固定スロット、戻ると写真のフォーカスは保持する', () => {
+    expect(css).toContain('width: 220px; height: 52px;')
+    expect(css).toContain('top: calc(10px + env(safe-area-inset-top, 0px)); right: 20px;')
+    expect(css).toContain('top: calc(6px + env(safe-area-inset-top, 0px)); right: 10px;')
+    expect(css).toContain('top: calc(16px + env(safe-area-inset-top, 0px)); left: 16px;')
+    expect(css).toContain('width: 44px; height: 44px; min-height: 44px; padding: 0;')
     expect(css).toContain('.photo-picker:has(input:focus-visible) .photo-picker-button')
     expect(css).toContain('.admin-workflow .form-section fieldset,')
     expect(css).toContain('.admin-workflow fieldset fieldset { border: 0;')

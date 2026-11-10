@@ -851,16 +851,10 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed .brand { padding: var(--sp-4) var(--sp-8) var(--sp-4) var(--sp-4); gap: var(--sp-8); }
   body.explore-fullbleed .brand-mark { width: 30px; height: 30px; border-radius: 12px; }
   body.explore-fullbleed .brand-copy { font-size: var(--fs-12); }
-  /* 問題詳細を開いてスクロールすると、浮きのロゴ／アカウントが
-     問題タイトルに重なる（実地目視）。詳細表示中は両者を隠し、閉じたら戻す。
-     一覧内詳細（wrap.is-open）と、レール側の quest-card.is-open（狭い幅の
-     公開APIデモ等で panelArrangement がオフのとき）の両方を対象にする。 */
-  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,
-  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area,
-  body.explore-fullbleed:has(.quest-card.is-open) .brand,
-  body.explore-fullbleed:has(.quest-card.is-open) .account-area {
-    visibility: hidden;
-    pointer-events: none;
+  /* 詳細でも共通ヘッダーを表示し、全開シートはフィルター下端より下に収める。 */
+  body.explore-fullbleed .explore-sheet:has(.explore-quest-detail-wrap.is-open),
+  body.explore-fullbleed .explore-sheet:has(.quest-card.is-open) {
+    max-height: calc(100% - var(--mobile-tabbar-h) - 124px - env(safe-area-inset-top, 0px));
   }
   /* スマホ幅では縁なし表示でもナビは下部タブバーのまま（D-32）。浮動ピルにはしない。
      その代わり、シートと浮動要素をタブバーの高さぶん持ち上げて重なりを避ける。 */
