@@ -51,14 +51,14 @@ it('blocks reversed hours and negative or fractional prices, then resets success
   expect(screen.getByLabelText('終了時刻')).toHaveAccessibleDescription(/終了時刻は/)
   fireEvent.click(screen.getByLabelText('翌日終了'))
   fireEvent.change(screen.getByLabelText('料金の区分'), { target: { value: '有料' } })
+  fireEvent.click(screen.getByRole('checkbox', { name: '一律' }))
   for (const value of ['-50', '1.5', '1e3']) {
-    fireEvent.change(screen.getByLabelText('料金・円'), { target: { value } })
+    fireEvent.change(screen.getByLabelText('一律の金額'), { target: { value } })
     fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
     expect(client.updateManagedQuest).not.toHaveBeenCalled()
-    expect(screen.getByLabelText('料金の補足')).toHaveValue('')
-    expect(screen.getByLabelText('料金・円')).toHaveAccessibleDescription('金額は0以上の整数')
+    expect(screen.getByLabelText('一律の金額')).toHaveAccessibleDescription('金額は0以上の整数')
   }
-  fireEvent.change(screen.getByLabelText('料金・円'), { target: { value: '0' } })
+  fireEvent.change(screen.getByLabelText('一律の金額'), { target: { value: '0' } })
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect((await screen.findByText('保存済み')).closest('[role="status"]')).toHaveFocus()
   client.updateManagedQuest.mockRejectedValue(new Error('offline'))
@@ -158,9 +158,10 @@ it.each([
 it('keeps the inventory fields and distinct actions on one page', () => {
   render(<AdminQuestWorkflow api={api()} initial={initial} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
   fireEvent.click(screen.getByText('クリア後'))
-  for (const label of ['撮るもの', '正解の写真', '場所の名前', '住所', '緯度', '経度', '船上・海上', '有料施設内', '料金の区分', '撮影の注意', '行き方', '交通手段', '所要分数', '紹介', '解説', 'タイトル', '問題文', 'ヒント 1', 'ヒント 2', 'ヒント 3', '特徴', '特徴を1行で追加', '設定するヒント', 'ヒント画像', '正解写真で試す', '別の写真で試す']) {
+  for (const label of ['撮るもの', '正解の写真', '場所の名前', '住所', '緯度', '経度', '船上・海上', '有料施設内', '料金の区分', '行き方', '交通手段', '所要分数', '紹介', '解説', 'タイトル', '問題文', 'ヒント 1', 'ヒント 2', 'ヒント 3', '特徴', '特徴を1行で追加', '設定するヒント', 'ヒント画像', '正解写真で試す', '別の写真で試す']) {
     expect(screen.getByLabelText(label, { exact: true, selector: 'input, textarea, select' })).toBeVisible()
   }
+  expect(screen.getByRole('group', { name: '撮影の注意' })).toBeVisible()
   for (const name of ['参照を外す', '行き方の文を作る', '特徴を追加', '画像を保存', '正解写真で試す', '別の写真で試す', '公開', '謎一覧へ戻る']) {
     expect(screen.getByRole('button', { name })).toBeVisible()
   }

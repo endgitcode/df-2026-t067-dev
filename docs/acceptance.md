@@ -255,3 +255,7 @@ FR-01/03、AT-25：スマホ下タブとPCモード切替は選択中でも黄�
 - 本文の保存ボタンはPC・スマホとも固定バーに1つ。保存後は無効、編集後は有効。本文がバーに隠れず、未保存の案内文は出さない。
 - 未保存のヒント画像とAI写真判定は無効表示。保存済みでも必須不足なら不足項目を表示し、公開・判定を無効にする。永続側判定APIも不足時にREVIEW_REQUIREDで拒否する。
 - タイトルのみの下書きは旅行者一覧・詳細へ出ず、確認依頼も下書きにとどまる。モックの `incomplete-draft.test.ts` と画面の `WorkflowSafety.test.tsx` で確認する。
+
+### 管理フォーム B：選択入力の回帰確認
+
+FR-03/09、AT-13/25：`ChoiceWithOther.test.tsx`、`InputUx.test.tsx`、`WorkflowSafety.test.tsx`、`QuestDraftForm.test.tsx` で定型文の完全一致・その他の表示／解除・旧値の無編集保存・大人子供の同時料金・無料への切替・負数小数の拒否をモックで確認する。`server/test/admin-publication-projection.test.ts` で新料金形式の入力検証と公開文、旧自由文の保持、未確認／未設定の非表示を確認する。実認証・実API・実端末の検証とは区別する。

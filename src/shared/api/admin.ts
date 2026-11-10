@@ -201,12 +201,27 @@ export function normalizePrice(value: string): string {
   return /^無料(?:：|$)/.test(trimmed) ? '無料' : value
 }
 
+function validatePrice(value: string): string {
+  const trimmed = value.trim()
+  if (/^有料：(?:一律|大人|子供) /.test(trimmed) || trimmed === '有料：') {
+    const parts = trimmed.slice(3).split('・')
+    const targets = new Set<string>()
+    for (const part of parts) {
+      const match = /^(一律|大人|子供) (\d+)円$/.exec(part)
+      if (!match || !Number.isSafeInteger(Number(match[2])) || targets.has(match[1])) throw new ContractError('price')
+      targets.add(match[1])
+    }
+    if (targets.has('一律') && targets.size > 1) throw new ContractError('price')
+  }
+  return normalizePrice(value)
+}
+
 export function parseManagedQuestDraft(input: unknown): ManagedQuestDraft {
   const d = fields(input, ['materials', 'content', 'afterClear', 'referenceAssetId', 'hintAssetId', 'hintAssetIds'], 'draft')
   const m = fields(d.materials, ['name', 'evidence', 'requiresBoat', 'requiresPaidFacility', 'price', 'photoNote', 'photoRights'], 'materials')
   return {
     materials: { name: text(m.name, 'name', 200), evidence: text(m.evidence, 'evidence'),
-      ...parseShootingConditions({ requiresBoat: m.requiresBoat, requiresPaidFacility: m.requiresPaidFacility }), price: normalizePrice(text(m.price, 'price', 2000)),
+      ...parseShootingConditions({ requiresBoat: m.requiresBoat, requiresPaidFacility: m.requiresPaidFacility }), price: validatePrice(text(m.price, 'price', 2000)),
       photoNote: text(m.photoNote, 'photoNote', 2000), photoRights: text(m.photoRights, 'photoRights', 2000) },
     content: draftContent(d.content),
     afterClear: parseAfterClearContent(d.afterClear),

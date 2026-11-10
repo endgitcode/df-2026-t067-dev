@@ -60,13 +60,13 @@ it('saves a local draft with its reference, then updates the saved revision and 
     referenceAssetId: 'demo-reference', hintAssetId: null, materials: { name: '架空の時計', evidence: '' },
     afterClear: { hours: '火曜から日曜' },
   })
-  await user.type(screen.getByLabelText('料金'), '架空の料金')
+  await user.selectOptions(screen.getByLabelText('料金の区分'), '無料')
   await user.click(screen.getByRole('button', { name: '下書きを保存' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('下書きの版が変わりました')
-  expect(screen.getByLabelText('料金')).toHaveValue('架空の料金')
+  expect(screen.getByLabelText('料金の区分')).toHaveValue('無料')
   expect(screen.getByRole('button', { name: '下書きを保存' })).toBeDisabled()
   expect(updateManagedQuest.mock.calls[0][2]).toMatchObject({
-    expectedDraftRevision: 1, draft: { referenceAssetId: 'demo-reference', materials: { price: '架空の料金' }, afterClear: { hours: '火曜から日曜' } },
+    expectedDraftRevision: 1, draft: { referenceAssetId: 'demo-reference', materials: { price: '無料' }, afterClear: { hours: '火曜から日曜' } },
   })
   expect(uploadOrgAsset).toHaveBeenCalledTimes(1)
 })

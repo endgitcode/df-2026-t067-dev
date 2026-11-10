@@ -1,13 +1,14 @@
 import { useEffect, useId, useState } from 'react'
+import { ChoiceWithOther } from './ChoiceWithOther'
 
 type Mode = 'unset' | 'all-day' | 'specified' | 'supplement'
-const exceptionPhrases = ['月曜休業', '日曜休業', '祝日は休業', '臨時休業あり'] as const
+const exceptionPhrases = ['月曜休業', '火曜休業', '水曜休業', '木曜休業', '金曜休業', '土曜休業', '日曜休業', '祝日は休業', '年末年始休業', '臨時休業あり'] as const
 const range = /^((?:[01]\d|2[0-3]):[0-5]\d)〜(翌日 )?((?:[01]\d|2[0-3]):[0-5]\d|24:00)(?:\n([\s\S]*))?$/
 function read(value: string) {
   const match = range.exec(value)
-  return { mode: (!value ? 'unset' : value === '終日' || value.startsWith('終日\n') ? 'all-day' : match ? 'specified' : 'supplement') as Mode,
+  return { mode: (!value ? 'unset' : value === '終日' || value.startsWith('終日\n') ? 'all-day' : match ? 'specified' : 'unset') as Mode,
     start: match?.[1] ?? '', end: match?.[3] === '24:00' ? '00:00' : match?.[3] ?? '',
-    next: Boolean(match?.[2]) || match?.[3] === '24:00', exceptions: match?.[4] ?? (value.startsWith('終日\n') ? value.slice(3) : '') }
+    next: Boolean(match?.[2]) || match?.[3] === '24:00', exceptions: match ? (match[4] ?? '') : (value.startsWith('終日\n') ? value.slice(3) : value === '終日' ? '' : value) }
 }
 
 /** UI helpers only: the persisted contract remains an optional, bounded string. */
@@ -23,13 +24,6 @@ export function HoursInput({ value, onChange, onError }: { value: string; onChan
     const base = m === 'all-day' ? '終日' : m === 'specified' && (s || e)
       ? `${s || '（開始未設定）'}〜${n ? '翌日 ' : ''}${e || '（終了未設定）'}` : ''
     onChange(m === 'supplement' ? free : [base, x].filter(Boolean).join('\n'))
-  }
-  function toggleExceptionPhrase(phrase: string) {
-    const lines = exceptions.split('\n').filter((line) => line.trim())
-    const nextLines = lines.includes(phrase) ? lines.filter((line) => line !== phrase) : [...lines, phrase]
-    const joined = nextLines.join('\n')
-    setExceptions(joined)
-    update(mode, start, end, next, joined)
   }
   const errorId = useId()
   const error = mode === 'specified' && start && end && end <= start && !next ? '終了時刻は開始時刻より後にするか、翌日終了を選択。' : ''
@@ -56,19 +50,8 @@ export function HoursInput({ value, onChange, onError }: { value: string; onChan
       <label><input type="checkbox" checked={next} onChange={event => { setNext(event.target.checked); update(mode, start, end, event.target.checked) }} />翌日終了</label>
       {error && <p id={errorId} role="alert" className="field-error">{error}</p>}
     </div>}
-    {mode !== 'supplement' && <>
-      <div className="phrase-chips">
-
-        <div role="group" aria-label="休業例">
-          {exceptionPhrases.map((phrase) => <button key={phrase} type="button" className="phrase-chip"
-            aria-pressed={exceptions.split('\n').includes(phrase)}
-            onClick={() => toggleExceptionPhrase(phrase)}>{phrase}</button>)}
-        </div>
-      </div>
-      <label>休業例外<textarea value={exceptions} onChange={event => { setExceptions(event.target.value); update(mode, start, end, next, event.target.value) }} placeholder="例：月曜休業、祝日は10時から、臨時休業あり" /></label>
-    </>}
+    {mode !== 'supplement' && <ChoiceWithOther label="休業例外" phrases={exceptionPhrases} value={exceptions} onChange={value => { setExceptions(value); update(mode, start, end, next, value) }} />}
     {mode === 'supplement' && <label>時間補足<textarea value={free} onChange={event => { setFree(event.target.value); onChange(event.target.value) }} /></label>}
 
-    <details><summary>保存内容</summary><p style={{ whiteSpace: 'pre-wrap' }}>{value.replace(/[（）]/g, '') || '未設定'}</p></details>
   </fieldset>
 }
