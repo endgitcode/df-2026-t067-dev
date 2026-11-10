@@ -337,7 +337,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     const legacyHintAssetId = savedDraft?.hintAssetId ?? null
     const hintAssetIds = savedDraft?.hintAssetIds ?? (legacyHintAssetId ? [legacyHintAssetId, null, null] : undefined)
     void save({
-      materials: { name, evidence, requiresBoat, requiresPaidFacility, price: normalizePrice(price), photoNote: initial?.materials.photoNote ?? '', photoRights: part && photo ? '' : photoRights },
+      materials: { name, evidence, requiresBoat, requiresPaidFacility, price: normalizePrice(price), photoNote: '', photoRights: part && photo ? '' : photoRights },
       content: draft, afterClear: { access, hours, promoComment, explanation, ...(spot ? { spot } : {}) }, referenceAssetId,
       hintAssetId: savedDraft?.hintAssetIds ? legacyHintAssetId : null,
       ...(hintAssetIds ? { hintAssetIds } : {}),

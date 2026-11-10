@@ -222,7 +222,8 @@ export function parseManagedQuestDraft(input: unknown): ManagedQuestDraft {
   return {
     materials: { name: text(m.name, 'name', 200), evidence: text(m.evidence, 'evidence'),
       ...parseShootingConditions({ requiresBoat: m.requiresBoat, requiresPaidFacility: m.requiresPaidFacility }), price: validatePrice(text(m.price, 'price', 2000)),
-      photoNote: text(m.photoNote, 'photoNote', 2000), photoRights: text(m.photoRights, 'photoRights', 2000) },
+      // 廃止済み。旧データ・省略を受理し、保存・応答には値を引き継がない。
+      photoNote: '', photoRights: text(m.photoRights, 'photoRights', 2000) },
     content: draftContent(d.content),
     afterClear: parseAfterClearContent(d.afterClear),
     referenceAssetId: d.referenceAssetId === null ? null : identifier(d.referenceAssetId, 'referenceAssetId'),

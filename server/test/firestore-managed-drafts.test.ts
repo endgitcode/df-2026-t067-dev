@@ -55,6 +55,20 @@ test('durable managed drafts isolate organizations and use one revision for text
     return (uid: string) => createApiClient({ expectedDataMode: 'durable-local',
       getIdToken: async () => uid, fetch: (path, init) => fetch(base + String(path), init) })
   }
+  await t.test('store clears incoming and stored legacy photo notes on the next save', async () => {
+    const store = new FirestoreManagedDraftStore(db)
+    const legacy = { ...draft, materials: { ...draft.materials, photoNote: '旧注意' } }
+    const created = await store.create('editor', orgId, legacy)
+    const ref = db.collection('quests').doc(created.questId)
+    assert.equal((await ref.get()).data()?.draft.materials.photoNote, '')
+    await ref.update({ 'draft.materials.photoNote': '保存済みの旧注意' })
+    const loaded = await store.get('editor', orgId, created.questId)
+    assert.equal(loaded.draft.materials.photoNote, '')
+    // 読込だけでは保存データを書き換えず、次の本文保存で消す。
+    assert.equal((await ref.get()).data()?.draft.materials.photoNote, '保存済みの旧注意')
+    await store.update('editor', orgId, created.questId, { expectedDraftRevision: loaded.draftRevision, draft: legacy })
+    assert.equal((await ref.get()).data()?.draft.materials.photoNote, '')
+  })
   const first = await start(), second = await start()
   const editor = first('editor'), colleague = second('colleague')
   assert.deepEqual((await editor.listMemberships()).items.map(({ orgId }) => orgId), [orgId])

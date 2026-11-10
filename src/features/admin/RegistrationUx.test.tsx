@@ -30,7 +30,7 @@ it('preserves optional values through collapse and navigation and explains incom
   expect(screen.getByLabelText('写真の権利')).toBeVisible()
 })
 
-it('saves every existing connected field unchanged after collapsing and visiting preview', async () => {
+it('clears legacy photo notes and preserves other connected fields after visiting preview', async () => {
   const initial: ManagedQuest = {
     orgId: 'org', questId: 'quest', areaId: 'area', draftRevision: 7, publishedVersion: null,
     status: 'draft', source: 'mock', shootingAreaStatus: 'configured',
@@ -49,7 +49,7 @@ it('saves every existing connected field unchanged after collapsing and visiting
   fireEvent.click(screen.getByRole('button', { name: /3\/3/ }))
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   await screen.findByText('保存済み')
-  expect(updateManagedQuest.mock.calls[0][2]).toEqual({ expectedDraftRevision: 7, draft: initial.draft })
+  expect(updateManagedQuest.mock.calls[0][2]).toEqual({ expectedDraftRevision: 7, draft: { ...initial.draft, materials: { ...initial.draft.materials, photoNote: '' } } })
 })
 it('opens collapsed hours and focuses its error when a partial range prevents navigation', async () => {
   render(<QuestDraftForm />)
