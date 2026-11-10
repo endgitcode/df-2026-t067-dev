@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import {
   clampWithRubberBand,
@@ -16,6 +16,8 @@ const SHEET_CLOSED_HEIGHT = 64
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
+const CARD_CLICK_GRACE_MS = 100
+const DEFAULT_TRANSITION_MS = 300
 
 function snapHeights(stageHeight: number): Record<SheetSnap, number> {
   const half = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
@@ -105,6 +107,19 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
   const height = dragHeight ?? heights[snap]
   useEffect(() => { onHeightChange?.(height) }, [height, onHeightChange])
 
+  const previousHeight = useRef(height)
+  const previousDragHeight = useRef(dragHeight)
+  const cardClicksBlockedUntil = useRef(0)
+  useLayoutEffect(() => {
+    // タップ・自動開閉・ドラッグ終了を同じ入口で扱う。初期表示は遮断しない。
+    if (previousHeight.current !== height || previousDragHeight.current !== dragHeight) {
+      const duration = reducedMotion.current ? 120 : releaseMs ?? DEFAULT_TRANSITION_MS
+      cardClicksBlockedUntil.current = performance.now() + duration + CARD_CLICK_GRACE_MS
+    }
+    previousHeight.current = height
+    previousDragHeight.current = dragHeight
+  }, [height, dragHeight, releaseMs])
+
   useEffect(() => {
     const target = focusAfterSnap.current
     if (!target) return
@@ -185,7 +200,14 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
         <span className="explore-sheet-grip" aria-hidden="true" />
         {snap === 'closed' && <span className="explore-sheet-count">{questCount}件の謎</span>}
       </button>
-      <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
+      <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}
+        onClickCapture={(event) => {
+          if ((drag.current || performance.now() < cardClicksBlockedUntil.current)
+            && event.target instanceof Element && event.target.closest('.explore-quest-card')) {
+            event.preventDefault()
+            event.stopPropagation()
+          }
+        }}>{children}</div>
     </div>
   </>
 }
