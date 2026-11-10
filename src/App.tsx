@@ -402,7 +402,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
     ? <p className="auth-feedback" role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p> : null
   const clearedDiscoveryId = quest && uid !== null ? clearedByQuest.get(quest.questId) : undefined
   const questDetailBlock = (
-              !railFallback && <div ref={questCard}>
+              !railFallback && !(apiMode && !quest) && <div ref={questCard}>
                 {quest ? <QuestDetails quest={quest} areaLabel={areaLabel} sourceLabel="" detailsLabel={durableLocal || teamPreview ? '問題の詳細' : undefined} open={isQuestOpen} hideToggle={detailInList} handoffUrl={handoffUrl}
                   getHint={getHint ?? api.getHint} getHintPhoto={teamPreview ? api.getPublishedHintPhoto : undefined} stale={questStale}
                   onHintVersionChanged={() => { closeCamera(); selectionGeneration.current++; waitController.current?.abort(); setLocalStaleQuestKey(questKey); onHintVersionStale?.() }}
