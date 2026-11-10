@@ -14,6 +14,7 @@ a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4, p { margin: 0; }
 p { overflow-wrap: anywhere; }
 :focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 4px; }
+[tabindex="-1"]:focus, [tabindex="-1"]:focus-visible { outline: none; }
 .icon { flex: none; display: block; width: 20px; height: 20px; }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -1178,3 +1179,19 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 }
 
 .login-terms a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
+
+/* D-87: 記録0件だけ、見出しより下の残り領域で空表示を中央に置く。
+   高さから既存の上下マージンを引く。下タブ変数はsafe-area込み。 */
+.owner-records:not([hidden]):has(.record-empty) { display: flex; flex-direction: column; padding-bottom: 0; }
+.owner-records:not([hidden]):has(.record-empty) > h1 { align-self: stretch; }
+.owner-records:not([hidden]):has(.record-empty) > .record-empty { flex: 1; }
+@media (min-width: 981px) {
+  .owner-records:not([hidden]):has(.record-empty) {
+    min-height: calc(100dvh - var(--account-slot-top) - var(--account-slot-size) - var(--sp-24) - var(--sp-24));
+  }
+}
+@media (max-width: 980px) {
+  .owner-records:not([hidden]):has(.record-empty) {
+    min-height: calc(100dvh - 80px - env(safe-area-inset-top, 0px) - var(--mobile-tabbar-h) - var(--sp-16));
+  }
+}
