@@ -13,7 +13,7 @@ describe('管理画面の見た目の規則', () => {
     expect(css).toContain('.admin-demo :focus-visible { outline: 3px solid var(--ui-focus);')
     expect(brand).not.toMatch(/outline\s*:/)
   })
-  it('外枠を固定ヘッダーの下端から12px以上離し、見出しは枠内の通常配置に残す', () => {
+  it('外枠をページ上端のヘッダーの下端から12px以上離し、見出しは枠内の通常配置に残す', () => {
     // PC: account 10 + 44 + 12 = 66、スマホ: brand 16 + 44 + 12 = 72。
     const desktop = css.slice(0, css.lastIndexOf('@media (max-width: 980px)'))
     const desktopSpacing = desktop.match(/\.admin-demo,\s*\.admin-demo\.admin-managed \{([^}]+)\}/)?.[1]
@@ -31,6 +31,23 @@ describe('管理画面の見た目の規則', () => {
     ])
     const workspace = readFileSync('src/features/admin/LocalAdminWorkspace.tsx', 'utf8')
     expect(workspace).toMatch(/<main className=\{[^\n]+\}>\s*<header[^>]+>[\s\S]*?<h1>謎づくり<\/h1>[\s\S]*?<\/header>/)
+  })
+  it('管理画面の上余白をroot内に閉じ込め、body/htmlに帯を出さない', () => {
+    const root = css.match(/#root:has\(> main\.admin-demo\) \{([^}]+)\}/)?.[1]
+    expect(root).toContain('display: flow-root;')
+    const html = css.match(/html:has\(main\.admin-demo\) \{([^}]+)\}/)?.[1]
+    expect(html).toContain('background: var(--ui-blue, #c5e8f5);')
+  })
+  it('PCのブランドは透明・枠なし、スマホは白いピルを保つ', () => {
+    const desktop = css.slice(0, css.lastIndexOf('@media (max-width: 980px)'))
+    const brand = desktop.match(/\.admin-demo \.brand \{([^}]+)\}/)?.[1]
+    expect(brand).toContain('background: transparent;')
+    expect(brand).toContain('border: 0;')
+    expect(brand).toContain('width: 220px; height: 52px;')
+    const mobile = css.slice(css.lastIndexOf('@media (max-width: 980px)'))
+    const pill = mobile.match(/\.admin-demo \.brand \{([^}]+)\}/)?.[1]
+    expect(pill).toContain('background: var(--ui-surface);')
+    expect(pill).toContain('border: var(--ui-border-width) solid var(--ui-line);')
   })
   it('写真選択は他の入力と同じ8px間隔でラベルの下に置く', () => {
     const rule = css.match(/\.admin-demo \.photo-picker \{([^}]+)\}/)?.[1]
@@ -70,7 +87,10 @@ describe('管理画面の見た目の規則', () => {
     expect(css).toContain('padding: 16px 16px 48px')
     expect(css).toContain('.admin-workflow .form-section { padding: 16px; }')
   })
-  it('ブランドとアカウントは旅行者と同じ固定スロット、戻ると写真のフォーカスは保持する', () => {
+  it('ブランドとアカウントはページ上端で旅行者と同じ位置、戻ると写真のフォーカスは保持する', () => {
+    const account = css.match(/\.admin-demo \.admin-account-trigger \{([^}]+)\}/g)?.at(-1)
+    expect(account).toContain('background: var(--ui-surface);')
+    expect(account).toContain('color: var(--ui-ink);')
     expect(css).toContain('width: 220px; height: 52px;')
     expect(css).toContain('top: calc(10px + env(safe-area-inset-top, 0px)); right: 20px;')
     expect(css).toContain('top: calc(6px + env(safe-area-inset-top, 0px)); right: 10px;')
@@ -79,5 +99,22 @@ describe('管理画面の見た目の規則', () => {
     expect(css).toContain('.photo-picker:has(input:focus-visible) .photo-picker-button')
     expect(css).toContain('.admin-workflow .form-section fieldset,')
     expect(css).toContain('.admin-workflow fieldset fieldset { border: 0;')
+  })
+  it('PC・スマホのブランドとアカウントはabsoluteでスクロールと一緒に流れ、fixedに戻らない', () => {
+    const header = css.slice(css.indexOf('/* D-47:'))
+    for (const selector of ['\\.admin-demo \\.brand', '\\.admin-demo \\.admin-header-actions']) {
+      const rules = [...header.matchAll(new RegExp(`${selector} \\{([^}]+)\\}`, 'g'))]
+      expect(rules.length).toBe(2)
+      expect(rules[0][1]).toMatch(/position:\s*absolute\s*;/)
+      for (const rule of rules) {
+        expect(rule[1]).not.toMatch(/position:\s*fixed\b/)
+      }
+    }
+    // 途中の祖先を配置基準にせず、ページ上端の座標を維持する。
+    for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (rule[1].split(',').some((selector) => /^(?:main)?\.admin-demo(?:\.admin-managed)?$|^\.admin-header$|^\.admin-demo\s*>?\s*\.admin-header$|^#root(?::has\(> main\.admin-demo\))?$/.test(selector.trim()))) {
+        expect(rule[2]).not.toMatch(/position:\s*(?:relative|absolute|fixed|sticky)\b/)
+      }
+    }
   })
 })

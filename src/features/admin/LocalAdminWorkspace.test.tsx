@@ -21,7 +21,10 @@ const json = (body: unknown) => new Response(JSON.stringify(body), { headers: {
 const page = (items: unknown[]) => json({ items, nextCursor: null })
 
 it('omits invitation and public-viewing notices', () => {
-  render(<LocalAdminWorkspace dataMode="team-preview" />)
+  const { container } = render(<LocalAdminWorkspace dataMode="team-preview" />)
+  const main = container.querySelector('main.admin-demo.admin-managed')
+  expect(container.firstElementChild).toBe(main)
+  expect(main?.querySelector(':scope > header .brand')).toBe(screen.getByRole('link', { name: '旅行者画面' }))
   expect(screen.getAllByRole('link', { name: '旅行者画面' })).toHaveLength(1)
   expect(screen.getByRole('link', { name: '旅行者画面' }).closest('header')).not.toBeNull()
   expect(screen.getByRole('link', { name: '旅行者画面' })).toHaveAttribute('href', '/')
