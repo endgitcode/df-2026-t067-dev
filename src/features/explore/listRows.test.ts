@@ -26,11 +26,20 @@ it('一覧の間隔、2行省略、メタデータ、キーボードフォーカ
 })
 
 it('探索だけ題名とメタの2行にし、詳細の上余白を16pxにまとめる', () => {
-  expect(css).toMatch(/\.explore-quest-list \.traveler-list-row \{[^}]*flex-direction: column;/)
+  expect(css).toMatch(/\.explore-row-copy \{[^}]*flex-direction: column;/)
   expect(css).toMatch(/\.explore-quest-list \.traveler-row-title \{[^}]*-webkit-line-clamp: 1;/)
   expect(css).toMatch(/\.explore-quest-list \.traveler-row-meta \{[^}]*text-align: left;/)
   expect(css).toContain('.explore-quest-detail { margin-top: var(--sp-16); }')
   expect(css).toContain('.quest-card.is-in-list .quest-details { margin-top: 0; padding-top: 0; }')
   expect(css).toContain('.traveler-shell .quest-card.is-in-list .quest-card-heading { padding: 0 var(--sp-16); }')
   expect(css).toContain('.traveler-shell .quest-card.is-in-list .quest-card-content { padding: 0 var(--sp-16) var(--sp-16); }')
+})
+
+
+it('一覧内のチップは小さい余白で1段を保ち、丸アイコンは28pxの固定幅にする', () => {
+  expect(css).toMatch(/\.explore-clear-filters \{[^}]*flex-wrap: nowrap;/)
+  expect(css).toMatch(/\.explore-clear-filters button \{[^}]*padding: 4px 4px;[^}]*white-space: nowrap;/)
+  expect(css).toMatch(/\.explore-clear-filters button\[aria-pressed="true"\] \{[^}]*background: var\(--role-selected\);/)
+  expect(css).toMatch(/\.explore-row-icon \{[^}]*flex: 0 0 28px;[^}]*width: 28px; height: 28px;[^}]*border: 2px solid var\(--ui-control-line\);[^}]*background: #4eb8d0;/)
+  expect(css).toMatch(/\.explore-row-icon\.is-cleared \{[^}]*background: var\(--role-done\);/)
 })

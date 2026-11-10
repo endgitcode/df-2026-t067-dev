@@ -3,6 +3,7 @@
 // ピン本体の状態色は青と赤の2色だけ：通常は MAP_PIN_COLOR（青）、ホバーと選択中は MAP_PIN_ACTIVE_COLOR（赤）。
 export const MAP_PIN_COLOR = '#4eb8d0'
 export const MAP_PIN_ACTIVE_COLOR = '#e7473f'
+export const MAP_PIN_CLEARED_COLOR = '#c7ed93'
 // 黄色はピン本体には使わない。選択中地域の境界の塗り（D-29）と管理側の撮影範囲の選択中枠だけに使う。
 export const MAP_PIN_SELECTED_COLOR = '#f6d84a'
 export const MAP_PIN_STROKE = '#17212b'

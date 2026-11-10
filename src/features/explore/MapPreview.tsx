@@ -1,5 +1,5 @@
 import { createPortal as reactCreatePortal } from 'react-dom'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
@@ -10,7 +10,7 @@ import { visibleAreaFitPadding } from './fitPadding'
 import { ExploreQuestList } from './ExploreQuestList'
 import { loadGoogleMaps, subscribeMapsAuthFailure, type DataLayer, type MapInstance, type MarkerInstance } from './googleMapsLoader'
 import { arrangePins } from './pinClustering'
-import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
+import { MAP_PIN_ACTIVE_COLOR as PIN_ACTIVE_COLOR, MAP_PIN_CLEARED_COLOR as PIN_CLEARED_COLOR, MAP_PIN_COLOR as PIN_COLOR, MAP_PIN_SELECTED_COLOR as PIN_SELECTED_COLOR, MAP_PIN_STROKE as PIN_STROKE, MAP_STYLES } from './mapStyles'
 import { boundsForFilter } from '../quests/prefectureBounds'
 import { getRegionAreas } from '../quests/areaHierarchy'
 import { areaPinPosition } from './viewportQuests'
@@ -43,12 +43,12 @@ const LOCATION_ZOOM = 14
 const LOCATION_DEADLINE_MS = 10_000
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
 
-function pinIcon(color: string, count: number, emphasized = false, dimmed = false): { url: string } {
+function pinIcon(color: string, count: number, emphasized = false, dimmed = false, cleared = false): { url: string } {
   const center = count >= 2
     ? `<circle cx="18" cy="17" r="9.5" fill="#ffffff"/><text x="18" y="21.5" text-anchor="middle" font-family="sans-serif" font-size="${count >= 10 ? 10 : 12}" font-weight="700" fill="${PIN_STROKE}">${count}</text>`
     : '<circle cx="18" cy="17" r="7" fill="#ffffff"/>'
-  // ピンの色は青と赤だけ。ホバー／フォーカス中は赤くし、選択中も呼び出し側が同じ赤を渡す。
-  const fill = emphasized ? PIN_ACTIVE_COLOR : color
+  // クリア済みの緑は強調中も保ち、通常ピンの強調は従来の赤にする。
+  const fill = emphasized && !cleared ? PIN_ACTIVE_COLOR : color
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${emphasized ? 42 : 36}" height="${emphasized ? 51 : 44}" viewBox="-2 -2 40 48" opacity="${dimmed && !emphasized ? 0.3 : 1}"><path d="M18 1C9.2 1 2 8.2 2 17c0 10.5 16 26 16 26s16-15.5 16-26C34 8.2 26.8 1 18 1Z" fill="${fill}" stroke="${PIN_STROKE}" stroke-width="${emphasized ? 3 : 2}"/>${center}</svg>`
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}` }
 }
@@ -131,6 +131,18 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   /** 地図の上部に浮かせて出す操作（地方・都道府県フィルタ等）。地図が使えない時は地図下の通常フローに出す。 */
   topOverlay?: ReactNode
 }) {
+  const [clearFilter, setClearFilter] = useState<'all' | 'pending' | 'done'>('all')
+  const hasClears = Boolean(clearedQuestIds?.size)
+  const activeClearFilter = hasClears ? clearFilter : 'all'
+  const visibleQuests = useMemo(() => quests.filter((quest) => activeClearFilter === 'all'
+    || (clearedQuestIds?.has(quest.questId) ?? false) === (activeClearFilter === 'done')), [quests, activeClearFilter, clearedQuestIds])
+  useEffect(() => {
+    if (activeClearFilter !== 'all' && selectedQuestId && !visibleQuests.some((quest) => quest.questId === selectedQuestId)) onDeselectQuest?.()
+  }, [activeClearFilter, selectedQuestId, visibleQuests, onDeselectQuest])
+  const clearFilterChips = hasClears ? <div className="explore-clear-filters" role="group" aria-label="クリア状況">
+    {([['all', 'すべて'], ['pending', '未クリア'], ['done', 'クリア済み']] as const).map(([value, label]) =>
+      <button key={value} type="button" aria-pressed={activeClearFilter === value} onClick={() => setClearFilter(value)}>{label}</button>)}
+  </div> : undefined
   const target = useRef<HTMLDivElement>(null)
   const map = useRef<MapInstance | null>(null)
   const markersRef = useRef(new Map<string, { marker: MarkerInstance; listeners: Array<{ remove(): void }> }>())
@@ -646,9 +658,10 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       const areaById = new Map<string, PublicArea>()
       for (const area of areas) {
         if (area.publishedCount < 1) continue
+        if (activeClearFilter !== 'all' && !visibleQuests.some((quest) => quest.areaId === area.areaId)) continue
         const position = areaPinPosition(area)
         if (!position) continue
-        pinPoints.push({ areaId: area.areaId, lat: position.lat, lng: position.lng, questCount: area.publishedCount })
+        pinPoints.push({ areaId: area.areaId, lat: position.lat, lng: position.lng, questCount: activeClearFilter === 'all' ? area.publishedCount : visibleQuests.filter((quest) => quest.areaId === area.areaId).length })
         areaById.set(area.areaId, area)
       }
       for (const arrangement of arrangePins(pinPoints, instance.getZoom() ?? zoom, fitAreaId)) {
@@ -682,13 +695,16 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         const position = { lat: arrangement.point.lat, lng: arrangement.point.lng }
         const selected = area.areaId === selectedAreaId
         const dimmed = !selected && !emphasizedIds.has(area.areaId)
-        // 選択中のピンもホバーと同じ赤にする（ピン本体に黄色は使わない。黄色は地域の塗りだけ）。
-        const pinColor = selected ? PIN_ACTIVE_COLOR : PIN_COLOR
+        // 地域内がすべてクリア済みなら緑、それ以外の選択・強調は従来どおり。
+        const areaQuests = visibleQuests.filter((quest) => quest.areaId === area.areaId)
+        const cleared = areaQuests.length > 0 && (activeClearFilter !== 'all' || areaQuests.length >= area.publishedCount) && areaQuests.every((quest) => clearedQuestIds?.has(quest.questId))
+        const pinColor = cleared ? PIN_CLEARED_COLOR : selected ? PIN_ACTIVE_COLOR : PIN_COLOR
+        const pinCount = arrangement.point.questCount
         const key = `pin:${area.areaId}`
         const { marker, listeners } = syncMarker(key, {
           position, map: instance,
-          title: `${area.label} ${area.publishedCount}問`,
-          icon: pinIcon(pinColor, area.publishedCount, false, dimmed),
+          title: `${area.label} ${pinCount}問`,
+          icon: pinIcon(pinColor, pinCount, selected && cleared, dimmed, cleared),
           cursor: 'pointer',
           zIndex: selected ? 3 : dimmed ? 0 : 2,
         })
@@ -705,10 +721,10 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         // Google Maps のポインタイベントに任せ、PC・タッチ端末で共通の強調表示を行う。
         if (marker.setIcon) {
           listeners.push(marker.addListener('mouseover', () => {
-            if (markersRef.current.get(key)?.marker === marker) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, true))
+            if (markersRef.current.get(key)?.marker === marker) marker.setIcon?.(pinIcon(pinColor, pinCount, true, false, cleared))
           }))
           listeners.push(marker.addListener('mouseout', () => {
-            if (markersRef.current.get(key)?.marker === marker) marker.setIcon?.(pinIcon(pinColor, area.publishedCount, false, dimmed))
+            if (markersRef.current.get(key)?.marker === marker) marker.setIcon?.(pinIcon(pinColor, pinCount, false, dimmed))
           }))
         }
       }
@@ -722,7 +738,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       if (initialFitDone.current !== instance && !fitAreaId) fitInitialAreas(instance)
     } catch { /* ピンは補助表示のため、失敗しても地図本体は使える状態を保つ。 */ }
 
-  }, [areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, selectMapArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas, clearMarkers])
+  }, [visibleQuests, activeClearFilter, clearedQuestIds, areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, selectMapArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas, clearMarkers])
 
   useEffect(() => {
     const instance = map.current
@@ -869,7 +885,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // 読み込み中の一覧（仮の行）は、最終的な置き場所であるシート／パネルの中でのみ出す。
   // 地図の読み込み中に通常フロー側へ先に出すと、地図の準備完了で置き場所が移り、
   // 一覧が作り直されて見た目が跳ねるため。
-  const renderQuestList = (scrollToHighlight = true, withDetail = false, inSheetOrPanel = false, discardClosingDetail = false, openQuest = onOpenQuest) => showPublicAreas && (sheetMode || quests.length > 0 || (inSheetOrPanel && questsLoading)) ? <ExploreQuestList areas={areas} quests={quests} loading={questsLoading}
+  const renderQuestList = (scrollToHighlight = true, withDetail = false, inSheetOrPanel = false, discardClosingDetail = false, openQuest = onOpenQuest) => showPublicAreas && (sheetMode || quests.length > 0 || (inSheetOrPanel && questsLoading)) ? <ExploreQuestList areas={areas} quests={visibleQuests} filters={clearFilterChips} loading={questsLoading}
     highlightArea={highlightArea} selectedQuestId={selectedQuestId} clearedQuestIds={clearedQuestIds}
     scrollToHighlight={scrollToHighlight}
     detailContent={withDetail ? questDetail : undefined} detailRef={questScrollTarget} discardClosingDetail={discardClosingDetail}
@@ -1005,7 +1021,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
               <Icon name="panel" />
             </button>, typeof document === 'undefined' ? null : document.getElementById('sidebar-toggle-slot') ?? document.body)}
           </>
-          : <ExploreBottomSheet questCount={quests.length} onDismissDetail={onDeselectQuest} detailOpen={Boolean(selectedQuestId && questDetail)} openSignal={sheetOpenSignal} onHeightChange={setSheetHeight}
+          : <ExploreBottomSheet questCount={visibleQuests.length} onDismissDetail={onDeselectQuest} detailOpen={Boolean(selectedQuestId && questDetail)} openSignal={sheetOpenSignal} onHeightChange={setSheetHeight}
             onUserClosedChange={onUserSheetClosedChange}>{renderQuestList(true, detailLocation === 'sheet', true, detailLocation !== 'sheet', openQuestFromSheet)}{boundaryCredit}</ExploreBottomSheet>
         : <>{renderQuestList(true, true)}{boundaryCredit}{panelExtra}</>}
     </div>
