@@ -11,7 +11,7 @@ import { HoursInput } from './HoursInput'
 import { PriceInput } from './PriceInput'
 import DraftEditor, { type DraftFields } from './DraftEditor'
 import { DraftCandidate } from './DraftCandidate'
-import { PhraseChips } from './PhraseChips'
+import { ChoiceWithOther } from './ChoiceWithOther'
 import TravelerPreview, { type PreviewMode } from './TravelerPreview'
 import { useLocalDraftSave } from './useLocalDraftSave'
 import type { LocalDraftConnection } from './useLocalDraftSave'
@@ -422,8 +422,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {part !== 1 && <><section className="form-section" aria-labelledby="conditions-heading"><h2 id="conditions-heading">挑戦条件</h2>
         <fieldset><legend>撮影条件</legend><div className="check-grid"><label className="check-option"><input type="checkbox" checked={requiresBoat} onChange={event => { setRequiresBoat(event.target.checked); markMaterialChange() }} />船上・海上</label><label className="check-option"><input type="checkbox" checked={requiresPaidFacility} onChange={event => { setRequiresPaidFacility(event.target.checked); markMaterialChange() }} />有料施設内</label></div></fieldset>
         {connection ? <PriceInput onError={setPriceError} value={price} onChange={value => { setPrice(value); markMaterialChange() }} /> : <label>料金<input value={price} onChange={event => { setPrice(event.target.value); markMaterialChange() }} placeholder="例：大人500円／無料／要確認" /></label>}
-        <label>{part ? '撮影の注意' : '撮影の注意'}<textarea value={photoNote} onChange={event => { setPhotoNote(event.target.value); markMaterialChange() }} rows={2} placeholder="撮影できる時間や安全上の制約は、挑戦前にここへ記載" /></label>
-        {connection && <PhraseChips label="よくある注意" phrases={photoNotePhrases} value={photoNote} onChange={value => { setPhotoNote(value); markMaterialChange() }} />}
+        {connection ? <ChoiceWithOther label="撮影の注意" phrases={photoNotePhrases} value={photoNote} onChange={value => { setPhotoNote(value); markMaterialChange() }} /> : <label>撮影の注意<textarea value={photoNote} onChange={event => { setPhotoNote(event.target.value); markMaterialChange() }} rows={2} /></label>}
       </section>
       <details className="form-section" open={afterClearOpen} onToggle={event => setAfterClearOpen(event.currentTarget.open)}><summary>クリア後</summary>
 
