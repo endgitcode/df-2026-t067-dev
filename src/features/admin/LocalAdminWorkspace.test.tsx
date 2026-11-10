@@ -63,6 +63,7 @@ it('confirms durable identity and membership before saving a draft with an autom
   try {
     render(<LocalAdminWorkspace authClient={authClient} dataMode="durable-local" />)
     expect(await screen.findByText(quest.draft.content.title)).toBeVisible()
+    expect(screen.getByRole('main')).not.toHaveClass('admin-signed-out')
     const travelerLink = screen.getByRole('link', { name: '旅行者画面' })
     expect(screen.getAllByRole('link', { name: '旅行者画面' })).toHaveLength(1)
     expect(travelerLink).toHaveClass('brand')
@@ -487,7 +488,7 @@ it('shows only a heading, Google continuation and terms in the login surface', a
   expect(button).toHaveClass('google-continue')
   expect(button.querySelectorAll('svg path')).toHaveLength(4)
   expect(screen.queryByText(/招待制|閲覧自由/)).not.toBeInTheDocument()
-  expect(screen.getByText('続行すると利用規約に同意したものとみなします')).toBeVisible()
+  expect(screen.getByRole('link', { name: '利用規約' }).parentElement).toHaveTextContent('続行すると利用規約に同意したものとみなします')
   await userEvent.setup().click(button)
   expect(signInWithGoogle).toHaveBeenCalledTimes(1)
 })

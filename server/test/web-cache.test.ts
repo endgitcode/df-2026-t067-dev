@@ -27,7 +27,7 @@ for (const transport of ['request-listener', 'tcp'] as const) {
       for (const [path, expected] of [
         ['/assets/index-Ab12_-xy.js', 'public, max-age=31536000, immutable'],
         ['/assets/index-Ab12_-xy.css', 'public, max-age=31536000, immutable'],
-        ['/', 'no-cache'], ['/admin', 'no-cache'], ['/favicon.svg', 'no-cache'],
+        ['/', 'no-cache'], ['/admin', 'no-cache'], ['/terms', 'no-cache'], ['/terms/', 'no-cache'], ['/favicon.svg', 'no-cache'],
         ['/assets/plain.js', 'no-cache'],
         ['/api/v1/quests', 'private, no-store'],
         ['/api/v1/me/discoveries/one/photo', 'private, no-store'],

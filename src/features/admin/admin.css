@@ -441,3 +441,7 @@ html:has(main.admin-demo) { background: var(--ui-blue, #c5e8f5); }
 .admin-demo .price-target > .field-error { flex-basis: 100%; margin: 0; }
 .admin-demo .price-amount { display: inline-flex; align-items: center; gap: 8px; font-weight: var(--ui-weight-strong); }
 .admin-demo .price-targets .price-amount > input[type=number] { width: 160px; flex: 0 0 160px; margin: 0; }
+
+/* ログイン前の枠は内容の高さに合わせ、認証後の高さを維持する。 */
+.admin-demo.admin-signed-out { min-height: 0; }
+.admin-demo .login-terms a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
