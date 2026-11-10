@@ -264,6 +264,9 @@
 .admin-managed .form-section { border: 2px solid var(--ui-line); border-radius: 16px; box-shadow: none; }
 .admin-managed .admin-read-list { list-style: none; padding: 0; }
 .admin-managed .admin-read-list > li { border: 2px solid var(--ui-line); border-radius: 12px; padding: 16px; background: white; box-shadow: none; }
+.admin-managed .admin-membership-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-managed .admin-membership-list > li { max-width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; }
+.admin-managed .admin-membership-list > li > button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .admin-managed .admin-read-list > li > strong { display: block; margin: 8px 0; }
 .admin-managed button { box-shadow: none; border-width: 2px; }
 .admin-managed .workflow-primary { background: var(--role-primary); color: var(--ui-accent-ink); border-color: var(--ui-line); }
