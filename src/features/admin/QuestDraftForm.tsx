@@ -122,6 +122,8 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const nameRef = useRef<HTMLInputElement>(null)
   const [afterClearOpen, setAfterClearOpen] = useState(false)
   const hoursErrorRef = useRef<HTMLParagraphElement>(null)
+  const [hoursImport, setHoursImport] = useState(0)
+  const [hoursCandidate, setHoursCandidate] = useState<string | undefined>()
   const { record, state: saveState, save, reset } = useLocalDraftSave(connection)
   const [timeError, setTimeError] = useState('')
   const [priceError, setPriceError] = useState('')
@@ -163,7 +165,10 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     }
   }, [step, rightsError])
 
+  const [unsaved, setUnsaved] = useState(false)
+
   function markMaterialChange() {
+    setUnsaved(true)
     connection?.onDirty?.(true)
     if (visitedDraft) setMaterialChanged(true)
   }
@@ -236,6 +241,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   }
 
   function editDraft(next: SetStateAction<DraftFields>) {
+    setUnsaved(true)
     connection?.onDirty?.(true)
     setDraft(next)
     setDraftEdit((value) => value + 1)
@@ -285,7 +291,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       setStep('A03')
       return
     }
-    if (destination === 'next' || onePage) {
+    if (destination === 'next' && !onePage) {
       const missingHint = draft.hints.findIndex((hint) => !hint.trim())
       const targetFields = [
         targetMissing && 'workflow-target-name', referenceMissing && 'workflow-reference',
@@ -345,6 +351,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       setRightsError(false)
       setReferenceAssetId(saved.draft.referenceAssetId)
       clearPhoto()
+      setUnsaved(false)
       connection?.onWorkflowSave?.(saved, destination === 'next')
       if (destination !== undefined && destination !== 'next') connection?.onContinue?.(saved, destination)
     })
@@ -411,10 +418,13 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       </section>
       {connection && <section className="form-section" aria-label="対象スポット登録" id="workflow-spot" tabIndex={-1} aria-invalid={requiredTarget && (!spot || spot === 'incomplete')}>
         {part ? <MapSpotEditor input={spotInput} invalid={requiredTarget || Boolean(inputError)} orgId={connection.member.orgId}
+          locationError={saveState.status === 'error' && saveState.message === 'エリアの外です' ? saveState.message : undefined}
+          onHoursCandidate={setHoursCandidate}
           lookup={connection.api.canLookupSpotAddress ? connection.api.lookupSpotAddress : undefined}
-          onChange={(input) => { setSpotInput(input); setInputError(''); markMaterialChange() }} /> : <SpotEditor input={spotInput} deriveShootingArea={Boolean(part)} durable={connection.taskFocused || teamPreview} orgId={connection.member.orgId}
+          onChange={(input) => { setSpotInput(input); setInputError(''); if (saveState.status === 'error' && saveState.message === 'エリアの外です') reset(); markMaterialChange() }} /> : <SpotEditor input={spotInput} deriveShootingArea={Boolean(part)} durable={connection.taskFocused || teamPreview} orgId={connection.member.orgId}
           canLookupSpotAddress={connection.api.canLookupSpotAddress} lookupSpotAddress={connection.api.lookupSpotAddress}
           onChange={(input) => { setSpotInput(input); setInputError(''); markMaterialChange() }} />}
+        {hoursCandidate && <div className="spot-address-candidate"><p>利用時間候補：{hoursCandidate}</p><button type="button" onClick={() => { setHours(hoursCandidate); setHoursImport(value => value + 1); setHoursCandidate(undefined); markMaterialChange() }}>使う</button></div>}
       </section>}</>}
       {part === 2 && <div id="workflow-spot-needed" tabIndex={-1} aria-invalid={showRequired && (!spot || spot === 'incomplete')}>
         {showRequired && (!spot || spot === 'incomplete') && <p role="alert" className="field-error">STEP 1で場所を保存</p>}
@@ -428,7 +438,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       <details className="form-section" open={afterClearOpen} onToggle={event => setAfterClearOpen(event.currentTarget.open)}><summary>クリア後</summary>
 
         <AccessInput value={access} onChange={value => { setAccess(value); markMaterialChange() }} builder={Boolean(connection)} />
-        {focused ? <HoursInput onError={setTimeError} value={hours} onChange={value => { setHours(value); markMaterialChange() }} /> : <fieldset><legend>利用時間</legend>
+        {focused ? <HoursInput key={hoursImport} onError={setTimeError} value={hours} onChange={value => { setHours(value); markMaterialChange() }} /> : <fieldset><legend>利用時間</legend>
           <div role="radiogroup" aria-label="利用時間の設定">
             {([['unset', '未設定'], ['all-day', '終日'], ['specified', '時刻指定'], ['supplement', '補足']] as const).map(([value, label]) =>
               <label key={value}><input type="radio" name="hours-mode" value={value} checked={hoursMode === value} onChange={() => changeHoursMode(value)} />{label}</label>)}
@@ -483,7 +493,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {saveState.status === 'error' && <p role="alert">{saveState.message}</p>}
       {inputError && <p role="alert">{inputError}</p>}
       <div className="admin-list-actions admin-save-bar">
-        <button type="button" className={onePage ? "workflow-primary" : undefined} disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => {
+        <button type="button" className={onePage ? "workflow-primary" : undefined} disabled={saving || connection.saveBlocked || (onePage && (!record ? !name.trim() && !draft.title.trim() : !unsaved)) || (saveState.status === 'error' && saveState.reload)} onClick={() => {
           saveDraft()
         }}>{saving ? '保存中' : onePage ? '保存' : '下書きを保存'}</button>
         {part && !onePage && <button type="button" className="workflow-primary" disabled={saving || (saveState.status === 'error' && saveState.reload)} onClick={() => saveDraft('next')}>保存して次へ</button>}
