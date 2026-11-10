@@ -13,7 +13,7 @@ import {
 const ERROR_CODES = [
   'INVALID_INPUT', 'MEDIA_TOO_LARGE', 'UNAUTHENTICATED', 'FORBIDDEN', 'RATE_LIMITED',
   'DRAFT_CONFLICT', 'IDEMPOTENCY_CONFLICT', 'QUEST_UNAVAILABLE', 'QUEST_CHANGED', 'SYSTEM_ERROR',
-  'REVIEW_REQUIRED', 'PHOTO_APPROVAL_REQUIRED', 'PHOTO_TEST_REQUIRED', 'AREA_UNCLASSIFIED',
+  'REVIEW_REQUIRED', 'PHOTO_APPROVAL_REQUIRED', 'PHOTO_TEST_REQUIRED', 'AREA_UNCLASSIFIED', 'SPOT_OUTSIDE_AREA',
   'NOT_FOUND', 'HTTP_ERROR', 'NETWORK_ERROR', 'INVALID_RESPONSE', 'AUTH_UNAVAILABLE',
 ] as const
 export type ApiErrorCode = typeof ERROR_CODES[number]
@@ -36,6 +36,7 @@ export class ApiError extends Error {
       PHOTO_APPROVAL_REQUIRED: 'この写真は指定用途で事前承認されていません。',
       REVIEW_REQUIRED: '入力項目を確認し、最新版の確認を依頼してください。',
       PHOTO_TEST_REQUIRED: '最新版の一致と別対象の写真試験を確認してください。',
+      SPOT_OUTSIDE_AREA: 'エリアの外です',
       AREA_UNCLASSIFIED: 'この地域は都道府県コードが未設定のため、この操作はできません。',
     }
     super(messages[code] ?? '処理を完了できませんでした。')

@@ -10,7 +10,8 @@ import type { PublicArea, PublicQuest } from '../../shared/api/types'
 // 行は題名と地域名・番号の2行にし、選んだ行の直下に詳細（QuestDetails）を開く
 // アコーディオンにする（D-46）。詳細を別枠で下に置くと、タイトルが一覧と詳細で
 // 二重に出てパネル／シートが煩雑になるため。
-export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false, discardClosingDetail = false, detailOwner }: {
+export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId = '', clearedQuestIds, onOpenQuest, onDeselectQuest, scrollToHighlight = true, detailContent, detailRef, loading = false, filters, discardClosingDetail = false, detailOwner }: {
+  filters?: ReactNode
   areas: PublicArea[]
   quests: PublicQuest[]
   highlightArea?: PublicArea
@@ -144,6 +145,7 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
     <section className="explore-list" aria-label="選べる謎の一覧">
       <div className="explore-list-head">
         <span>{loading && quests.length === 0 ? '読み込み中' : `${quests.length}件`}</span>
+        {filters}
       </div>
       {quests.length === 0 && loading
         ? <ul className="explore-quest-list" aria-hidden="true">
@@ -157,10 +159,13 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
             const expanded = quest.questId === expandedQuestId
             const closing = !expanded && closingDetail?.questId === quest.questId
             const content = <>
-              <span className="explore-quest-title traveler-row-title">{quest.title}</span>
-              <span className="traveler-row-secondary">
-                <span className="traveler-row-meta">{[areas.find((area) => area.areaId === quest.areaId)?.label, quest.questNumber && `No. ${quest.questNumber}`].filter(Boolean).join(' · ')}</span>
-                {cleared && <span className="explore-quest-cleared"><Icon name="check" />クリア済み</span>}
+              <span className={'explore-row-icon' + (cleared ? ' is-cleared' : '')} aria-hidden="true"><Icon name={cleared ? 'check' : 'pin'} /></span>
+              <span className="explore-row-copy">
+                <span className="explore-quest-title traveler-row-title">{quest.title}</span>
+                <span className="traveler-row-secondary">
+                  <span className="traveler-row-meta">{[areas.find((area) => area.areaId === quest.areaId)?.label, quest.questNumber && `No. ${quest.questNumber}`].filter(Boolean).join(' · ')}</span>
+                  {cleared && <span className="explore-quest-cleared"><Icon name="check" />クリア済み</span>}
+                </span>
               </span>
             </>
             return <li key={quest.questId} data-area-id={quest.areaId} className={highlightArea?.areaId === quest.areaId ? 'is-highlighted' : undefined}>
