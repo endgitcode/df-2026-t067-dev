@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import {
   clampWithRubberBand,
@@ -107,18 +107,13 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
   const height = dragHeight ?? heights[snap]
   useEffect(() => { onHeightChange?.(height) }, [height, onHeightChange])
 
-  const previousHeight = useRef(height)
-  const previousDragHeight = useRef(dragHeight)
   const cardClicksBlockedUntil = useRef(0)
-  useLayoutEffect(() => {
-    // タップ・自動開閉・ドラッグ終了を同じ入口で扱う。初期表示は遮断しない。
-    if (previousHeight.current !== height || previousDragHeight.current !== dragHeight) {
-      const duration = reducedMotion.current ? 120 : releaseMs ?? DEFAULT_TRANSITION_MS
-      cardClicksBlockedUntil.current = performance.now() + duration + CARD_CLICK_GRACE_MS
-    }
-    previousHeight.current = height
-    previousDragHeight.current = dragHeight
-  }, [height, dragHeight, releaseMs])
+  // つまみのタップ・ドラッグで利用者がシートを動かした時だけ、動いている間の一覧カードの
+  // クリックを捨てる（つまみの素早い2回タップが、下から来たカードに当たって詳細が開く対策）。
+  // 選択に伴う自動の開閉（openSignal）では止めない。
+  const guardCardClicks = (durationMs: number) => {
+    cardClicksBlockedUntil.current = performance.now() + durationMs + CARD_CLICK_GRACE_MS
+  }
 
   useEffect(() => {
     const target = focusAfterSnap.current
@@ -167,7 +162,9 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
         heights,
         reducedMotion: reducedMotion.current,
       })
-      setReleaseMs(releaseTransitionMs(velocityY, reducedMotion.current))
+      const releaseDuration = releaseTransitionMs(velocityY, reducedMotion.current)
+      setReleaseMs(releaseDuration)
+      guardCardClicks(releaseDuration)
       onUserClosedChange?.(next === 'closed')
       if (next === 'closed') {
         preDetailSnap.current = null
@@ -180,6 +177,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
   }
   const onClick = () => {
     if (suppressClick.current) { suppressClick.current = false; return }
+    guardCardClicks(reducedMotion.current ? 120 : DEFAULT_TRANSITION_MS)
     if (detailOpen && onDismissDetail) {
       setSnap(preDetailSnap.current ?? 'peek')
       preDetailSnap.current = null

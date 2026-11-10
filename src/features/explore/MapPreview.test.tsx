@@ -1495,6 +1495,8 @@ describe('Google map panel', () => {
     fireEvent.pointerMove(closingHandle, { pointerId: 32, pointerType: 'touch', clientY: 900 })
     fireEvent.pointerUp(closingHandle, { pointerId: 32, pointerType: 'touch', clientY: 900 })
     expect(container.querySelector('.below-map-quests')).toBeInTheDocument()
+    // つまみ操作の直後（シートの移動中）は一覧カードのクリックを捨てるため、移動が終わるまで待つ。
+    await new Promise((resolve) => setTimeout(resolve, 600))
     const sheetCard = sheet.querySelector<HTMLButtonElement>('[aria-label="港の時計台の詳細を見る"]')!
     await user.click(sheetCard)
     rerender(<ConfiguredMapPreview areas={areas} quests={quests2} selectedQuestId="q1" onOpenQuest={onOpenQuest} questScrollTarget={questScrollTarget} questDetail={detailFor('港の時計台')} />)
@@ -1537,6 +1539,8 @@ describe('Google map panel', () => {
     await user.click(screen.getByRole('button', { name: '謎リストに戻る' }))
     expect(onDeselectQuest).toHaveBeenCalledTimes(1)
     onDeselectQuest.mockClear()
+    // つまみ操作の直後（シートの移動中）は一覧カードのクリックを捨てるため、移動が終わるまで待つ。
+    await new Promise((resolve) => setTimeout(resolve, 600))
     // 選択中の行の再タップは選択解除へ、別の行は選択として伝える。
     await user.click(selectedRow)
     expect(onDeselectQuest).toHaveBeenCalledTimes(1)
