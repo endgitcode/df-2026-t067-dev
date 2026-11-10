@@ -420,6 +420,12 @@
     border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius);
   }
 }
+/* 本文の保存操作を全画面幅で一つに固定する。 */
+.admin-demo .admin-workflow { padding-bottom: calc(64px + 48px + env(safe-area-inset-bottom, 0px)); }
+.admin-demo .admin-workflow .admin-save-bar { position: fixed; z-index: 30; inset: auto 0 0; display: flex; margin: 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); background: white; border: 0; border-top: 2px solid var(--ui-line); box-shadow: none; }
+.admin-workflow .admin-save-bar > button { min-height: 44px; width: 100%; border-radius: 12px; }
+.admin-demo .admin-workflow section[aria-label="下書きの保存"] { border: 0; padding: 0; margin: 0; background: transparent; }
+.admin-workflow .admin-save-bar > button { max-width: 1072px; margin: 0 auto; }
 /* 定型文の選択：横に並べて折り返す。文が長いときはチェックの右で折り返す。 */
 .admin-workflow fieldset.choice-with-other > legend { font-size: 16px; margin-bottom: 8px; }
 .admin-demo .choice-options { display: flex; flex-wrap: wrap; gap: 0 24px; }

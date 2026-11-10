@@ -120,15 +120,14 @@ export function AdminQuestWorkflow({ api, initial, member, teamPreview, photoTes
     <div inert={busy || Boolean(pending)}>
     <div inert={hintDirty}><QuestDraftForm key={reloadKey} teamPreview={teamPreview} connection={{ workflowPart: 'all', saveBlocked: hintDirty,
       api, initial: record, member, onBack, onWorkflowSave: saved, onDirty: setDirty, onSaving: setBusy }} /></div>
-    {dirty && <p>変更を保存</p>}
     <div inert={dirty}>
     {record ? <HintAssetEditor key={revision} api={api} initial={record} member={member} embedded
       onBack={() => {}} onDirty={setHintDirty} onSaving={setBusy}
       onSaved={(updated) => saved(updated, false)} onContinue={() => {}} />
-      : <section><h2>ヒント画像</h2><p>下書きを保存</p></section>}
-    <section id="publication-section" tabIndex={-1} aria-label="写真試験と公開">
-      <h2>写真試験と公開</h2>
-      {!record && <p>下書きを保存</p>}
+      : <section><h2>ヒント画像</h2><fieldset disabled><label className="photo-picker">ヒント画像<span className="photo-picker-button" aria-hidden="true">写真を選ぶ</span><input aria-label="ヒント画像" type="file" /></label></fieldset></section>}
+    <section id="publication-section" tabIndex={-1} aria-label="AI写真判定">
+      <h2>AI写真判定</h2>
+      {!record && <fieldset disabled><button type="button">正解写真で試す</button><button type="button">別の写真で試す</button><button type="button">公開する</button></fieldset>}
       {newerVersion && <p role="alert">別の操作で下書きが更新されました。
         <button type="button" disabled={busy || dirty || hintDirty} onClick={() => { setRecord(remote.quest); setReloadKey(key => key + 1) }}>最新の内容を読み込む</button>
       </p>}

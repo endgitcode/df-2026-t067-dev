@@ -7,13 +7,12 @@ import type { MapPlaceDetails } from './ShootingAreasMap'
 
 type Lookup = (orgId: string, input: SpotAddressInput, call: { signal: AbortSignal }) => Promise<SpotAddressLookup>
 
-export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
-  input: SpotInput; invalid: boolean; orgId: string; lookup?: Lookup; onChange: (input: SpotInput) => void
+export function MapSpotEditor({ input, invalid, orgId, lookup, onChange, locationError, onHoursCandidate }: {
+  locationError?: string; onHoursCandidate?: (hours: string | undefined) => void; input: SpotInput; invalid: boolean; orgId: string; lookup?: Lookup; onChange: (input: SpotInput) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [mapUnavailable, setMapUnavailable] = useState(!import.meta.env.VITE_GOOGLE_MAPS_API_KEY)
   const [candidate, setCandidate] = useState<MapPlaceDetails>({})
   const [message, setMessage] = useState('')
-  const coordinatesRef = useRef<HTMLDetailsElement>(null)
   const request = useRef<AbortController | null>(null)
   const latitudeInvalid = Boolean(input.latitude) && (!Number.isFinite(Number(input.latitude)) || Math.abs(Number(input.latitude)) > 90)
   const longitudeInvalid = Boolean(input.longitude) && (!Number.isFinite(Number(input.longitude)) || Math.abs(Number(input.longitude)) > 180)
@@ -21,9 +20,6 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
 
   useEffect(() => () => request.current?.abort(), [])
   const coordinatesInvalid = latitudeInvalid || longitudeInvalid || (invalid && (!input.latitude.trim() || !input.longitude.trim()))
-  useEffect(() => {
-    if (coordinatesInvalid && coordinatesRef.current) coordinatesRef.current.open = true
-  }, [coordinatesInvalid, input.latitude, input.longitude])
 
   function cancelLookup() {
     request.current?.abort()
@@ -34,6 +30,7 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
     if ('latitude' in changes || 'longitude' in changes) {
       cancelLookup()
       setCandidate({})
+      onHoursCandidate?.(undefined)
       setMessage('')
     }
     onChange({ ...input, ...changes, ...('latitude' in changes || 'longitude' in changes ? { googlePlaceId: undefined } : {}) })
@@ -42,6 +39,7 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
   async function select(latitude: number, longitude: number, place?: { id: string; loadDetails?: () => Promise<MapPlaceDetails> }) {
     cancelLookup()
     setCandidate({})
+    onHoursCandidate?.(undefined)
     const position = { latitude, longitude }
     onChange({ ...initialSpotInput(), latitude: String(latitude), longitude: String(longitude), googlePlaceId: place?.id })
     const controller = new AbortController()
@@ -60,14 +58,16 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
     }
     if (controller.signal.aborted) return
     setCandidate(details)
+    onHoursCandidate?.(details.hours)
     setMessage(details.name || details.address ? '' : '名称・住所の取得失敗')
     request.current = null
   }
 
-  return <fieldset>
+  return <fieldset aria-describedby={locationError ? "spot-area-error" : coordinatesInvalid && !mapUnavailable ? "spot-position-error" : undefined}>
     <legend>場所</legend>
-    <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>地図</button>
-    {open && <ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} spot={point} pickPlace onSelect={select} />}
+    <ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} spot={point} pickPlace onSelect={select} onAvailabilityChange={setMapUnavailable} />
+    {locationError && <p id="spot-area-error" className="field-error" role="alert">{locationError}</p>}
+    {coordinatesInvalid && !mapUnavailable && <p id="spot-position-error" className="field-error">場所を選択</p>}
     {message && <p role="status">{message}</p>}
     {(candidate.name || candidate.address) && <div className="spot-address-candidate" aria-live="polite">
       <p><strong>候補</strong> <span translate="no">Google Maps</span></p>
@@ -75,16 +75,21 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
       {candidate.address && <p>住所候補：{candidate.address}</p>}
       <button type="button" onClick={() => edit({ name: candidate.name ?? input.name, address: candidate.address ?? input.address })}>名前・住所を使う</button>
     </div>}
+    {(input.name || input.address || input.latitude || input.longitude) &&
+      <button type="button" className="spot-clear-button" onClick={() => {
+        cancelLookup()
+        setCandidate({})
+        setMessage('')
+        onHoursCandidate?.(undefined)
+        onChange(initialSpotInput())
+      }}>やり直す</button>}
     <label>場所の名前<input aria-describedby={invalid && !input.name.trim() ? "spot-name-error" : undefined} aria-label="場所の名前" value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
        placeholder="例：風見の丘公園" onChange={(event) => edit({ name: event.target.value })} /></label>
     {invalid && !input.name.trim() && <p id="spot-name-error" className="field-error">場所の名前を入力</p>}
     <label>住所<input aria-describedby={invalid && !input.address.trim() ? "spot-address-error" : undefined} aria-label="住所" value={input.address} maxLength={1000} aria-required="true" aria-invalid={invalid && !input.address.trim()}
        placeholder="例：青葉みらい市風見1-2-3" onChange={(event) => edit({ address: event.target.value })} /></label>
     {invalid && !input.address.trim() && <p id="spot-address-error" className="field-error">住所を入力</p>}
-    <details ref={coordinatesRef} className="spot-coordinates" onToggle={event => {
-      if (coordinatesInvalid && !event.currentTarget.open) event.currentTarget.open = true
-    }}>
-      <summary>緯度・経度</summary>
+    {mapUnavailable && <>
     <div className="field-pair">
       <label>緯度<input aria-describedby={(latitudeInvalid || (invalid && !input.latitude.trim())) ? "spot-latitude-error" : undefined} inputMode="decimal" aria-label="緯度" value={input.latitude} maxLength={32} aria-required="true" aria-invalid={(latitudeInvalid || (invalid && !input.latitude.trim()))}
         onChange={(event) => edit({ latitude: event.target.value })} /></label>
@@ -93,13 +98,7 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange }: {
         onChange={(event) => edit({ longitude: event.target.value })} /></label>
     {(longitudeInvalid || (invalid && !input.longitude.trim())) && <p id="spot-longitude-error" className="field-error">経度は-180〜180</p>}
     </div>
-    </details>
-    {(input.name || input.address || input.latitude || input.longitude) &&
-      <button type="button" className="spot-clear-button" onClick={() => {
-        cancelLookup()
-        setCandidate({})
-        setMessage('')
-        onChange(initialSpotInput())
-      }}>場所を消す</button>}
+    </>}
+
   </fieldset>
 }

@@ -50,7 +50,8 @@ export function createDurableDraftHandler(store: FirestoreManagedDraftStore, aut
     }
     validateQuery(params, [])
     if (action === 'test' && questId !== undefined) {
-      await store.get(uid, orgId, questId)
+      const readiness = await store.readiness(uid, orgId, questId)
+      if (readiness.missing.length) throw new HttpError(409, 'REVIEW_REQUIRED', '必須項目を入力してください。')
       await handlePhotoTest(request, response, { ...photoTest, uid, orgId, questId, send, approvedAssets: true,
         recheck: (revision) => store.getAtRevision(uid, orgId, questId, revision) })
       return true

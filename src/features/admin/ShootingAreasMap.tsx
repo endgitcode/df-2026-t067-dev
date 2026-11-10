@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { placeHoursCandidate } from './placeHoursCandidate'
 import { Icon } from '../../components/Icon'
 import type { CaptureZone } from '../../shared/api'
 import type { Position } from '../../shared/api/types'
@@ -12,14 +13,15 @@ const overview = { lat: 36, lng: 138 }
 const minZoom = 5
 const maxZoom = 20
 
-export type MapPlaceDetails = { name?: string; address?: string }
+export type MapPlaceDetails = { name?: string; address?: string; hours?: string }
 
 type PlacePick = { id: string; loadDetails?: () => Promise<MapPlaceDetails> }
 
 /** Only mounted by the authorized private shooting-area editor; never part of public map data. */
-export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spot, pickPlace = false }: {
+export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spot, pickPlace = false, onAvailabilityChange }: {
   zones: Array<CaptureZone | null>; selectedIndex: number | null; disabled: boolean
   onSelect: (latitude: number, longitude: number, place?: PlacePick) => void
+  onAvailabilityChange?: (unavailable: boolean) => void
   pickPlace?: boolean
   spot?: Position | null
 }) {
@@ -35,6 +37,7 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
   const [locationStatus, setLocationStatus] = useState('')
   const beginLocation = useRequestAction()
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>(API_KEY ? 'loading' : 'missing')
+  useEffect(() => { onAvailabilityChange?.(status === 'missing' || status === 'error') }, [status, onAvailabilityChange])
   useEffect(() => {
     if (!API_KEY || !target.current) return
     let active = true
@@ -66,8 +69,10 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
             ? async () => {
               const { Place } = await google.importLibrary!('places')
               const place = new Place({ id })
-              await place.fetchFields({ fields: ['displayName', 'formattedAddress'] })
-              return { name: place.displayName ?? undefined, address: place.formattedAddress ?? undefined }
+              const hoursEnabled = import.meta.env.VITE_GOOGLE_MAPS_PLACES_HOURS === 'true'
+              await place.fetchFields({ fields: ['displayName', 'formattedAddress', ...(hoursEnabled ? ['regularOpeningHours'] : [])] })
+              return { name: place.displayName ?? undefined, address: place.formattedAddress ?? undefined,
+                hours: hoursEnabled ? placeHoursCandidate((place as unknown as { regularOpeningHours?: unknown }).regularOpeningHours) : undefined }
             } : undefined,
         })
       })

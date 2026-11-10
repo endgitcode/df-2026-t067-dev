@@ -114,3 +114,20 @@ it('offers numerical fallback and retry after load failure', async () => {
   await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   expect(loader.loadGoogleMaps).toHaveBeenCalledTimes(2)
 })
+
+it.each([false, true])('adds hours fields only with explicit flag %s, in the same request', async enabled => {
+  vi.stubEnv('VITE_GOOGLE_MAPS_PLACES_PICKER', 'true')
+  vi.stubEnv('VITE_GOOGLE_MAPS_PLACES_HOURS', String(enabled))
+  let click!: (event: { latLng: { lat(): number; lng(): number }; placeId: string }) => void
+  const fetchFields = vi.fn().mockResolvedValue({})
+  const importLibrary = vi.fn().mockResolvedValue({ Place: class { fetchFields = fetchFields } })
+  loader.loadGoogleMaps.mockResolvedValue({ Map: function () { return {} }, Marker: function () {}, importLibrary,
+    event: { addListener: (_: unknown, name: string, fn: typeof click) => { if (name === 'click') click = fn; return { remove() {} } } } })
+  const onSelect = vi.fn()
+  const { ShootingAreasMap } = await import('./ShootingAreasMap')
+  render(<ShootingAreasMap zones={[]} selectedIndex={null} disabled={false} onSelect={onSelect} spot={null} pickPlace />)
+  await waitFor(() => expect(click).toBeTypeOf('function'))
+  act(() => click({ latLng: { lat: () => 0, lng: () => 0 }, placeId: 'fixture' }))
+  await onSelect.mock.calls[0][2].loadDetails()
+  expect(fetchFields).toHaveBeenCalledExactlyOnceWith({ fields: ['displayName', 'formattedAddress', ...(enabled ? ['regularOpeningHours'] : [])] })
+})
