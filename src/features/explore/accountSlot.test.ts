@@ -26,12 +26,9 @@ describe('account icon slot (t154u)', () => {
     expect(button).toContain('height: var(--account-slot-size)')
   })
 
-  it('keeps the mobile quest-detail hide behavior for brand and account (#137/#142)', () => {
-    expect(css).toContain('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area')
-    expect(css).toContain('body.explore-fullbleed:has(.quest-card.is-open) .account-area')
-    const hideBlock = css.slice(css.indexOf('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand'))
-    expect(hideBlock).toContain('visibility: hidden')
-    expect(hideBlock).toContain('pointer-events: none')
+  it('keeps the shared account slot visible in mobile quest detail', () => {
+    expect(css).not.toContain('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area')
+    expect(css).not.toContain('body.explore-fullbleed:has(.quest-card.is-open) .account-area')
   })
 
   it('does not override account top/right per screen so map/records/clear stay aligned', () => {

@@ -204,12 +204,13 @@ function AdminAccountMenu({ user, pending, onLogout }: {
     }
   }}>
     <button type="button" className="admin-account-trigger" ref={trigger} aria-label="アカウントメニュー"
-      aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)}>
+      aria-haspopup="menu" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)}>
       {user.photoURL ? <img src={user.photoURL} alt="" /> : <span aria-hidden="true">{name ? Array.from(name).slice(0, 2).join('') : '担当'}</span>}
     </button>
-    <div className="admin-account-panel" id={panelId} hidden={!open}>
+    <div className="admin-account-panel" role="menu" id={panelId} hidden={!open}>
       <p>{name || 'ログイン中のアカウント'}</p>
-      <button type="button" disabled={pending} onClick={onLogout}>{pending ? 'ログアウト中…' : 'ログアウト'}</button>
+      <a role="menuitem" href="/">旅行者画面</a>
+      <button type="button" role="menuitem" disabled={pending} onClick={onLogout}>{pending ? 'ログアウト中…' : 'ログアウト'}</button>
     </div>
   </div>
 }
@@ -244,9 +245,12 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
 
   return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '')}>
     <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header admin-login-heading'}>
+      <a className="brand" href="/" aria-label="旅行者画面">
+        <span className="brand-mark"><img src="/favicon.svg" alt="" aria-hidden="true" /></span>
+        <span className="brand-copy">NAZOP</span>
+      </a>
       <h1>謎づくり</h1>
       <div className="admin-header-actions">
-      <a className="admin-traveler-link" href="/">旅行者画面へ</a>
       {auth.status === 'signed-in'
         ? <AdminAccountMenu key={auth.user.uid} user={auth.user} pending={pending} onLogout={() => void authenticate('logout')} />
         : null}

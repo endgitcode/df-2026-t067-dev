@@ -278,24 +278,18 @@ describe('mobile fullbleed finish', () => {
     expect(css).toContain('.explore-quest-detail { margin-top: var(--sp-16); }')
   })
 
-  it('hides the floating brand and account while quest detail is open on mobile', () => {
-    expect(css).toContain('body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,')
-    expect(css).toContain('body.explore-fullbleed:has(.quest-card.is-open) .brand,')
-    expect(css).toContain('body.explore-fullbleed:has(.quest-card.is-open) .account-area {')
-    expect(css).toContain(
-      'body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .brand,\n'
-      + '  body.explore-fullbleed:has(.explore-quest-detail-wrap.is-open) .account-area,\n'
-      + '  body.explore-fullbleed:has(.quest-card.is-open) .brand,\n'
-      + '  body.explore-fullbleed:has(.quest-card.is-open) .account-area {\n'
-      + '    visibility: hidden;\n'
-      + '    pointer-events: none;\n'
-      + '  }',
-    )
-    // スマホ幅メディアクエリ内に置く（max-width: 980px）。PC サイドバー規則の外。
-    const mobileAt = css.indexOf('@media (max-width: 980px) {\n  /* ページ側の下部余白は持たない（D-73）')
-    const ruleAt = css.indexOf('body.explore-fullbleed:has(.quest-card.is-open) .brand,')
-    expect(mobileAt).toBeGreaterThan(-1)
-    expect(ruleAt).toBeGreaterThan(mobileAt)
+  it('keeps the same floating brand and account in mobile quest detail', () => {
+    // 詳細状態による上書きを禁止し、一覧・記録と同じ共通ヘッダー規則を使う。
+    for (const state of ['.explore-quest-detail-wrap.is-open', '.quest-card.is-open']) {
+      for (const element of ['.brand', '.account-area']) {
+        expect(css).not.toContain(`body.explore-fullbleed:has(${state}) ${element}`)
+      }
+    }
+    expect(css).toContain('body.explore-fullbleed .brand, body.explore-fullbleed .desktop-nav, body.explore-fullbleed .account-area { pointer-events: auto; }')
+    // 全開シートもフィルター下端112px＋間隔12pxを避ける。
+    expect(css).toContain('body.explore-fullbleed .explore-sheet:has(.explore-quest-detail-wrap.is-open),')
+    expect(css).toContain('body.explore-fullbleed .explore-sheet:has(.quest-card.is-open) {\n    max-height: calc(100% - var(--mobile-tabbar-h) - 124px - env(safe-area-inset-top, 0px));')
+    expect(css).toContain('body.explore-fullbleed .map-filter-overlay { top: calc(env(safe-area-inset-top, 0px) + 68px);')
   })
 
   it('shrinks the floating brand into a small chip on narrow fullbleed screens', () => {
