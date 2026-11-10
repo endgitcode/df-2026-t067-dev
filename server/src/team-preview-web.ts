@@ -11,7 +11,7 @@ const assetTypes: Readonly<Record<string, string>> = {
 }
 
 export async function serveTeamPreviewWeb(directory: string, request: IncomingMessage, response: ServerResponse, path: string) {
-  const shell = path === '/' || path === '/admin'
+  const shell = path === '/' || path === '/admin' || path === '/terms' || path === '/terms/'
   const asset = /^\/assets\/([A-Za-z0-9][A-Za-z0-9._-]*)$/.exec(path)?.[1]
   const favicon = path === '/favicon.svg'
   const contentType = favicon ? assetTypes['.svg'] : shell ? 'text/html; charset=utf-8' : asset && assetTypes[extname(asset)]

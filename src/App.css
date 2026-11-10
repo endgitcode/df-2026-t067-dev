@@ -1150,3 +1150,5 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 .primary-button, .api-load-state > button,
 .primary-button:hover:not(:disabled), .api-load-state > button:hover:not(:disabled) { background: var(--role-primary); }
 .filter-toggle[data-selected="true"] { background: var(--role-selected); border: 2px solid var(--ui-line); }
+
+.login-terms a { text-decoration: underline; text-underline-offset: 4px; }
