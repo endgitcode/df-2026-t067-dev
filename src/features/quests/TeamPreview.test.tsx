@@ -138,7 +138,8 @@ it('answer trial build shows a cleared quest as cleared with no way to re-challe
   expect(await screen.findByRole('heading', { name: quest.title })).toBeVisible()
   // 本人の記録からクリア状態が配線されると、開始導線は消えてクリア済み表示に替わる。
   expect(await screen.findByText('クリア済み', { selector: '.explore-quest-cleared' })).toBeVisible()
-  expect(screen.getAllByText('クリア済み')).toHaveLength(1)
+  expect(screen.getAllByText('クリア済み', { selector: '.explore-quest-cleared' })).toHaveLength(1)
+  expect(screen.getByRole('group', { name: 'クリア状況' })).toBeVisible()
   expect(view.container.querySelector('.quest-cleared-label')).toBeNull()
   expect(view.container.querySelector('.explore-quest-cleared')).not.toBeNull()
   expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()

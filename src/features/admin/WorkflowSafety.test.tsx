@@ -37,7 +37,7 @@ it('guards only dirty edits, restores URL step, and offers three focused navigat
   await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1))
   expect(client.updateManagedQuest).toHaveBeenCalledTimes(1)
   expect(new URLSearchParams(location.search).get('step')).toBe('target')
-  expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true)
+  await waitFor(() => expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(true))
 })
 it('blocks reversed hours and negative or fractional prices, then resets success on failed save', async () => {
   const client = api()
@@ -71,7 +71,7 @@ it('never creates an empty draft and discards only after choosing to leave witho
   render(<AdminQuestWorkflow api={client} initial={null} member={member} teamPreview={false} photoTestSource="mock" areaUnclassified={false} onBack={onBack} onPublished={vi.fn()} />)
   fireEvent.click(screen.getByRole('button', { name: '保存' }))
   expect(client.createManagedQuest).not.toHaveBeenCalled()
-  expect(screen.getByText('撮るものを入力')).toBeVisible()
+  expect(screen.getByRole('button', { name: '保存' })).toBeDisabled()
   fireEvent.change(screen.getByLabelText('撮るもの'), { target: { value: '未保存' } })
   fireEvent.click(screen.getByRole('button', { name: '謎一覧へ戻る' }))
   expect(onBack).not.toHaveBeenCalled()
@@ -145,7 +145,7 @@ it.each([
   history.replaceState(null, '', '/?quest=q&step=' + step)
   render(<AdminQuestWorkflow api={api()} initial={initial} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
   expect(scroll.mock.contexts).toContain(document.getElementById(id))
-  for (const name of ['非公開', '挑戦条件', '問題とヒント', 'ヒント画像', '写真試験と公開']) {
+  for (const name of ['非公開', '挑戦条件', '問題とヒント', 'ヒント画像', 'AI写真判定']) {
     expect(screen.getByRole('heading', { name, level: 2 })).toBeVisible()
   }
   expect(screen.queryByText(/STEP/)).toBeNull()
@@ -192,7 +192,7 @@ it('saves a hint selection on guarded exit and retains it on the next body save'
   expect(client.updateManagedQuest).toHaveBeenCalledTimes(3)
 })
 
-it('shows fallback coordinates on save and retains Japanese photo selectors', () => {
+it('shows fallback coordinates and retains Japanese photo selectors without requiring them for an empty draft', () => {
   render(<AdminQuestWorkflow api={api()} initial={null} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
   expect(screen.getByLabelText('緯度')).toBeVisible()
   const photo = screen.getByLabelText('正解の写真')
@@ -200,12 +200,43 @@ it('shows fallback coordinates on save and retains Japanese photo selectors', ()
   photo.focus()
   expect(photo).toHaveFocus()
   fireEvent.click(screen.getByRole('button', { name: '保存' }))
+  expect(screen.getByRole('button', { name: '保存' })).toBeDisabled()
+})
+
+
+it('saves and resaves a title-only draft with one save action while trials remain disabled', async () => {
+  const client = { ...api(), createManagedQuest: vi.fn().mockImplementation(async (_org, draft) => ({
+    ...initial, draft, shootingAreaStatus: 'unconfigured',
+  })) }
+  client.getManagedQuestReadiness.mockResolvedValue({ quest: { ...initial, draftRevision: 1 }, missing: ['referenceAssetId', 'shootingAreas', 'materials.name', 'content.question'] })
+  render(<AdminQuestWorkflow api={client} initial={null} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
+  expect(screen.getByRole('button', { name: '保存' })).toBeDisabled()
+  expect(screen.getByLabelText('ヒント画像', { selector: 'input' })).toBeDisabled()
+  expect(screen.queryByText('下書きを保存')).toBeNull()
+  fireEvent.change(screen.getByLabelText('タイトル'), { target: { value: '途中の謎' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存' }))
+  await waitFor(() => expect(client.createManagedQuest).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(screen.getByRole('button', { name: '保存' })).toBeDisabled())
+  const saved = client.createManagedQuest.mock.calls[0][1]
+  expect(saved.materials.name).toBe('')
+  expect(saved.referenceAssetId).toBeNull()
+  expect(saved.afterClear.spot).toBeUndefined()
+  expect(saved.content.question).toBe('')
+  expect(screen.getByLabelText('正解写真で試す')).toBeDisabled()
+  expect(screen.getByLabelText('別の写真で試す')).toBeDisabled()
+  expect(screen.queryByText('変更を保存')).toBeNull()
+  fireEvent.change(screen.getByLabelText('タイトル'), { target: { value: '続きの謎' } })
+  expect(screen.getByRole('button', { name: '保存' })).toBeEnabled()
+  fireEvent.click(screen.getByRole('button', { name: '保存' }))
+  await waitFor(() => expect(client.updateManagedQuest).toHaveBeenCalledTimes(1))
+  expect(client.updateManagedQuest.mock.calls[0][2].draft.content.title).toBe('続きの謎')
 })
 
 it('shows a server boundary rejection at the place and clears it when the place changes', async () => {
   const client = api()
   client.updateManagedQuest.mockRejectedValue(new ApiError('SPOT_OUTSIDE_AREA'))
   render(<AdminQuestWorkflow api={client} initial={initial} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
+  fireEvent.change(screen.getByLabelText('タイトル'), { target: { value: '外の謎' } })
   fireEvent.click(screen.getByRole('button', { name: '保存' }))
   await waitFor(() => expect(screen.getByRole('group', { name: '場所' })).toHaveAttribute('aria-describedby', 'spot-area-error'))
   expect(document.getElementById('spot-area-error')).toHaveTextContent('エリアの外です')
