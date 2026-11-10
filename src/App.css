@@ -649,6 +649,8 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
     position: fixed; top: 4px; left: calc(var(--pc-sidebar-open-w) - 48px); z-index: 37;
     display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
     transform: none; border: 0; border-radius: var(--radius-s);
+    /* header の pointer-events:none を継承させない。共通スロットでも押せる。 */
+    pointer-events: auto;
     background: var(--ui-surface); color: var(--ui-ink); box-shadow: none; cursor: pointer;
   }
   body:has(.traveler-shell) .sidebar-toggle .icon,
@@ -737,16 +739,16 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed.explore-sidebar-collapsed .brand-copy {
     max-width: 0; opacity: 0; margin: 0; pointer-events: none;
   }
-  /* 畳み: 幅だけレールへ。ロゴ／ナビ／折りたたみ／アカウントの画面座標は開いたまま（0pxずれ）。 */
+  /* 畳み：ロゴとナビはレールの中央へ。開いた状態の配置は変えない。 */
   body:has(.traveler-shell).explore-sidebar-collapsed .brand,
   body.explore-fullbleed.explore-sidebar-collapsed .brand {
-    /* マーク位置を保つため左寄せ・同じ padding／高さを維持（中央寄せにしない） */
+    /* 非表示のアプリ名の gap も除き、マーク自体を中央へ置く。 */
     width: var(--pc-sidebar-rail-w); height: var(--pc-sidebar-brand-h);
-    justify-content: flex-start; padding: 0 var(--sp-8); gap: var(--sp-8);
+    justify-content: center; padding: 0; gap: 0;
   }
   body:has(.traveler-shell).explore-sidebar-collapsed .brand-mark,
   body.explore-fullbleed.explore-sidebar-collapsed .brand-mark { width: 32px; height: 32px; border-radius: 12px; }
-  /* 閉じたときだけトグルを細い列の中（ナビ直下）へ。ロゴ／ナビアイコンの座標は変えない。 */
+  /* 閉じたときだけトグルを細い列の中央（ナビ直下）へ。 */
   body:has(.traveler-shell).explore-sidebar-collapsed .sidebar-toggle,
   body.explore-fullbleed.explore-sidebar-collapsed .sidebar-toggle {
     left: calc((var(--pc-sidebar-rail-w) - 44px) / 2);
@@ -754,8 +756,8 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   }
   body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav {
-    /* top/padding/gap は開いたときと同じ。幅だけレールへ */
-    width: var(--pc-sidebar-rail-w);
+    /* 開いた状態用の左右24px余白をレールへ持ち込まない。 */
+    width: var(--pc-sidebar-rail-w); padding-inline: var(--sp-8);
   }
   body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav .nav-label,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .nav-label {
@@ -765,8 +767,9 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav a,
   body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav button,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav button {
-    /* アイコン座標を保つ：左寄せ・同じ padding。中央寄せや icon 拡大をしない */
-    justify-content: flex-start; align-items: center;
+    /* 選択枠は列内の40pxに収め、両方のアイコンを同じ中心へ置く。 */
+    width: 100%; min-width: 0; padding-inline: 0; gap: 0;
+    justify-content: center; align-items: center;
   }
   body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav .icon,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav .icon { width: 18px; height: 18px; flex: none; }
