@@ -457,7 +457,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {/* 画面遷移のタブは2つともボタンで揃える（片方だけリンクだと URL のハッシュが
               残ったり消えたりして、URL と表示の対応が分かりにくくなるため）。 */}
           <button type="button" className={showRecords ? undefined : 'nav-active'} aria-current={showRecords ? undefined : 'page'}
-            aria-label="謎を探す" onClick={navigateToExplore}><Icon name="search" /><span className="nav-label">謎を探す</span></button>
+            aria-label="謎を探す" onClick={navigateToExplore}><Icon name="pin" /><span className="nav-label">謎を探す</span></button>
           {/* F5でブート殻と並べるため常に出す。使えないときは無効＋薄い見た目だけ（補足文字は出さない）。 */}
           <button type="button" className={showRecords ? 'nav-active' : undefined} aria-current={showRecords ? 'page' : undefined}
             aria-label="自分の記録"
@@ -559,7 +559,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
             event.stopPropagation()
           }
         }}>
-        <button type="button" aria-current={showRecords ? undefined : 'page'} aria-label="謎を探す" onClick={navigateToExplore}><Icon name="search" /><span>謎を探す</span></button>
+        <button type="button" aria-current={showRecords ? undefined : 'page'} aria-label="謎を探す" onClick={navigateToExplore}><Icon name="pin" /><span>謎を探す</span></button>
         <button type="button" aria-current={showRecords ? 'page' : undefined} aria-label="自分の記録" disabled={!localApiMode || (teamPreview && !teamAnswerTrial) || visiblePending !== null}
           onClick={() => navigateToRecords(true)}><Icon name="book" /><span>自分の記録</span></button>
       </nav>
