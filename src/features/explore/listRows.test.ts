@@ -38,7 +38,7 @@ it('探索だけ題名とメタの2行にし、詳細の上余白を16pxにま�
 
 it('一覧内のチップは小さい余白で1段を保ち、丸アイコンは28pxの固定幅にする', () => {
   expect(css).toMatch(/\.explore-clear-filters \{[^}]*flex-wrap: nowrap;/)
-  expect(css).toMatch(/\.explore-clear-filters button \{[^}]*padding: 4px 4px;[^}]*white-space: nowrap;/)
+  expect(css).toMatch(/\.explore-clear-filters button \{[^}]*padding: 4px 8px;[^}]*white-space: nowrap;/)
   expect(css).toMatch(/\.explore-clear-filters button\[aria-pressed="true"\] \{[^}]*background: var\(--role-selected\);/)
   expect(css).toMatch(/\.explore-row-icon \{[^}]*flex: 0 0 28px;[^}]*width: 28px; height: 28px;[^}]*border: 2px solid var\(--ui-control-line\);[^}]*background: #4eb8d0;/)
   expect(css).toMatch(/\.explore-row-icon\.is-cleared \{[^}]*background: var\(--role-done\);/)

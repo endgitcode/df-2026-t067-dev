@@ -151,7 +151,7 @@ h1 { font-size: var(--fs-24); font-weight: var(--ui-weight-display); line-height
 .explore-list-head { display: flex; align-items: center; gap: var(--sp-8); flex-wrap: nowrap; }
 .explore-list-head > span { flex: none; white-space: nowrap; }
 .explore-clear-filters { display: flex; flex-wrap: nowrap; gap: 4px; margin-left: auto; }
-.explore-clear-filters button { flex: none; min-height: 32px; padding: 4px 10px; border: 2px solid var(--ui-control-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-control-line); font: inherit; font-size: var(--fs-12); white-space: nowrap; cursor: pointer; }
+.explore-clear-filters button { flex: none; min-height: 32px; padding: 4px 8px; border: 2px solid var(--ui-control-line); border-radius: 999px; background: var(--ui-surface); color: var(--ui-control-line); font: inherit; font-size: var(--fs-12); white-space: nowrap; cursor: pointer; }
 .explore-clear-filters button[aria-pressed="true"] { background: var(--role-selected); }
 .explore-clear-filters button:focus-visible { outline: 2px solid var(--ui-control-line); outline-offset: 2px; }
 .explore-list-head span { font-size: var(--fs-12); font-weight: var(--ui-weight-strong); color: var(--ui-muted); }

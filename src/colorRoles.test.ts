@@ -83,7 +83,7 @@ describe('色の役割', () => {
   })
   it('結果と待機に役割色を付ける', () => {
     expect(background(traveler, '.answer-result')).toBe('var(--ui-surface)')
-    expect(background(traveler, '.answer-result[data-outcome="CORRECT"]')).toBe('var(--role-done)')
+    expect(background(traveler, '.answer-result[data-outcome="CORRECT"]::before')).toBe('var(--role-done)')
     expect(background(traveler, '.camera-panel .answer-waiting')).toBe('var(--role-off)')
     expect(background(traveler, '.answer-result:not([data-outcome])')).toBe('var(--role-off)')
   })
@@ -153,9 +153,11 @@ it('記録の外枠を外し、クリアバッジは共通の枠・余白にす�
 it('クリアと不正解は白いカードの上端だけに役割色を使う', () => {
   expect(background(traveler, '.clear-screen-card')).toBe('var(--ui-surface)')
   expect(background(traveler, '.clear-screen-card::before')).toBe('var(--role-done)')
-  expect(background(traveler, '.answer-result[data-outcome="WRONG_TARGET"]::before')).toBe('var(--ui-badge)')
-  expect(background(traveler, '.answer-result[data-outcome="IMAGE_UNCERTAIN"]::before')).toBeUndefined()
-  for (const selector of ['.clear-screen-card::before', '.answer-result[data-outcome="WRONG_TARGET"]::before']) {
+  // 判定結果は面を塗らず、上端の帯だけ: 正解・クリア済みは黄緑、それ以外の結果はピンク。
+  expect(background(traveler, '.answer-result[data-outcome]::before')).toBe('var(--ui-badge)')
+  expect(background(traveler, '.answer-result[data-outcome]')).toBeUndefined()
+  expect(background(traveler, '.answer-result[data-outcome="CORRECT"]')).toBeUndefined()
+  for (const selector of ['.clear-screen-card::before', '.answer-result[data-outcome]::before']) {
     const band = rules(traveler).find(rule => rule.selectorText === selector)!
     expect(band.style.height).toBe('10px')
     expect(band.style.top).toBe('0px')
