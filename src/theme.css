@@ -79,6 +79,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 5px; }
+[tabindex="-1"]:focus, [tabindex="-1"]:focus-visible { outline: none; }
 input, textarea, select { accent-color: var(--ui-ink); }
 input::placeholder, textarea::placeholder { color: var(--ui-muted); opacity: 1; }
 /* 中身の操作要素にオフセットシャドウは付けない（D-66）。影は地図上に浮く

@@ -320,7 +320,6 @@
 .admin-read-list > li > .danger-button { margin-block-start: 12px; }
 .admin-operation-notice, .publication-confirm { padding: 16px; margin-block: 16px; border: 2px solid var(--ui-line); border-radius: 16px; background: white; }
 .admin-operation-notice button { margin-inline-start: 12px; }
-.admin-read-list > li:focus { outline: 3px solid var(--ui-focus); outline-offset: 4px; }
 .workflow-heading h2 { margin-inline-end: auto; }
 
 .admin-read-list > li > .danger-button,
@@ -445,3 +444,6 @@ html:has(main.admin-demo) { background: var(--ui-blue, #c5e8f5); }
 /* ログイン前の枠は内容の高さに合わせ、認証後の高さを維持する。 */
 .admin-demo.admin-signed-out { min-height: 0; }
 .admin-demo .login-terms a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
+
+.admin-demo [tabindex="-1"]:focus, .admin-demo [tabindex="-1"]:focus-visible,
+[tabindex="-1"]:focus, [tabindex="-1"]:focus-visible { outline: none; }

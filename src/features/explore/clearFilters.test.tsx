@@ -53,7 +53,10 @@ it('行の左アイコンを出し分け、題名と2行目を同じラッパに
   expect(icons[1]).not.toHaveClass('is-cleared')
   for (const icon of icons) expect(icon).toHaveAttribute('aria-hidden', 'true')
   expect(icons[0].querySelector('path')).toHaveAttribute('d', 'M20 7 9.5 17.5 4.5 12.5')
-  expect(icons[1].querySelectorAll('path')).toHaveLength(2)
+  expect(icons[1].querySelectorAll('path')).toHaveLength(1)
+  const pinCenter = icons[1].querySelector('circle')
+  expect(pinCenter).toHaveAttribute('fill', '#ffffff')
+  expect(Number(pinCenter?.getAttribute('r'))).toBeCloseTo(6.5 * 7 / 16, 1)
   for (const copy of container.querySelectorAll('.explore-row-copy')) {
     expect(copy.querySelector('.traveler-row-title')).not.toBeNull()
     expect(copy.querySelector('.traveler-row-secondary')).not.toBeNull()
