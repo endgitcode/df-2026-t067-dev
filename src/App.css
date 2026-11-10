@@ -336,6 +336,10 @@ button.traveler-list-row { cursor: pointer; }
 /* クリア済み表示（D-64）：開始導線の代わりに置く。一覧バッジと同じ淡緑で揃える。 */
 .quest-cleared-action { display: grid; gap: var(--sp-8); justify-items: start; }
 .explore-quest-cleared, .quest-cleared-label { display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-8); font-size: var(--fs-12); font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
+/* 一覧の行では2行目の高さ（20px）に収め、クリア済みの有無で行の高さを変えない。 */
+.explore-quest-list .traveler-row-secondary { align-items: center; min-height: 20px; }
+.explore-quest-list .explore-quest-cleared { padding: 0 var(--sp-8); line-height: 16px; }
+.explore-quest-list .explore-quest-cleared .icon { width: 12px; height: 12px; }
 .quest-cleared-action .unavailable-note { margin-top: 0; }
 .quest-handoff { display: grid; gap: var(--sp-8); }
 .quest-handoff-panel { display: grid; justify-items: center; gap: var(--sp-8); }
@@ -500,6 +504,7 @@ button.traveler-list-row { cursor: pointer; }
 .record-empty h2 { margin: 0; font-size: var(--fs-24); font-weight: var(--ui-weight-strong); }
 .record-empty .primary-button { max-width: 320px; }
 .record-empty-icon { display: grid; place-items: center; width: 72px; height: 72px; box-sizing: border-box; border: 2px solid var(--ui-ink); border-radius: 50%; background: var(--role-done); color: var(--ui-ink); font-size: var(--fs-28); line-height: 1; }
+.record-empty-icon .icon { width: 36px; height: 36px; }
 .record-list { display: grid; gap: var(--sp-8); width: 100%; margin: 0; padding: 0; list-style: none; }
 .record-list li { min-width: 0; }
 .record-summary { display: grid; gap: var(--sp-4); min-width: 0; overflow-wrap: anywhere; }

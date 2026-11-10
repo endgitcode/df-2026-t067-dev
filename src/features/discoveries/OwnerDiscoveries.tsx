@@ -1,3 +1,4 @@
+import { Icon } from '../../components/Icon'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ApiClient, ApiErrorCode, Discovery } from '../../shared/api'
 import { useRemote } from '../../shared/useRemote'
@@ -235,7 +236,7 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
     {detail}
     {confirmation}
     {items.length === 0 ? <div className="record-empty">
-      <span className="record-empty-icon" aria-hidden="true">✓</span>
+      <span className="record-empty-icon" aria-hidden="true"><Icon name="check" /></span>
       <h2>記録はまだない</h2>
       <button type="button" className="primary-button" onClick={onExplore}>謎を探す</button>
     </div> : <ul className="record-list" aria-label="自分の記録一覧">
