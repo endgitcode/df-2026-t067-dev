@@ -15,6 +15,7 @@ import { ShootingAreasEditor } from './ShootingAreasEditor'
 import { PublicationWorkspace } from './PublicationWorkspace'
 import { remainingWork } from './publicationReadiness'
 import { HintAssetEditor } from './HintAssetEditor'
+import { sortMemberships } from './membershipOrder'
 import './admin.css'
 
 function formatDateTime(iso: string) {
@@ -167,7 +168,7 @@ function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiC
         <button type="button" onClick={retry}>所属を確認し直す</button></>}
       {result.status === 'ready' && (result.value.items.length === 0 ? <p>所属なし</p>
         : onlyMembership ? <p>{onlyMembership.label}</p>
-          : <ul className="admin-read-list">{result.value.items.map((member) => <li key={member.orgId}>
+          : <ul className="admin-read-list admin-membership-list">{sortMemberships(result.value.items).map((member) => <li key={member.orgId}>
           <button type="button" aria-pressed={member.orgId === current?.orgId} onClick={() => { setSelected(member.orgId); try { sessionStorage.setItem('admin-selected-org', member.orgId) } catch { /* Selection still works without session storage. */ } }}>
             {member.label}
           </button></li>)}</ul>)}

@@ -528,3 +528,24 @@ it('shows only a heading, Google continuation and terms in the login surface', a
   await userEvent.setup().click(button)
   expect(signInWithGoogle).toHaveBeenCalledTimes(1)
 })
+
+it('renders the durable membership switcher in geographic order with its own layout class', async () => {
+  const snapshot: AuthSnapshot = { status: 'signed-in', user: { uid: 'test-manager', displayName: null } }
+  const authClient: AuthClient = {
+    getSnapshot: () => snapshot, subscribe: () => () => {},
+    signInWithGoogle: async () => {}, signOut: async () => {}, getIdToken: async () => 'test-token',
+  }
+  const fetcher: typeof fetch = async (input) => {
+    const path = String(input)
+    const body = path === '/api/v1/session' ? { uid: 'test-manager' } : { items: [
+      { orgId: 'south', areaId: 'south', role: 'editor', label: '南の架空自治体', prefectureCode: '47' },
+      { orgId: 'north', areaId: 'north', role: 'editor', label: '北の架空自治体', prefectureCode: '01' },
+    ], nextCursor: null }
+    return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json', 'X-Quest-Data-Mode': 'durable-local' } })
+  }
+  const apiClient = createApiClient({ fetch: fetcher, expectedDataMode: 'durable-local', getIdToken: authClient.getIdToken })
+  render(<LocalAdminWorkspace authClient={authClient} apiClient={apiClient} dataMode="durable-local" />)
+  const list = await screen.findByRole('list')
+  expect(within(list).getAllByRole('button').map(button => button.textContent)).toEqual(['北の架空自治体', '南の架空自治体'])
+  expect(list).toHaveClass('admin-membership-list')
+})
