@@ -1113,7 +1113,6 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 .quest-cleared-label, .clear-screen-card { background: var(--role-done); color: var(--ui-ink); }
 .filter-prefecture[aria-pressed="true"] { background: var(--role-selected); box-shadow: inset 0 0 0 2px var(--ui-line); }
 .filter-chip[aria-pressed="true"], .map-area-chip, .map-filter-selection .filter-chip { background: var(--role-selected); border: 2px solid var(--ui-line); }
-.filter-accordion-body { background: var(--role-selected-soft); }
 .camera-panel .answer-waiting { background: var(--role-off); }
 .answer-result { padding: var(--sp-8) var(--sp-12); border-radius: var(--radius-s); background: var(--role-error-bg); color: var(--ui-ink); }
 .answer-result:not([data-outcome]) { background: var(--role-off); }

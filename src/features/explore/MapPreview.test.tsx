@@ -388,13 +388,13 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('fits to the selected quest area without an area selection and preserves the camera when the quest is deselected', async () => {
+  it('fits to the selected quest area without an area selection and restores the camera when the quest is deselected', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const fitBounds = vi.fn()
     const setCenter = vi.fn()
     const setZoom = vi.fn()
-    const map = { ...mapInstance, fitBounds, setCenter, setZoom }
+    const map = { ...mapInstance, fitBounds, setCenter, setZoom, getCenter: () => ({ lat: () => 34, lng: () => 135 }) }
     class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
     class Marker { setMap() {} addListener() { return { remove() {} } } }
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
@@ -410,10 +410,10 @@ describe('Google map panel', () => {
     // 地域を選ばず問題だけを選んでも、所属地域へ寄せる（D-44 の寄せは維持する）。
     rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="q1" onOpenQuest={vi.fn()} />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
-    // 説明を閉じても直前の中心・縮尺とフィット回数を維持する。
+    // 行経由の選択を解除すると選択直前へ戻す。
     rerender(<ConfiguredMapPreview areas={areas} quests={quests} selectedQuestId="" onOpenQuest={vi.fn()} />)
-    expect(setCenter).not.toHaveBeenCalled()
-    expect(setZoom).not.toHaveBeenCalled()
+    expect(setCenter).toHaveBeenCalledWith({ lat: 34, lng: 135 })
+    expect(setZoom).toHaveBeenCalledWith(5)
     expect(fitBounds).toHaveBeenCalledTimes(1)
     expect(document.querySelector('.map-area-chip')).toBeNull()
     unmount()
@@ -703,7 +703,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('preserves the latest camera when selection is cleared across area switches', async () => {
+  it('restores the pre-selection camera when selection is cleared across area switches', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     let center = { lat: 36.2048, lng: 138.2529 }
@@ -732,11 +732,11 @@ describe('Google map panel', () => {
     rerender(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="area-b" />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(2))
     rerender(<ConfiguredMapPreview areas={twoAreas} selectedAreaId="" />)
-    // 地域を切り替えてから解除しても、最後の中心・縮尺を維持する。
-    expect(setCenter).not.toHaveBeenCalled()
-    expect(setZoom).not.toHaveBeenCalled()
-    expect(center).toEqual({ lat: 35.5, lng: 139.5 })
-    expect(zoom).toBe(11)
+    // 地域の切替では保存を上書きせず、最初の選択前へ戻す。
+    expect(setCenter).toHaveBeenCalledWith({ lat: 34.6937, lng: 135.5023 })
+    expect(setZoom).toHaveBeenCalledWith(9)
+    expect(center).toEqual({ lat: 34.6937, lng: 135.5023 })
+    expect(zoom).toBe(9)
     unmount()
     delete window.google
   })
@@ -762,7 +762,7 @@ describe('Google map panel', () => {
     window.google = { maps: { Map: class { constructor() { return map } }, Data, Marker, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
     const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
     const onSelectArea = vi.fn()
-    const { unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" onSelectArea={onSelectArea} />)
+    const { rerender, unmount } = render(<ConfiguredMapPreview areas={areas} selectedAreaId="area-a" onSelectArea={onSelectArea} />)
     await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(instances).toHaveLength(1))
     // フィット完了（idle）時点のカメラを記録させる。
@@ -781,6 +781,9 @@ describe('Google map panel', () => {
     // フィット位置にいるので、従来どおり選択解除として呼び出し側へ渡る。
     expect(onSelectArea).toHaveBeenCalledWith('area-a')
     expect(fitBounds).not.toHaveBeenCalled()
+    rerender(<ConfiguredMapPreview areas={areas} selectedAreaId="" onSelectArea={onSelectArea} />)
+    expect(map.setCenter).toHaveBeenCalledWith({ lat: 36.2048, lng: 138.2529 })
+    expect(map.setZoom).toHaveBeenCalledWith(5)
     unmount()
     delete window.google
   })

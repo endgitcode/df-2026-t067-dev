@@ -244,6 +244,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
   // フィット済みの対象の記録。対象は「地域の選択」だけではなく「問題の選択」も含む
   // ため、地域IDではなく対象キー（下記の fitKey）で持つ。
   const lastViewportSelection = useRef<{ map: MapInstance; key: string } | null>(null)
+  const preSelectionCamera = useRef<{ map: MapInstance; center: { lat: number; lng: number }; zoom: number } | null>(null)
   const initialFitDone = useRef<MapInstance | null>(null)
   // 初期フィットを実行した時点のレイアウトシグネチャ。レイアウト確定側の effect が、
   // 確定後のシグネチャと食い違う時だけ初期フィットを合わせ直すために使う（D-72）。
@@ -788,10 +789,36 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     lastAreaSelection.current = { map: instance, areaId: selectedAreaId }
     if (lastViewportSelection.current?.map === instance && lastViewportSelection.current.key === fitKey) return
     if (!fitAreaId) {
-      // Closing details preserves the current map camera; reset is an explicit map control.
+      // 選択解除では初期表示へ戻さず、選択直前のカメラを復元する。選択後に手動で動かしていても、
+      // 解除時は選択前の状態へ戻す（「選ぶ前の地図に戻る」を単純な仕様として採る）。
+      const saved = preSelectionCamera.current
+      if (saved && saved.map === instance) {
+        cancelInitialAdjustment.current()
+        instance.setCenter(saved.center)
+        instance.setZoom(saved.zoom)
+        preSelectionCamera.current = null
+      } else if (lastViewportSelection.current?.map === instance && lastViewportSelection.current.key !== '') {
+        // この地図で選択が実際に処理された後の解除で、直前カメラが読めなかった時だけ
+        // 初期表示（日本中心）へ戻す。
+        cancelInitialAdjustment.current()
+        instance.setCenter(JAPAN); instance.setZoom(INITIAL_ZOOM)
+      }
+      // 初期マウント時（この地図でまだ選択が処理されていない時）はカメラに触らない。
+      // 初期カメラはマーカー側の初期フィットが決めるもので、ここで日本中心＋初期ズームを
+      // 書くと、同じコミットで走る初期フィットと競合して初期表示が崩れた（D-72）。
       fittedCamera.current = null
       lastViewportSelection.current = { map: instance, key: '' }
       return
+    }
+    // フィット対象が無い状態から移る時だけ、フィット直前のカメラを覚える。対象の
+    // 切替（地域A→B、問題→別の問題、問題→その所属地域の選択）では上書きせず、
+    // 解除時に「最初に選ぶ前」の状態へ戻れるようにする。
+    const previousSelection = lastViewportSelection.current
+    if (!previousSelection || previousSelection.map !== instance || previousSelection.key === '') {
+      try {
+        const center = instance.getCenter?.()
+        if (center) preSelectionCamera.current = { map: instance, center: { lat: center.lat(), lng: center.lng() }, zoom: instance.getZoom() ?? INITIAL_ZOOM }
+      } catch { /* カメラが読めない時は復元を諦め、解除時は従来どおり初期表示へ戻す。 */ }
     }
     try {
       const area = areas.find((candidate) => candidate.areaId === fitAreaId)

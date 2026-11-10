@@ -43,15 +43,16 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
   const focusAfterSnap = useRef<'body' | 'handle' | null>(null)
   const [stageHeight, setStageHeight] = useState(FALLBACK_STAGE_HEIGHT)
   const [snap, setSnap] = useState<SheetSnap>('peek')
+  // ピンの通知は詳細の取得より先に届くため、halfへ開く前の高さを保存する。
   const preDetailSnap = useRef<SheetSnap | null>(null)
   useEffect(() => {
-    if (detailOpen && preDetailSnap.current === null) {
+    if ((detailOpen || openSignal) && preDetailSnap.current === null) {
       preDetailSnap.current = snap
-    } else if (!detailOpen && preDetailSnap.current !== null) {
+    } else if (!detailOpen && !openSignal && preDetailSnap.current !== null) {
       setSnap(preDetailSnap.current)
       preDetailSnap.current = null
     }
-  }, [detailOpen, snap])
+  }, [detailOpen, openSignal, snap])
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const [releaseMs, setReleaseMs] = useState<number | null>(null)
   const drag = useRef<{ pointerId: number; startY: number; startHeight: number; distance: number; samples: Array<{ y: number; t: number }> } | null>(null)

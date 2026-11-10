@@ -55,7 +55,7 @@ afterEach(() => {
 
 function apiFixture() {
   return {
-    listQuests: vi.fn().mockResolvedValue(page([{ ...first, title: '一覧表示用タイトル' }, second])),
+    listQuests: vi.fn().mockImplementation(async (query?: { areaId?: string }) => page([{ ...first, title: '一覧表示用タイトル' }, second].filter(quest => !query?.areaId || quest.areaId === query.areaId))),
     getQuest: vi.fn(async (id: string, _options?: { signal?: AbortSignal }) => id === first.questId ? first : second),
     listAreas: vi.fn().mockResolvedValue(page(areas)),
     getHint: vi.fn().mockResolvedValue({ questId: first.questId, version: first.version, index: 1, text: 'テストヒント' }),
@@ -391,15 +391,14 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} authClient={authClient} />)
     expect(await screen.findByRole('button', { name: '広島のもみじを探せを開く' })).toBeVisible()
 
-    // 地方フィルタで中国を選び、広島の問題まで選択する。問題の選択は所属地域の
-    // 選択を伴わない（D-65）：地図側の地域選択は空のまま、URL にも地域は付かない。
+    // 地方フィルタで中国を選び、広島の問題と所属地域を選択する。
     await clickPrefecture(user, '中国', '広島県')
     expect(screen.getByRole('button', { name: '広島県' })).toBeVisible()
     expect(screen.queryByRole('button', { name: '東京の鯉を探せを開く' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '広島のもみじを探せを開く' }))
     await screen.findByRole('heading', { name: hiroshimaQuest.title })
-    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
-    expect(new URL(window.location.href).searchParams.get('area')).toBeNull()
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-hiroshima')
+    expect(new URL(window.location.href).searchParams.get('area')).toBe('area-hiroshima')
     expect(new URL(window.location.href).searchParams.get('quest')).toBe('quest-hiroshima')
 
     // 記録タブへ行き、探索へ戻る。往復の前後で4つの状態が一致したままであること。
@@ -413,7 +412,7 @@ describe('APIから問題を表示', () => {
     expect(await screen.findByRole('heading', { name: hiroshimaQuest.title })).toBeVisible()
     expect(screen.getByRole('button', { name: '広島県' })).toBeVisible()
     expect(screen.queryByRole('button', { name: '東京の鯉を探せを開く' })).not.toBeInTheDocument()
-    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-hiroshima')
     // 表示されている問題は URL の ?quest= と必ず一致する。
     expect(new URL(window.location.href).searchParams.get('quest')).toBe(hiroshimaQuest.questId)
   })
@@ -444,7 +443,7 @@ describe('APIから問題を表示', () => {
     expect(records.queryByText(/ログインなしで閲覧|クリアした問題の写真/)).not.toBeInTheDocument()
   })
 
-  it('一覧の中の詳細に閉じるボタンは無く、再タップで選択解除まで完了する（D-65）', async () => {
+  it('一覧の中の詳細に閉じるボタンは無く、再タップで地域ごと選択解除まで完了する', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
     render(<ApiQuestApp api={api} authClient={signedOutAuth()} dataMode="team-preview" teamAnswerTrial />)
@@ -454,9 +453,9 @@ describe('APIから問題を表示', () => {
     expect(await screen.findByText('詳細版の手がかり')).toBeVisible()
     expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '問題を見る' })).not.toBeInTheDocument()
-    // 問題を選んでも一覧はその問題の地域に絞られず、他の問題も残る。
-    expect(screen.getByRole('button', { name: '森の謎を開く' })).toBeVisible()
-    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
+    // 行選択も地域で一覧を絞る。
+    expect(screen.queryByRole('button', { name: '森の謎を開く' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-a')
     // 選択でピッカーの置き場所が移りボタンは作り直されるため、押し直す要素は取り直す。
     await user.click(screen.getByRole('button', { name: '一覧表示用タイトルを開く' }))
     // 再タップで選択解除まで完了し、詳細は消える。
@@ -466,7 +465,7 @@ describe('APIから問題を表示', () => {
     expect(new URLSearchParams(window.location.search).get('quest') ?? '').toBe('')
   })
 
-  it('地域（ピン）を選ぶと一覧はその地域だけに絞られ、先頭問題が開く（地域選択は従来どおり、D-65）', async () => {
+  it('地域（ピン）を選ぶと一覧はその地域だけに絞られ、先頭問題が開く（行と共通）', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
     api.listQuests.mockImplementation(async (query?: { areaId?: string }) => query?.areaId === 'area-b' ? page([second]) : page([first, second]))
@@ -475,7 +474,7 @@ describe('APIから問題を表示', () => {
     expect(screen.getByRole('button', { name: '森の謎を開く' })).toBeVisible()
     await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
-    // 地域の選択はサーバーへ渡して一覧を絞る。問題の選択（D-65）との違いとして固定する。
+    // 行と同じく、地域の選択はサーバーへ渡して一覧を絞る。
     expect(api.listQuests).toHaveBeenCalledWith({ areaId: 'area-b', limit: 100, cursor: undefined }, expect.anything())
     expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-b')
     expect(screen.queryByRole('button', { name: '川辺の謎を開く' })).not.toBeInTheDocument()
@@ -512,11 +511,11 @@ describe('APIから問題を表示', () => {
     expect(await screen.findByRole('button', { name: '広島のもみじを探せを開く' })).toBeVisible()
     await clickPrefecture(user, '中国', '広島県')
     await user.click(screen.getByRole('button', { name: '広島のもみじを探せを開く' }))
-    // 問題の選択は所属地域の選択を伴わない（D-65）。URL に地域は付かない。
+    // 行選択も所属地域を選択し、URLへ地域を含める。
     await screen.findByRole('heading', { name: hiroshimaQuest.title })
-    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-hiroshima')
     expect(new URLSearchParams(window.location.search).get('quest')).toBe('quest-hiroshima')
-    expect(new URLSearchParams(window.location.search).get('area') ?? '').toBe('')
+    expect(new URLSearchParams(window.location.search).get('area') ?? '').toBe('area-hiroshima')
 
     // 同じ選択への履歴復元では、絞り込みはそのまま残る。
     act(() => { window.dispatchEvent(new PopStateEvent('popstate')) })
@@ -559,7 +558,7 @@ describe('APIから問題を表示', () => {
     expect(window.history.length).toBe(before)
   })
 
-  it('フォールバックのピッカーで問題を選んでも所属地域へ追随せず、初期表示（未選択）では自動選択もしない', async () => {
+  it('フォールバックのピッカーで問題を選ぶと所属地域を選択し、初期表示（未選択）では自動選択もしない', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
     api.listQuests.mockImplementation(async (query?: { areaId?: string }) => query?.areaId === 'area-b' ? page([second])
@@ -572,11 +571,9 @@ describe('APIから問題を表示', () => {
     expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
     await user.click(screen.getByRole('button', { name: '森の謎を開く' }))
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
-    // 問題を選んでも所属地域は選択状態にならず、一覧取得も地域では絞らない（D-65）。
-    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
-    expect(api.listQuests).not.toHaveBeenCalledWith({ areaId: 'area-b', limit: 100, cursor: undefined }, expect.anything())
-    // 一覧は全件のまま残り、他の問題も選べる。
-    expect(screen.getByRole('button', { name: '川辺の謎を開く' })).toBeVisible()
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-b')
+    expect(api.listQuests).toHaveBeenCalledWith({ areaId: 'area-b', limit: 100, cursor: undefined }, expect.anything())
+    expect(screen.queryByRole('button', { name: '川辺の謎を開く' })).not.toBeInTheDocument()
   })
 
   it('409で古いヒントと挑戦を止め、既存再読込を案内する', async () => {
@@ -780,7 +777,7 @@ describe('APIから問題を表示', () => {
     expect(api.listAreas).toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: 'デモの謎を地図から見る' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '森の謎を開く' }))
+    await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
     expect(await screen.findByRole('heading', { name: '森の謎' })).toBeVisible()
     expect(screen.queryByText('森エリア')).not.toBeInTheDocument()
   })
@@ -865,10 +862,10 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} />)
     await user.click(await screen.findByRole('button', { name: `${first.title}を開く` }))
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: `${second.title}を開く` }))
+    await user.click(screen.getByRole('button', { name: `${first.title}を開く` }))
+    await user.click(await screen.findByRole('button', { name: `${second.title}を開く` }))
     expect(await screen.findByRole('heading', { name: second.title })).toBeVisible()
-    // 問題の選択は所属地域の選択を伴わない（D-65）。
-    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
+    expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-b')
     // 選択中の問題をもう一度選ぶと、ピンの再タップと同じく選択が外れる。
     await user.click(screen.getByRole('button', { name: `${second.title}を開く` }))
     // 解除後は未選択に戻り、先頭問題が自動で選ばれることもない（D-56）。
@@ -1028,11 +1025,10 @@ describe('APIから問題を表示', () => {
     const user = userEvent.setup()
     const api = apiFixture()
     let resolveFallback!: (value: PublicQuest) => void
-    // 更新後は、選択中の問題が消えて別の問題が代替になる形にする。問題の選択では
-    // 一覧を取り直さないため（D-65）、一覧取得は初期表示と更新の2回だけになる。
+    // 初期一覧・地域選択の取得後、更新で同地域の代替問題へ切り替える。
     const replacement = { ...second, questId: 'quest-c', areaId: first.areaId }
     let listCalls = 0
-    api.listQuests.mockImplementation(async () => { listCalls += 1; return page(listCalls === 1 ? [first, second] : [replacement]) })
+    api.listQuests.mockImplementation(async () => { listCalls += 1; return page(listCalls <= 2 ? [first, second] : [replacement]) })
     api.getQuest.mockResolvedValueOnce(first).mockImplementationOnce(() => new Promise((resolve) => { resolveFallback = resolve }))
     render(<ApiQuestApp api={api} />)
     await user.click(await screen.findByRole('button', { name: '川辺の謎を開く' }))
@@ -1094,7 +1090,7 @@ describe('APIから問題を表示', () => {
     expect(await screen.findByRole('heading', { name: first.title })).toBeVisible()
     await user.click(screen.getByRole('button', { name: '更新する' }))
     expect(await screen.findByText('問題更新')).toBeVisible()
-    await user.click(screen.getByRole('button', { name: '森の謎を開く' }))
+    await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
     expect(screen.queryByText(/問題更新/)).not.toBeInTheDocument()
   })
 
@@ -1211,10 +1207,13 @@ describe('APIから問題を表示', () => {
   it('詳細切替時に遅れて返る旧応答を表示しない', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
+    const sameAreaSecond = { ...second, areaId: first.areaId }
+    api.listQuests.mockResolvedValue(page([{ ...first, title: '一覧表示用タイトル' }, sameAreaSecond]))
+    api.getQuest.mockImplementation(async (id: string) => id === first.questId ? first : sameAreaSecond)
     let resolveOld!: (value: PublicQuest) => void
     api.getQuest.mockImplementation((id: string) => {
       if (id === first.questId) return new Promise((resolve) => { resolveOld = resolve })
-      return Promise.resolve(second)
+      return Promise.resolve(sameAreaSecond)
     })
     render(<ApiQuestApp api={api} />)
     // 初期表示は未選択（D-56）のため、まず先頭問題を選んで詳細取得を始める。
@@ -1235,7 +1234,7 @@ describe('APIから問題を表示', () => {
     const { rerender } = render(<ApiQuestApp api={oldApi} />)
     await user.click(await screen.findByRole('button', { name: '一覧表示用タイトルを開く' }))
     await screen.findByRole('heading', { name: first.title })
-    await user.click(screen.getByRole('button', { name: '森の謎を開く' }))
+    await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
     await screen.findByRole('heading', { name: second.title })
     rerender(<ApiQuestApp api={nextApi} />)
     expect(screen.queryByRole('heading', { name: second.title })).not.toBeInTheDocument()
@@ -1266,6 +1265,9 @@ describe('APIから問題を表示', () => {
   it('詳細404を0件や固定デモにせず、別の問題へ切り替えられる', async () => {
     const user = userEvent.setup()
     const api = apiFixture()
+    const sameAreaSecond = { ...second, areaId: first.areaId }
+    api.listQuests.mockResolvedValue(page([{ ...first, title: '一覧表示用タイトル' }, sameAreaSecond]))
+    api.getQuest.mockImplementation(async (id: string) => id === first.questId ? first : sameAreaSecond)
     api.getQuest.mockRejectedValueOnce(new ApiError('NOT_FOUND', { status: 404 }))
     render(<ApiQuestApp api={api} />)
     // 未選択では詳細を取得しないため、一覧から選んで初めて404になる（D-56）。
@@ -1286,12 +1288,11 @@ describe('APIから問題を表示', () => {
     render(<ApiQuestApp api={api} />)
     await user.click(await screen.findByRole('button', { name: '一覧表示用タイトルを開く' }))
     await screen.findByRole('heading', { name: first.title })
-    await user.click(screen.getByRole('button', { name: '森の謎を開く' }))
+    await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
     await screen.findByRole('alert')
     expect(screen.getByRole('button', { name: '森の謎を開く' })).toHaveAttribute('aria-pressed', 'true')
 
-    // 再試行の一覧では選択中の問題が消え、別の問題が先頭になる形にする。問題の
-    // 選択は所属地域の選択を伴わないため、一覧は全件として返ってくる（D-65）。
+    // 再試行で、選択中の地域にある別の問題を先頭にする。
     const replacement = { ...second, questId: 'quest-c', title: '森の新しい謎' }
     api.listQuests.mockResolvedValue(page([replacement]))
     api.getQuest.mockImplementation(async (id: string) => id === replacement.questId ? replacement : first)
@@ -1584,4 +1585,36 @@ describe('県の単一選択', () => {
     })
     await waitFor(() => expect(document.querySelector('.filter-toggle')).toHaveTextContent('大阪府'))
   })
+})
+
+it.each(['row', 'pin'] as const)('%s selection shares area, URL, list and toggle behavior', async (entry) => {
+  const user = userEvent.setup()
+  const api = apiFixture()
+  render(<ApiQuestApp api={api} syncUrl dataMode="team-preview" authClient={signedOutAuth()} />)
+  await screen.findByRole('button', { name: '森の謎を開く' })
+  const button = () => screen.getByRole('button', { name: entry === 'row' ? '森の謎を開く' : '地図の公開地域を選択' })
+  await user.click(button())
+  await screen.findByRole('heading', { name: second.title })
+  expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-b')
+  expect(screen.getByTestId('map-state')).toHaveAttribute('data-quest-order', 'quest-b')
+  expect(window.location.search).toBe('?area=area-b&quest=quest-b')
+  await user.click(button())
+  await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-quest-order', 'quest-a,quest-b'))
+  expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', '')
+  expect(screen.queryByRole('heading', { name: second.title })).not.toBeInTheDocument()
+  expect(window.location.search).toBe('')
+})
+
+it('opens the clicked second quest in an area rather than replacing it with the first', async () => {
+  const user = userEvent.setup()
+  const next = { ...first, questId: 'quest-a2', title: '郡山の2問目' }
+  const api = apiFixture()
+  api.listQuests.mockImplementation(async (query?: { areaId?: string }) => page([first, next, second].filter(quest => !query?.areaId || quest.areaId === query.areaId)))
+  api.getQuest.mockImplementation(async (id: string) => id === next.questId ? next : first)
+  render(<ApiQuestApp api={api} syncUrl dataMode="team-preview" authClient={signedOutAuth()} />)
+  await user.click(await screen.findByRole('button', { name: `${next.title}を開く` }))
+  expect(await screen.findByRole('heading', { name: next.title })).toBeVisible()
+  expect(window.location.search).toBe('?area=area-a&quest=quest-a2')
+  expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-a')
+  expect(screen.getByTestId('map-state')).toHaveAttribute('data-quest-order', 'quest-a,quest-a2')
 })

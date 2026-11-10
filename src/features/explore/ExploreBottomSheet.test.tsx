@@ -261,3 +261,14 @@ it('詳細表示中に取っ手を下までドラッグすると詳細を解除�
   rerender(<ExploreBottomSheet detailOpen={false} onDismissDetail={onDismissDetail}><p>一覧</p></ExploreBottomSheet>)
   expect(container.querySelector('.explore-sheet')).toHaveAttribute('data-snap', 'closed')
 })
+
+it('restores the snap before a pin or row opens, even when detail loads after the signal', () => {
+  const { container, rerender } = render(<ExploreBottomSheet openSignal={null}><p>一覧</p></ExploreBottomSheet>)
+  const sheet = container.querySelector('.explore-sheet')!
+  rerender(<ExploreBottomSheet openSignal="area-a:"><p>一覧</p></ExploreBottomSheet>)
+  expect(sheet).toHaveAttribute('data-snap', 'half')
+  rerender(<ExploreBottomSheet openSignal="area-a:q2" detailOpen><p>2問目</p></ExploreBottomSheet>)
+  expect(sheet).toHaveAttribute('data-snap', 'half')
+  rerender(<ExploreBottomSheet openSignal={null}><p>一覧</p></ExploreBottomSheet>)
+  expect(sheet).toHaveAttribute('data-snap', 'peek')
+})

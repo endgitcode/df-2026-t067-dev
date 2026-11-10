@@ -19,6 +19,15 @@ function background(css: string, selector: string) {
 }
 
 describe('色の役割', () => {
+  it('地方を開くだけでは選択色を付けず、未選択県のhoverとfocusも白面にする', () => {
+    for (const rule of rules(traveler).filter(rule => rule.selectorText.includes('.filter-accordion-body'))) {
+      expect(rule.cssText).not.toMatch(/--role-selected(?:-soft)?/)
+    }
+    for (const selector of ['.filter-prefecture:hover', '.filter-prefecture:focus-visible']) {
+      expect(background(traveler, selector)).toBe('var(--ui-surface)')
+    }
+    expect(background(traveler, '.filter-prefecture[aria-pressed="true"]')).toBe('var(--role-selected)')
+  })
   it('各状態をdemoの白上書きから独立した変数にする', () => {
     for (const [status, role, color] of [
       ['draft', 'off', '#e9e8e2'], ['review_pending', 'off', '#e9e8e2'],
