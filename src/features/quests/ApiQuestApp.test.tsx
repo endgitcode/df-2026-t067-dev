@@ -1618,3 +1618,38 @@ it('opens the clicked second quest in an area rather than replacing it with the 
   expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-a')
   expect(screen.getByTestId('map-state')).toHaveAttribute('data-quest-order', 'quest-a,quest-a2')
 })
+
+// ピンと行は同じ一つの選択処理を通り、選択中のものをもう一度押すと必ず解除する（2026-11-10 ゑんどくん）。
+it.each([
+  ['pin then the same quest row', 'pin', 'row'],
+  ['row then the same area pin', 'row', 'pin'],
+] as const)('%s deselects through the shared toggle', async (_name, firstEntry, secondEntry) => {
+  const user = userEvent.setup()
+  render(<ApiQuestApp api={apiFixture()} syncUrl dataMode="team-preview" authClient={signedOutAuth()} />)
+  await screen.findByRole('button', { name: '森の謎を開く' })
+  const press = (entry: 'pin' | 'row') => user.click(screen.getByRole('button', { name: entry === 'row' ? '森の謎を開く' : '地図の公開地域を選択' }))
+  await press(firstEntry)
+  await screen.findByRole('heading', { name: second.title })
+  expect(window.location.search).toBe('?area=area-b&quest=quest-b')
+  await press(secondEntry)
+  await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', ''))
+  expect(screen.queryByRole('heading', { name: second.title })).not.toBeInTheDocument()
+  expect(screen.getByTestId('map-state')).toHaveAttribute('data-quest-order', 'quest-a,quest-b')
+  expect(window.location.search).toBe('')
+})
+
+it('pin A, pin B, then B again deselects instead of reselecting A', async () => {
+  const user = userEvent.setup()
+  render(<ApiQuestApp api={apiFixture()} syncUrl dataMode="team-preview" authClient={signedOutAuth()} />)
+  await screen.findByRole('button', { name: '森の謎を開く' })
+  await user.click(screen.getByRole('button', { name: '地図の川辺エリアを選択' }))
+  await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-a'))
+  await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
+  await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', 'area-b'))
+  await screen.findByRole('heading', { name: second.title })
+  await user.click(screen.getByRole('button', { name: '地図の公開地域を選択' }))
+  await waitFor(() => expect(screen.getByTestId('map-state')).toHaveAttribute('data-area', ''))
+  expect(screen.queryByRole('heading', { name: first.title })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: second.title })).not.toBeInTheDocument()
+  expect(window.location.search).toBe('')
+})

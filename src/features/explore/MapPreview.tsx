@@ -275,13 +275,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     window.clearTimeout(areaFailureTimer.current)
     areaFailureTimer.current = window.setTimeout(() => { areaFailureTimer.current = undefined; setAreaFailed(true) }, 0)
   }
-  // 選択中地域へのフィットが完了した時点のカメラ（中心・ズーム）。フィット完了（idle）ごとに
-  // 記録し直す。選択中の地域をもう一度押した時、カメラがこの位置から動いていれば「解除」
-  // ではなく「もう一度寄せる」を優先するための判定材料（利用者は移行を期待して押している）。
-  const fittedCamera = useRef<{ map: MapInstance; areaId: string; center: { lat: number; lng: number }; zoom: number } | null>(null)
-  // フィット完了の記録待ちリスナー（idle／dragstart）。次のフィット開始時に打ち切る。
   const cancelInitialAdjustment = useRef<() => void>(() => {})
-  const pendingFitListeners = useRef<Array<{ remove(): void }>>([])
   // 地図が使える時は全画面マップ＋ボトムシート（sheetMode）、PC幅ではシートの代わりに
   // 左サイドバーのパネルへ同じ一覧を出す（panelMode、D-34）。全画面化の扱いはシートと同じ。
   // フィット系のコールバック（fitInitialAreas）がレイアウトシグネチャの算出に使うため、
@@ -310,7 +304,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       shell.style.removeProperty('--map-filter-bottom')
     }
   }, [panelMode, status])
-  // Follow the rendered sheet edge during drags and transitions; hide the group if it cannot fit.
+  // Keep controls at peek; sample sheet movement only to disable covered buttons.
   useLayoutEffect(() => {
     if (typeof window.matchMedia !== 'function') return
     const media = window.matchMedia('(max-width: 980px)')
@@ -339,7 +333,8 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom ?? 0
       const filterBottom = shell?.querySelector('.filter-toggle')?.getBoundingClientRect().bottom ?? 0
       const placement = mapControlsPlacement(shellRect.bottom, sheetRect.top, controls.getBoundingClientRect().height,
-        Math.max(visibleBounds.top, headerBottom, filterBottom) + 12)
+        Math.max(visibleBounds.top, headerBottom, filterBottom) + 12,
+        SHEET_PEEK_HEIGHT + (Number.parseFloat(getComputedStyle(shell!).getPropertyValue('--mobile-tabbar-h')) || 64))
       controls.style.bottom = `${placement.bottom}px`
       controls.style.visibility = placement.hidden ? 'hidden' : ''
       const inactiveLabels = new Set<string>()
@@ -410,9 +405,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     if (!points) return false
     const bounds = new google.LatLngBounds()
     points.forEach((point) => bounds.extend(point))
-    fittedCamera.current = null
-    for (const pending of pendingFitListeners.current) { try { pending.remove() } catch { /* SDK teardown is best effort. */ } }
-    pendingFitListeners.current = []
     if (showPublicAreas) {
       // スマホ幅の選択フィットでは、選択でシートが half まで開く前提で下パディングを
       // 見積もる（D-70）。peek 前提のままだと、開いたシートの裏にピンが隠れる。
@@ -422,34 +414,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       const sheetFitHeight = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
       instance.fitBounds(bounds, visibleAreaFitPadding(wideViewport, sidebarCollapsedRef.current, wideViewport ? undefined : sheetFitHeight, Math.max(0, mobileHeaderClearance() - (mapShell.current?.getBoundingClientRect().top ?? 0))))
     } else instance.fitBounds(bounds)
-    try {
-      // フィット完了（idle）前に利用者が地図を掴んだら、その回の完了位置は記録しない
-      // （PR #65 への taitai のレビュー指摘 [P2]）。ドラッグで止まった位置をフィット完了位置と
-      // して記録すると、再タップ時に「フィット位置にいる」と誤認し、寄せ直さず選択を解除してしまう。
-      // リスナーの削除だけに頼らず、割り込みフラグでも記録を止める（idle が後から届いても無効）。
-      let interrupted = false
-      let settled = false
-      const myListeners: Array<{ remove(): void }> = []
-      const settle = () => {
-        if (settled) return
-        settled = true
-        for (const pending of myListeners) { try { pending.remove() } catch { /* SDK teardown is best effort. */ } }
-        if (pendingFitListeners.current === myListeners) pendingFitListeners.current = []
-      }
-      const idleListener = instance.addListener('idle', () => {
-        if (interrupted) { settle(); return }
-        // 寄り過ぎていたら上限まで引き、次の idle で確定した位置を記録する（D-60 追記）。
-        if (clampFitZoom(instance)) return
-        settle()
-        try {
-          const center = instance.getCenter?.()
-          if (center) fittedCamera.current = { map: instance, areaId: area.areaId, center: { lat: center.lat(), lng: center.lng() }, zoom: instance.getZoom() ?? INITIAL_ZOOM }
-        } catch { /* カメラが読めなければ記録なし（再タップ時は再フィット優先のまま）。 */ }
-      })
-      const dragListener = instance.addListener('dragstart', () => { interrupted = true; settle() })
-      myListeners.push(idleListener, dragListener)
-      pendingFitListeners.current = myListeners
-    } catch { /* リスナーを付けられない環境では記録を諦める。 */ }
+    clampFitZoomOnIdle(instance)
     return true
   }, [showPublicAreas, wideViewport])
   // 初期表示のフィット（ピンが立つ地域全体を「実際に見えている領域」へ収める）。
@@ -534,26 +499,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
     initialFitSignature.current = `${sheetMode}:${panelMode}`
     return true
   }, [areas, filterRegion, filterPrefecture, wideViewport, sheetMode, panelMode])
-  // カメラが、その地域へのフィット完了位置に（実質）留まっているか。
-  const cameraAtFit = useCallback((instance: MapInstance, areaId: string): boolean => {
-    const snapshot = fittedCamera.current
-    if (!snapshot || snapshot.map !== instance || snapshot.areaId !== areaId) return false
-    try {
-      const center = instance.getCenter?.()
-      if (!center) return false
-      return Math.abs(center.lat() - snapshot.center.lat) < 1e-6 && Math.abs(center.lng() - snapshot.center.lng) < 1e-6
-        && Math.abs((instance.getZoom() ?? INITIAL_ZOOM) - snapshot.zoom) < 1e-6
-    } catch { return false }
-  }, [])
-  // 選択中の地域がもう一度押された（ピン／地域レイヤー）時の共通の扱い。カメラがフィット
-  // 位置から動いていれば、選択は解除せずその地域へ寄せ直して true を返す。フィット位置に
-  // いる時（と、選択中でない時）は false を返し、呼び出し側の従来動作（選択／解除）に委ねる。
-  const refitIfCameraMoved = useCallback((instance: MapInstance, area: PublicArea): boolean => {
-    if (area.areaId !== selectedAreaId) return false
-    if (cameraAtFit(instance, area.areaId)) return false
-    return fitToArea(instance, area)
-  }, [selectedAreaId, cameraAtFit, fitToArea])
-
   useEffect(() => {
     if (!API_KEY || !target.current) return
     let active = true
@@ -654,9 +599,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         if (!active || typeof areaId !== 'string') return
         const area = areas.find((candidate) => candidate.areaId === areaId)
         if (!area) return
-        // 選択中の地域を、地図を動かした後にもう一度押したら、解除せずその地域へ寄せ直す。
-        const instance = map.current
-        if (instance && refitIfCameraMoved(instance, area)) return
         setPinAreaId(null); selectMapArea(areaId)
       })
     } catch {
@@ -665,7 +607,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       failArea()
     }
     return () => { active = false; window.clearTimeout(areaFailureTimer.current); areaFailureTimer.current = undefined; try { listener?.remove(); layer.setMap(null) } catch { /* SDK teardown is best effort. */ } }
-  }, [areas, selectedAreaId, selectMapArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly, refitIfCameraMoved])
+  }, [areas, selectedAreaId, selectMapArea, showPublicAreas, status, areaAttempt, fillSelectedAreaOnly])
 
   const clearMarkers = useCallback(() => {
     for (const entry of markersRef.current.values()) {
@@ -767,10 +709,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
         })
         listeners.push(marker.addListener('click', () => {
           if (markersRef.current.get(key)?.marker !== marker) return
-          // 選択中のピンをもう一度押した時、カメラがフィット位置から動いていれば解除せず
-          // その地域へ寄せ直す（押したのに移行しない、への対応）。フィット位置にいる時だけ
-          // 従来どおり選択解除として扱う（ハイライトを外し、解除は呼び出し側が担う）。
-          if (selected && refitIfCameraMoved(instance, area)) return
           setPinAreaId((current) => (current === area.areaId ? null : area.areaId))
           // 絞り込み外の薄いピンも、通常のピンと同じ onSelectArea で選択できる。
           selectMapArea(area.areaId)
@@ -795,7 +733,7 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       if (initialFitDone.current !== instance && !fitAreaId) fitInitialAreas(instance)
     } catch { /* ピンは補助表示のため、失敗しても地図本体は使える状態を保つ。 */ }
 
-  }, [visibleQuests, activeClearFilter, clearedQuestIds, areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, selectMapArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, refitIfCameraMoved, zoom, fitInitialAreas, clearMarkers])
+  }, [visibleQuests, activeClearFilter, clearedQuestIds, areas, filterRegion, filterPrefecture, selectedAreaId, fitAreaId, selectMapArea, showPublicAreas, status, areaAttempt, attempt, wideViewport, zoom, fitInitialAreas, clearMarkers])
 
   useEffect(() => {
     const instance = map.current
@@ -822,7 +760,6 @@ export function MapPreview({ areas = EMPTY_AREAS, filterRegion = '', filterPrefe
       // 初期マウント時（この地図でまだ選択が処理されていない時）はカメラに触らない。
       // 初期カメラはマーカー側の初期フィットが決めるもので、ここで日本中心＋初期ズームを
       // 書くと、同じコミットで走る初期フィットと競合して初期表示が崩れた（D-72）。
-      fittedCamera.current = null
       lastViewportSelection.current = { map: instance, key: '' }
       return
     }

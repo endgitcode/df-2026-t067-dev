@@ -278,15 +278,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     setSelectedAreaId('')
     setSelectedId('')
   }
-  // 地域を伴う選択は地域ごと解除。問題だけのディープリンクも解除できる。
-  const deselectQuest = () => {
-    if (!selectedId) return
-    const selectedChoice = choices.find((item) => item.questId === selectedId)
-    if (selectedChoice && selectedChoice.areaId === selectedAreaId) { resetAreaSelection(); return }
-    clearRefreshNotice()
-    if (syncUrl) writeSelectionToUrl(selectedAreaId, '', 'push', activeRegions, activePrefectures)
-    setSelectedId('')
-  }
+  const deselectQuest = () => resetAreaSelection()
 
   const visibleAreaIds = useMemo(() => new Set(regionAreas.map((area) => area.areaId)), [regionAreas])
   // 一覧の並びは問題番号（都道府県コード→連番）の昇順に統一する（D-59）。API の
@@ -404,25 +396,25 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     {refreshNotice?.api === api && <span role="status">{refreshNotice.text}</span>}
   </>
   // 行とピンは同じ地域選択を通す。行は押した問題、ピンは地域の先頭を開く。
-  function selectQuestArea(areaId: string, questId = '') {
+  function toggleQuestSelection(areaId: string, questId?: string) {
+    if (questId ? questId === selectedId : areaId === selectedAreaId || choices.some((item) => item.questId === selectedId && item.areaId === areaId)) {
+      resetAreaSelection()
+      return
+    }
+    const targetId = questId ?? visibleChoices.find((item) => item.areaId === areaId)?.questId ?? ''
     if (!availableAreas.some((item) => item.areaId === areaId)) return
     const outsideFilter = !visibleAreaIds.has(areaId)
     if (outsideFilter) { setActiveRegions([]); setActivePrefectures([]) }
     clearRefreshNotice()
-    if (syncUrl) writeSelectionToUrl(areaId, questId, 'push', outsideFilter ? [] : activeRegions, outsideFilter ? [] : activePrefectures)
+    if (syncUrl) writeSelectionToUrl(areaId, targetId, 'push', outsideFilter ? [] : activeRegions, outsideFilter ? [] : activePrefectures)
     setSelectedAreaId(areaId)
-    setSelectedId(questId)
-    if (questId && dataMode !== 'demo') setOpenQuestRequest((previous) => ({ questId, sequence: (previous?.sequence ?? 0) + 1 }))
+    setSelectedId(targetId)
+    if (targetId && dataMode !== 'demo') setOpenQuestRequest((previous) => ({ questId: targetId, sequence: (previous?.sequence ?? 0) + 1 }))
   }
-  const selectArea = (areaId: string) => {
-    if (areaId === selectedAreaId) { resetAreaSelection(); return }
-    selectQuestArea(areaId)
-  }
+  const selectArea = (areaId: string) => toggleQuestSelection(areaId)
   function openQuestFromMap(questId: string) {
     const target = visibleChoices.find((item) => item.questId === questId)
-    if (!target) return
-    if (questId === selectedId) { deselectQuest(); return }
-    selectQuestArea(target.areaId, questId)
+    if (target) toggleQuestSelection(target.areaId, questId)
   }
   const FallbackHeading = dataMode !== 'demo' ? 'h2' : 'h1'
   // 読み込み済みで未選択（D-56）の時はフォールバック枠を出さない。出るのは
