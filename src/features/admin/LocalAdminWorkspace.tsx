@@ -157,7 +157,8 @@ function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiC
   const [selected, setSelected] = useState<string | null>(() => { try { return sessionStorage.getItem('admin-selected-org') } catch { return null } })
   const read = useCallback((signal: AbortSignal) => api.listMemberships({ cursor, limit: 20 }, { signal }), [api, cursor])
   const { result, retry } = useRemote(true, read)
-  const current = result.status === 'ready' ? result.value.items.find((member) => member.orgId === selected) ?? ((durable || teamPreview) && !cursor && !result.value.nextCursor && result.value.items.length === 1 ? result.value.items[0] : undefined) : undefined
+  const onlyMembership = result.status === 'ready' && !cursor && !result.value.nextCursor && result.value.items.length === 1 ? result.value.items[0] : undefined
+  const current = result.status === 'ready' ? onlyMembership ?? result.value.items.find((member) => member.orgId === selected) : undefined
   return <>
     <section hidden={editing} className="form-section" aria-labelledby="membership-title">
       <h2 id="membership-title">所属</h2>
@@ -165,7 +166,8 @@ function Memberships({ api, teamPreview, durable, photoTestSource }: { api: ApiC
       {result.status === 'error' && <><p role="alert">所属の確認失敗</p>
         <button type="button" onClick={retry}>所属を確認し直す</button></>}
       {result.status === 'ready' && (result.value.items.length === 0 ? <p>所属なし</p>
-        : <ul className="admin-read-list">{result.value.items.map((member) => <li key={member.orgId}>
+        : onlyMembership ? <p>{onlyMembership.label}</p>
+          : <ul className="admin-read-list">{result.value.items.map((member) => <li key={member.orgId}>
           <button type="button" aria-pressed={member.orgId === current?.orgId} onClick={() => { setSelected(member.orgId); try { sessionStorage.setItem('admin-selected-org', member.orgId) } catch { /* Selection still works without session storage. */ } }}>
             {member.label}
           </button></li>)}</ul>)}

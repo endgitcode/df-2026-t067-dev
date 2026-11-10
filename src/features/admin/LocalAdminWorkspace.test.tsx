@@ -35,6 +35,39 @@ it('omits invitation and public-viewing notices', () => {
   expect(screen.queryByText(/公開問題・ヒントは閲覧自由|招待制/)).not.toBeInTheDocument()
 })
 
+it.each(['demo', 'durable-local', 'team-preview'] as const)('displays the only unpaged membership as text and automatically opens quests in %s', async (dataMode) => {
+  sessionStorage.setItem('admin-selected-org', 'old-org')
+  const snapshot: AuthSnapshot = { status: 'signed-in', user: { uid: 'test-manager', displayName: null } }
+  const authClient: AuthClient = {
+    getSnapshot: () => snapshot, subscribe: () => () => {},
+    signInWithGoogle: async () => {}, signOut: async () => {}, getIdToken: async () => 'test-token',
+  }
+  const fetcher = vi.fn<typeof fetch>(async (input) => {
+    const path = String(input)
+    let body: unknown
+    if (path === '/api/v1/session') body = { uid: 'test-manager' }
+    else if (path.startsWith('/api/v1/me/memberships?')) body = { items: [{
+      orgId: quest.orgId, areaId: quest.areaId, label: '単独の架空自治体', role: 'editor', prefectureCode: '07',
+    }], nextCursor: null }
+    else if (path.startsWith(`/api/v1/orgs/${quest.orgId}/quests?`)) body = { items: [], nextCursor: null }
+    else throw new Error('Unexpected request: ' + path)
+    return new Response(JSON.stringify(body), { headers: {
+      'Content-Type': 'application/json', 'X-Quest-Data-Mode': dataMode,
+    } })
+  })
+  const apiClient = createApiClient({ fetch: fetcher, expectedDataMode: dataMode, getIdToken: authClient.getIdToken })
+  try {
+    render(<LocalAdminWorkspace authClient={authClient} apiClient={apiClient} dataMode={dataMode} />)
+    expect(await screen.findByRole('heading', { name: '謎一覧' })).toBeVisible()
+    const memberships = screen.getByRole('region', { name: '所属' })
+    expect(within(memberships).getByText('単独の架空自治体').tagName).toBe('P')
+    expect(within(memberships).queryByRole('button')).not.toBeInTheDocument()
+    expect(memberships.querySelector('[aria-pressed]')).toBeNull()
+    expect(await screen.findByRole('button', { name: '下書きを新規作成' })).toBeVisible()
+    expect(screen.getByText('謎なし')).toBeVisible()
+  } finally { sessionStorage.clear() }
+})
+
 it('confirms durable identity and membership before saving a draft with an automatic shooting area', async () => {
   const user = userEvent.setup()
   const snapshot: AuthSnapshot = { status: 'signed-in', user: { uid: 'test-manager', displayName: null } }
@@ -68,7 +101,8 @@ it('confirms durable identity and membership before saving a draft with an autom
     expect(screen.getAllByRole('link', { name: '旅行者画面' })).toHaveLength(1)
     expect(travelerLink).toHaveClass('brand')
     expect(screen.queryByRole('menuitem', { name: '旅行者画面' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /永続の架空自治体/ })).toBeVisible()
+    expect(within(screen.getByRole('region', { name: '所属' })).getByText('永続の架空自治体')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /永続の架空自治体/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '編集' }))
     expect(screen.getByText('所属')).not.toBeVisible()
     await user.click(screen.getByRole('button', { name: '謎一覧へ戻る' }))
@@ -281,7 +315,8 @@ it('publishes and pauses through durable session, membership and common HTTP con
   vi.stubGlobal('fetch', fetcher)
   try {
     render(<LocalAdminWorkspace authClient={authClient} dataMode="durable-local" />)
-    await user.click(await screen.findByRole('button', { name: /永続の公開自治体/ }))
+    expect(await within(await screen.findByRole('region', { name: '所属' })).findByText('永続の公開自治体')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /永続の公開自治体/ })).not.toBeInTheDocument()
     expect(await screen.findByText('下書き')).toBeVisible()
     await user.click(await screen.findByRole('button', { name: '編集' }))
     const publish = screen.getByRole('button', { name: '公開' })
@@ -375,7 +410,8 @@ it('completes the shared one-page flow and guards inputs and evidence across nav
   vi.stubGlobal('fetch', fetcher)
   try {
     render(<LocalAdminWorkspace authClient={authClient} dataMode="team-preview" />)
-    await user.click(await screen.findByRole('button', { name: /共有検証の架空自治体/ }))
+    expect(await within(await screen.findByRole('region', { name: '所属' })).findByText('共有検証の架空自治体')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /共有検証の架空自治体/ })).not.toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: '編集' }))
     await user.type(screen.getByLabelText('撮るもの', { exact: true }), '架空の塔')
     await user.type(screen.getByLabelText('場所の名前'), '架空の塔')
@@ -446,7 +482,6 @@ it('completes the shared one-page flow and guards inputs and evidence across nav
 }, 15_000)
 
 it('blocks creation and explains why publication is unavailable for an unclassified area', async () => {
-  const user = userEvent.setup()
   const snapshot: AuthSnapshot = { status: 'signed-in', user: { uid: 'preview-manager', displayName: null } }
   const authClient: AuthClient = {
     getSnapshot: () => snapshot, subscribe: () => () => {},
@@ -469,7 +504,8 @@ it('blocks creation and explains why publication is unavailable for an unclassif
   vi.stubGlobal('fetch', fetcher)
   try {
     render(<LocalAdminWorkspace authClient={authClient} dataMode="team-preview" />)
-    await user.click(await screen.findByRole('button', { name: /未分類の架空自治体/ }))
+    expect(await within(await screen.findByRole('region', { name: '所属' })).findByText('未分類の架空自治体')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /未分類の架空自治体/ })).not.toBeInTheDocument()
     expect(await screen.findByRole('alert')).toHaveTextContent('地域未設定・作成不可・公開不可')
     expect(screen.queryByRole('button', { name: '下書きを新規作成' })).not.toBeInTheDocument()
     expect(await screen.findByRole('button', { name: '編集' })).toBeVisible()
