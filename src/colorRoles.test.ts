@@ -82,7 +82,7 @@ describe('色の役割', () => {
     expect(rule?.style.border).toBe('2px solid var(--ui-line)')
   })
   it('結果と待機に役割色を付ける', () => {
-    expect(background(traveler, '.answer-result')).toBe('var(--role-error-bg)')
+    expect(background(traveler, '.answer-result')).toBe('var(--ui-surface)')
     expect(background(traveler, '.answer-result[data-outcome="CORRECT"]')).toBe('var(--role-done)')
     expect(background(traveler, '.camera-panel .answer-waiting')).toBe('var(--role-off)')
     expect(background(traveler, '.answer-result:not([data-outcome])')).toBe('var(--role-off)')
@@ -148,4 +148,23 @@ it('記録の外枠を外し、クリアバッジは共通の枠・余白にす�
   expect(badge.style.padding).toBe('var(--sp-4) var(--sp-8)')
   expect(badge.style.border).toBe('var(--ui-border-width) solid var(--ui-line)')
   expect(background(traveler, '.explore-quest-cleared')).toBe('var(--role-done)')
+})
+
+it('クリアと不正解は白いカードの上端だけに役割色を使う', () => {
+  expect(background(traveler, '.clear-screen-card')).toBe('var(--ui-surface)')
+  expect(background(traveler, '.clear-screen-card::before')).toBe('var(--role-done)')
+  expect(background(traveler, '.answer-result[data-outcome="WRONG_TARGET"]::before')).toBe('var(--ui-badge)')
+  expect(background(traveler, '.answer-result[data-outcome="IMAGE_UNCERTAIN"]::before')).toBeUndefined()
+  for (const selector of ['.clear-screen-card::before', '.answer-result[data-outcome="WRONG_TARGET"]::before']) {
+    const band = rules(traveler).find(rule => rule.selectorText === selector)!
+    expect(band.style.height).toBe('10px')
+    expect(band.style.top).toBe('0px')
+  }
+  expect(background(traveler, '.record-empty-icon')).toBe('var(--role-done)')
+  expect(background(traveler, '.clear-screen-card .clear-celebration-badge')).toBe('var(--role-done)')
+})
+it('地図の出典を透過せずAAの文字色とし、行の題名を太くする', () => {
+  for (const bg of ['#faf8f1', '#ffffff']) expect(contrast(token('ui-muted'), bg)).toBeGreaterThanOrEqual(4.5)
+  expect(traveler).not.toMatch(/\.map-boundary-credit[^}]*opacity:/)
+  expect(rules(traveler).find(rule => rule.selectorText === '.traveler-row-title')!.style.fontWeight).toBe('700')
 })
