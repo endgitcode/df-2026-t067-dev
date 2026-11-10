@@ -240,7 +240,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('disables fully sheet-covered controls, leaves partly visible hit targets active, and exits focus to the sheet handle', async () => {
+  it('disables sheet-covered controls, including partial overlap, and exits focus to the sheet handle', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     const originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia')
@@ -324,7 +324,7 @@ describe('Google map panel', () => {
       expect(zoomIn).toBeEnabled()
       expect(zoomIn).not.toHaveClass('is-hidden')
 
-      // At 280px high the peek sheet can cover the row, but closing it restores all 44px+ targets on-screen.
+      // 短い横向きではpeek位置のボタンがシートと重なるので、隠れて押せない扱いにする。
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: 568 })
       Object.defineProperty(window, 'innerHeight', { configurable: true, value: 280 })
       shellRight = 568
@@ -334,8 +334,9 @@ describe('Google map panel', () => {
       sheetBottom = 210
       shortLandscape = true
       act(() => { fireEvent.resize(window) })
-      expect(zoomIn).toBeEnabled()
-      expect(locate).toBeEnabled()
+      expect(zoomIn).toBeDisabled()
+      expect(locate).toBeDisabled()
+      // シートがボタンと重ならなければ、peek位置のまま操作できる。
       sheetTop = 176
       act(() => { fireEvent.scroll(window) })
       expect(zoomIn).toBeEnabled()
@@ -618,7 +619,7 @@ describe('Google map panel', () => {
     fireIdle()
     expect(setZoom).toHaveBeenCalledWith(12)
     fireIdle()
-    // カメラが（上限適用後の）フィット位置にあるので、再タップは寄せ直しではなく選択解除になる。
+    // カメラがフィット位置にあっても、再タップは選択解除になる。
     fitBounds.mockClear()
     act(() => instances[0].click?.())
     expect(onSelectArea).toHaveBeenCalledWith('area-a')
@@ -741,7 +742,44 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('refits instead of deselecting when the selected area pin is tapped after the camera moved, and deselects at the fitted position', async () => {
+  it('restores the camera from before quest A when quest A, then quest B, are deselected after a manual pan', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    let center = { lat: 36.2048, lng: 138.2529 }
+    let zoom = 5
+    const setCenter = vi.fn((next: { lat: number; lng: number }) => { center = next })
+    const setZoom = vi.fn((next: number) => { zoom = next })
+    const fitBounds = vi.fn(() => { center = { lat: 35.5, lng: 139.5 }; zoom = 11 })
+    const map = { ...mapInstance, setCenter, setZoom, fitBounds,
+      getCenter: () => ({ lat: () => center.lat, lng: () => center.lng }), getZoom: () => zoom }
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return map } }, Data, LatLngBounds: class { extend() {} }, event: { addListener: () => ({ remove() {} }) } } as never }
+    const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+    const areaB: PublicArea = { areaId: 'area-b', label: 'B', publishedCount: 1, marker: { latitude: 34.5, longitude: 135.5 },
+      publicGeometry: { type: 'Polygon', coordinates: [[[135, 34], [136, 34], [136, 35], [135, 35], [135, 34]]] } }
+    const twoAreas = [...areas, areaB]
+    const quests: PublicQuest[] = [
+      { questId: 'q-a', version: 1, title: 'A', clue: '', areaId: 'area-a', visitConditions: '', hintCount: 0 },
+      { questId: 'q-b', version: 1, title: 'B', clue: '', areaId: 'area-b', visitConditions: '', hintCount: 0 },
+    ]
+    const props = { areas: twoAreas, quests, onOpenQuest: vi.fn() }
+    const { rerender, unmount } = render(<ConfiguredMapPreview {...props} selectedQuestId="" />)
+    setCenter({ lat: 34.6937, lng: 135.5023 }); setZoom(9)
+    setCenter.mockClear(); setZoom.mockClear(); fitBounds.mockClear()
+    rerender(<ConfiguredMapPreview {...props} selectedQuestId="q-a" />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(1))
+    rerender(<ConfiguredMapPreview {...props} selectedQuestId="q-b" />)
+    await waitFor(() => expect(fitBounds).toHaveBeenCalledTimes(2))
+    // 選択中に手で動かしても、解除は「Aを選ぶ前」へ戻す。
+    center = { lat: 30, lng: 130 }; zoom = 14
+    rerender(<ConfiguredMapPreview {...props} selectedQuestId="" />)
+    expect(center).toEqual({ lat: 34.6937, lng: 135.5023 })
+    expect(zoom).toBe(9)
+    unmount()
+    delete window.google
+  })
+
+  it('deselects the selected pin after camera movement', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     let center = { lat: 36.2048, lng: 138.2529 }
@@ -771,14 +809,7 @@ describe('Google map panel', () => {
     center = { lat: 34.0, lng: 135.0 }; zoom = 9
     fitBounds.mockClear()
     act(() => instances[0].click?.())
-    // 解除はされず、その地域へ寄せ直すだけ（「押したのに移行しない」への対応）。
-    expect(onSelectArea).not.toHaveBeenCalled()
-    expect(fitBounds).toHaveBeenCalledTimes(1)
-    // 再フィットの完了を記録し、カメラがフィット位置にある状態でもう一度押す。
-    act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
-    fitBounds.mockClear()
-    act(() => instances[0].click?.())
-    // フィット位置にいるので、従来どおり選択解除として呼び出し側へ渡る。
+    // 地図を動かしても再押しは解除へ渡し、寄せ直さない。
     expect(onSelectArea).toHaveBeenCalledWith('area-a')
     expect(fitBounds).not.toHaveBeenCalled()
     rerender(<ConfiguredMapPreview areas={areas} selectedAreaId="" onSelectArea={onSelectArea} />)
@@ -788,7 +819,7 @@ describe('Google map panel', () => {
     delete window.google
   })
 
-  it('does not record the fit position when a drag interrupts the fit, so a re-tap refits instead of deselecting', async () => {
+  it('deselects even when dragging interrupts a fit', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
     let center = { lat: 36.2048, lng: 138.2529 }
@@ -824,9 +855,9 @@ describe('Google map panel', () => {
     act(() => { idleCallbacks.splice(0).forEach((callback) => callback()) })
     fitBounds.mockClear()
     act(() => instances[0].click?.())
-    // ドラッグ先にいるカメラを「フィット位置」と誤認せず、解除ではなく寄せ直しに倒れる。
-    expect(onSelectArea).not.toHaveBeenCalled()
-    expect(fitBounds).toHaveBeenCalledTimes(1)
+    // フィット途中で地図を動かしても、再タップは寄せ直さず解除する。
+    expect(onSelectArea).toHaveBeenCalledWith('area-a')
+    expect(fitBounds).not.toHaveBeenCalled()
     unmount()
     delete window.google
   })

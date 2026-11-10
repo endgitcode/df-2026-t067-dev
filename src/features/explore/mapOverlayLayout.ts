@@ -1,5 +1,5 @@
-/** All coordinates use the same viewport origin, including visualViewport offsets. */
-export function mapControlsPlacement(shellBottom: number, sheetTop: number, controlsHeight: number, clearTop: number) {
-  const bottom = Math.max(0, shellBottom - sheetTop + 12)
-  return { bottom, hidden: sheetTop - 12 - controlsHeight < clearTop }
+/** Sheet movement affects occlusion only; controls stay at the peek position. */
+export function mapControlsPlacement(_shellBottom: number, _sheetTop: number, controlsHeight: number, clearTop: number, peekBottom = 232) {
+  const bottom = peekBottom + 12
+  return { bottom, hidden: _shellBottom - bottom - controlsHeight < clearTop }
 }

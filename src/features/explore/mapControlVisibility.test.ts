@@ -8,9 +8,9 @@ const rect = (left: number, top: number, right: number, bottom: number): Control
 describe('map control sheet visibility', () => {
   const sheet = rect(0, 400, 360, 700)
 
-  it('leaves a partly visible control active while the sheet intercepts its covered part', () => {
-    expect(isMapControlFullyCovered(rect(300, 350, 344, 401), sheet)).toBe(false)
-    expect(isMapControlFullyCovered(rect(300, 390, 344, 444), sheet)).toBe(false)
+  it('disables partly covered controls as well', () => {
+    expect(isMapControlFullyCovered(rect(300, 350, 344, 401), sheet)).toBe(true)
+    expect(isMapControlFullyCovered(rect(300, 390, 344, 444), sheet)).toBe(true)
   })
 
   it('disables a button wholly behind the sheet', () => {
