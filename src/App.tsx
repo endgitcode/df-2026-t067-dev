@@ -509,7 +509,7 @@ export default function App({ authClient: providedClient, apiClient: providedApi
           {auth.status === 'signed-out' && <>
             <button type="button" className="google-continue" disabled={visiblePending !== null}
               onClick={() => void login()}><GoogleContinue /></button>
-            <p className="login-terms">続行すると利用規約に同意したものとみなします</p>
+            <p className="login-terms">続行すると<a href="/terms">利用規約</a>に同意したものとみなします</p>
           </>}
           {auth.status === 'checking' && <p role="status">ログイン確認中</p>}
           {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p role="status">ログイン</p>}

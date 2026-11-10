@@ -243,7 +243,7 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
     } finally { action.current = false; setPending(false) }
   }
 
-  return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '')}>
+  return <main className={'admin-demo' + (teamPreview || dataMode === 'durable-local' ? ' admin-managed' : '') + (auth.status !== 'signed-in' ? ' admin-signed-out' : '')}>
     <header className={auth.status === 'signed-in' ? 'admin-header admin-header-account' : 'admin-header admin-login-heading'}>
       <a className="brand" href="/" aria-label="旅行者画面">
         <span className="brand-mark"><img src="/favicon.svg" alt="" aria-hidden="true" /></span>
@@ -258,7 +258,7 @@ export function LocalAdminWorkspace({ authClient: providedAuth, apiClient: provi
     </header>
     {(auth.status !== 'signed-in' || error) && <section className="admin-login" aria-label="担当者ログイン">
       {auth.status === 'signed-out' && <button className="google-continue" type="button" disabled={pending} onClick={() => void authenticate('login')}><GoogleContinue /></button>}
-      {auth.status === 'signed-out' && <p className="login-terms">続行すると利用規約に同意したものとみなします</p>}
+      {auth.status === 'signed-out' && <p className="login-terms">続行すると<a href="/terms">利用規約</a>に同意したものとみなします</p>}
       {(pending || auth.status === 'checking') && <p role="status">ログイン確認中</p>}
       {(auth.status === 'unconfigured' || auth.status === 'unavailable') && <p>Googleログイン設定を確認</p>}
       {error && <p role="alert">{error}</p>}

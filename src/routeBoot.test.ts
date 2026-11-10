@@ -10,7 +10,7 @@ function setup() {
   return { body, host }
 }
 
-it.each(['/admin', '/admin-demo', '/admin-local'])('clears explorer boot state before loading %s', pathname => {
+it.each(['/admin', '/admin-demo', '/admin-local', '/terms', '/terms/'])('clears explorer boot state before loading %s', pathname => {
   const { body, host } = setup()
   prepareRouteBoot(pathname, body, host)
   expect(body).not.toHaveClass('explore-fullbleed')

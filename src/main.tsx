@@ -5,12 +5,18 @@ import { prepareRouteBoot } from './routeBoot'
 
 // Explorer boot HTML stays visible until commit; admin routes clear it first.
 // Deliberate replacement: URL, auth and viewport are browser-owned initial state.
+// Static hosts can enter through public/terms/index.html without an SPA rewrite.
+if (window.location.pathname === '/' && new URLSearchParams(window.location.search).get('page') === 'terms') {
+  window.history.replaceState(null, '', '/terms')
+}
 const host = document.getElementById('root')!
 prepareRouteBoot(window.location.pathname, document.body, host)
 const root = createRoot(host)
 const { load } = createModuleLoadGuard(root)
 
-if (window.location.pathname === '/admin-demo') {
+if (window.location.pathname === '/terms' || window.location.pathname === '/terms/') {
+  void load(import('./Terms'), ({ Terms }) => <StrictMode><Terms /></StrictMode>)
+} else if (window.location.pathname === '/admin-demo') {
   void load(import('./features/admin-demo/AdminDemo'), ({ default: AdminDemo }) => <StrictMode><AdminDemo /></StrictMode>)
 } else if (import.meta.env.VITE_QUEST_DATA_SOURCE === 'team-preview') {
   if (window.location.pathname === '/admin') {

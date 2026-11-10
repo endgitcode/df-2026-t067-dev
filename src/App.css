@@ -1177,3 +1177,5 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
   body:has(.traveler-shell).explore-sidebar-collapsed .desktop-nav button,
   body.explore-fullbleed.explore-sidebar-collapsed .desktop-nav button { padding-right: 0; }
 }
+
+.login-terms a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
