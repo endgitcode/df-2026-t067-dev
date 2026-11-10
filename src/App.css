@@ -192,10 +192,8 @@ button.traveler-list-row { cursor: pointer; }
 .explore-quest-list .traveler-row-title { -webkit-line-clamp: 1; }
 .traveler-row-secondary { display: flex; align-items: baseline; gap: var(--sp-8); min-width: 0; }
 .explore-quest-list .traveler-row-meta { flex: 0 1 auto; min-width: 0; margin-left: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
-.traveler-row-secondary .explore-quest-cleared { margin-left: auto; }
 .traveler-row-meta { flex: none; margin-left: auto; text-align: right; white-space: nowrap; font-size: var(--fs-12); line-height: 16px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--ui-muted); }
 .quest-number-label { color: var(--ui-muted); border-left: var(--ui-border-width) solid var(--ui-line); padding-left: var(--sp-8); font-size: var(--fs-12); font-weight: var(--ui-weight-strong); }
-.explore-quest-cleared { flex: none; padding: 0; font-size: var(--fs-12); font-weight: 400; }
 .explore-quest-detail { margin-top: var(--sp-16); }
 /* アコーディオンの押し広げも高さで滑らせる（D-59）。「場所で絞る」と同じ
    grid-template-rows 方式で、閉じる時は visibility の切り替えを遷移の終わりに遅らせる。 */
@@ -333,13 +331,11 @@ button.traveler-list-row { cursor: pointer; }
 .primary-button:hover:not(:disabled) { background: var(--ui-ink); }
 .primary-button:disabled { border-color: var(--ui-line); background: var(--ui-muted); color: var(--ui-muted); }
 .unavailable-note { font-size: var(--fs-12); color: var(--ui-muted); line-height: 1.8; margin-top: var(--sp-8); }
-/* クリア済み表示（D-64）：開始導線の代わりに置く。一覧バッジと同じ淡緑で揃える。 */
+/* クリア済み表示（D-64）：開始導線の代わりに置く。完了状態の黄緑で示す。 */
 .quest-cleared-action { display: grid; gap: var(--sp-8); justify-items: start; }
-.explore-quest-cleared, .quest-cleared-label { display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-8); font-size: var(--fs-12); font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
+.quest-cleared-label { display: inline-flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-8); font-size: var(--fs-12); font-weight: var(--ui-weight-strong); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-tint); }
 /* 一覧の行では2行目の高さ（20px）に収め、クリア済みの有無で行の高さを変えない。 */
 .explore-quest-list .traveler-row-secondary { align-items: center; min-height: 20px; }
-.explore-quest-list .explore-quest-cleared { padding: 0 var(--sp-8); line-height: 16px; }
-.explore-quest-list .explore-quest-cleared .icon { width: 12px; height: 12px; }
 .quest-cleared-action .unavailable-note { margin-top: 0; }
 .quest-handoff { display: grid; gap: var(--sp-8); }
 .quest-handoff-panel { display: grid; justify-items: center; gap: var(--sp-8); }
@@ -1129,7 +1125,6 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 .camera-actions:has(.primary-button) ~ .camera-actions > .primary-button:hover:not(:disabled) { background: var(--ui-surface); color: var(--ui-ink); }
 
 /* 作業13: 色だけでなく、既存の文字・選択表示と一緒に状態を示す。 */
-.explore-quest-cleared { background: var(--role-done); color: var(--ui-ink); }
 .quest-cleared-label { background: var(--role-done); color: var(--ui-ink); }
 .filter-prefecture[aria-pressed="true"] { background: var(--role-selected); box-shadow: inset 0 0 0 2px var(--ui-line); }
 .filter-chip[aria-pressed="true"], .map-area-chip, .map-filter-selection .filter-chip { background: var(--role-selected); border: 2px solid var(--ui-line); }

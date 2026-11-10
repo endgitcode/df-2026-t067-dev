@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
@@ -38,6 +38,7 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
   /** Identifies which persistent list owns the stateful detail during a deliberate handoff. */
   detailOwner?: 'sheet' | 'belowMap'
 }) {
+  const clearedLabelId = useId()
   const listRef = useRef<HTMLUListElement>(null)
   // アコーディオンを閉じた問題。選択解除の受け口が無い使われ方でのみ使い、
   // 選択自体は変えず、詳細の表示だけを畳む（受け口がある場合は再タップ＝選択解除）。
@@ -164,7 +165,7 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
                 <span className="explore-quest-title traveler-row-title">{quest.title}</span>
                 <span className="traveler-row-secondary">
                   <span className="traveler-row-meta">{[areas.find((area) => area.areaId === quest.areaId)?.label, quest.questNumber && `No. ${quest.questNumber}`].filter(Boolean).join(' · ')}</span>
-                  {cleared && <span className="explore-quest-cleared"><Icon name="check" />クリア済み</span>}
+                  {cleared && <span className="sr-only" id={`${clearedLabelId}-${quest.questId}`}>クリア済み</span>}
                 </span>
               </span>
             </>
@@ -174,6 +175,7 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
                   {...(detailContent
                     ? { 'aria-expanded': expanded }
                     : { 'aria-pressed': selectedQuestId ? quest.questId === selectedQuestId : undefined })}
+                  aria-describedby={cleared ? `${clearedLabelId}-${quest.questId}` : undefined}
                   aria-label={`${quest.title}の詳細を見る`} onClick={() => handleRowClick(quest.questId)}>{content}</button>
                 : <div className="explore-quest-card traveler-list-row">{content}</div>}
               {/* 開閉の枠は「場所で絞る」と同じく常時マウントし、開状態のクラスだけで

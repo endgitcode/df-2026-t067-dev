@@ -143,11 +143,11 @@ it('記録の外枠を外し、クリアバッジは共通の枠・余白にす�
   expect(record.style.background).toBe('transparent')
   expect(record.style.border).toBe('0px')
   expect(record.style.padding).toBe('0px')
-  const badge = rules(traveler).find(rule => rule.selectorText === '.explore-quest-cleared, .quest-cleared-label')!
+  const badge = rules(traveler).find(rule => rule.selectorText === '.quest-cleared-label')!
   expect(badge.style.display).toBe('inline-flex')
   expect(badge.style.padding).toBe('var(--sp-4) var(--sp-8)')
   expect(badge.style.border).toBe('var(--ui-border-width) solid var(--ui-line)')
-  expect(background(traveler, '.explore-quest-cleared')).toBe('var(--role-done)')
+  expect(background(traveler, '.explore-row-icon.is-cleared')).toBe('var(--role-done)')
 })
 
 it('クリアと不正解は白いカードの上端だけに役割色を使う', () => {
