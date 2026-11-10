@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import { Icon } from '../../components/Icon'
 import type { PublicArea, PublicQuest } from '../../shared/api/types'
 
 // 選択状態に連動する謎リスト。並ぶのは呼び出し側が選択（地域の選択・地方／都道府県の
 // 絞り込み）で絞った問題だけであり、地図の表示範囲では変わらない（D-45）。問題の選択
-// 自体は一覧を絞らない（D-65）：選んだ行の直下に詳細が開くだけで、他の問題は残る。
+// はピンと同じく所属地域の選択を伴い、その地域の問題へ一覧を絞る。
 // 地図が使えない場合も同じ。
 // 行は題名と地域名・番号の2行にし、選んだ行の直下に詳細（QuestDetails）を開く
 // アコーディオンにする（D-46）。詳細を別枠で下に置くと、タイトルが一覧と詳細で
@@ -38,6 +38,7 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
   /** Identifies which persistent list owns the stateful detail during a deliberate handoff. */
   detailOwner?: 'sheet' | 'belowMap'
 }) {
+  const clearedLabelId = useId()
   const listRef = useRef<HTMLUListElement>(null)
   // アコーディオンを閉じた問題。選択解除の受け口が無い使われ方でのみ使い、
   // 選択自体は変えず、詳細の表示だけを畳む（受け口がある場合は再タップ＝選択解除）。
@@ -164,7 +165,7 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
                 <span className="explore-quest-title traveler-row-title">{quest.title}</span>
                 <span className="traveler-row-secondary">
                   <span className="traveler-row-meta">{[areas.find((area) => area.areaId === quest.areaId)?.label, quest.questNumber && `No. ${quest.questNumber}`].filter(Boolean).join(' · ')}</span>
-                  {cleared && <span className="explore-quest-cleared"><Icon name="check" />クリア済み</span>}
+                  {cleared && <span className="sr-only" id={`${clearedLabelId}-${quest.questId}`}>クリア済み</span>}
                 </span>
               </span>
             </>
@@ -174,6 +175,7 @@ export function ExploreQuestList({ areas, quests, highlightArea, selectedQuestId
                   {...(detailContent
                     ? { 'aria-expanded': expanded }
                     : { 'aria-pressed': selectedQuestId ? quest.questId === selectedQuestId : undefined })}
+                  aria-describedby={cleared ? `${clearedLabelId}-${quest.questId}` : undefined}
                   aria-label={`${quest.title}の詳細を見る`} onClick={() => handleRowClick(quest.questId)}>{content}</button>
                 : <div className="explore-quest-card traveler-list-row">{content}</div>}
               {/* 開閉の枠は「場所で絞る」と同じく常時マウントし、開状態のクラスだけで

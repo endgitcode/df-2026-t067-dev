@@ -36,5 +36,5 @@ test('publication shared by local and team preview omits empty conditions and pr
   assert.equal(visible.quest.shootingConditions?.requiresBoat, true)
   assert.doesNotMatch(visible.quest.visitConditions, /船上・海上/)
   assert.match(visible.quest.visitConditions, /500円/)
-  assert.match(visible.quest.visitConditions, /通行を妨げない/)
+  assert.doesNotMatch(visible.quest.visitConditions, /注意|通行を妨げない/)
 })

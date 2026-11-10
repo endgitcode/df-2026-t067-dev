@@ -36,12 +36,12 @@ test('preserves an independent legacy image when slot one has an explicitly diff
 })
 
 
-test('formats public conditions on separate lines without the paid category prefix', () => {
+test('publishes the price without the paid category prefix or legacy photo notes', () => {
   const quest = { ...base, draft: { ...base.draft, materials: { ...base.draft.materials,
     requiresBoat: true, price: '有料：大人500円', photoNote: '足元に注意',
   } } }
   assert.equal(projectManagedQuest(quest, 4).quest.visitConditions,
-    '料金：大人500円\n注意：足元に注意')
+    '料金：大人500円')
 })
 
 test('does not publish unconfirmed prices or their unverified details', () => {
@@ -78,4 +78,10 @@ test('publishes selected prices and retains legacy text without accepting malfor
   for (const price of ['有料：', '有料：一律 -1円', '有料：大人 1.5円', '有料：子供 円', '有料：一律 1e3円', '有料：一律 9007199254740992円', '有料：大人 1円・大人 2円', '有料：一律 1円・子供 2円']) {
     assert.throws(() => parseManagedQuestDraft({ ...base.draft, materials: { ...base.draft.materials, price } }))
   }
+})
+
+test('accepts and retains legacy photo notes without publishing them', () => {
+  const draft = parseManagedQuestDraft({ ...base.draft, materials: { ...base.draft.materials, photoNote: '旧注意\n自由記述' } })
+  assert.equal(draft.materials.photoNote, '旧注意\n自由記述')
+  assert.equal(projectManagedQuest({ ...base, draft }, 4).quest.visitConditions, '')
 })

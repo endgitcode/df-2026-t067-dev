@@ -186,7 +186,7 @@ Firestore / Storage、写真判定・本人記録・自治体API・クラウド�
 
 ## 13. PR #30に対応する管理下書き契約
 
-`ManagedQuestDraft.materials`はname/evidence・requiresBoat/requiresPaidFacility・price/photoNote/photoRights。旧6交通手段と旧materialsのaccess/hoursは廃止して拒否する。クリア後用のaccess/hours/promoComment/explanationは必須の`afterClear`へ分離し、管理APIで作成/更新/取得する。空文字は未完成下書きとして保存でき、条件の真偽値を文字列から補正しない。
+`ManagedQuestDraft.materials`はname/evidence・requiresBoat/requiresPaidFacility・price/photoNote/photoRights。`photoNote` は既存データ互換のため受理・保存するが、編集欄・旅行者向け公開投影には使用しない。旧6交通手段と旧materialsのaccess/hoursは廃止して拒否する。クリア後用のaccess/hours/promoComment/explanationは必須の`afterClear`へ分離し、管理APIで作成/更新/取得する。空文字は未完成下書きとして保存でき、条件の真偽値を文字列から補正しない。
 
 共有型はShootingConditions/AfterClearContent。管理プレビューの型もこれを参照する。PublicQuest/通常ヒント/未クリア用データへafterClearを追加せず、登録・本人記録・公開のAPIを混同しない。詳しいpayloadと旧clientからの注意は[接続手順](team-api-handoffs.md)を参照。
 

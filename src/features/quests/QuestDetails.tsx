@@ -372,6 +372,8 @@ interface QuestDetailsProps {
 export function QuestDetails({ quest, open, disabled, buttonLabel, note, sourceLabel = '', detailsLabel = 'サンプル問題の詳細', feedback, onToggle, onStart, children, hideStartAction = false, hideToggle = false, stale = false, getHint, getHintPhoto, onHintVersionChanged = () => {}, onReloadQuest = () => {}, handoffUrl, clearedDiscoveryId, onOpenDiscovery }: QuestDetailsProps) {
   const wideViewport = useWideViewport()
   const handoffActive = wideViewport
+  // Legacy publication appended the entire (possibly multiline) photo note after this marker.
+  const visitConditions = quest.visitConditions.replace(/(?:^|\n)[ \t]*注意[：:][\s\S]*$/, '').trim()
   const detailsId = `quest-details-${useId().replaceAll(':', '')}`
   const hintUrl = quest.optionalHintImage
   const hintIdentity = `${quest.questId}\u0000${quest.version}\u0000${hintUrl ?? ''}\u0000${JSON.stringify(quest.hintImages ?? [])}\u0000${getHintIdentity(getHint)}\u0000${getPhotoIdentity(getHintPhoto)}`
@@ -416,7 +418,7 @@ export function QuestDetails({ quest, open, disabled, buttonLabel, note, sourceL
           <section id={detailsId} className="quest-details" aria-label={detailsLabel}>
             <h4>謎</h4>
             <p className="clue-text">{quest.clue}</p>
-            {quest.visitConditions.trim() && <p className="sample-note">{quest.visitConditions.replace(/^(料金[ ：]+無料)[：:][^\n]*$/gm, '$1')}</p>}
+            {visitConditions && <p className="sample-note">{visitConditions.replace(/^(料金[ ：]+無料)[：:][^\n]*$/gm, '$1')}</p>}
             <QuestHints key={`hints:${hintIdentity}`} quest={quest} getHint={getHint} getHintPhoto={getHintPhoto} stale={questStale} onVersionChanged={() => { setStaleHintIdentity(hintIdentity); onHintVersionChanged() }} onReloadNeeded={(index, needed) => setReloadNeededState(current => {
               const indexes = current.identity === hintIdentity && current.open === open ? new Set(current.indexes) : new Set<number>()
               if (needed) indexes.add(index); else indexes.delete(index)

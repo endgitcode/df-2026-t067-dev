@@ -278,11 +278,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     setSelectedAreaId('')
     setSelectedId('')
   }
-  // 選択中の問題だけを外す（D-65）。地域の選択と「場所で絞る」の絞り込みはそのまま
-  // 残し、一覧は現在の絞り込みの結果のまま全件が残る。ただし、所属地域が選択中の
-  // 問題（地域選択で先頭問題が自動選択された場合を含む）では、問題だけを外すと
-  // 読み込み側が先頭問題へ自動で合わせ直して閉じたことにならないため、ピンの
-  // 再タップと同じく地域ごと選択解除する（従来の D-55 の単位をこの場合だけ残す）。
+  // 地域を伴う選択は地域ごと解除。問題だけのディープリンクも解除できる。
   const deselectQuest = () => {
     if (!selectedId) return
     const selectedChoice = choices.find((item) => item.questId === selectedId)
@@ -373,26 +369,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
   </div>
   // 問題の選択は全モード共通で「リストの項目を押す」形に統一する（ドロップダウンは置かない）。
   // 地図のカードと同じく、押した問題の詳細を開くところまでを担う。
-  const chooseQuest = (item: PublicQuest) => {
-    // 選択中の問題をもう一度選んだら選択解除（D-55）。所属地域が選択中の場合は
-    // 地域ごと、そうでなければ問題だけを外す（deselectQuest と同じ単位に揃える）。
-    // 旧仕様の「問題だけが自動選択されている場合の再タップ＝地域まで含めた選択の
-    // 確定」という例外（旧 D-55）は、問題だけの選択が通常の形になったため廃止し、
-    // 再タップは常に解除として扱う（D-65）。
-    if (item.questId === selectedId) { deselectQuest(); return }
-    if (dataMode === 'team-preview') {
-      openQuestFromMap(item.questId)
-      return
-    }
-    clearRefreshNotice()
-    // 問題の選択は所属地域の選択を伴わない（D-65）。一覧は現在の絞り込みのまま
-    // 残り、地図のフィットは MapPreview 側が所属地域から決める（D-44 の寄せは維持）。
-    if (syncUrl) writeSelectionToUrl(selectedAreaId, item.questId, 'push', activeRegions, activePrefectures)
-    setSelectedId(item.questId)
-    if (dataMode === 'durable-local') {
-      setOpenQuestRequest((previous) => ({ questId: item.questId, sequence: (previous?.sequence ?? 0) + 1 }))
-    }
-  }
+  const chooseQuest = (item: PublicQuest) => openQuestFromMap(item.questId)
   const picker = <div className="api-quest-picker">
     {(activeRegions.length > 0 || activePrefectures.length > 0) && state !== 'loading' && state !== 'error' && !selectedQuestId && <p role="status">{visibleChoices.length ? '問題を選ぶ' : '該当なし'}</p>}
     <ul aria-label="問題一覧">{visibleChoices.map((item) => <li key={item.questId}>
@@ -426,32 +403,26 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     {refreshing && <span role="status">地域・問題一覧・選択中の詳細を取り直しています。</span>}
     {refreshNotice?.api === api && <span role="status">{refreshNotice.text}</span>}
   </>
-  const selectArea = (areaId: string) => {
-    // 選択中の地域がもう一度選ばれたら（ピンの再タップ等）選択を解除し、未選択＝全件表示に戻る。
-    if (areaId === selectedAreaId) { resetAreaSelection(); return }
+  // 行とピンは同じ地域選択を通す。行は押した問題、ピンは地域の先頭を開く。
+  function selectQuestArea(areaId: string, questId = '') {
     if (!availableAreas.some((item) => item.areaId === areaId)) return
-    // 薄いピンも通常と同じ地域選択。対象を一覧にも出すため場所フィルタを解除する。
-    if (!visibleAreaIds.has(areaId)) { setActiveRegions([]); setActivePrefectures([]) }
+    const outsideFilter = !visibleAreaIds.has(areaId)
+    if (outsideFilter) { setActiveRegions([]); setActivePrefectures([]) }
     clearRefreshNotice()
-    if (syncUrl) writeSelectionToUrl(areaId, '', 'push', activeRegions, activePrefectures)
+    if (syncUrl) writeSelectionToUrl(areaId, questId, 'push', outsideFilter ? [] : activeRegions, outsideFilter ? [] : activePrefectures)
     setSelectedAreaId(areaId)
-    setSelectedId('')
+    setSelectedId(questId)
+    if (questId && dataMode !== 'demo') setOpenQuestRequest((previous) => ({ questId, sequence: (previous?.sequence ?? 0) + 1 }))
+  }
+  const selectArea = (areaId: string) => {
+    if (areaId === selectedAreaId) { resetAreaSelection(); return }
+    selectQuestArea(areaId)
   }
   function openQuestFromMap(questId: string) {
     const target = visibleChoices.find((item) => item.questId === questId)
     if (!target) return
-    // 選択中の問題がもう一度選ばれたら選択解除（D-55）。一覧の行の再タップは
-    // ExploreQuestList 側で onDeselectQuest へ振り分けるため、ここに来るのは
-    // シートの覗き見など詳細なしの一覧からの再タップと、ピッカー（chooseQuest）
-    // 経由の再タップ。解除の単位は deselectQuest と揃える。
     if (questId === selectedId) { deselectQuest(); return }
-    clearRefreshNotice()
-    // 問題の選択は所属地域の選択を伴わない（D-65）。URL には問題だけを足し、
-    // 一覧は現在の絞り込みのまま残る。地図のフィットは MapPreview 側が選択中の
-    // 問題の所属地域から決める（D-44 の寄せは維持）。
-    if (syncUrl) writeSelectionToUrl(selectedAreaId, questId, 'push', activeRegions, activePrefectures)
-    setSelectedId(questId)
-    setOpenQuestRequest((previous) => ({ questId, sequence: (previous?.sequence ?? 0) + 1 }))
+    selectQuestArea(target.areaId, questId)
   }
   const FallbackHeading = dataMode !== 'demo' ? 'h2' : 'h1'
   // 読み込み済みで未選択（D-56）の時はフォールバック枠を出さない。出るのは
