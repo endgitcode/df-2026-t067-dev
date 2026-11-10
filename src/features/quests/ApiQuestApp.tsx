@@ -317,8 +317,8 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
       if (next) {
         // 開いた直後は選択中の地方を展開しておく。
         setOpenRegions(REGIONS.filter((region) =>
-          activeRegions.includes(region.name)
-          || region.prefectures.some((pref) => activePrefectures.includes(pref))).map((region) => region.name))
+          region.prefectures.length > 1 && (activeRegions.includes(region.name)
+          || region.prefectures.some((pref) => activePrefectures.includes(pref)))).map((region) => region.name))
       }
       return next
     })
@@ -329,8 +329,17 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
     {filterOpen && <div className="map-filter-chips-wrap is-open">
       <div className="map-filter-chips-inner">
         <div className="filter-accordion" aria-label="地方から選ぶ">
-          <button type="button" className="filter-nationwide" onClick={clearPlaceFilter}>全国</button>
           {REGIONS.map((region) => {
+            if (region.prefectures.length === 1) {
+              const prefecture = region.prefectures[0]
+              const pressed = activePrefectures.includes(prefecture)
+              return <div key={region.name} className="filter-accordion-item">
+                <button type="button" className="filter-accordion-row filter-prefecture" aria-pressed={pressed}
+                  onClick={() => pressed ? clearPlaceFilter() : selectPrefecture(prefecture)}>
+                  <span className="filter-accordion-name">{region.name}</span>
+                </button>
+              </div>
+            }
             const expanded = openRegions.includes(region.name)
             const panelId = `place-filter-${region.name}`
             return <div key={region.name} className="filter-accordion-item">
@@ -343,7 +352,7 @@ export function ApiQuestApp({ api: providedApi, syncUrl = true, authClient, data
                 {region.prefectures.map((prefecture) => {
                   const pressed = activePrefectures.includes(prefecture)
                   return <button key={prefecture} type="button" className="filter-prefecture" aria-pressed={pressed}
-                    onClick={() => selectPrefecture(prefecture)}>
+                    onClick={() => pressed ? clearPlaceFilter() : selectPrefecture(prefecture)}>
                     {prefecture}
                   </button>
                 })}
