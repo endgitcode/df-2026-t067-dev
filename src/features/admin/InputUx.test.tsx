@@ -17,6 +17,8 @@ function setup(hours = '', price = '', referenceAssetId: string | null = null) {
 }
 it('saves minute hours with weekday exceptions without changing photography hours', async () => {
   const save = setup()
+  expect(screen.queryByText('撮影の注意')).not.toBeInTheDocument()
+  expect(screen.queryByText('撮影は日中のみ')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('radio', { name: '時刻指定' }))
   expect(screen.getByLabelText('開始時刻')).toHaveAttribute('type', 'time')
   fireEvent.change(screen.getByLabelText('開始時刻'), { target: { value: '09:30' } })

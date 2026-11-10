@@ -11,7 +11,6 @@ import { HoursInput } from './HoursInput'
 import { PriceInput } from './PriceInput'
 import DraftEditor, { type DraftFields } from './DraftEditor'
 import { DraftCandidate } from './DraftCandidate'
-import { ChoiceWithOther } from './ChoiceWithOther'
 import TravelerPreview, { type PreviewMode } from './TravelerPreview'
 import { useLocalDraftSave } from './useLocalDraftSave'
 import type { LocalDraftConnection } from './useLocalDraftSave'
@@ -44,7 +43,6 @@ function parseHours(hours: string) {
 const hourlyChoices = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
 const endHourlyChoices = [...hourlyChoices, '24:00']
 
-const photoNotePhrases = ['立ち入り禁止区域では撮影しないでください', '交通量が多い場所では周囲に注意してください', '足場の安全を確認してから撮影してください', '撮影できる時間帯を守ってください', '私有地では許可を得てから撮影してください'] as const
 
 /** Builds a starter sentence for the access text from means + minutes; the textarea stays the source of truth. */
 function AccessInput({ value, onChange, builder }: { value: string; onChange: (value: string) => void; builder: boolean }) {
@@ -97,7 +95,6 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
   const [explanation, setExplanation] = useState(initial?.afterClear.explanation ?? '')
   const [spotInput, setSpotInput] = useState(() => initialSpotInput(initial?.afterClear.spot))
   const [price, setPrice] = useState(normalizePrice(initial?.materials.price ?? ''))
-  const [photoNote, setPhotoNote] = useState(initial?.materials.photoNote ?? '')
   const [inputError, setInputError] = useState('')
   const [rightsReuseNeeded, setRightsReuseNeeded] = useState(false)
   const [rightsError, setRightsError] = useState(false)
@@ -340,7 +337,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
     const legacyHintAssetId = savedDraft?.hintAssetId ?? null
     const hintAssetIds = savedDraft?.hintAssetIds ?? (legacyHintAssetId ? [legacyHintAssetId, null, null] : undefined)
     void save({
-      materials: { name, evidence, requiresBoat, requiresPaidFacility, price: normalizePrice(price), photoNote, photoRights: part && photo ? '' : photoRights },
+      materials: { name, evidence, requiresBoat, requiresPaidFacility, price: normalizePrice(price), photoNote: initial?.materials.photoNote ?? '', photoRights: part && photo ? '' : photoRights },
       content: draft, afterClear: { access, hours, promoComment, explanation, ...(spot ? { spot } : {}) }, referenceAssetId,
       hintAssetId: savedDraft?.hintAssetIds ? legacyHintAssetId : null,
       ...(hintAssetIds ? { hintAssetIds } : {}),
@@ -432,7 +429,6 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {part !== 1 && <><section className="form-section" aria-labelledby="conditions-heading"><h2 id="conditions-heading">挑戦条件</h2>
         <fieldset><legend>撮影条件</legend><div className="check-grid"><label className="check-option"><input type="checkbox" checked={requiresBoat} onChange={event => { setRequiresBoat(event.target.checked); markMaterialChange() }} />船上・海上</label><label className="check-option"><input type="checkbox" checked={requiresPaidFacility} onChange={event => { setRequiresPaidFacility(event.target.checked); markMaterialChange() }} />有料施設内</label></div></fieldset>
         {connection ? <PriceInput onError={setPriceError} value={price} onChange={value => { setPrice(value); markMaterialChange() }} /> : <label>料金<input value={price} onChange={event => { setPrice(event.target.value); markMaterialChange() }} placeholder="例：大人500円／無料／要確認" /></label>}
-        {connection ? <ChoiceWithOther label="撮影の注意" phrases={photoNotePhrases} value={photoNote} onChange={value => { setPhotoNote(value); markMaterialChange() }} /> : <label>撮影の注意<textarea value={photoNote} onChange={event => { setPhotoNote(event.target.value); markMaterialChange() }} rows={2} /></label>}
       </section>
       <details className="form-section" open={afterClearOpen} onToggle={event => setAfterClearOpen(event.currentTarget.open)}><summary>クリア後</summary>
 
@@ -457,7 +453,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
       {!part && <>{draftEntryError && !name.trim() && <p tabIndex={-1} role="alert" className="field-error">{draftEntryError}</p>}
       <button className="submit-button" type="button" onClick={enterDraft}>下書き・編集へ</button>
       {!focused && <button type="submit">入力内容を確認</button>}
-      {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2>{!connection && <p>画面内の確認表示です。送信・保存はしていません。</p>}<dl><dt>自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市・青葉みらい市の行政区域'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>撮影の注意</dt><dd>{photoNote || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用時間</dt><dd>{hours || '未入力'}</dd><dt>紹介</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の権利</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影範囲</dt><dd>{areaStatus}</dd></dl></section>}
+      {showSummary && <section aria-labelledby="summary-heading" className="form-section summary"><h2 id="summary-heading">入力内容の確認</h2>{!connection && <p>画面内の確認表示です。送信・保存はしていません。</p>}<dl><dt>自治体・探索エリア</dt><dd>{areaLabel ?? '青葉みらい市・青葉みらい市の行政区域'}</dd><dt>対象名</dt><dd>{name || '未入力'}</dd><dt>船上・海上での撮影</dt><dd>{requiresBoat ? '必要' : '未選択'}</dd><dt>有料施設内での撮影</dt><dd>{requiresPaidFacility ? '必要' : '未選択'}</dd><dt>挑戦前の料金</dt><dd>{price || '未入力'}</dd><dt>クリア後の行き方</dt><dd>{access || '未入力'}</dd><dt>クリア後に利用時間</dt><dd>{hours || '未入力'}</dd><dt>紹介</dt><dd>{promoComment || '未入力'}</dd><dt>解説</dt><dd>{explanation || '未入力'}</dd><dt>写真の権利</dt><dd>{photoRights || '未入力'}</dd><dt>参考写真</dt><dd>{photo?.file.name ?? (referenceAssetId ? '保存済み' : '未選択')}</dd><dt>撮影範囲</dt><dd>{areaStatus}</dd></dl></section>}
       </>}
     </form>}
     {(onePage || step === 'A04') && <>
@@ -484,7 +480,7 @@ export default function QuestDraftForm({ connection, teamPreview = false }: { co
           </>}
         {!part && <button type="button" onClick={() => setStep('A03')}>素材と場所を編集</button>}
       </section>}
-      <TravelerPreview challengeContent={{ title: draft.title, question: draft.question, hints: draft.hints, requiresBoat, requiresPaidFacility, price, photoNote }} afterClearContent={{ access, hours, promoComment, explanation }} mode={previewMode} onModeChange={setPreviewMode} headingRef={a05HeadingRef} onEdit={() => { setVisitedDraft(true); setStep('A04') }} areaLabel={areaLabel} /></>}
+      <TravelerPreview challengeContent={{ title: draft.title, question: draft.question, hints: draft.hints, requiresBoat, requiresPaidFacility, price }} afterClearContent={{ access, hours, promoComment, explanation }} mode={previewMode} onModeChange={setPreviewMode} headingRef={a05HeadingRef} onEdit={() => { setVisitedDraft(true); setStep('A04') }} areaLabel={areaLabel} /></>}
     </div>
     {(part === 1 || onePage) && exploration?.source === 'N03' && <footer className="helper">出典：国土交通省 国土数値情報「行政区域」{exploration.year}年版を加工</footer>}
     {connection && <section className="form-section" aria-label="下書きの保存">

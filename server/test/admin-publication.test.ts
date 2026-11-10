@@ -101,6 +101,7 @@ test('organization members can publish tested versions while only publishers can
   assert.doesNotMatch(JSON.stringify(admin.getPublished(id)), /referenceAssetId|features|zones|0\.1221|0\.2332/)
   const traveler = api('traveler')
   const visible = await traveler.getQuest(id)
+  assert.equal(visible.visitConditions, '')
   assert.equal(visible.title, draft.content.title)
   assert.deepEqual(visible.shootingConditions, { requiresBoat: true, requiresPaidFacility: false })
   assert.equal((await traveler.listAreas()).items.find((area) => area.areaId === 'demo-area')?.publishedCount, 3)

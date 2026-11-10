@@ -571,9 +571,9 @@ it('一覧内の詳細は題名を読み上げ用に残し、番号と地域を�
 })
 
 it('hides amounts in previously published free price conditions', () => {
-  render(<QuestDetails quest={{ ...demoQuest, visitConditions: '料金 無料：500\n注意：足元に注意' }} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" onToggle={vi.fn()} onStart={vi.fn()} />)
+  render(<QuestDetails quest={{ ...demoQuest, visitConditions: '料金 無料：500\n注意：足元に注意\n旧注意の続き' }} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" onToggle={vi.fn()} onStart={vi.fn()} />)
   expect(screen.getByText(/料金 無料/)).not.toHaveTextContent('500')
-  expect(screen.getByText(/料金 無料/)).toHaveTextContent('注意：足元に注意')
+  expect(screen.queryByText(/足元に注意|旧注意の続き/)).not.toBeInTheDocument()
 })
 
 it('ヒント見出しを重ねず、ヒントなしでは領域ごと表示しない', () => {
@@ -587,4 +587,10 @@ it('ヒント見出しを重ねず、ヒントなしでは領域ごと表示し�
   expect(container.querySelector('.quest-hints')).not.toBeInTheDocument()
   expect(screen.queryByText('ヒントなし')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'ヒントを見る' })).not.toBeInTheDocument()
+})
+
+it('omits the condition paragraph when a legacy publication contains only a photo note', () => {
+  const { container } = render(<QuestDetails quest={{ ...demoQuest, visitConditions: '注意：旧注意\n続き' }} areaLabel="地域" open disabled={false} buttonLabel="挑戦する" onToggle={vi.fn()} onStart={vi.fn()} />)
+  expect(screen.queryByText(/旧注意|続き/)).not.toBeInTheDocument()
+  expect(container.querySelector('.sample-note')).toBeNull()
 })

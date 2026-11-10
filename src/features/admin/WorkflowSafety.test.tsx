@@ -161,7 +161,7 @@ it('keeps the inventory fields and distinct actions on one page', () => {
   for (const label of ['撮るもの', '正解の写真', '場所の名前', '住所', '緯度', '経度', '船上・海上', '有料施設内', '料金の区分', '行き方', '交通手段', '所要分数', '紹介', '解説', 'タイトル', '問題文', 'ヒント 1', 'ヒント 2', 'ヒント 3', '特徴', '特徴を1行で追加', '設定するヒント', 'ヒント画像', '正解写真で試す', '別の写真で試す']) {
     expect(screen.getByLabelText(label, { exact: true, selector: 'input, textarea, select' })).toBeVisible()
   }
-  expect(screen.getByRole('group', { name: '撮影の注意' })).toBeVisible()
+  expect(screen.queryByRole('group', { name: '撮影の注意' })).not.toBeInTheDocument()
   for (const name of ['参照を外す', '行き方の文を作る', '特徴を追加', '画像を保存', '正解写真で試す', '別の写真で試す', '公開', '謎一覧へ戻る']) {
     expect(screen.getByRole('button', { name })).toBeVisible()
   }
