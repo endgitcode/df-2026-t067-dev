@@ -82,3 +82,19 @@ describe('ディープリンク', () => {
     }
   })
 })
+
+
+describe('探索画面の空レール', () => {
+  it('問題未選択では空の詳細用divを残さず、内容のあるレールは維持する', () => {
+    const { container, rerender } = render(<App apiMode apiDataMode="durable-local" />)
+    expect(document.body).toHaveClass('explore-fullbleed')
+    const rail = container.querySelector('.quest-rail')
+    expect(rail).not.toBeNull()
+    expect(rail).toBeEmptyDOMElement()
+    expect(rail?.matches(':empty')).toBe(true)
+
+    rerender(<App apiMode apiDataMode="durable-local" quest={demoQuest} />)
+    expect(container.querySelector('.quest-rail .quest-card')).toBeInTheDocument()
+    expect(container.querySelector('.quest-rail')).not.toBeEmptyDOMElement()
+  })
+})

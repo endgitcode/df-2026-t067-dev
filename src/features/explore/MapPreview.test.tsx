@@ -240,6 +240,48 @@ describe('Google map panel', () => {
     delete window.google
   })
 
+  it('keeps the real controls bottom at peek when the sheet expands to half', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
+    vi.resetModules()
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(max-width: 980px)', media: query,
+      addEventListener() {}, removeEventListener() {},
+    }))
+    const updates = new Set<() => void>()
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(update: () => void) { updates.add(update) }
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    })
+    let sheetTop = 612
+    const originalRect = HTMLElement.prototype.getBoundingClientRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('map-preview-shell')) return { left: 0, top: 0, right: 390, bottom: 844, width: 390, height: 844 } as DOMRect
+      if (this.classList.contains('explore-sheet')) return { left: 0, top: sheetTop, right: 390, bottom: 780, width: 390, height: 780 - sheetTop } as DOMRect
+      if (this.classList.contains('map-controls')) return { left: 330, top: 410, right: 378, bottom: 600, width: 48, height: 190 } as DOMRect
+      return originalRect.call(this)
+    })
+    class Data { setMap() {} addGeoJson() {} setStyle() {} addListener() { return { remove() {} } } forEach() {} remove() {} }
+    window.google = { maps: { Map: class { constructor() { return mapInstance } }, Data, event: { addListener: () => ({ remove() {} }) } } } as never
+    try {
+      const { MapPreview: ConfiguredMapPreview } = await import('./MapPreview')
+      const { container } = render(<ConfiguredMapPreview />)
+      await waitFor(() => expect(container.querySelector('.map-controls')).toBeInTheDocument())
+      const controls = container.querySelector<HTMLElement>('.map-controls')!
+      const sheet = container.querySelector('.explore-sheet')!
+      expect(sheet).toHaveAttribute('data-snap', 'peek')
+      expect(controls.style.bottom).toBe('244px')
+      fireEvent.click(screen.getByRole('button', { name: '謎リストを広げる' }))
+      expect(sheet).toHaveAttribute('data-snap', 'half')
+      sheetTop = 350
+      act(() => { updates.forEach((update) => update()) })
+      expect(controls.style.bottom).toBe('244px')
+    } finally {
+      delete window.google
+    }
+  })
+
   it('disables sheet-covered controls, including partial overlap, and exits focus to the sheet handle', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'test-key')
     vi.resetModules()
