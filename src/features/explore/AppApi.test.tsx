@@ -145,7 +145,7 @@ describe('explicit local API integration', () => {
     const pending = fetcher.mock.calls.findLast(([path]) => path === photoPath)?.[1]?.signal
     uid = 'next-user'
     act(() => auth.emit({ status: 'signed-in', user: { uid, displayName: null } }))
-    expect(await screen.findByText('記録なし')).toBeVisible()
+    expect(await screen.findByText('記録はまだない')).toBeVisible()
     expect(pending?.aborted).toBe(true)
     await act(async () => finishPhoto(photoResponse()))
     expect(screen.queryByRole('img', { name: '本人の記録写真' })).not.toBeInTheDocument()

@@ -234,10 +234,11 @@ export function OwnerDiscoveries({ api, initialId, visit = 0, active = true, onE
   return <>
     {detail}
     {confirmation}
-    {items.length === 0 ? <>
-      <p>記録なし</p>
+    {items.length === 0 ? <div className="record-empty">
+      <span className="record-empty-icon" aria-hidden="true">✓</span>
+      <h2>記録はまだない</h2>
       <button type="button" className="primary-button" onClick={onExplore}>謎を探す</button>
-    </> : <ul className="record-list" aria-label="自分の記録一覧">
+    </div> : <ul className="record-list" aria-label="自分の記録一覧">
       {items.map((record) => <li key={record.discoveryId}>
         <button type="button" className="traveler-list-row traveler-list-row-photo record-open"
           aria-label={record.afterClear?.spot?.name ?? record.placeName} aria-haspopup="dialog"

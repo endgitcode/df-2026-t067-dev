@@ -102,7 +102,7 @@ h1 { font-size: var(--fs-24); font-weight: var(--ui-weight-display); line-height
 .map-location-status { display: flex; align-items: flex-start; gap: var(--sp-8); width: fit-content; max-width: 100%; margin-top: var(--sp-8); padding: var(--sp-8) var(--sp-12); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-surface); color: var(--ui-ink); font-size: var(--fs-12); box-shadow: none; }
 .map-location-status > span { flex: 1 1 auto; min-width: 0; }
 .map-location-status-close { flex: 0 0 auto; min-width: 28px; min-height: 28px; margin: -4px -4px -4px 0; padding: 0 var(--sp-4); border: 0; border-radius: var(--radius-s); background: transparent; color: var(--ui-ink); font-size: var(--fs-16); line-height: 1; cursor: pointer; }
-.map-boundary-credit { margin: var(--sp-8) 2px 2px; font-size: var(--fs-12); color: var(--ui-muted); opacity: .72; }
+.map-boundary-credit { margin: var(--sp-8) 2px 2px; font-size: var(--fs-12); color: var(--ui-muted); }
 /* 浮動表示は幅を内容に絞り（最大430px）、長い案内でも折り返して右下の
    地図の著作権表示まで届かせない（D-58）。 */
 .map-location-status.is-floating { position: absolute; left: 20px; bottom: calc(var(--sheet-h, 0px) + 14px); z-index: 5; margin: 0; max-width: min(430px, calc(100% - 110px)); }
@@ -177,7 +177,7 @@ button.traveler-list-row { cursor: pointer; }
 .explore-quest-list .traveler-list-row.is-selected { background: var(--role-selected); box-shadow: inset 0 0 0 1px var(--ui-line); }
 .traveler-list-row.is-selected { background: var(--role-selected); box-shadow: inset 0 0 0 1px var(--ui-line); }
 .traveler-list-row.is-selected .traveler-row-title { color: var(--ui-ink); font-weight: var(--ui-weight-strong); }
-.traveler-row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; min-width: 0; font-size: var(--fs-14); line-height: 20px; font-weight: 500; }
+.traveler-row-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; min-width: 0; font-size: var(--fs-14); line-height: 20px; font-weight: 700; }
 .explore-quest-title { flex: 1; }
 .explore-quest-list .traveler-list-row { flex-direction: column; align-items: stretch; gap: var(--sp-4); min-height: 60px; }
 .explore-quest-list .traveler-row-title { -webkit-line-clamp: 1; }
@@ -308,7 +308,9 @@ button.traveler-list-row { cursor: pointer; }
 /* 初回クリア時の全画面クリア画面（D-63）。テーマ色の地に、面のカードを浮かせる。 */
 /* クリア画面はスクロールなしで1画面に収める（t159u）。写真は残り高さへ伸縮。 */
 .clear-screen { position: fixed; inset: 0; z-index: 80; display: grid; place-items: safe center; overflow: hidden; overscroll-behavior: none; touch-action: none; height: 100dvh; max-height: 100dvh; padding: max(var(--sp-12), env(safe-area-inset-top)) var(--sp-16) max(var(--sp-12), env(safe-area-inset-bottom)); background: var(--role-done); animation: view-fade-in 200ms var(--ease-out); box-sizing: border-box; }
-.clear-screen-card { display: flex; flex-direction: column; align-items: center; gap: var(--sp-8); width: min(420px, 100%); max-height: 100%; min-height: 0; padding: var(--sp-16) var(--sp-16) var(--sp-16); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); box-shadow: none; text-align: center; animation: content-rise-in 280ms var(--ease-out); box-sizing: border-box; overflow: hidden; }
+.clear-screen-card { position: relative; color: var(--ui-ink); display: flex; flex-direction: column; align-items: center; gap: var(--sp-8); width: min(420px, 100%); max-height: 100%; min-height: 0; padding: var(--sp-16) var(--sp-16) var(--sp-16); border: var(--ui-border-width) solid var(--ui-line); border-radius: var(--radius-l); background: var(--ui-surface); box-shadow: none; text-align: center; animation: content-rise-in 280ms var(--ease-out); box-sizing: border-box; overflow: hidden; }
+.clear-screen-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 10px; background: var(--role-done); }
+.clear-screen-card .clear-celebration-badge { width: 80px; height: 80px; box-sizing: border-box; border: 2px solid var(--ui-ink); background: var(--role-done); color: var(--ui-ink); }
 .clear-screen-title { margin: 0; font-size: var(--fs-28); font-weight: var(--ui-weight-display); letter-spacing: -.02em; line-height: 1.15; flex: 0 0 auto; }
 .clear-screen-title:focus { outline: none; }
 .clear-screen-quest { margin: 0; font-size: var(--fs-16); font-weight: var(--ui-weight-strong); flex: 0 0 auto; }
@@ -485,6 +487,10 @@ button.traveler-list-row { cursor: pointer; }
 .owner-records > h1 { font-size: var(--fs-24); line-height: 1.4; font-weight: var(--ui-weight-strong); }
 .owner-records > button { justify-self: start; }
 .owner-records, .record-dialog { --ui-hover-shift: 0px; --ui-press: 0px; }
+.record-empty { display: grid; justify-items: center; align-content: center; gap: var(--sp-16); width: 100%; min-height: 320px; text-align: center; color: var(--ui-ink); }
+.record-empty h2 { margin: 0; font-size: var(--fs-24); font-weight: var(--ui-weight-strong); }
+.record-empty .primary-button { max-width: 320px; }
+.record-empty-icon { display: grid; place-items: center; width: 72px; height: 72px; box-sizing: border-box; border: 2px solid var(--ui-ink); border-radius: 50%; background: var(--role-done); color: var(--ui-ink); font-size: var(--fs-28); line-height: 1; }
 .record-list { display: grid; gap: var(--sp-8); width: 100%; margin: 0; padding: 0; list-style: none; }
 .record-list li { min-width: 0; }
 .record-summary { display: grid; gap: var(--sp-4); min-width: 0; overflow-wrap: anywhere; }
@@ -717,7 +723,7 @@ body.explore-fullbleed .explore-sheet { padding-bottom: env(safe-area-inset-bott
 
   body.explore-fullbleed .explore-side-panel .explore-quest-number { font-size: var(--fs-12); color: var(--ui-muted); }
   body.explore-fullbleed .explore-side-panel .map-boundary-credit {
-    margin: auto 0 0; padding-top: var(--sp-8); font-size: var(--fs-12); opacity: .65;
+    margin: auto 0 0; padding-top: var(--sp-8); font-size: var(--fs-12); color: var(--ui-muted);
   }
   body.explore-fullbleed .explore-side-panel .side-panel-rail {
     margin-top: var(--sp-12); padding-top: var(--sp-12);
@@ -1116,15 +1122,18 @@ body.explore-fullbleed .explore-sheet-reopen:hover {
 
 /* 作業13: 色だけでなく、既存の文字・選択表示と一緒に状態を示す。 */
 .explore-quest-cleared { background: var(--role-done); color: var(--ui-ink); }
-.quest-cleared-label, .clear-screen-card { background: var(--role-done); color: var(--ui-ink); }
+.quest-cleared-label { background: var(--role-done); color: var(--ui-ink); }
 .filter-prefecture[aria-pressed="true"] { background: var(--role-selected); box-shadow: inset 0 0 0 2px var(--ui-line); }
 .filter-chip[aria-pressed="true"], .map-area-chip, .map-filter-selection .filter-chip { background: var(--role-selected); border: 2px solid var(--ui-line); }
 .filter-accordion-body { background: var(--role-selected-soft); }
 .camera-panel .answer-waiting { background: var(--role-off); }
-.answer-result { padding: var(--sp-8) var(--sp-12); border-radius: var(--radius-s); background: var(--role-error-bg); color: var(--ui-ink); }
+.answer-result { padding: var(--sp-8) var(--sp-12); border-radius: var(--radius-s); background: var(--ui-surface); color: var(--ui-ink); }
 .answer-result:not([data-outcome]) { background: var(--role-off); }
-.answer-result[data-outcome="CORRECT"], .answer-result[data-outcome="ALREADY_CLEARED"] { background: var(--role-done); }
-.camera-actions > .answer-result[role="alert"] { background: transparent; color: var(--ui-error); }
+.answer-result[data-outcome] { position: relative; overflow: hidden; padding-top: var(--sp-24); }
+.answer-result[data-outcome]::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 10px; background: var(--ui-badge); }
+.answer-result[data-outcome="CORRECT"]::before, .answer-result[data-outcome="ALREADY_CLEARED"]::before { background: var(--role-done); }
+.camera-actions > .answer-result[role="alert"] { background: transparent; color: var(--ui-error); padding-top: var(--sp-8); }
+.camera-actions > .answer-result[role="alert"]::before { content: none; }
 @media (min-width: 981px) {
   body:has(.traveler-shell) .desktop-nav .nav-active,
   body.explore-fullbleed .traveler-shell .desktop-nav .nav-active { background: var(--role-selected); color: var(--ui-ink); border-color: var(--ui-line); }

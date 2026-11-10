@@ -108,7 +108,7 @@ it('confirms deletion, checks a known receipt without resending, and refreshes t
   expect(deleteDiscovery).toHaveBeenCalledExactlyOnceWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
   await user.click(screen.getByRole('button', { name: '削除状態を確認' }))
   expect(await screen.findByText('削除完了')).toBeVisible()
-  expect(await screen.findByText('記録なし')).toBeVisible()
+  expect(await screen.findByText('記録はまだない')).toBeVisible()
   expect(getDeletion).toHaveBeenCalledTimes(3)
   expect(deleteDiscovery).toHaveBeenCalledTimes(1)
   expect(listDiscoveries).toHaveBeenCalledTimes(2)
@@ -155,7 +155,7 @@ it('refetches the list when the records view is entered again', async () => {
     .mockResolvedValue({ items: [discovery], nextCursor: null })
   const api = { ...createApiClient(), getQuest: vi.fn().mockResolvedValue({ title: "テスト問題" }), listDiscoveries }
   const { rerender } = render(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={1} />)
-  expect(await screen.findByText('記録なし')).toBeVisible()
+  expect(await screen.findByText('記録はまだない')).toBeVisible()
   expect(listDiscoveries).toHaveBeenCalledTimes(1)
   // 画面は常駐したままなので、入り直しの合図（visit の増加）で取り直されること。
   // 初回の空表示が居座らず、その間に増えた記録が出る。
@@ -265,7 +265,7 @@ it('aborts thumbnail requests when changing pages', async () => {
   render(<OwnerDiscoveries onExplore={vi.fn()} api={api} />)
   await screen.findByRole('button', { name: discovery.placeName })
   await user.click(screen.getByRole('button', { name: '次の記録' }))
-  expect(await screen.findByText('記録なし')).toBeVisible()
+  expect(await screen.findByText('記録はまだない')).toBeVisible()
   expect(firstSignal?.aborted).toBe(true)
 })
 
@@ -302,7 +302,7 @@ it('loads only thumbnails near the viewport and cancels observed requests on pag
   observers[0].callback([{ isIntersecting: true, intersectionRatio: 1, target: observers[0].target! } as IntersectionObserverEntry], {} as IntersectionObserver)
   expect(api.getDiscoveryPhoto).toHaveBeenCalledExactlyOnceWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
   await user.click(screen.getByRole('button', { name: '次の記録' }))
-  expect(await screen.findByText('記録なし')).toBeVisible()
+  expect(await screen.findByText('記録はまだない')).toBeVisible()
   expect(photoSignal?.aborted).toBe(true)
   expect(observers.every(({ disconnect }) => disconnect.mock.calls.length > 0)).toBe(true)
 })
@@ -339,7 +339,7 @@ it('reads and deletes durable owner records through the authenticated common HTT
   expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'DELETE')).toHaveLength(0)
   await user.click(screen.getByRole('button', { name: '記録と写真を削除' }))
   expect(await screen.findByText('削除完了')).toBeVisible()
-  expect(await screen.findByText('記録なし')).toBeVisible()
+  expect(await screen.findByText('記録はまだない')).toBeVisible()
   expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'DELETE')).toHaveLength(1)
   expect(revokeObjectURL).toHaveBeenCalledWith('blob:durable-record')
   for (const [, init] of fetcher.mock.calls.filter(([path]) => String(path).startsWith('/api/v1/me/'))) expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer owner-token')
@@ -358,13 +358,13 @@ it('opens changed destinations and reopens the same destination on a new visit',
     getDiscoveryPhoto: vi.fn().mockResolvedValue(new Blob(['fixture'])),
   }
   const { rerender } = render(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={1} />)
-  expect(await screen.findByText('記録なし')).toBeVisible()
+  expect(await screen.findByText('記録はまだない')).toBeVisible()
   rerender(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={2} initialId="record-a" />)
   expect(await screen.findByText('record-a')).toBeVisible()
   rerender(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={3} initialId="record-b" />)
   expect(await screen.findByText('record-b')).toBeVisible()
   await user.click(screen.getByRole('button', { name: '閉じる' }))
-  expect(await screen.findByText('記録なし')).toBeVisible()
+  expect(await screen.findByText('記録はまだない')).toBeVisible()
   rerender(<OwnerDiscoveries onExplore={vi.fn()} api={api} visit={4} initialId="record-b" />)
   expect(await screen.findByText('record-b')).toBeVisible()
 })
@@ -436,4 +436,17 @@ it.each(['写真', 'カード', 'Enter', 'Space'])('%sから記録詳細を開�
   }
   expect(await screen.findByRole('dialog', { name: '記録詳細' })).toBeVisible()
   expect(api.getDiscovery).toHaveBeenCalledWith(discovery.discoveryId, { signal: expect.any(AbortSignal) })
+})
+
+it('空の記録は見出しと主操作だけを表示し、探索へ戻る', async () => {
+  const onExplore = vi.fn()
+  const api = { ...createApiClient(), listDiscoveries: vi.fn().mockResolvedValue({ items: [], nextCursor: null }) }
+  render(<OwnerDiscoveries api={api} onExplore={onExplore} />)
+  const heading = await screen.findByRole('heading', { name: '記録はまだない' })
+  const empty = heading.parentElement!
+  expect(empty.querySelector('.record-empty-icon')).toHaveAttribute('aria-hidden', 'true')
+  expect(within(empty).getAllByRole('button')).toHaveLength(1)
+  expect(empty.querySelector('p')).toBeNull()
+  await userEvent.setup().click(within(empty).getByRole('button', { name: '謎を探す' }))
+  expect(onExplore).toHaveBeenCalledOnce()
 })
