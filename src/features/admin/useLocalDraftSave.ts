@@ -23,6 +23,7 @@ type DraftAsset = { file: File; purpose: AssetPurpose; photoRights: string; hint
 
 function saveFailure(cause: unknown, attemptedCreate: boolean): SaveState {
   const code = cause instanceof ApiError ? cause.code : undefined
+  if (code === 'SPOT_OUTSIDE_AREA') return { status: 'error', message: 'エリアの外です' }
   if (code === 'DRAFT_CONFLICT') return { status: 'error', reload: true,
     message: '下書きの版が変わりました。入力を控えてから一覧で最新版を確認してください。' }
   if (code === 'INVALID_INPUT' || code === 'MEDIA_TOO_LARGE') return { status: 'error',

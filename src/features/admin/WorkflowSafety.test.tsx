@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { AdminQuestWorkflow } from './AdminQuestWorkflow'
 import QuestDraftForm from './QuestDraftForm'
 import { LocalAdminWorkspace } from './LocalAdminWorkspace'
-import { createApiClient, type ManagedQuest } from '../../shared/api'
+import { ApiError, createApiClient, type ManagedQuest } from '../../shared/api'
 
 const member = { orgId: 'org', areaId: 'area', label: '架空自治体', role: 'editor' as const }
 const initial: ManagedQuest = {
@@ -158,11 +158,10 @@ it.each([
 it('keeps the inventory fields and distinct actions on one page', () => {
   render(<AdminQuestWorkflow api={api()} initial={initial} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
   fireEvent.click(screen.getByText('クリア後'))
-  fireEvent.click(screen.getByText('緯度・経度'))
   for (const label of ['撮るもの', '正解の写真', '場所の名前', '住所', '緯度', '経度', '船上・海上', '有料施設内', '料金の区分', '撮影の注意', '行き方', '交通手段', '所要分数', '紹介', '解説', 'タイトル', '問題文', 'ヒント 1', 'ヒント 2', 'ヒント 3', '特徴', '特徴を1行で追加', '設定するヒント', 'ヒント画像', '正解写真で試す', '別の写真で試す']) {
     expect(screen.getByLabelText(label, { exact: true, selector: 'input, textarea, select' })).toBeVisible()
   }
-  for (const name of ['地図', '参照を外す', '行き方の文を作る', '特徴を追加', '画像を保存', '正解写真で試す', '別の写真で試す', '公開', '謎一覧へ戻る']) {
+  for (const name of ['参照を外す', '行き方の文を作る', '特徴を追加', '画像を保存', '正解写真で試す', '別の写真で試す', '公開', '謎一覧へ戻る']) {
     expect(screen.getByRole('button', { name })).toBeVisible()
   }
   expect(screen.getByText('下書き案を取り込む')).toBeVisible()
@@ -193,14 +192,23 @@ it('saves a hint selection on guarded exit and retains it on the next body save'
   expect(client.updateManagedQuest).toHaveBeenCalledTimes(3)
 })
 
-it('opens missing coordinates on save and retains Japanese photo selectors', () => {
+it('shows fallback coordinates on save and retains Japanese photo selectors', () => {
   render(<AdminQuestWorkflow api={api()} initial={null} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
-  const details = screen.getByText('緯度・経度').closest('details')!
-  expect(details.open).toBe(false)
+  expect(screen.getByLabelText('緯度')).toBeVisible()
   const photo = screen.getByLabelText('正解の写真')
   expect(photo.closest('label')).toHaveTextContent('写真を選ぶ')
   photo.focus()
   expect(photo).toHaveFocus()
   fireEvent.click(screen.getByRole('button', { name: '保存' }))
-  expect(details.open).toBe(true)
+})
+
+it('shows a server boundary rejection at the place and clears it when the place changes', async () => {
+  const client = api()
+  client.updateManagedQuest.mockRejectedValue(new ApiError('SPOT_OUTSIDE_AREA'))
+  render(<AdminQuestWorkflow api={client} initial={initial} member={member} teamPreview photoTestSource="mock" areaUnclassified={false} onBack={vi.fn()} onPublished={vi.fn()} />)
+  fireEvent.click(screen.getByRole('button', { name: '保存' }))
+  await waitFor(() => expect(screen.getByRole('group', { name: '場所' })).toHaveAttribute('aria-describedby', 'spot-area-error'))
+  expect(document.getElementById('spot-area-error')).toHaveTextContent('エリアの外です')
+  fireEvent.change(screen.getByLabelText('緯度'), { target: { value: '1' } })
+  expect(document.getElementById('spot-area-error')).toBeNull()
 })

@@ -82,7 +82,7 @@ test('durable managed drafts isolate organizations and use one revision for text
   assert.equal(created.areaId, areaId)
   assert.deepEqual((await colleague.listManagedQuests(orgId)).items, [created])
   await t.test('derives the 1km zone from the same saved spot and keeps readiness read-only', async () => {
-    const position = { latitude: 35, longitude: 135 }
+    const position = { latitude: 0.75, longitude: 0.25 }
     const withSpot = { ...draft, afterClear: { ...draft.afterClear, spot: { name: '架空の塔', address: '架空住所', position } } }
     const created = await editor.createManagedQuest(orgId, withSpot, { deriveShootingArea: true })
     assert.equal(created.shootingAreaStatus, 'configured')
