@@ -16,6 +16,8 @@ const SHEET_CLOSED_HEIGHT = 64
 const SHEET_TOP_GAP = 84
 const FALLBACK_STAGE_HEIGHT = 640
 const DRAG_TAP_THRESHOLD = 6
+const CARD_CLICK_GRACE_MS = 100
+const DEFAULT_TRANSITION_MS = 300
 
 function snapHeights(stageHeight: number): Record<SheetSnap, number> {
   const half = Math.max(SHEET_PEEK_HEIGHT, Math.round(stageHeight * 0.55))
@@ -43,15 +45,16 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
   const focusAfterSnap = useRef<'body' | 'handle' | null>(null)
   const [stageHeight, setStageHeight] = useState(FALLBACK_STAGE_HEIGHT)
   const [snap, setSnap] = useState<SheetSnap>('peek')
+  // ピンの通知は詳細の取得より先に届くため、halfへ開く前の高さを保存する。
   const preDetailSnap = useRef<SheetSnap | null>(null)
   useEffect(() => {
-    if (detailOpen && preDetailSnap.current === null) {
+    if ((detailOpen || openSignal) && preDetailSnap.current === null) {
       preDetailSnap.current = snap
-    } else if (!detailOpen && preDetailSnap.current !== null) {
+    } else if (!detailOpen && !openSignal && preDetailSnap.current !== null) {
       setSnap(preDetailSnap.current)
       preDetailSnap.current = null
     }
-  }, [detailOpen, snap])
+  }, [detailOpen, openSignal, snap])
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const [releaseMs, setReleaseMs] = useState<number | null>(null)
   const drag = useRef<{ pointerId: number; startY: number; startHeight: number; distance: number; samples: Array<{ y: number; t: number }> } | null>(null)
@@ -104,6 +107,14 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
   const height = dragHeight ?? heights[snap]
   useEffect(() => { onHeightChange?.(height) }, [height, onHeightChange])
 
+  const cardClicksBlockedUntil = useRef(0)
+  // つまみのタップ・ドラッグで利用者がシートを動かした時だけ、動いている間の一覧カードの
+  // クリックを捨てる（つまみの素早い2回タップが、下から来たカードに当たって詳細が開く対策）。
+  // 選択に伴う自動の開閉（openSignal）では止めない。
+  const guardCardClicks = (durationMs: number) => {
+    cardClicksBlockedUntil.current = performance.now() + durationMs + CARD_CLICK_GRACE_MS
+  }
+
   useEffect(() => {
     const target = focusAfterSnap.current
     if (!target) return
@@ -151,7 +162,9 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
         heights,
         reducedMotion: reducedMotion.current,
       })
-      setReleaseMs(releaseTransitionMs(velocityY, reducedMotion.current))
+      const releaseDuration = releaseTransitionMs(velocityY, reducedMotion.current)
+      setReleaseMs(releaseDuration)
+      guardCardClicks(releaseDuration)
       onUserClosedChange?.(next === 'closed')
       if (next === 'closed') {
         preDetailSnap.current = null
@@ -164,6 +177,7 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
   }
   const onClick = () => {
     if (suppressClick.current) { suppressClick.current = false; return }
+    guardCardClicks(reducedMotion.current ? 120 : DEFAULT_TRANSITION_MS)
     if (detailOpen && onDismissDetail) {
       setSnap(preDetailSnap.current ?? 'peek')
       preDetailSnap.current = null
@@ -184,7 +198,14 @@ export function ExploreBottomSheet({ children, openSignal, onHeightChange, onUse
         <span className="explore-sheet-grip" aria-hidden="true" />
         {snap === 'closed' && <span className="explore-sheet-count">{questCount}件の謎</span>}
       </button>
-      <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}>{children}</div>
+      <div ref={bodyRef} className="explore-sheet-body" id={bodyId} tabIndex={-1}
+        onClickCapture={(event) => {
+          if ((drag.current || performance.now() < cardClicksBlockedUntil.current)
+            && event.target instanceof Element && event.target.closest('.explore-quest-card')) {
+            event.preventDefault()
+            event.stopPropagation()
+          }
+        }}>{children}</div>
     </div>
   </>
 }

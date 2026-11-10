@@ -261,3 +261,74 @@ it('詳細表示中に取っ手を下までドラッグすると詳細を解除�
   rerender(<ExploreBottomSheet detailOpen={false} onDismissDetail={onDismissDetail}><p>一覧</p></ExploreBottomSheet>)
   expect(container.querySelector('.explore-sheet')).toHaveAttribute('data-snap', 'closed')
 })
+
+it('restores the snap before a pin or row opens, even when detail loads after the signal', () => {
+  const { container, rerender } = render(<ExploreBottomSheet openSignal={null}><p>一覧</p></ExploreBottomSheet>)
+  const sheet = container.querySelector('.explore-sheet')!
+  rerender(<ExploreBottomSheet openSignal="area-a:"><p>一覧</p></ExploreBottomSheet>)
+  expect(sheet).toHaveAttribute('data-snap', 'half')
+  rerender(<ExploreBottomSheet openSignal="area-a:q2" detailOpen><p>2問目</p></ExploreBottomSheet>)
+  expect(sheet).toHaveAttribute('data-snap', 'half')
+  rerender(<ExploreBottomSheet openSignal={null}><p>一覧</p></ExploreBottomSheet>)
+  expect(sheet).toHaveAttribute('data-snap', 'peek')
+})
+
+
+describe('sheet card click guard', () => {
+  it('discards a card tap 80ms after opening from closed and accepts it after the animation and grace period', () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenQuest = vi.fn()
+      const { container } = render(<ExploreBottomSheet>
+        <button className="explore-quest-card" onClick={onOpenQuest}><span>札幌</span></button>
+      </ExploreBottomSheet>)
+      const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+      const card = screen.getByText('札幌')
+      fireEvent.pointerDown(handle, { pointerId: 1, pointerType: 'touch', clientY: 300 })
+      fireEvent.pointerMove(handle, { pointerId: 1, pointerType: 'touch', clientY: 700 })
+      fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'touch', clientY: 700 })
+      fireEvent.click(handle) // ドラッグ直後の合成click
+      expect(container.querySelector('.explore-sheet')).toHaveAttribute('data-snap', 'closed')
+      vi.advanceTimersByTime(600)
+      // 実タップと同じくpointerDownでリリース時間を既定値へ戻す。
+      fireEvent.pointerDown(handle, { pointerId: 2, pointerType: 'touch', clientY: 718 })
+      fireEvent.pointerUp(handle, { pointerId: 2, pointerType: 'touch', clientY: 718 })
+      fireEvent.click(handle)
+      expect(container.querySelector('.explore-sheet')).toHaveAttribute('data-snap', 'half')
+      vi.advanceTimersByTime(80)
+      fireEvent.click(card)
+      expect(onOpenQuest).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(220)
+      fireEvent.click(card) // 遷移終了直後にも短い保護期間がある。
+      expect(onOpenQuest).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(101)
+      fireEvent.click(card)
+      expect(onOpenQuest).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps rapid handle taps working and extends the guard for the latest snap', () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenQuest = vi.fn()
+      const { container } = render(<ExploreBottomSheet>
+        <button className="explore-quest-card" onClick={onOpenQuest}>札幌</button>
+      </ExploreBottomSheet>)
+      const handle = screen.getByRole('button', { name: '謎リストを広げる' })
+      fireEvent.click(handle)
+      vi.advanceTimersByTime(80)
+      fireEvent.click(handle)
+      expect(container.querySelector('.explore-sheet')).toHaveAttribute('data-snap', 'full')
+      vi.advanceTimersByTime(321)
+      fireEvent.click(screen.getByText('札幌'))
+      expect(onOpenQuest).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(80)
+      fireEvent.click(screen.getByText('札幌'))
+      expect(onOpenQuest).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
