@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { DocumentSnapshot, Firestore, Transaction } from 'firebase-admin/firestore'
-import { CAPTURE_ZONE_RADIUS_METERS, parseCaptureZones, parseManagedQuest, parseUpdateShootingAreas, shootingAreaStatus } from '../../src/shared/api/admin'
+import { CAPTURE_ZONE_RADIUS_METERS, parseCaptureZones, parseManagedQuestDraft, parseManagedQuest, parseUpdateShootingAreas, shootingAreaStatus } from '../../src/shared/api/admin'
 import { isQuestNumber } from '../../src/shared/api/validation'
 import type { AssetPurpose, ManagedQuest, ManagedQuestDraft, ManagedShootingAreas, ReviewSubmission, UpdateManagedQuest, UpdateShootingAreas } from '../../src/shared/api/admin'
 import { isPhotoApproved, photoApprovalRequired } from './admin-photo-approvals'
@@ -65,6 +65,7 @@ export class FirestoreManagedDraftStore {
   }
 
   create(uid: string, orgId: string, draft: ManagedQuestDraft, deriveShootingArea = false) {
+    draft = parseManagedQuestDraft(draft)
     const ref = this.db.collection('quests').doc(randomUUID())
     return answerTransaction(this.db, async (tx) => {
       const member = await requireOrgMember(this.db, tx, uid, orgId)
@@ -91,7 +92,7 @@ export class FirestoreManagedDraftStore {
       assertSpotInMunicipalArea(readMunicipalArea({ id: area.id, data: area.data() }, member), input.draft.afterClear.spot?.position)
       const draftRevision = nextRevision(quest.draftRevision, input.expectedDraftRevision)
       await this.checkAssets(tx, orgId, input.draft)
-      const changes = { draftRevision, status: 'draft' as const, draft: input.draft }
+      const changes = { draftRevision, status: 'draft' as const, draft: parseManagedQuestDraft(input.draft) }
       if (input.deriveShootingArea || data.shootingAreaSource === 'spot') {
         const zones = spotZones(input.draft)
         tx.update(ref, { ...changes, zones, shootingAreaSource: 'spot' })

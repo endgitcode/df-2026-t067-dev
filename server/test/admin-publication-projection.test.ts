@@ -80,8 +80,8 @@ test('publishes selected prices and retains legacy text without accepting malfor
   }
 })
 
-test('accepts and retains legacy photo notes without publishing them', () => {
+test('accepts and discards legacy photo notes without publishing them', () => {
   const draft = parseManagedQuestDraft({ ...base.draft, materials: { ...base.draft.materials, photoNote: '旧注意\n自由記述' } })
-  assert.equal(draft.materials.photoNote, '旧注意\n自由記述')
+  assert.equal(draft.materials.photoNote, '')
   assert.equal(projectManagedQuest({ ...base, draft }, 4).quest.visitConditions, '')
 })

@@ -11,11 +11,11 @@ function setup(hours = '', price = '', referenceAssetId: string | null = null) {
     content: { title: '', question: '', hints: ['', '', ''], verifiedFeatures: '', draftingNotes: '' }, referenceAssetId, hintAssetId: null,
   } }
   const updateManagedQuest = vi.fn(async (_org, _id, input) => ({ ...initial, draftRevision: 3, draft: input.draft }))
-  render(<QuestDraftForm connection={{ taskFocused: true, initial, api: { ...createApiClient(), uploadOrgAsset: vi.fn().mockResolvedValue({ assetId: 'synthetic' }), updateManagedQuest }, member: { orgId: 'org', areaId: 'area', label: '架空', role: 'editor' }, onBack: vi.fn() }} />)
+  render(<QuestDraftForm connection={{ taskFocused: true, initial, api: { ...createApiClient(), uploadOrgAsset: vi.fn().mockResolvedValue({ assetId: 'synthetic' }), updateManagedQuest }, member: { orgId: 'org', areaId: 'area', label: '架空', role: 'editor' }, onBack: vi.fn(), onContinue: vi.fn() }} />)
   fireEvent.click(screen.getByText('クリア後'))
   return updateManagedQuest
 }
-it('saves minute hours with weekday exceptions without changing photography hours', async () => {
+it('saves minute hours with weekday exceptions and clears legacy photo notes', async () => {
   const save = setup()
   expect(screen.queryByText('撮影の注意')).not.toBeInTheDocument()
   expect(screen.queryByText('撮影は日中のみ')).not.toBeInTheDocument()
@@ -27,7 +27,7 @@ it('saves minute hours with weekday exceptions without changing photography hour
   fireEvent.change(screen.getByLabelText('休業例外のその他'), { target: { value: '月曜休業、祝日は10時から' } })
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   await screen.findByText('保存済み')
-  expect(save.mock.calls[0][2].draft).toMatchObject({ afterClear: { hours: '09:30〜17:45\n月曜休業、祝日は10時から' }, materials: { photoNote: '撮影は日中のみ' } })
+  expect(save.mock.calls[0][2].draft).toMatchObject({ afterClear: { hours: '09:30〜17:45\n月曜休業、祝日は10時から' }, materials: { photoNote: '' } })
 })
 it('keeps partial optional hours while writing and saving, never inferring all-day', async () => {
   const save = setup()
@@ -143,4 +143,12 @@ it('does not display or save a legacy amount under free', async () => {
   fireEvent.click(screen.getByRole('button', { name: '下書きを保存' }))
   await screen.findByText('保存済み')
   expect(save.mock.calls[0][2].draft.materials.price).toBe('無料')
+})
+
+it('clears legacy photo notes when saving toward publication', async () => {
+  const save = setup()
+  fireEvent.click(screen.getByText('保存先'))
+  fireEvent.click(screen.getByRole('button', { name: '保存して試験・公開確認へ' }))
+  await screen.findByText('保存済み')
+  expect(save.mock.calls[0][2].draft.materials.photoNote).toBe('')
 })
