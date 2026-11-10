@@ -18,7 +18,6 @@ export function projectManagedQuest(quest: ManagedQuest, version: number, questN
   const conditions: string[] = []
   const price = normalizePrice(materials.price).trim()
   if (price && !/^(?:未確認|未設定)(?:：|$)/.test(price)) conditions.push('料金：' + price.replace(/^有料：/, ''))
-  if (materials.photoNote.trim()) conditions.push('注意：' + materials.photoNote.trim())
   const visible = parsePublicQuest({ questId, version, title: content.title.trim(), clue: content.question.trim(), areaId,
     ...(questNumber !== undefined ? { questNumber } : {}),
     visitConditions: conditions.join('\n'), hintCount: content.hints.length,
