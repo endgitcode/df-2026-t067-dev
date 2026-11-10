@@ -58,8 +58,8 @@ it('行の左アイコンを出し分け、題名と2行目を同じラッパに
     expect(copy.querySelector('.traveler-row-title')).not.toBeNull()
     expect(copy.querySelector('.traveler-row-secondary')).not.toBeNull()
   }
-  expect(container.querySelector('.explore-quest-cleared')).toHaveTextContent('クリア済み')
-  expect(container.querySelector('.explore-quest-cleared svg')).not.toBeNull()
+  expect(container.querySelector('.explore-quest-cleared')).toBeNull()
+  expect(container.querySelector('.explore-row-copy .sr-only')).toHaveTextContent('クリア済み')
 })
 
 it('地図へ渡す地域と件数を絞り、通常ピンは青、クリアピンは緑にする', async () => {

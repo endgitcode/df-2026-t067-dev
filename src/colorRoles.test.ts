@@ -19,6 +19,15 @@ function background(css: string, selector: string) {
 }
 
 describe('色の役割', () => {
+  it('地方を開くだけでは選択色を付けず、未選択県のhoverとfocusも白面にする', () => {
+    for (const rule of rules(traveler).filter(rule => rule.selectorText.includes('.filter-accordion-body'))) {
+      expect(rule.cssText).not.toMatch(/--role-selected(?:-soft)?/)
+    }
+    for (const selector of ['.filter-prefecture:hover', '.filter-prefecture:focus-visible']) {
+      expect(background(traveler, selector)).toBe('var(--ui-surface)')
+    }
+    expect(background(traveler, '.filter-prefecture[aria-pressed="true"]')).toBe('var(--role-selected)')
+  })
   it('各状態をdemoの白上書きから独立した変数にする', () => {
     for (const [status, role, color] of [
       ['draft', 'off', '#e9e8e2'], ['review_pending', 'off', '#e9e8e2'],
@@ -143,11 +152,11 @@ it('記録の外枠を外し、クリアバッジは共通の枠・余白にす�
   expect(record.style.background).toBe('transparent')
   expect(record.style.border).toBe('0px')
   expect(record.style.padding).toBe('0px')
-  const badge = rules(traveler).find(rule => rule.selectorText === '.explore-quest-cleared, .quest-cleared-label')!
+  const badge = rules(traveler).find(rule => rule.selectorText === '.quest-cleared-label')!
   expect(badge.style.display).toBe('inline-flex')
   expect(badge.style.padding).toBe('var(--sp-4) var(--sp-8)')
   expect(badge.style.border).toBe('var(--ui-border-width) solid var(--ui-line)')
-  expect(background(traveler, '.explore-quest-cleared')).toBe('var(--role-done)')
+  expect(background(traveler, '.explore-row-icon.is-cleared')).toBe('var(--role-done)')
 })
 
 it('クリアと不正解は白いカードの上端だけに役割色を使う', () => {

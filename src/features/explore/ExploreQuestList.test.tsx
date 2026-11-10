@@ -249,7 +249,7 @@ it.each(['explore-side-panel', 'explore-sheet-body'])('aligns a scrolled row wit
   expect(scrollTo).toHaveBeenCalledWith({ top: className === 'explore-side-panel' ? 432 : 496, behavior: 'smooth' })
 })
 
-it('開いたクリア済み行はバッジ1つと記録への導線を保つ', async () => {
+it('開いたクリア済み行は読み上げと記録への導線を保つ', async () => {
   const onOpenDiscovery = vi.fn()
   const onStart = vi.fn()
   const { container } = render(<ExploreQuestList areas={areas} quests={quests} selectedQuestId="q1"
@@ -258,7 +258,8 @@ it('開いたクリア済み行はバッジ1つと記録への導線を保つ', 
       buttonLabel="挑戦する" onToggle={vi.fn()} onStart={onStart}
       clearedDiscoveryId="record-1" onOpenDiscovery={onOpenDiscovery} />} />)
   expect(screen.getAllByText('クリア済み')).toHaveLength(1)
-  expect(container.querySelector('.explore-quest-cleared svg')).toHaveAttribute('aria-hidden', 'true')
+  expect(container.querySelector('.explore-quest-cleared')).toBeNull()
+  expect(container.querySelector('.traveler-list-row')).toHaveAccessibleDescription('クリア済み')
   expect(screen.queryByRole('button', { name: '挑戦する' })).not.toBeInTheDocument()
   await userEvent.setup().click(screen.getByRole('button', { name: '記録を見る' }))
   expect(onOpenDiscovery).toHaveBeenCalledExactlyOnceWith('record-1')
