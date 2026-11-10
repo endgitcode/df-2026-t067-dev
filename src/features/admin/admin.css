@@ -384,11 +384,13 @@
 .admin-workflow fieldset fieldset { border: 0; border-radius: 0; padding: 0; margin-block: 24px; }
 .admin-workflow .form-section .form-section { border: 0; padding: 0; }
 .admin-workflow fieldset legend { padding: 0; margin-bottom: 12px; font-size: 20px; }
+.admin-workflow #workflow-spot > fieldset { margin: 0; padding: 0; }
+.admin-workflow #workflow-spot > fieldset > legend { padding: 0; margin: 0 0 12px; }
 .admin-demo .admin-header { flex-direction: row; align-items: center; }
 .admin-demo .admin-login-heading { width: 100%; }
 .admin-demo .admin-header h1 { font-size: 24px; }
 .admin-demo .admin-back-link { background: transparent; border: 0; padding-inline: 0; box-shadow: none; text-decoration: underline; text-underline-offset: 4px; }
-.admin-demo .photo-picker { position: relative; align-items: start; }
+.admin-demo .photo-picker { position: relative; display: flex; flex-direction: column; gap: 8px; align-items: start; }
 .admin-demo .photo-picker input[type="file"] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .photo-picker-button { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; box-sizing: border-box; border: 2px solid var(--ui-line); border-radius: 12px; background: white; color: var(--ui-ink); cursor: pointer; }
 .photo-picker:has(input:focus-visible) .photo-picker-button { outline: 3px solid var(--ui-focus); outline-offset: 2px; }

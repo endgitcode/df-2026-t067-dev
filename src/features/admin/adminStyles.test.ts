@@ -5,6 +5,22 @@ const css = readFileSync('src/features/admin/admin.css', 'utf8')
 
 // These contracts cover the later managed/workflow overrides as well as the base form.
 describe('管理画面の見た目の規則', () => {
+  it('写真選択は他の入力と同じ8px間隔でラベルの下に置く', () => {
+    const rule = css.match(/\.admin-demo \.photo-picker \{([^}]+)\}/)?.[1]
+    expect(rule).toContain('display: flex;')
+    expect(rule).toContain('flex-direction: column;')
+    expect(rule).toContain('gap: 8px;')
+    expect(rule).toContain('align-items: start;')
+    expect(css).toContain('.photo-picker:has(input:focus-visible) .photo-picker-button { outline: 3px solid var(--ui-focus); outline-offset: 2px; }')
+  })
+  it('場所の先頭fieldsetは外側の箱に余分な上余白を足さない', () => {
+    const fieldset = css.match(/\.admin-workflow #workflow-spot > fieldset \{([^}]+)\}/)?.[1]
+    expect(fieldset).toContain('margin: 0;')
+    expect(fieldset).toContain('padding: 0;')
+    const legend = css.match(/\.admin-workflow #workflow-spot > fieldset > legend \{([^}]+)\}/)?.[1]
+    expect(legend).toContain('padding: 0;')
+    expect(legend).toContain('margin: 0 0 12px;')
+  })
   it('共有・永続カードは黒2px、角丸16、影なし', () => {
     expect(css).toContain('.admin-managed .form-section { border: 2px solid var(--ui-line); border-radius: 16px; box-shadow: none; }')
     expect(css).toContain('--ui-shadow: none; --ui-control-shadow: none;')
