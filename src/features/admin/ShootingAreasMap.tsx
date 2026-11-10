@@ -29,7 +29,7 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
   const target = useRef<HTMLDivElement>(null)
   const latest = useRef({ disabled, onSelect, zones, selectedIndex, spot })
   useEffect(() => { latest.current = { disabled, onSelect, zones, selectedIndex, spot } }, [disabled, onSelect, zones, selectedIndex, spot])
-  const [loaded, setLoaded] = useState<{ google: GoogleMapsApi; map: MapInstance } | null>(null)
+  const [loaded, setLoaded] = useState<{ google: GoogleMapsApi; map: MapInstance; initialView: { center: { lat: number; lng: number }; zoom: number } } | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [currentLocation, setCurrentLocation] = useState<Position | null>(null)
   const [zoom, setZoom] = useState(minZoom)
@@ -51,9 +51,12 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
       if (spotMode ? !google.Marker : !google.Circle) throw new Error('unavailable')
       const current = latest.current
       const first = current.spot ?? (current.selectedIndex === null ? null : current.zones[current.selectedIndex]) ?? current.zones.find((zone) => zone !== null)
-      const map = new google.Map(target.current, {
+      const initialView = {
         center: first ? { lat: first.latitude, lng: first.longitude } : overview,
         zoom: first ? (spotMode ? 17 : 14) : minZoom,
+      }
+      const map = new google.Map(target.current, {
+        ...initialView,
         ...(pickPlace ? { minZoom, maxZoom, zoomControl: false } : {}), mapTypeControl: false, streetViewControl: false, fullscreenControl: false, clickableIcons: pickPlace,
         styles: pickPlace ? undefined : MAP_STYLES,
       })
@@ -78,7 +81,7 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
       })
       dispose = () => { listener.remove() }
       if (authFailed) { dispose(); return }
-      setLoaded({ google, map })
+      setLoaded({ google, map, initialView })
       setStatus('ready')
     }).catch(() => { if (active) setStatus('error') })
     return () => { active = false; unsubscribe(); dispose() }
@@ -124,8 +127,8 @@ export function ShootingAreasMap({ zones, selectedIndex, disabled, onSelect, spo
 
   function resetView() {
     if (!loaded) return
-    loaded.map.setCenter(spot ? { lat: spot.latitude, lng: spot.longitude } : overview)
-    loaded.map.setZoom(spot ? 17 : minZoom)
+    loaded.map.setCenter(spot ? { lat: spot.latitude, lng: spot.longitude } : loaded.initialView.center)
+    loaded.map.setZoom(spot ? 17 : loaded.initialView.zoom)
   }
 
   function locate() {

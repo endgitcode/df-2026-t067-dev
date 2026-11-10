@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { demoQuest } from './features/quests/demoQuest'
 
@@ -81,4 +81,28 @@ describe('ディープリンク', () => {
       window.history.replaceState(null, '', '/')
     }
   })
+})
+
+
+it('shows only one PC handoff before and after opening hints and reopening details', async () => {
+  let measuredWide = true
+  vi.stubGlobal('matchMedia', () => ({ matches: measuredWide, addEventListener() {}, removeEventListener() {} }))
+  try {
+    const user = userEvent.setup()
+    const { container } = render(<App />)
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    expect(screen.getAllByRole('img', { name: /QRコード/ })).toHaveLength(1)
+    expect(container.querySelector('.quest-mobile-start')).toBeNull()
+    // 子だけが再描画した際の実測値が異なっても、親のレイアウト判定にそろえる。
+    measuredWide = false
+    await user.click(screen.getByRole('button', { name: 'ヒントを見る' }))
+    expect(await screen.findByText('ヒントは順番に開けます')).toBeVisible()
+    expect(screen.getAllByRole('img', { name: /QRコード/ })).toHaveLength(1)
+    expect(container.querySelector('.quest-mobile-start')).toBeNull()
+    measuredWide = true
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    await user.click(screen.getByRole('button', { name: '問題を見る' }))
+    expect(screen.getAllByRole('img', { name: /QRコード/ })).toHaveLength(1)
+    expect(container.querySelector('.quest-mobile-start')).toBeNull()
+  } finally { vi.unstubAllGlobals() }
 })

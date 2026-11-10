@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SpotAddressInput, SpotAddressLookup } from '../../shared/api/admin-spot-address'
-import { initialSpotInput, spotPosition } from './mapsSpotLink'
+import { spotPosition } from './mapsSpotLink'
 import type { SpotInput } from './mapsSpotLink'
 import { ShootingAreasMap } from './ShootingAreasMap'
 import type { MapPlaceDetails } from './ShootingAreasMap'
@@ -41,7 +41,7 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange, locatio
     setCandidate({})
     onHoursCandidate?.(undefined)
     const position = { latitude, longitude }
-    onChange({ ...initialSpotInput(), latitude: String(latitude), longitude: String(longitude), googlePlaceId: place?.id })
+    onChange({ ...input, latitude: String(latitude), longitude: String(longitude), googlePlaceId: place?.id })
     const controller = new AbortController()
     request.current = controller
     setMessage('地図の場所情報を取得しています…')
@@ -73,7 +73,7 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange, locatio
       <p><strong>候補</strong> <span translate="no">Google Maps</span></p>
       {candidate.name && <p>名称候補：{candidate.name}</p>}
       {candidate.address && <p>住所候補：{candidate.address}</p>}
-      <button type="button" onClick={() => edit({ name: candidate.name ?? input.name, address: candidate.address ?? input.address })}>名前・住所を使う</button>
+      <button type="button" onClick={() => edit({ name: candidate.name?.trim() || input.name, address: candidate.address?.trim() || input.address })}>名前・住所を使う</button>
     </div>}
     {(input.name || input.address || input.latitude || input.longitude) &&
       <button type="button" className="spot-clear-button" onClick={() => {
@@ -81,7 +81,7 @@ export function MapSpotEditor({ input, invalid, orgId, lookup, onChange, locatio
         setCandidate({})
         setMessage('')
         onHoursCandidate?.(undefined)
-        onChange(initialSpotInput())
+        onChange({ ...input, latitude: '', longitude: '', googlePlaceId: undefined })
       }}>やり直す</button>}
     <label>場所の名前<input aria-describedby={invalid && !input.name.trim() ? "spot-name-error" : undefined} aria-label="場所の名前" value={input.name} maxLength={200} aria-required="true" aria-invalid={invalid && !input.name.trim()}
        placeholder="例：風見の丘公園" onChange={(event) => edit({ name: event.target.value })} /></label>

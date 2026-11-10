@@ -47,7 +47,7 @@ it('uses only the latest map candidates after explicit confirmation', async () =
 
 it('keeps manually entered values when a map candidate omits them', async () => {
   const user = userEvent.setup()
-  mock.first.mockResolvedValue({ address: '候補の住所' })
+  mock.first.mockResolvedValue({ name: '', address: '候補の住所' })
   function Harness() {
     const [input, setInput] = useState(initialSpotInput)
     return <MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={setInput} />
@@ -90,4 +90,25 @@ it('hides coordinates when usable and restores them after a map failure', async 
   await user.click(screen.getByRole('button', { name: '地図読込失敗' }))
   expect(screen.getByLabelText('緯度')).toBeVisible()
   expect(screen.getByLabelText('経度')).toHaveAttribute('aria-invalid', 'true')
+})
+
+
+it('keeps name and address on reselection and retry, while removing coordinates and Place ID', async () => {
+  const user = userEvent.setup()
+  mock.first.mockResolvedValue({ name: '', address: '候補の住所' })
+  const original = { ...initialSpotInput(), name: '確認済みの名称', address: '確認済みの住所', latitude: '34', longitude: '134', googlePlaceId: 'original' }
+  function Harness() {
+    const [input, setInput] = useState<ReturnType<typeof initialSpotInput>>(original)
+    return <><MapSpotEditor input={input} invalid={false} orgId="fixture" onChange={setInput} /><output data-testid="input">{JSON.stringify(input)}</output></>
+  }
+  render(<Harness />)
+  await user.click(screen.getByRole('button', { name: '地図の場所A' }))
+  await screen.findByText('住所候補：候補の住所')
+  expect(screen.getByLabelText('場所の名前')).toHaveValue(original.name)
+  expect(screen.getByLabelText('住所')).toHaveValue(original.address)
+  await user.click(screen.getByRole('button', { name: '名前・住所を使う' }))
+  expect(screen.getByLabelText('場所の名前')).toHaveValue(original.name)
+  expect(screen.getByLabelText('住所')).toHaveValue('候補の住所')
+  await user.click(screen.getByRole('button', { name: 'やり直す' }))
+  expect(JSON.parse(screen.getByTestId('input').textContent!)).toEqual({ ...original, address: '候補の住所', latitude: '', longitude: '', googlePlaceId: undefined })
 })
