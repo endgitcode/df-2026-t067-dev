@@ -76,6 +76,7 @@ describe('PC sidebar review flow', () => {
     await user.click(screen.getByRole('button', { name: 'サイドバーを閉じる' }))
     expect(document.body).toHaveClass('explore-sidebar-collapsed')
     const nav = document.querySelector('.desktop-nav')!
+    expect(nav.nextElementSibling).toHaveAttribute('id', 'sidebar-toggle-slot')
     expect(nav.nextElementSibling).toContainElement(screen.getByRole('button', { name: 'サイドバーを開く' }))
     await user.click(screen.getByRole('button', { name: 'サイドバーを開く' }))
     expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
@@ -104,6 +105,14 @@ describe('PC sidebar review flow', () => {
     expect(document.querySelector('.desktop-nav')).not.toBeNull()
     expect(within(document.querySelector('.desktop-nav') as HTMLElement).getByRole('button', { name: '自分の記録' }))
       .toHaveAttribute('aria-current', 'page')
+
+    // 探索側が hidden でも共通スロットのトグルは操作できる。
+    const toggle = screen.getByRole('button', { name: 'サイドバーを閉じる' })
+    expect(document.getElementById('sidebar-toggle-slot')).toContainElement(toggle)
+    await user.click(toggle)
+    expect(document.body).toHaveClass('explore-sidebar-collapsed')
+    await user.click(screen.getByRole('button', { name: 'サイドバーを開く' }))
+    expect(document.body).not.toHaveClass('explore-sidebar-collapsed')
 
     await user.click(within(document.querySelector('.desktop-nav') as HTMLElement).getByRole('button', { name: '謎を探す' }))
     await waitFor(() => expect(document.body).toHaveClass('explore-fullbleed'))

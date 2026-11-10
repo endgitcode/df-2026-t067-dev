@@ -64,3 +64,18 @@ test('draft validation drops a free price amount before persistence', () => {
   const draft = parseManagedQuestDraft({ ...base.draft, materials: { ...base.draft.materials, price: '無料：500' } })
   assert.equal(draft.materials.price, '無料')
 })
+
+test('publishes selected prices and retains legacy text without accepting malformed selected prices', () => {
+  for (const [price, expected] of [
+    ['有料：一律 0円', '料金：一律 0円'],
+    ['有料：大人 500円・子供 200円', '料金：大人 500円・子供 200円'],
+    ['受付で確認', '料金：受付で確認'], ['未設定', ''],
+  ]) {
+    const draft = parseManagedQuestDraft({ ...base.draft, materials: { ...base.draft.materials, price } })
+    assert.equal(draft.materials.price, price)
+    assert.equal(projectManagedQuest({ ...base, draft }, 4).quest.visitConditions, expected)
+  }
+  for (const price of ['有料：', '有料：一律 -1円', '有料：大人 1.5円', '有料：子供 円', '有料：一律 1e3円', '有料：一律 9007199254740992円', '有料：大人 1円・大人 2円', '有料：一律 1円・子供 2円']) {
+    assert.throws(() => parseManagedQuestDraft({ ...base.draft, materials: { ...base.draft.materials, price } }))
+  }
+})
